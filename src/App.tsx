@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Quotes from "./pages/Quotes";
+import TechnicianDashboard from "./pages/TechnicianDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Quotes />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/technician" 
+              element={
+                <ProtectedRoute allowedRoles={['tecnico']}>
+                  <TechnicianDashboard />
                 </ProtectedRoute>
               } 
             />

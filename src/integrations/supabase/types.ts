@@ -878,6 +878,41 @@ export type Database = {
           },
         ]
       }
+      order_notes: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          order_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note: string
+          order_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          order_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_notes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_signatures: {
         Row: {
           id: string
@@ -906,6 +941,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "order_signatures_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_status_logs: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          id: string
+          new_status: Database["public"]["Enums"]["order_status"]
+          notes: string | null
+          order_id: string
+          previous_status: Database["public"]["Enums"]["order_status"] | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          id?: string
+          new_status: Database["public"]["Enums"]["order_status"]
+          notes?: string | null
+          order_id: string
+          previous_status?: Database["public"]["Enums"]["order_status"] | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          id?: string
+          new_status?: Database["public"]["Enums"]["order_status"]
+          notes?: string | null
+          order_id?: string
+          previous_status?: Database["public"]["Enums"]["order_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_logs_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
@@ -2266,7 +2339,12 @@ export type Database = {
         | "email"
         | "whatsapp"
         | "otro"
-      order_status: "pendiente" | "en_proceso" | "finalizada" | "cancelada"
+      order_status:
+        | "pendiente"
+        | "en_proceso"
+        | "finalizada"
+        | "cancelada"
+        | "en_camino"
       quote_status:
         | "solicitud"
         | "enviada"
@@ -2460,7 +2538,13 @@ export const Constants = {
         "whatsapp",
         "otro",
       ],
-      order_status: ["pendiente", "en_proceso", "finalizada", "cancelada"],
+      order_status: [
+        "pendiente",
+        "en_proceso",
+        "finalizada",
+        "cancelada",
+        "en_camino",
+      ],
       quote_status: [
         "solicitud",
         "enviada",

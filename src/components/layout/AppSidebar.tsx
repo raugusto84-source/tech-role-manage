@@ -6,7 +6,8 @@ import {
   ClipboardList,
   UserCheck,
   FileText,
-  Calendar
+  Calendar,
+  Wrench
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -65,9 +66,8 @@ export function AppSidebar() {
         ];
       case 'tecnico':
         return [
-          ...commonItems,
+          { title: 'Panel Técnico', url: '/technician', icon: Wrench },
           { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
-          { title: 'Calendario', url: '/calendar', icon: Calendar },
         ];
       case 'cliente':
         return [
