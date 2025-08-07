@@ -117,16 +117,26 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     try {
       if (!profile?.email) return;
       
+      // Buscar cliente por email del usuario autenticado
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('email', profile.email)
-        .single();
+        .maybeSingle(); // Usar maybeSingle en lugar de single
 
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') { // PGRST116 es "no rows returned"
+        throw error;
+      }
       
       if (data) {
         setFormData(prev => ({ ...prev, client_id: data.id }));
+      } else {
+        // Si no se encuentra cliente por email, mostrar mensaje informativo
+        toast({
+          title: "Información",
+          description: "No se encontró un cliente asociado a tu email. Contacta al administrador.",
+          variant: "default"
+        });
       }
     } catch (error) {
       console.error('Error loading current client:', error);
