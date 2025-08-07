@@ -59,11 +59,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   useEffect(() => {
     loadServiceTypes();
-    loadClients();
+    // Solo cargar clientes si es staff, los clientes usan su propio perfil
     if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+      loadClients();
       loadTechnicians();
+    } else if (profile?.role === 'cliente') {
+      // Para clientes, cargar su propio cliente
+      loadCurrentClient();
     }
-  }, [profile?.role]);
+  }, [profile?.role, user?.id]);
 
   const loadServiceTypes = async () => {
     try {
@@ -109,6 +113,31 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
+  const loadCurrentClient = async () => {
+    try {
+      if (!profile?.email) return;
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('email', profile.email)
+        .single();
+
+      if (error) throw error;
+      
+      if (data) {
+        setFormData(prev => ({ ...prev, client_id: data.id }));
+      }
+    } catch (error) {
+      console.error('Error loading current client:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar la información del cliente",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleServiceTypeChange = (serviceTypeId: string) => {
     const selectedService = serviceTypes.find(st => st.id === serviceTypeId);
     if (selectedService) {
@@ -136,9 +165,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     setLoading(true);
 
     try {
+      // Validar que tenemos client_id
+      if (!formData.client_id) {
+        toast({
+          title: "Error",
+          description: "No se ha seleccionado un cliente",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const orderData = {
-        client_id: formData.client_id || null,
-        service_type: formData.service_type || null,
+        client_id: formData.client_id,
+        service_type: formData.service_type,
         failure_description: formData.failure_description,
         delivery_date: formData.delivery_date,
         estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
@@ -213,32 +252,34 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Selección del Cliente */}
-              <div className="space-y-2">
-                <Label htmlFor="client_id">Cliente *</Label>
-                <div className="flex gap-2">
-                  <Select value={formData.client_id} onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))} required>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecciona un cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.client_number} - {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setShowClientForm(true)}
-                    className="px-3"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+              {/* Selección del Cliente - Solo para staff */}
+              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+                <div className="space-y-2">
+                  <Label htmlFor="client_id">Cliente *</Label>
+                  <div className="flex gap-2">
+                    <Select value={formData.client_id} onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))} required>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecciona un cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.client_number} - {client.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setShowClientForm(true)}
+                      className="px-3"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Información del Servicio */}
               <div className="space-y-2">
