@@ -71,9 +71,9 @@ export function AppSidebar() {
         ];
       case 'cliente':
         return [
-          ...commonItems,
-          { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
-          { title: 'Historial', url: '/history', icon: FileText },
+          { title: 'Panel Cliente', url: '/client', icon: Home },
+          { title: 'Mis Órdenes', url: '/client', icon: ClipboardList },
+          { title: 'Mis Cotizaciones', url: '/client', icon: FileText },
         ];
       default:
         return commonItems;
