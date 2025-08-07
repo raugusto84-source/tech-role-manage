@@ -679,6 +679,7 @@ export type Database = {
       }
       expenses: {
         Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
           amount: number
           category: string
           created_at: string
@@ -695,6 +696,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
           amount: number
           category: string
           created_at?: string
@@ -711,6 +713,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
           amount?: number
           category?: string
           created_at?: string
@@ -745,6 +748,7 @@ export type Database = {
       }
       incomes: {
         Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
           amount: number
           category: string
           client_name: string | null
@@ -760,6 +764,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
           amount: number
           category: string
           client_name?: string | null
@@ -775,6 +780,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
           amount?: number
           category?: string
           client_name?: string | null
@@ -876,6 +882,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_diagnostics_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_notes: {
@@ -909,6 +922,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -994,6 +1014,13 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_signatures_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_status_logs: {
@@ -1030,6 +1057,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -2283,7 +2317,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      pending_collections: {
+        Row: {
+          client_approval: boolean | null
+          client_id: string | null
+          created_at: string | null
+          delivery_date: string | null
+          estimated_cost: number | null
+          id: string | null
+          order_number: string | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          updated_at: string | null
+        }
+        Insert: {
+          client_approval?: boolean | null
+          client_id?: string | null
+          created_at?: string | null
+          delivery_date?: string | null
+          estimated_cost?: number | null
+          id?: string | null
+          order_number?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          updated_at?: string | null
+        }
+        Update: {
+          client_approval?: boolean | null
+          client_id?: string | null
+          created_at?: string | null
+          delivery_date?: string | null
+          estimated_cost?: number | null
+          id?: string | null
+          order_number?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       auto_assign_cleaning_tasks: {
