@@ -535,6 +535,42 @@ export type Database = {
           },
         ]
       }
+      clients: {
+        Row: {
+          address: string
+          client_number: string
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          client_number: string
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          client_number?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       diagnostic_questions: {
         Row: {
           created_at: string
