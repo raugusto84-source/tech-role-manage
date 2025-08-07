@@ -123,7 +123,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         delivery_date: formData.delivery_date,
         estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
         average_service_time: formData.average_service_time ? parseInt(formData.average_service_time) : null,
-        assigned_technician: formData.assigned_technician || null,
+        assigned_technician: formData.assigned_technician === 'unassigned' ? null : formData.assigned_technician || null,
         created_by: user?.id,
         status: 'pendiente' as const
       };
@@ -291,7 +291,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                       <SelectValue placeholder="Selecciona un técnico (opcional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sin asignar</SelectItem>
+                      <SelectItem value="unassigned">Sin asignar</SelectItem>
                       {technicians.map((tech) => (
                         <SelectItem key={tech.user_id} value={tech.user_id}>
                           {tech.full_name}
