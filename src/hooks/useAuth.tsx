@@ -42,13 +42,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           // Defer profile fetch to avoid deadlock
           setTimeout(async () => {
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            setProfile(profileData);
+            try {
+              console.log('Fetching profile for user:', session.user.id);
+              const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .maybeSingle(); // Use maybeSingle to avoid errors when no profile exists
+              
+              if (error) {
+                console.error('Error fetching profile:', error);
+                toast({
+                  title: "Error al cargar perfil",
+                  description: "No se pudo cargar la información del usuario",
+                  variant: "destructive",
+                });
+              } else if (profileData) {
+                console.log('Profile loaded:', profileData);
+                setProfile(profileData);
+              } else {
+                console.log('No profile found for user');
+                // If no profile exists, create one for the user
+                const { data: newProfile, error: createError } = await supabase
+                  .from('profiles')
+                  .insert({
+                    user_id: session.user.id,
+                    email: session.user.email || '',
+                    full_name: session.user.user_metadata?.full_name || 'Usuario',
+                    role: (session.user.user_metadata?.role as UserRole) || 'cliente'
+                  })
+                  .select()
+                  .single();
+                
+                if (createError) {
+                  console.error('Error creating profile:', createError);
+                } else {
+                  console.log('New profile created:', newProfile);
+                  setProfile(newProfile);
+                }
+              }
+            } catch (error) {
+              console.error('Unexpected error loading profile:', error);
+            }
           }, 0);
         } else {
           setProfile(null);
