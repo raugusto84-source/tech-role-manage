@@ -115,31 +115,47 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const loadCurrentClient = async () => {
     try {
-      if (!profile?.email) return;
+      if (!profile?.email) {
+        console.log('No profile email available');
+        return;
+      }
+      
+      console.log('Loading client for email:', profile.email);
       
       // Buscar cliente por email del usuario autenticado
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('email', profile.email)
-        .maybeSingle(); // Usar maybeSingle en lugar de single
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 es "no rows returned"
-        throw error;
+      if (error) {
+        console.error('Error loading current client:', error);
+        // Solo mostrar error si no es "no rows returned"
+        if (error.code !== 'PGRST116') {
+          toast({
+            title: "Error",
+            description: `Error al cargar cliente: ${error.message}`,
+            variant: "destructive"
+          });
+        }
+        return;
       }
       
       if (data) {
+        console.log('Client found:', data);
         setFormData(prev => ({ ...prev, client_id: data.id }));
       } else {
+        console.log('No client found for email:', profile.email);
         // Si no se encuentra cliente por email, mostrar mensaje informativo
         toast({
           title: "Información",
-          description: "No se encontró un cliente asociado a tu email. Contacta al administrador.",
+          description: "No se encontró un cliente asociado a tu email. El administrador debe crear tu registro de cliente primero.",
           variant: "default"
         });
       }
     } catch (error) {
-      console.error('Error loading current client:', error);
+      console.error('Unexpected error loading current client:', error);
       toast({
         title: "Error",
         description: "No se pudo cargar la información del cliente",
