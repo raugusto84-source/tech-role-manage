@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          console.log('Session user found:', session.user.id, session.user.email);
           // Defer profile fetch to avoid deadlock
           setTimeout(async () => {
             try {
@@ -54,14 +55,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 console.error('Error fetching profile:', error);
                 toast({
                   title: "Error al cargar perfil",
-                  description: "No se pudo cargar la información del usuario",
+                  description: `Error: ${error.message}`,
                   variant: "destructive",
                 });
               } else if (profileData) {
-                console.log('Profile loaded:', profileData);
+                console.log('Profile loaded successfully:', profileData);
                 setProfile(profileData);
               } else {
-                console.log('No profile found for user');
+                console.log('No profile found for user, creating one...');
                 // If no profile exists, create one for the user
                 const { data: newProfile, error: createError } = await supabase
                   .from('profiles')
@@ -76,6 +77,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 
                 if (createError) {
                   console.error('Error creating profile:', createError);
+                  toast({
+                    title: "Error al crear perfil",
+                    description: `Error: ${createError.message}`,
+                    variant: "destructive",
+                  });
                 } else {
                   console.log('New profile created:', newProfile);
                   setProfile(newProfile);
@@ -83,9 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             } catch (error) {
               console.error('Unexpected error loading profile:', error);
+              toast({
+                title: "Error inesperado",
+                description: "Ocurrió un error al cargar el perfil",
+                variant: "destructive",
+              });
             }
           }, 0);
         } else {
+          console.log('No session user found');
           setProfile(null);
         }
         
