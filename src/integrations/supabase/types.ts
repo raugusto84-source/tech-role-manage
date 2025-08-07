@@ -2163,6 +2163,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      generate_client_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_expense_number: {
         Args: Record<PropertyKey, never>
         Returns: string
