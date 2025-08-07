@@ -137,13 +137,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
     try {
       const orderData = {
-        client_id: formData.client_id,
-        service_type: formData.service_type,
+        client_id: formData.client_id || null,
+        service_type: formData.service_type || null,
         failure_description: formData.failure_description,
         delivery_date: formData.delivery_date,
         estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
         average_service_time: formData.average_service_time ? parseFloat(formData.average_service_time) : null,
-        assigned_technician: formData.assigned_technician === 'unassigned' ? null : formData.assigned_technician || null,
+        assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         created_by: user?.id,
         status: 'pendiente' as const
       };
