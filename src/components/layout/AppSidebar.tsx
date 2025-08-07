@@ -49,6 +49,7 @@ export function AppSidebar() {
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/sales', icon: ShoppingCart },
           { title: 'Técnicos', url: '/technicians', icon: UserCheck },
           { title: 'Reportes', url: '/reports', icon: FileText },
