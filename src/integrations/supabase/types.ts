@@ -918,6 +918,7 @@ export type Database = {
           assigned_technician: string | null
           average_service_time: number | null
           client_email: string
+          client_id: string | null
           client_name: string
           client_phone: string | null
           created_at: string
@@ -941,6 +942,7 @@ export type Database = {
           assigned_technician?: string | null
           average_service_time?: number | null
           client_email: string
+          client_id?: string | null
           client_name: string
           client_phone?: string | null
           created_at?: string
@@ -964,6 +966,7 @@ export type Database = {
           assigned_technician?: string | null
           average_service_time?: number | null
           client_email?: string
+          client_id?: string | null
           client_name?: string
           client_phone?: string | null
           created_at?: string
@@ -984,6 +987,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_service_type_fkey"
             columns: ["service_type"]

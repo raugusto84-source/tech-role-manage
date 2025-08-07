@@ -8,7 +8,7 @@ interface OrderCardProps {
   order: {
     id: string;
     order_number: string;
-    client_name: string;
+    client_id: string;
     service_type: string;
     failure_description: string;
     requested_date?: string;
@@ -21,10 +21,14 @@ interface OrderCardProps {
     service_types?: {
       name: string;
       description?: string;
-    };
-    profiles?: {
-      full_name: string;
-    };
+    } | null;
+    clients?: {
+      name: string;
+      client_number: string;
+      email: string;
+      phone?: string;
+      address: string;
+    } | null;
   };
   onClick: () => void;
   getStatusColor: (status: string) => string;
@@ -39,11 +43,9 @@ export function OrderCard({ order, onClick, getStatusColor }: OrderCardProps) {
     }
   };
 
-  const formatTime = (minutes?: number) => {
-    if (!minutes) return 'No estimado';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const formatTime = (hours?: number) => {
+    if (!hours) return 'No estimado';
+    return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
 
   return (
@@ -61,7 +63,7 @@ export function OrderCard({ order, onClick, getStatusColor }: OrderCardProps) {
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground font-medium">
-          {order.client_name}
+          {order.clients?.name || 'Cliente no especificado'}
         </p>
       </CardHeader>
       
@@ -78,10 +80,10 @@ export function OrderCard({ order, onClick, getStatusColor }: OrderCardProps) {
           <span>Entrega: {formatDate(order.delivery_date)}</span>
         </div>
         
-        {order.assigned_technician && order.profiles && (
+        {order.clients?.client_number && (
           <div className="flex items-center text-sm text-muted-foreground">
             <User className="h-4 w-4 mr-2 text-primary" />
-            <span className="truncate">{order.profiles.full_name}</span>
+            <span className="truncate">{order.clients.client_number}</span>
           </div>
         )}
         

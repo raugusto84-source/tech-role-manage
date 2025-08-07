@@ -16,9 +16,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 interface Order {
   id: string;
   order_number: string;
-  client_name: string;
-  client_email: string;
-  client_phone?: string;
+  client_id: string;
   service_type: string;
   failure_description: string;
   requested_date?: string;
@@ -33,8 +31,12 @@ interface Order {
     name: string;
     description?: string;
   } | null;
-  profiles?: {
-    full_name: string;
+  clients?: {
+    name: string;
+    client_number: string;
+    email: string;
+    phone?: string;
+    address: string;
   } | null;
 }
 
@@ -56,13 +58,22 @@ export default function Orders() {
         .select(`
           *,
           service_types:service_type(name, description),
-          profiles:assigned_technician(full_name)
+          clients:client_id(name, client_number, email, phone, address)
         `)
         .order('created_at', { ascending: false });
 
       // Filtros según el rol del usuario
       if (profile?.role === 'cliente') {
-        query = query.eq('client_email', profile.email);
+        // Filter by client through the clients table relation
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('email', profile.email)
+          .single();
+        
+        if (clientData) {
+          query = query.eq('client_id', clientData.id);
+        }
       } else if (profile?.role === 'tecnico') {
         query = query.eq('assigned_technician', user?.id);
       }
@@ -88,7 +99,8 @@ export default function Orders() {
   }, [profile?.role, profile?.email, user?.id]);
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const clientName = order.clients?.name || '';
+    const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.failure_description.toLowerCase().includes(searchTerm.toLowerCase());
     

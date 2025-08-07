@@ -16,9 +16,7 @@ interface OrderDetailsProps {
   order: {
     id: string;
     order_number: string;
-    client_name: string;
-    client_email: string;
-    client_phone?: string;
+    client_id: string;
     service_type: string;
     failure_description: string;
     requested_date?: string;
@@ -32,10 +30,14 @@ interface OrderDetailsProps {
     service_types?: {
       name: string;
       description?: string;
-    };
-    profiles?: {
-      full_name: string;
-    };
+    } | null;
+    clients?: {
+      name: string;
+      client_number: string;
+      email: string;
+      phone?: string;
+      address: string;
+    } | null;
   };
   onBack: () => void;
   onUpdate: () => void;
@@ -65,11 +67,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
-  const formatTime = (minutes?: number) => {
-    if (!minutes) return 'No estimado';
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  const formatTime = (hours?: number) => {
+    if (!hours) return 'No estimado';
+    return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
 
   const getStatusColor = (status: string) => {
@@ -185,18 +185,26 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Nombre</Label>
-                    <p className="text-foreground font-medium">{order.client_name}</p>
+                    <Label className="text-sm font-medium text-muted-foreground">Cliente</Label>
+                    <p className="text-foreground font-medium">
+                      {order.clients?.client_number} - {order.clients?.name || 'Cliente no especificado'}
+                    </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Email</Label>
-                    <p className="text-foreground">{order.client_email}</p>
+                    <p className="text-foreground">{order.clients?.email || 'No disponible'}</p>
                   </div>
                 </div>
-                {order.client_phone && (
+                {order.clients?.phone && (
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Teléfono</Label>
-                    <p className="text-foreground">{order.client_phone}</p>
+                    <p className="text-foreground">{order.clients.phone}</p>
+                  </div>
+                )}
+                {order.clients?.address && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Dirección</Label>
+                    <p className="text-foreground">{order.clients.address}</p>
                   </div>
                 )}
               </CardContent>
@@ -253,12 +261,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     </div>
                   )}
 
-                  {order.assigned_technician && order.profiles && (
-                    <div>
-                      <Label className="text-sm font-medium text-muted-foreground">Técnico Asignado</Label>
-                      <p className="text-foreground font-medium">{order.profiles.full_name}</p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>

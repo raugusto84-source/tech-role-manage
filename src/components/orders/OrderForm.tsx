@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Plus } from 'lucide-react';
+import { ClientForm } from '@/components/ClientForm';
 
 interface ServiceType {
   id: string;
@@ -23,6 +24,15 @@ interface Technician {
   full_name: string;
 }
 
+interface Client {
+  id: string;
+  client_number: string;
+  name: string;
+  email: string;
+  phone?: string;
+  address: string;
+}
+
 interface OrderFormProps {
   onSuccess: () => void;
   onCancel: () => void;
@@ -34,14 +44,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [showClientForm, setShowClientForm] = useState(false);
   
   const [formData, setFormData] = useState({
-    client_name: profile?.role === 'cliente' ? profile.full_name : '',
-    client_email: profile?.role === 'cliente' ? profile.email : '',
-    client_phone: '',
+    client_id: '',
     service_type: '',
     failure_description: '',
-    requested_date: new Date().toISOString().split('T')[0],
     delivery_date: '',
     estimated_cost: '',
     average_service_time: '',
@@ -50,6 +59,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   useEffect(() => {
     loadServiceTypes();
+    loadClients();
     if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
       loadTechnicians();
     }
@@ -85,6 +95,20 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
+  const loadClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .order('client_number');
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
+
   const handleServiceTypeChange = (serviceTypeId: string) => {
     const selectedService = serviceTypes.find(st => st.id === serviceTypeId);
     if (selectedService) {
@@ -92,13 +116,12 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         ...prev,
         service_type: serviceTypeId,
         estimated_cost: selectedService.base_price?.toString() || '',
-        average_service_time: selectedService.estimated_hours ? 
-          (selectedService.estimated_hours * 60).toString() : ''
+        average_service_time: selectedService.estimated_hours?.toString() || ''
       }));
       
       // Calcular fecha de entrega estimada (agregando las horas estimadas)
-      if (selectedService.estimated_hours && formData.requested_date) {
-        const requestDate = new Date(formData.requested_date);
+      if (selectedService.estimated_hours) {
+        const requestDate = new Date();
         requestDate.setDate(requestDate.getDate() + Math.ceil(selectedService.estimated_hours / 8)); // Asumiendo 8 horas por día
         setFormData(prev => ({
           ...prev,
@@ -114,15 +137,12 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
     try {
       const orderData = {
-        client_name: formData.client_name,
-        client_email: formData.client_email,
-        client_phone: formData.client_phone || null,
+        client_id: formData.client_id,
         service_type: formData.service_type,
         failure_description: formData.failure_description,
-        requested_date: formData.requested_date,
         delivery_date: formData.delivery_date,
         estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
-        average_service_time: formData.average_service_time ? parseInt(formData.average_service_time) : null,
+        average_service_time: formData.average_service_time ? parseFloat(formData.average_service_time) : null,
         assigned_technician: formData.assigned_technician === 'unassigned' ? null : formData.assigned_technician || null,
         created_by: user?.id,
         status: 'pendiente' as const
@@ -152,6 +172,31 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
+  const handleClientCreated = (newClient: Client) => {
+    setClients(prev => [...prev, newClient]);
+    setFormData(prev => ({ ...prev, client_id: newClient.id }));
+    setShowClientForm(false);
+  };
+
+  if (showClientForm) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-6">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center mb-6">
+            <Button variant="ghost" onClick={() => setShowClientForm(false)} className="mr-4">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <h1 className="text-3xl font-bold text-foreground">Crear Cliente</h1>
+          </div>
+          <ClientForm 
+            onSuccess={handleClientCreated}
+            onCancel={() => setShowClientForm(false)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-2xl mx-auto">
@@ -168,39 +213,31 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Información del Cliente */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="client_name">Nombre del Cliente *</Label>
-                  <Input
-                    id="client_name"
-                    value={formData.client_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, client_name: e.target.value }))}
-                    required
-                    disabled={profile?.role === 'cliente'}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="client_email">Email del Cliente *</Label>
-                  <Input
-                    id="client_email"
-                    type="email"
-                    value={formData.client_email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, client_email: e.target.value }))}
-                    required
-                    disabled={profile?.role === 'cliente'}
-                  />
-                </div>
-              </div>
-
+              {/* Selección del Cliente */}
               <div className="space-y-2">
-                <Label htmlFor="client_phone">Teléfono del Cliente</Label>
-                <Input
-                  id="client_phone"
-                  value={formData.client_phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, client_phone: e.target.value }))}
-                />
+                <Label htmlFor="client_id">Cliente *</Label>
+                <div className="flex gap-2">
+                  <Select value={formData.client_id} onValueChange={(value) => setFormData(prev => ({ ...prev, client_id: value }))} required>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecciona un cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.client_number} - {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowClientForm(true)}
+                    className="px-3"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Información del Servicio */}
@@ -233,28 +270,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               </div>
 
               {/* Fechas y Costos */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="requested_date">Fecha Solicitada *</Label>
-                  <Input
-                    id="requested_date"
-                    type="date"
-                    value={formData.requested_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requested_date: e.target.value }))}
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="delivery_date">Fecha de Entrega Estimada *</Label>
-                  <Input
-                    id="delivery_date"
-                    type="date"
-                    value={formData.delivery_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="delivery_date">Fecha de Entrega Estimada *</Label>
+                <Input
+                  id="delivery_date"
+                  type="date"
+                  value={formData.delivery_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -271,13 +295,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="average_service_time">Tiempo Estimado (minutos)</Label>
+                  <Label htmlFor="average_service_time">Tiempo Estimado (horas)</Label>
                   <Input
                     id="average_service_time"
                     type="number"
+                    step="0.5"
                     value={formData.average_service_time}
                     onChange={(e) => setFormData(prev => ({ ...prev, average_service_time: e.target.value }))}
-                    placeholder="120"
+                    placeholder="2.5"
                   />
                 </div>
               </div>
