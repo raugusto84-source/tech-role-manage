@@ -2350,6 +2350,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_simple_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_upcoming_reminders: {
         Args: { days_ahead?: number }
         Returns: {
