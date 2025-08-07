@@ -70,6 +70,8 @@ export default function TechnicianDashboard() {
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
   const [activeTab, setActiveTab] = useState('pendientes');
+  const [orderNotes, setOrderNotes] = useState<Array<{ id: string; note: string; created_at: string; user_id: string; author?: string }>>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
 
   /**
    * Carga órdenes asignadas al técnico logueado
@@ -103,6 +105,45 @@ export default function TechnicianDashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadOrderNotes = async (orderId: string) => {
+    try {
+      setNotesLoading(true);
+      const { data: notes, error } = await supabase
+        .from('order_notes')
+        .select('id, note, created_at, user_id')
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const userIds = Array.from(new Set((notes ?? []).map((n) => n.user_id).filter(Boolean))) as string[];
+      let nameMap: Record<string, string> = {};
+      if (userIds.length) {
+        const { data: users, error: usersError } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', userIds);
+        if (!usersError && users) {
+          nameMap = Object.fromEntries(users.map((u) => [u.user_id, u.full_name]));
+        } else if (usersError) {
+          console.warn('No se pudieron obtener nombres de usuarios:', usersError);
+        }
+      }
+
+      setOrderNotes((notes ?? []).map((n) => ({ ...n, author: nameMap[n.user_id] })));
+    } catch (err) {
+      console.error('Error loading order notes:', err);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los comentarios',
+        variant: 'destructive',
+      });
+      setOrderNotes([]);
+    } finally {
+      setNotesLoading(false);
     }
   };
 
@@ -177,6 +218,9 @@ export default function TechnicianDashboard() {
     }
   };
 
+  const formatDateTime = (dateString: string) =>
+    new Date(dateString).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+
   /**
    * Maneja selección de orden para ver detalles
    */
@@ -225,6 +269,12 @@ export default function TechnicianDashboard() {
       loadTechnicianOrders();
     }
   }, [user?.id, profile?.role]);
+
+  useEffect(() => {
+    if (selectedOrder?.id) {
+      loadOrderNotes(selectedOrder.id);
+    }
+  }, [selectedOrder?.id, showNoteForm]);
 
   // Verificación de rol de técnico
   if (profile?.role !== 'tecnico') {
@@ -294,6 +344,35 @@ export default function TechnicianDashboard() {
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Teléfono:</label>
                   <p className="text-sm">{selectedOrder.clients.phone}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Comentarios */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Comentarios</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {notesLoading ? (
+                <div className="space-y-2">
+                  <div className="h-4 w-3/4 bg-muted rounded animate-pulse" />
+                  <div className="h-4 w-2/3 bg-muted rounded animate-pulse" />
+                </div>
+              ) : orderNotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin comentarios aún.</p>
+              ) : (
+                <div className="space-y-4">
+                  {orderNotes.map((n) => (
+                    <div key={n.id} className="text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{n.author ?? 'Desconocido'}</span>
+                        <span className="text-xs text-muted-foreground">{formatDateTime(n.created_at)}</span>
+                      </div>
+                      <p className="mt-1 text-foreground/90">{n.note}</p>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>
