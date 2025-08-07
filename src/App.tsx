@@ -11,6 +11,7 @@ import Orders from "./pages/Orders";
 import Quotes from "./pages/Quotes";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
 import NotFound from "./pages/NotFound";
+import ClientDashboard from "./pages/ClientDashboard";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,14 @@ const App = () => (
                   <TechnicianDashboard />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/client" 
+              element={
+                <ProtectedRoute allowedRoles={['cliente']}>
+                  <ClientDashboard />
+                </ProtectedRoute>
+              }
             />
             <Route path="/" element={<Auth />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

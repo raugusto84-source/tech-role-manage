@@ -110,6 +110,17 @@ export default function Orders() {
     loadOrders();
   }, [profile?.role, profile?.email, user?.id]);
 
+  // Abrir formulario automáticamente si viene con ?new=1 (flujo rápido desde Panel Cliente)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') === '1') {
+      const allowed = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
+      if (allowed) setShowForm(true);
+    }
+    // Solo en montaje
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const filteredOrders = orders.filter(order => {
     const clientName = order.clients?.name || '';
     const matchesSearch = clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||

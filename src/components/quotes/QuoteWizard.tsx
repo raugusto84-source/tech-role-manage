@@ -65,6 +65,22 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     loadClients();
   }, []);
 
+  // Auto-selección de cliente para usuarios con rol "cliente"
+  useEffect(() => {
+    const pickClient = async () => {
+      if (profile?.role !== 'cliente' || !profile.email) return;
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('email', profile.email)
+        .maybeSingle();
+      if (!error && data) {
+        setSelectedClient(data as any);
+      }
+    };
+    pickClient();
+  }, [profile?.role, profile?.email]);
+
   const loadClients = async () => {
     try {
       const { data, error } = await supabase
@@ -157,8 +173,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
         sale_type: quoteDetails.sale_type,
-        created_by: profile.user_id,
-        assigned_to: profile.user_id,
+        created_by: (profile as any).user_id || undefined,
+        assigned_to: (profile as any).user_id || undefined,
       };
 
       const { error } = await supabase
@@ -273,38 +289,12 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {/* Paso 1: Seleccionar Cliente */}
           {currentStep === 'client' && (
             <div className="space-y-4">
-              <div>
-                <Label htmlFor="client-select">Cliente</Label>
-                <Select 
-                  value={selectedClient?.id || ''} 
-                  onValueChange={(value) => {
-                    const client = clients.find(c => c.id === value);
-                    setSelectedClient(client || null);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona un cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        <div>
-                          <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-muted-foreground">{client.email}</div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedClient && (
+              {profile?.role === 'cliente' && selectedClient ? (
                 <Card className="bg-muted/50">
                   <CardContent className="pt-6">
-                    <h4 className="font-medium mb-2">Cliente Seleccionado</h4>
+                    <h4 className="font-medium mb-2">Tu información</h4>
                     <div className="space-y-1 text-sm">
                       <p><strong>Nombre:</strong> {selectedClient.name}</p>
                       <p><strong>Email:</strong> {selectedClient.email}</p>
@@ -313,6 +303,31 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                     </div>
                   </CardContent>
                 </Card>
+              ) : (
+                <div>
+                  <Label htmlFor="client-select">Cliente</Label>
+                  <Select 
+                    value={selectedClient?.id || ''} 
+                    onValueChange={(value) => {
+                      const client = clients.find(c => c.id === value);
+                      setSelectedClient(client || null);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona un cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          <div>
+                            <div className="font-medium">{client.name}</div>
+                            <div className="text-sm text-muted-foreground">{client.email}</div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               )}
             </div>
           )}
@@ -481,7 +496,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
               <Check className="h-4 w-4 ml-2" />
             </Button>
           ) : (
-            <Button onClick={nextStep}>
+            <Button onClick={nextStep} disabled={currentStep === 'client' && profile?.role === 'cliente' && !selectedClient}>
               Siguiente
               <ArrowRight className="h-4 w-4 ml-2" />
             </Button>

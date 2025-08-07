@@ -85,6 +85,17 @@ export default function Quotes() {
     }
   }, [profile]);
 
+  // Abrir wizard automáticamente si viene con ?new=1 (flujo rápido desde Panel Cliente)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') === '1') {
+      const canCreate = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
+      if (canCreate) setShowWizard(true);
+    }
+    // Solo en montaje
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Filtrar cotizaciones
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,7 +154,8 @@ export default function Quotes() {
     }
   };
 
-  const canCreateQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
+  const canCreateQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
+  const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
 
   if (loading) {
     return (
