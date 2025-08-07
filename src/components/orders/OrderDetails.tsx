@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -50,6 +50,29 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState(order.status);
   const [notes, setNotes] = useState('');
+  const [orderNotes, setOrderNotes] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadOrderNotes();
+  }, [order.id]);
+
+  const loadOrderNotes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_notes')
+        .select(`
+          *,
+          profiles!order_notes_user_id_fkey(full_name)
+        `)
+        .eq('order_id', order.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrderNotes(data || []);
+    } catch (error) {
+      console.error('Error loading order notes:', error);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     try {
@@ -358,6 +381,35 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     placeholder="Agregar notas sobre la orden..."
                     rows={4}
                   />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Comentarios de la orden */}
+            {orderNotes.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <MessageSquare className="h-5 w-5 mr-2 text-primary" />
+                    Comentarios
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {orderNotes.map((note) => (
+                    <div key={note.id} className="border-l-4 border-l-primary pl-4 py-2">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium text-sm">
+                          {note.profiles?.full_name || 'Usuario desconocido'}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateTime(note.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">
+                        {note.note}
+                      </p>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
             )}

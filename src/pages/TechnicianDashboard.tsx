@@ -137,6 +137,46 @@ export default function TechnicianDashboard() {
     }
   };
 
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: 'pendiente' | 'en_proceso' | 'finalizada') => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Error updating order status:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo actualizar el estado de la orden",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const statusLabels = {
+        'pendiente': 'pendiente',
+        'en_proceso': 'en proceso',
+        'finalizada': 'terminada'
+      };
+
+      toast({
+        title: "Estado actualizado",
+        description: `La orden ha sido marcada como ${statusLabels[newStatus]}`,
+      });
+
+      // Recargar las órdenes
+      loadTechnicianOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la orden",
+        variant: "destructive"
+      });
+    }
+  };
+
   /**
    * Maneja selección de orden para ver detalles
    */
@@ -416,12 +456,12 @@ export default function TechnicianDashboard() {
             ) : (
               <div className="grid gap-4">
                 {getFilteredOrders('pendientes').map((order) => (
-                  <TechnicianOrderCard
-                    key={order.id}
-                    order={order}
-                    onClick={() => handleOrderSelect(order)}
-                    onAccept={() => handleAcceptOrder(order.id)}
-                    showAcceptButton={true}
+                        <TechnicianOrderCard
+                          key={order.id}
+                          order={order}
+                          onClick={() => handleOrderSelect(order)}
+                          onAccept={() => handleAcceptOrder(order.id)}
+                          showAcceptButton={true}
                   />
                 ))}
               </div>
@@ -450,8 +490,9 @@ export default function TechnicianDashboard() {
                     key={order.id}
                     order={order}
                     onClick={() => handleOrderSelect(order)}
-                    onAccept={undefined}
-                    showAcceptButton={false}
+                    onMarkAsPending={() => handleUpdateOrderStatus(order.id, 'pendiente')}
+                    onMarkAsCompleted={() => handleUpdateOrderStatus(order.id, 'finalizada')}
+                    showQuickActions={true}
                   />
                 ))}
               </div>

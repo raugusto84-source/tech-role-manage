@@ -16,7 +16,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, User, Wrench, ChevronRight, CheckCircle } from 'lucide-react';
+import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -45,9 +45,20 @@ interface TechnicianOrderCardProps {
   onClick: () => void;
   onAccept?: () => void;
   showAcceptButton?: boolean;
+  onMarkAsPending?: () => void;
+  onMarkAsCompleted?: () => void;
+  showQuickActions?: boolean;
 }
 
-export function TechnicianOrderCard({ order, onClick, onAccept, showAcceptButton = false }: TechnicianOrderCardProps) {
+export function TechnicianOrderCard({ 
+  order, 
+  onClick, 
+  onAccept, 
+  showAcceptButton = false,
+  onMarkAsPending,
+  onMarkAsCompleted,
+  showQuickActions = false
+}: TechnicianOrderCardProps) {
   /**
    * Formatea fecha para visualización compacta
    */
@@ -101,6 +112,26 @@ export function TechnicianOrderCard({ order, onClick, onAccept, showAcceptButton
     e.stopPropagation();
     if (onAccept) {
       onAccept();
+    }
+  };
+
+  /**
+   * Maneja el clic en marcar como pendiente
+   */
+  const handleMarkAsPendingClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onMarkAsPending) {
+      onMarkAsPending();
+    }
+  };
+
+  /**
+   * Maneja el clic en marcar como terminada
+   */
+  const handleMarkAsCompletedClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onMarkAsCompleted) {
+      onMarkAsCompleted();
     }
   };
 
@@ -162,7 +193,7 @@ export function TechnicianOrderCard({ order, onClick, onAccept, showAcceptButton
           </p>
         </div>
 
-        {/* Fecha de entrega y botón aceptar */}
+        {/* Fecha de entrega y botones de acción */}
         <div className="flex justify-between items-center mt-3 pt-2 border-t border-border">
           <div>
             <span className="text-xs text-muted-foreground">
@@ -173,16 +204,40 @@ export function TechnicianOrderCard({ order, onClick, onAccept, showAcceptButton
             </span>
           </div>
           
-          {showAcceptButton && (
-            <Button
-              size="sm"
-              onClick={handleAcceptClick}
-              className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8 px-3"
-            >
-              <CheckCircle className="h-3 w-3" />
-              Aceptar
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {showAcceptButton && (
+              <Button
+                size="sm"
+                onClick={handleAcceptClick}
+                className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8 px-3"
+              >
+                <CheckCircle className="h-3 w-3" />
+                Aceptar
+              </Button>
+            )}
+
+            {showQuickActions && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleMarkAsPendingClick}
+                  className="gap-1 h-8 px-3 border-yellow-300 text-yellow-700 hover:bg-yellow-50"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Pendiente
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleMarkAsCompletedClick}
+                  className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8 px-3"
+                >
+                  <CheckCheck className="h-3 w-3" />
+                  Terminar
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
