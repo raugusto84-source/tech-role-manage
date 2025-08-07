@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { ServiceSelection } from './ServiceSelection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,11 +23,13 @@ interface Client {
 
 interface QuoteItem {
   id: string;
+  service_type_id?: string;
   name: string;
   description: string;
   quantity: number;
   unit_price: number;
   total: number;
+  is_custom: boolean;
 }
 
 interface QuoteWizardProps {
@@ -54,16 +57,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     service_description: '',
     notes: '',
     marketing_channel: 'web' as const,
-    account_type: 'no_fiscal' as const,
     sale_type: 'servicio' as const,
-  });
-
-  // Nuevo artículo
-  const [newItem, setNewItem] = useState({
-    name: '',
-    description: '',
-    quantity: 1,
-    unit_price: 0,
   });
 
   // Cargar clientes
@@ -87,35 +81,6 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     } catch (error) {
       console.error('Error loading clients:', error);
     }
-  };
-
-  // Agregar artículo
-  const addItem = () => {
-    if (!newItem.name || newItem.quantity <= 0 || newItem.unit_price < 0) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos del artículo",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const item: QuoteItem = {
-      id: Date.now().toString(),
-      name: newItem.name,
-      description: newItem.description,
-      quantity: newItem.quantity,
-      unit_price: newItem.unit_price,
-      total: newItem.quantity * newItem.unit_price,
-    };
-
-    setQuoteItems([...quoteItems, item]);
-    setNewItem({ name: '', description: '', quantity: 1, unit_price: 0 });
-  };
-
-  // Eliminar artículo
-  const removeItem = (id: string) => {
-    setQuoteItems(quoteItems.filter(item => item.id !== id));
   };
 
   // Calcular total
@@ -191,7 +156,6 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         estimated_amount: calculateTotal(),
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
-        account_type: quoteDetails.account_type,
         sale_type: quoteDetails.sale_type,
         created_by: profile.user_id,
         assigned_to: profile.user_id,
@@ -355,115 +319,10 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
           {/* Paso 2: Artículos */}
           {currentStep === 'items' && (
-            <div className="space-y-6">
-              {/* Formulario para nuevo artículo */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Agregar Artículo/Servicio</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="item-name">Nombre *</Label>
-                      <Input
-                        id="item-name"
-                        value={newItem.name}
-                        onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                        placeholder="Ej: Formateo de PC"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="item-quantity">Cantidad *</Label>
-                      <Input
-                        id="item-quantity"
-                        type="number"
-                        min="1"
-                        value={newItem.quantity}
-                        onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 1})}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="item-description">Descripción</Label>
-                    <Textarea
-                      id="item-description"
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                      placeholder="Descripción detallada del artículo o servicio"
-                      rows={2}
-                    />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="item-price">Precio Unitario *</Label>
-                      <Input
-                        id="item-price"
-                        type="number"
-                        min="0"
-                        value={newItem.unit_price}
-                        onChange={(e) => setNewItem({...newItem, unit_price: parseFloat(e.target.value) || 0})}
-                      />
-                    </div>
-                    <div>
-                      <Label>Total</Label>
-                      <div className="bg-muted p-2 rounded-md text-right font-medium">
-                        {formatCurrency(newItem.quantity * newItem.unit_price)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button onClick={addItem} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar Artículo
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Lista de artículos agregados */}
-              {quoteItems.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-4">Artículos Agregados</h4>
-                  <div className="space-y-2">
-                    {quoteItems.map((item) => (
-                      <Card key={item.id}>
-                        <CardContent className="pt-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h5 className="font-medium">{item.name}</h5>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
-                              )}
-                              <div className="flex gap-4 mt-2 text-sm">
-                                <span>Cantidad: {item.quantity}</span>
-                                <span>Precio: {formatCurrency(item.unit_price)}</span>
-                                <span className="font-medium">Total: {formatCurrency(item.total)}</span>
-                              </div>
-                            </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => removeItem(item.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-4 p-4 bg-muted rounded-lg">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-medium">Total General:</span>
-                      <span className="text-xl font-bold">{formatCurrency(calculateTotal())}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <ServiceSelection 
+              selectedItems={quoteItems}
+              onItemsChange={setQuoteItems}
+            />
           )}
 
           {/* Paso 3: Detalles */}
@@ -480,40 +339,22 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="marketing-channel">Canal de Marketing</Label>
-                  <Select 
-                    value={quoteDetails.marketing_channel} 
-                    onValueChange={(value: any) => setQuoteDetails({...quoteDetails, marketing_channel: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="web">Web</SelectItem>
-                      <SelectItem value="social">Redes Sociales</SelectItem>
-                      <SelectItem value="referral">Referido</SelectItem>
-                      <SelectItem value="direct">Directo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="account-type">Tipo de Cuenta</Label>
-                  <Select 
-                    value={quoteDetails.account_type} 
-                    onValueChange={(value: any) => setQuoteDetails({...quoteDetails, account_type: value})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="no_fiscal">No Fiscal</SelectItem>
-                      <SelectItem value="fiscal">Fiscal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div>
+                <Label htmlFor="marketing-channel">Canal de Marketing</Label>
+                <Select 
+                  value={quoteDetails.marketing_channel} 
+                  onValueChange={(value: any) => setQuoteDetails({...quoteDetails, marketing_channel: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="web">Web</SelectItem>
+                    <SelectItem value="social">Redes Sociales</SelectItem>
+                    <SelectItem value="referral">Referido</SelectItem>
+                    <SelectItem value="direct">Directo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div>
@@ -560,25 +401,30 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                   <Package className="h-4 w-4" />
                   Artículos y Servicios
                 </h4>
-                <div className="space-y-2">
-                  {quoteItems.map((item) => (
-                    <Card key={item.id} className="bg-muted/50">
-                      <CardContent className="pt-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium">{item.name}</p>
-                            {item.description && (
-                              <p className="text-sm text-muted-foreground">{item.description}</p>
-                            )}
+                  <div className="space-y-2">
+                    {quoteItems.map((item) => (
+                      <Card key={item.id} className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{item.name}</p>
+                                {item.is_custom && (
+                                  <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+                                )}
+                              </div>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                              <p className="font-medium">{formatCurrency(item.total)}</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm">{item.quantity} x {formatCurrency(item.unit_price)}</p>
-                            <p className="font-medium">{formatCurrency(item.total)}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    ))}
                 </div>
                 
                 <div className="mt-4 p-4 bg-primary/10 rounded-lg">
