@@ -31,8 +31,8 @@
 ### 🔐 Usuarios de Prueba
 
 - **Administrador**: 
-  - Email: admin@admin.com
-  - Password: admin
+  - Email: admin@syslag.com
+  - Password: 123456
   - Funciones: Gestión completa del sistema
 
 - **Clientes**: Pueden registrarse directamente desde la web
