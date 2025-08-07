@@ -2319,47 +2319,15 @@ export type Database = {
     Views: {
       pending_collections: {
         Row: {
-          client_approval: boolean | null
-          client_id: string | null
-          created_at: string | null
+          client_email: string | null
+          client_name: string | null
           delivery_date: string | null
           estimated_cost: number | null
           id: string | null
           order_number: string | null
           status: Database["public"]["Enums"]["order_status"] | null
-          updated_at: string | null
         }
-        Insert: {
-          client_approval?: boolean | null
-          client_id?: string | null
-          created_at?: string | null
-          delivery_date?: string | null
-          estimated_cost?: number | null
-          id?: string | null
-          order_number?: string | null
-          status?: Database["public"]["Enums"]["order_status"] | null
-          updated_at?: string | null
-        }
-        Update: {
-          client_approval?: boolean | null
-          client_id?: string | null
-          created_at?: string | null
-          delivery_date?: string | null
-          estimated_cost?: number | null
-          id?: string | null
-          order_number?: string | null
-          status?: Database["public"]["Enums"]["order_status"] | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
