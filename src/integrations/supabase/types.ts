@@ -917,10 +917,7 @@ export type Database = {
         Row: {
           assigned_technician: string | null
           average_service_time: number | null
-          client_email: string
           client_id: string | null
-          client_name: string
-          client_phone: string | null
           created_at: string
           created_by: string | null
           delivery_date: string
@@ -941,10 +938,7 @@ export type Database = {
         Insert: {
           assigned_technician?: string | null
           average_service_time?: number | null
-          client_email: string
           client_id?: string | null
-          client_name: string
-          client_phone?: string | null
           created_at?: string
           created_by?: string | null
           delivery_date: string
@@ -965,10 +959,7 @@ export type Database = {
         Update: {
           assigned_technician?: string | null
           average_service_time?: number | null
-          client_email?: string
           client_id?: string | null
-          client_name?: string
-          client_phone?: string | null
           created_at?: string
           created_by?: string | null
           delivery_date?: string

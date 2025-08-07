@@ -12,6 +12,17 @@ import { OrderCard } from '@/components/orders/OrderCard';
 import { OrderDetails } from '@/components/orders/OrderDetails';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Order {
   id: string;
@@ -49,6 +60,7 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -120,6 +132,38 @@ export default function Orders() {
   };
 
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
+  const canDeleteOrder = profile?.role === 'administrador';
+
+  const handleDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderToDelete);
+
+      if (error) throw error;
+
+      toast({
+        title: "Orden eliminada",
+        description: "La orden se ha eliminado correctamente",
+      });
+
+      setOrderToDelete(null);
+      loadOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar la orden",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -234,12 +278,32 @@ export default function Orders() {
                 key={order.id}
                 order={order}
                 onClick={() => setSelectedOrder(order)}
+                onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                canDelete={canDeleteOrder}
                 getStatusColor={getStatusColor}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!orderToDelete} onOpenChange={() => setOrderToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar orden?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La orden será eliminada permanentemente del sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

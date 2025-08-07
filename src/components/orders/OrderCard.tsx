@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, User, Wrench, DollarSign, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, User, Wrench, DollarSign, Clock, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -31,10 +32,12 @@ interface OrderCardProps {
     } | null;
   };
   onClick: () => void;
+  onDelete?: (orderId: string) => void;
+  canDelete?: boolean;
   getStatusColor: (status: string) => string;
 }
 
-export function OrderCard({ order, onClick, getStatusColor }: OrderCardProps) {
+export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
@@ -48,6 +51,13 @@ export function OrderCard({ order, onClick, getStatusColor }: OrderCardProps) {
     return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(order.id);
+    }
+  };
+
   return (
     <Card 
       className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary"
@@ -58,9 +68,21 @@ export function OrderCard({ order, onClick, getStatusColor }: OrderCardProps) {
           <CardTitle className="text-lg font-semibold text-foreground">
             {order.order_number}
           </CardTitle>
-          <Badge className={getStatusColor(order.status)}>
-            {order.status.replace('_', ' ').toUpperCase()}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(order.status)}>
+              {order.status.replace('_', ' ').toUpperCase()}
+            </Badge>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-1 h-auto"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <p className="text-sm text-muted-foreground font-medium">
           {order.clients?.name || 'Cliente no especificado'}
