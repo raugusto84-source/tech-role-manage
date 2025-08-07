@@ -33,36 +33,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('useAuth: Setting up auth listener');
+    
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('useAuth: Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          console.log('Session user found:', session.user.id, session.user.email);
+          console.log('useAuth: User found, loading profile for:', session.user.id, session.user.email);
           // Defer profile fetch to avoid deadlock
           setTimeout(async () => {
             try {
-              console.log('Fetching profile for user:', session.user.id);
+              console.log('useAuth: Fetching profile for user:', session.user.id);
               const { data: profileData, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('user_id', session.user.id)
-                .maybeSingle(); // Use maybeSingle to avoid errors when no profile exists
+                .maybeSingle();
               
               if (error) {
-                console.error('Error fetching profile:', error);
+                console.error('useAuth: Error fetching profile:', error);
                 toast({
                   title: "Error al cargar perfil",
                   description: `Error: ${error.message}`,
                   variant: "destructive",
                 });
               } else if (profileData) {
-                console.log('Profile loaded successfully:', profileData);
+                console.log('useAuth: Profile loaded successfully:', profileData);
                 setProfile(profileData);
               } else {
-                console.log('No profile found for user, creating one...');
+                console.log('useAuth: No profile found, creating one...');
                 // If no profile exists, create one for the user
                 const { data: newProfile, error: createError } = await supabase
                   .from('profiles')
@@ -76,19 +79,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   .single();
                 
                 if (createError) {
-                  console.error('Error creating profile:', createError);
+                  console.error('useAuth: Error creating profile:', createError);
                   toast({
                     title: "Error al crear perfil",
                     description: `Error: ${createError.message}`,
                     variant: "destructive",
                   });
                 } else {
-                  console.log('New profile created:', newProfile);
+                  console.log('useAuth: New profile created successfully:', newProfile);
                   setProfile(newProfile);
+                  toast({
+                    title: "Perfil creado",
+                    description: "Se ha creado tu perfil de usuario",
+                    variant: "default",
+                  });
                 }
               }
             } catch (error) {
-              console.error('Unexpected error loading profile:', error);
+              console.error('useAuth: Unexpected error loading profile:', error);
               toast({
                 title: "Error inesperado",
                 description: "Ocurrió un error al cargar el perfil",
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }, 0);
         } else {
-          console.log('No session user found');
+          console.log('useAuth: No session user found, clearing profile');
           setProfile(null);
         }
         
@@ -106,13 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // Check for existing session
+    console.log('useAuth: Checking for existing session');
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('useAuth: Existing session check:', session?.user?.email || 'No session');
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log('useAuth: Cleaning up auth listener');
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

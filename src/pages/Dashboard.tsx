@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { AuthDebug } from '@/components/AuthDebug';
 
 /**
  * Dashboard principal personalizado por rol
@@ -132,6 +133,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        
+        {/* Componente de debug temporal */}
+        <AuthDebug />
       </div>
     </AppLayout>
   );
