@@ -2361,6 +2361,10 @@ export type Database = {
           days_until_due: number
         }[]
       }
+      get_user_role_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       account_type: "fiscal" | "no_fiscal"
