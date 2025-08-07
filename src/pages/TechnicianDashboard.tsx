@@ -301,6 +301,15 @@ export default function TechnicianDashboard() {
 
           {/* Acciones principales */}
           <div className="grid grid-cols-1 gap-3">
+            {selectedOrder.status === 'en_proceso' && (
+              <Button
+                onClick={() => handleUpdateOrderStatus(selectedOrder.id, 'finalizada')}
+                className="w-full h-12"
+                size="lg"
+              >
+                Terminar
+              </Button>
+            )}
             <Button 
               onClick={() => setShowStatusUpdate(true)}
               className="w-full h-12"
