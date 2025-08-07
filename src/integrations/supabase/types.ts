@@ -913,6 +913,54 @@ export type Database = {
           },
         ]
       }
+      order_requests: {
+        Row: {
+          assigned_to: string | null
+          client_address: string
+          client_email: string
+          client_name: string
+          client_phone: string | null
+          created_at: string
+          failure_description: string
+          id: string
+          preferred_delivery_date: string | null
+          requested_date: string
+          service_description: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_address: string
+          client_email: string
+          client_name: string
+          client_phone?: string | null
+          created_at?: string
+          failure_description: string
+          id?: string
+          preferred_delivery_date?: string | null
+          requested_date?: string
+          service_description: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_address?: string
+          client_email?: string
+          client_name?: string
+          client_phone?: string | null
+          created_at?: string
+          failure_description?: string
+          id?: string
+          preferred_delivery_date?: string | null
+          requested_date?: string
+          service_description?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_signatures: {
         Row: {
           id: string
@@ -990,6 +1038,9 @@ export type Database = {
         Row: {
           assigned_technician: string | null
           average_service_time: number | null
+          client_approval: boolean | null
+          client_approval_notes: string | null
+          client_approved_at: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -1011,6 +1062,9 @@ export type Database = {
         Insert: {
           assigned_technician?: string | null
           average_service_time?: number | null
+          client_approval?: boolean | null
+          client_approval_notes?: string | null
+          client_approved_at?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -1032,6 +1086,9 @@ export type Database = {
         Update: {
           assigned_technician?: string | null
           average_service_time?: number | null
+          client_approval?: boolean | null
+          client_approval_notes?: string | null
+          client_approved_at?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null

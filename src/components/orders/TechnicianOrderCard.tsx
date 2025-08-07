@@ -15,7 +15,8 @@
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, User, Wrench, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MapPin, User, Wrench, ChevronRight, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -42,9 +43,11 @@ interface TechnicianOrderCardProps {
     } | null;
   };
   onClick: () => void;
+  onAccept?: () => void;
+  showAcceptButton?: boolean;
 }
 
-export function TechnicianOrderCard({ order, onClick }: TechnicianOrderCardProps) {
+export function TechnicianOrderCard({ order, onClick, onAccept, showAcceptButton = false }: TechnicianOrderCardProps) {
   /**
    * Formatea fecha para visualización compacta
    */
@@ -89,6 +92,16 @@ export function TechnicianOrderCard({ order, onClick }: TechnicianOrderCardProps
    */
   const truncateText = (text: string, maxLength: number = 80) => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
+  /**
+   * Maneja el clic en aceptar orden
+   */
+  const handleAcceptClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onAccept) {
+      onAccept();
+    }
   };
 
   return (
@@ -149,14 +162,27 @@ export function TechnicianOrderCard({ order, onClick }: TechnicianOrderCardProps
           </p>
         </div>
 
-        {/* Fecha de entrega */}
+        {/* Fecha de entrega y botón aceptar */}
         <div className="flex justify-between items-center mt-3 pt-2 border-t border-border">
-          <span className="text-xs text-muted-foreground">
-            Entrega programada:
-          </span>
-          <span className="text-xs font-medium">
-            {formatDate(order.delivery_date)}
-          </span>
+          <div>
+            <span className="text-xs text-muted-foreground">
+              Entrega programada:
+            </span>
+            <span className="text-xs font-medium block">
+              {formatDate(order.delivery_date)}
+            </span>
+          </div>
+          
+          {showAcceptButton && (
+            <Button
+              size="sm"
+              onClick={handleAcceptClick}
+              className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8 px-3"
+            >
+              <CheckCircle className="h-3 w-3" />
+              Aceptar
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

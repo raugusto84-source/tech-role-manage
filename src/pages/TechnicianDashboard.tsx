@@ -1,15 +1,18 @@
 /**
- * PANEL DE TÉCNICO - DASHBOARD ESPECIALIZADO
+ * PANEL DE TÉCNICO - DASHBOARD REFACTORIZADO
  * 
  * Características principales:
- * - Solo visualiza órdenes asignadas al técnico logueado
- * - Interfaz móvil-first optimizada para uso en campo
- * - Cambios de estado simplificados (En camino, En proceso, Terminado)
- * - Sistema de notas y fotos con timestamps automáticos
- * - Sin menús complejos - interfaz directa y funcional
+ * - Panel lateral con acceso al dashboard
+ * - Órdenes organizadas por estado: Pendientes, En proceso, Terminadas
+ * - Botón "Aceptar Orden" para cambiar de pendiente a en proceso
+ * - Oculta órdenes terminadas cuando cliente da conformidad
+ * - Permite crear nuevas órdenes para clientes
+ * - Interfaz móvil-first optimizada
  * 
  * Componentes reutilizables:
- * - TechnicianOrderCard: Tarjeta optimizada para técnicos
+ * - AppLayout: Layout con sidebar
+ * - TechnicianOrderCard: Tarjeta con botón aceptar
+ * - OrderForm: Formulario para crear órdenes
  * - OrderStatusUpdate: Componente de cambio de estado
  * - OrderNoteForm: Formulario para agregar comentarios
  */
@@ -17,16 +20,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { TechnicianOrderCard } from '@/components/orders/TechnicianOrderCard';
+import { OrderForm } from '@/components/orders/OrderForm';
 import { OrderStatusUpdate } from '@/components/orders/OrderStatusUpdate';
 import { OrderNoteForm } from '@/components/orders/OrderNoteForm';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, ArrowLeft } from 'lucide-react';
 
-// Interfaz para órdenes del técnico
+// Interfaz para órdenes del técnico con nuevos campos
 interface TechnicianOrder {
   id: string;
   order_number: string;
@@ -37,6 +43,9 @@ interface TechnicianOrder {
   status: 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada';
   assigned_technician?: string;
   evidence_photos?: string[];
+  client_approval?: boolean | null;
+  client_approval_notes?: string | null;
+  client_approved_at?: string | null;
   created_at: string;
   service_types?: {
     name: string;
@@ -59,10 +68,12 @@ export default function TechnicianDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<TechnicianOrder | null>(null);
   const [showStatusUpdate, setShowStatusUpdate] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
+  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('pendientes');
 
   /**
    * Carga órdenes asignadas al técnico logueado
-   * Filtro automático por assigned_technician = user.id
+   * Incluye órdenes terminadas que no han sido aprobadas por el cliente
    */
   const loadTechnicianOrders = async () => {
     if (!user?.id) return;
@@ -78,7 +89,7 @@ export default function TechnicianDashboard() {
           clients:client_id(name, client_number, email, phone, address)
         `)
         .eq('assigned_technician', user.id)
-        .in('status', ['pendiente', 'en_camino', 'en_proceso']) // Solo órdenes activas
+        .or('client_approval.is.null,client_approval.eq.false') // Incluir órdenes sin conformidad o rechazadas
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -92,6 +103,37 @@ export default function TechnicianDashboard() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Acepta una orden pendiente y la cambia a "en_proceso"
+   */
+  const handleAcceptOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status: 'en_proceso',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Orden Aceptada",
+        description: "La orden ha sido aceptada y está en proceso",
+      });
+
+      loadTechnicianOrders();
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aceptar la orden",
+        variant: "destructive"
+      });
     }
   };
 
@@ -118,6 +160,23 @@ export default function TechnicianDashboard() {
     loadTechnicianOrders();
     setShowStatusUpdate(false);
     setShowNoteForm(false);
+    setShowOrderForm(false);
+  };
+
+  /**
+   * Filtra órdenes por estado
+   */
+  const getFilteredOrders = (status: string) => {
+    switch (status) {
+      case 'pendientes':
+        return orders.filter(order => order.status === 'pendiente');
+      case 'proceso':
+        return orders.filter(order => order.status === 'en_proceso');
+      case 'terminadas':
+        return orders.filter(order => order.status === 'finalizada' && !order.client_approval);
+      default:
+        return orders;
+    }
   };
 
   // Efectos
@@ -130,18 +189,20 @@ export default function TechnicianDashboard() {
   // Verificación de rol de técnico
   if (profile?.role !== 'tecnico') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md mx-auto text-center">
-          <CardHeader>
-            <CardTitle className="text-xl text-destructive">Acceso Restringido</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Este panel es exclusivo para técnicos.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center h-96">
+          <Card className="max-w-md mx-auto text-center">
+            <CardHeader>
+              <CardTitle className="text-xl text-destructive">Acceso Restringido</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Este panel es exclusivo para técnicos.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </AppLayout>
     );
   }
 
@@ -238,86 +299,205 @@ export default function TechnicianDashboard() {
     );
   }
 
-  // Vista principal del dashboard
+  // Vista principal del dashboard con AppLayout
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header del dashboard */}
-      <div className="sticky top-0 z-10 bg-background border-b px-4 py-4">
+    <AppLayout>
+      <div className="space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Panel Técnico</h1>
-            <p className="text-sm text-muted-foreground">
-              {profile?.full_name || 'Técnico'}
+            <h1 className="text-3xl font-bold text-foreground">Panel Técnico</h1>
+            <p className="text-muted-foreground">
+              {profile?.full_name || 'Técnico'} - Gestión de Órdenes
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadTechnicianOrders}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
-
-      {/* Estadísticas rápidas */}
-      <div className="p-4">
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-2xl font-bold text-primary">
-                {orders.filter(o => o.status === 'pendiente').length}
-              </div>
-              <p className="text-xs text-muted-foreground">Pendientes</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-2xl font-bold text-blue-600">
-                {orders.filter(o => o.status === 'en_camino').length}
-              </div>
-              <p className="text-xs text-muted-foreground">En Camino</p>
-            </CardContent>
-          </Card>
-          <Card className="text-center">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-2xl font-bold text-orange-600">
-                {orders.filter(o => o.status === 'en_proceso').length}
-              </div>
-              <p className="text-xs text-muted-foreground">En Proceso</p>
-            </CardContent>
-          </Card>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowOrderForm(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Nueva Orden
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadTechnicianOrders}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
 
-        {/* Lista de órdenes */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-24 bg-muted rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : orders.length === 0 ? (
-          <Card className="text-center py-8">
-            <CardContent>
-              <p className="text-muted-foreground">
-                No tienes órdenes asignadas en este momento.
-              </p>
+        {/* Estadísticas */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {getFilteredOrders('pendientes').length}
+                </div>
+                <div className="ml-auto text-yellow-600">
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                    Pendientes
+                  </Badge>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="space-y-3">
-            {orders.map((order) => (
-              <TechnicianOrderCard
-                key={order.id}
-                order={order}
-                onClick={() => handleOrderSelect(order)}
-              />
-            ))}
-          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {getFilteredOrders('proceso').length}
+                </div>
+                <div className="ml-auto text-blue-600">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    En Proceso
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {getFilteredOrders('terminadas').length}
+                </div>
+                <div className="ml-auto text-green-600">
+                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                    Terminadas
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="text-2xl font-bold text-primary">
+                  {orders.length}
+                </div>
+                <div className="ml-auto text-primary">
+                  <Badge variant="outline">
+                    Total
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tabs de órdenes */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
+            <TabsTrigger value="proceso">En Proceso</TabsTrigger>
+            <TabsTrigger value="terminadas">Terminadas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pendientes" className="space-y-4">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : getFilteredOrders('pendientes').length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    No hay órdenes pendientes en este momento.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {getFilteredOrders('pendientes').map((order) => (
+                  <TechnicianOrderCard
+                    key={order.id}
+                    order={order}
+                    onClick={() => handleOrderSelect(order)}
+                    onAccept={() => handleAcceptOrder(order.id)}
+                    showAcceptButton={true}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="proceso" className="space-y-4">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : getFilteredOrders('proceso').length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    No hay órdenes en proceso en este momento.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {getFilteredOrders('proceso').map((order) => (
+                  <TechnicianOrderCard
+                    key={order.id}
+                    order={order}
+                    onClick={() => handleOrderSelect(order)}
+                    onAccept={undefined}
+                    showAcceptButton={false}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="terminadas" className="space-y-4">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-32 bg-muted rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : getFilteredOrders('terminadas').length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    No hay órdenes terminadas pendientes de conformidad.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {getFilteredOrders('terminadas').map((order) => (
+                  <TechnicianOrderCard
+                    key={order.id}
+                    order={order}
+                    onClick={() => handleOrderSelect(order)}
+                    onAccept={undefined}
+                    showAcceptButton={false}
+                  />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Modales */}
+        {showOrderForm && (
+          <OrderForm
+            onSuccess={handleOrderUpdate}
+            onCancel={() => setShowOrderForm(false)}
+          />
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }
 
