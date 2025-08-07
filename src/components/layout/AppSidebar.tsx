@@ -57,6 +57,7 @@ export function AppSidebar() {
       case 'vendedor':
         return [
           ...commonItems,
+          { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/sales', icon: ShoppingCart },
           { title: 'Clientes', url: '/clients', icon: Users },
@@ -64,13 +65,13 @@ export function AppSidebar() {
       case 'tecnico':
         return [
           ...commonItems,
-          { title: 'Mis Órdenes', url: '/my-orders', icon: ClipboardList },
+          { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Calendario', url: '/calendar', icon: Calendar },
         ];
       case 'cliente':
         return [
           ...commonItems,
-          { title: 'Mis Órdenes', url: '/my-orders', icon: ClipboardList },
+          { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Historial', url: '/history', icon: FileText },
         ];
       default:

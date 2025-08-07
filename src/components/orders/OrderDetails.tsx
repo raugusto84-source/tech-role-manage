@@ -1,0 +1,367 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+interface OrderDetailsProps {
+  order: {
+    id: string;
+    order_number: string;
+    client_name: string;
+    client_email: string;
+    client_phone?: string;
+    service_type: string;
+    failure_description: string;
+    requested_date?: string;
+    delivery_date: string;
+    estimated_cost?: number;
+    average_service_time?: number;
+    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
+    assigned_technician?: string;
+    evidence_photos?: string[];
+    created_at: string;
+    service_types?: {
+      name: string;
+      description?: string;
+    };
+    profiles?: {
+      full_name: string;
+    };
+  };
+  onBack: () => void;
+  onUpdate: () => void;
+}
+
+export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [status, setStatus] = useState(order.status);
+  const [notes, setNotes] = useState('');
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatDateTime = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: es });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatTime = (minutes?: number) => {
+    if (!minutes) return 'No estimado';
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pendiente': return 'bg-yellow-100 text-yellow-800';
+      case 'en_proceso': return 'bg-blue-100 text-blue-800';
+      case 'finalizada': return 'bg-green-100 text-green-800';
+      case 'cancelada': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const canEdit = profile?.role === 'administrador' || 
+                  profile?.role === 'tecnico' || 
+                  (profile?.role === 'cliente' && order.status === 'pendiente');
+
+  const canUpdateStatus = profile?.role === 'administrador' || 
+                          (profile?.role === 'tecnico' && order.assigned_technician === user?.id);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const updateData: any = {};
+      
+      if (status !== order.status) {
+        updateData.status = status;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        const { error } = await supabase
+          .from('orders')
+          .update(updateData)
+          .eq('id', order.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Orden actualizada",
+          description: "Los cambios se han guardado exitosamente",
+        });
+
+        onUpdate();
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error('Error updating order:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar los cambios",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-4 md:p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <Button variant="ghost" onClick={onBack} className="mr-4">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">{order.order_number}</h1>
+              <p className="text-muted-foreground">Orden de Servicio</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(order.status)} variant="outline">
+              {order.status.replace('_', ' ').toUpperCase()}
+            </Badge>
+            {canEdit && (
+              <Button 
+                variant={isEditing ? "default" : "outline"} 
+                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                disabled={loading}
+              >
+                {isEditing ? (
+                  <>
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" />
+                    )}
+                    Guardar
+                  </>
+                ) : (
+                  <>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Información Principal */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Información del Cliente */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="h-5 w-5 mr-2 text-primary" />
+                  Información del Cliente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Nombre</Label>
+                    <p className="text-foreground font-medium">{order.client_name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Email</Label>
+                    <p className="text-foreground">{order.client_email}</p>
+                  </div>
+                </div>
+                {order.client_phone && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Teléfono</Label>
+                    <p className="text-foreground">{order.client_phone}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Información del Servicio */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Wrench className="h-5 w-5 mr-2 text-primary" />
+                  Detalles del Servicio
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Tipo de Servicio</Label>
+                  <p className="text-foreground font-medium">
+                    {order.service_types?.name || 'Servicio no especificado'}
+                  </p>
+                  {order.service_types?.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {order.service_types.description}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Descripción del Problema</Label>
+                  <p className="text-foreground whitespace-pre-wrap">{order.failure_description}</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {order.estimated_cost && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        Costo Estimado
+                      </Label>
+                      <p className="text-foreground font-medium">
+                        ${order.estimated_cost.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {order.average_service_time && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                        <Clock className="h-4 w-4 mr-1" />
+                        Tiempo Estimado
+                      </Label>
+                      <p className="text-foreground font-medium">
+                        {formatTime(order.average_service_time)}
+                      </p>
+                    </div>
+                  )}
+
+                  {order.assigned_technician && order.profiles && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Técnico Asignado</Label>
+                      <p className="text-foreground font-medium">{order.profiles.full_name}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Evidencia Fotográfica */}
+            {order.evidence_photos && order.evidence_photos.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Camera className="h-5 w-5 mr-2 text-primary" />
+                    Evidencia Fotográfica
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {order.evidence_photos.map((photo, index) => (
+                      <div key={index} className="aspect-square bg-muted rounded-lg overflow-hidden">
+                        <img 
+                          src={photo} 
+                          alt={`Evidencia ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Panel Lateral */}
+          <div className="space-y-6">
+            {/* Estado y Fechas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calendar className="h-5 w-5 mr-2 text-primary" />
+                  Estado y Fechas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isEditing && canUpdateStatus ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Estado</Label>
+                    <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="en_proceso">En Proceso</SelectItem>
+                        <SelectItem value="finalizada">Finalizada</SelectItem>
+                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Estado Actual</Label>
+                    <Badge className={getStatusColor(order.status)} variant="outline">
+                      {order.status.replace('_', ' ').toUpperCase()}
+                    </Badge>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Fecha Creada</Label>
+                  <p className="text-foreground">{formatDateTime(order.created_at)}</p>
+                </div>
+
+                {order.requested_date && (
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Fecha Solicitada</Label>
+                    <p className="text-foreground">{formatDate(order.requested_date)}</p>
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Fecha de Entrega</Label>
+                  <p className="text-foreground">{formatDate(order.delivery_date)}</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Notas (si está editando) */}
+            {isEditing && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notas Adicionales</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Agregar notas sobre la orden..."
+                    rows={4}
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

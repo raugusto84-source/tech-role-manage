@@ -880,6 +880,7 @@ export type Database = {
       orders: {
         Row: {
           assigned_technician: string | null
+          average_service_time: number | null
           client_email: string
           client_name: string
           client_phone: string | null
@@ -887,18 +888,22 @@ export type Database = {
           created_by: string | null
           delivery_date: string
           diagnosis_completed: boolean
+          estimated_cost: number | null
+          evidence_photos: string[] | null
           failure_description: string
           final_signature_url: string | null
           id: string
           initial_signature_url: string | null
           order_number: string
           pdf_url: string | null
+          requested_date: string | null
           service_type: string
           status: Database["public"]["Enums"]["order_status"]
           updated_at: string
         }
         Insert: {
           assigned_technician?: string | null
+          average_service_time?: number | null
           client_email: string
           client_name: string
           client_phone?: string | null
@@ -906,18 +911,22 @@ export type Database = {
           created_by?: string | null
           delivery_date: string
           diagnosis_completed?: boolean
+          estimated_cost?: number | null
+          evidence_photos?: string[] | null
           failure_description: string
           final_signature_url?: string | null
           id?: string
           initial_signature_url?: string | null
           order_number: string
           pdf_url?: string | null
+          requested_date?: string | null
           service_type: string
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
         }
         Update: {
           assigned_technician?: string | null
+          average_service_time?: number | null
           client_email?: string
           client_name?: string
           client_phone?: string | null
@@ -925,12 +934,15 @@ export type Database = {
           created_by?: string | null
           delivery_date?: string
           diagnosis_completed?: boolean
+          estimated_cost?: number | null
+          evidence_photos?: string[] | null
           failure_description?: string
           final_signature_url?: string | null
           id?: string
           initial_signature_url?: string | null
           order_number?: string
           pdf_url?: string | null
+          requested_date?: string | null
           service_type?: string
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
