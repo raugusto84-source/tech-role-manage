@@ -12,6 +12,7 @@ import Quotes from "./pages/Quotes";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/ClientDashboard";
+import Finance from "./pages/Finance";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,14 @@ const App = () => (
                   <Quotes />
                 </ProtectedRoute>
               } 
+            />
+            <Route 
+              path="/finanzas" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador']}>
+                  <Finance />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/technician" 

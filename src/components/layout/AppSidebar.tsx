@@ -7,7 +7,8 @@ import {
   UserCheck,
   FileText,
   Calendar,
-  Wrench
+  Wrench,
+  Banknote
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -52,6 +53,7 @@ export function AppSidebar() {
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/sales', icon: ShoppingCart },
+          { title: 'Finanzas', url: '/finanzas', icon: Banknote },
           { title: 'Técnicos', url: '/technicians', icon: UserCheck },
           { title: 'Reportes', url: '/reports', icon: FileText },
           { title: 'Configuración', url: '/settings', icon: Settings },
