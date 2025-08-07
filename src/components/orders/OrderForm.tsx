@@ -59,15 +59,16 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   useEffect(() => {
     loadServiceTypes();
-    // Solo cargar clientes si es staff, los clientes usan su propio perfil
+    
     if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+      // Para staff: cargar lista completa de clientes y técnicos
       loadClients();
       loadTechnicians();
     } else if (profile?.role === 'cliente') {
-      // Para clientes, cargar su propio cliente
+      // Para clientes: cargar su propio cliente automáticamente
       loadCurrentClient();
     }
-  }, [profile?.role, user?.id]);
+  }, [profile?.role, profile?.email]);
 
   const loadServiceTypes = async () => {
     try {
@@ -120,6 +121,12 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
       
+      // Solo ejecutar para usuarios con rol cliente
+      if (profile.role !== 'cliente') {
+        console.log('User is not a client, skipping auto-assignment');
+        return;
+      }
+      
       console.log('Loading client for email:', profile.email);
       
       // Buscar cliente por email del usuario autenticado
@@ -131,23 +138,24 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       if (error) {
         console.error('Error loading current client:', error);
-        // Solo mostrar error si no es "no rows returned"
-        if (error.code !== 'PGRST116') {
-          toast({
-            title: "Error",
-            description: `Error al cargar cliente: ${error.message}`,
-            variant: "destructive"
-          });
-        }
+        toast({
+          title: "Error",
+          description: `Error al cargar cliente: ${error.message}`,
+          variant: "destructive"
+        });
         return;
       }
       
       if (data) {
-        console.log('Client found:', data);
+        console.log('Client found and auto-assigned:', data);
         setFormData(prev => ({ ...prev, client_id: data.id }));
+        toast({
+          title: "Cliente asignado",
+          description: `Se ha asignado automáticamente el cliente: ${data.name}`,
+          variant: "default"
+        });
       } else {
         console.log('No client found for email:', profile.email);
-        // Si no se encuentra cliente por email, mostrar mensaje informativo
         toast({
           title: "Información",
           description: "No se encontró un cliente asociado a tu email. El administrador debe crear tu registro de cliente primero.",
