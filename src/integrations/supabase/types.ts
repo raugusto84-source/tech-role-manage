@@ -1916,6 +1916,48 @@ export type Database = {
           },
         ]
       }
+      sales_satisfaction_surveys: {
+        Row: {
+          client_id: string
+          created_at: string
+          general_comments: string | null
+          id: string
+          overall_recommendation: number | null
+          quote_id: string
+          sales_attitude: number | null
+          sales_comments: string | null
+          sales_customer_service: number | null
+          sales_knowledge: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          general_comments?: string | null
+          id?: string
+          overall_recommendation?: number | null
+          quote_id: string
+          sales_attitude?: number | null
+          sales_comments?: string | null
+          sales_customer_service?: number | null
+          sales_knowledge?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          general_comments?: string | null
+          id?: string
+          overall_recommendation?: number | null
+          quote_id?: string
+          sales_attitude?: number | null
+          sales_comments?: string | null
+          sales_customer_service?: number | null
+          sales_knowledge?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       satisfaction_surveys: {
         Row: {
           client_email: string
@@ -2187,6 +2229,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      technician_satisfaction_surveys: {
+        Row: {
+          client_id: string
+          created_at: string
+          general_comments: string | null
+          id: string
+          order_id: string
+          overall_recommendation: number | null
+          technician_attitude: number | null
+          technician_comments: string | null
+          technician_customer_service: number | null
+          technician_knowledge: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          general_comments?: string | null
+          id?: string
+          order_id: string
+          overall_recommendation?: number | null
+          technician_attitude?: number | null
+          technician_comments?: string | null
+          technician_customer_service?: number | null
+          technician_knowledge?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          general_comments?: string | null
+          id?: string
+          order_id?: string
+          overall_recommendation?: number | null
+          technician_attitude?: number | null
+          technician_comments?: string | null
+          technician_customer_service?: number | null
+          technician_knowledge?: number | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_achievements: {
         Row: {
