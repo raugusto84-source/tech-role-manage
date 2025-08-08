@@ -49,9 +49,6 @@ interface Order {
     phone?: string;
     address: string;
   } | null;
-  profiles?: {
-    full_name: string;
-  } | null;
 }
 
 export default function Orders() {
@@ -73,8 +70,7 @@ export default function Orders() {
         .select(`
           *,
           service_types:service_type(name, description),
-          clients:client_id(name, client_number, email, phone, address),
-          profiles:assigned_technician(full_name)
+          clients:client_id(name, client_number, email, phone, address)
         `)
         .order('created_at', { ascending: false });
 

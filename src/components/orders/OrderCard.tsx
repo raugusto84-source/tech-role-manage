@@ -30,9 +30,6 @@ interface OrderCardProps {
       phone?: string;
       address: string;
     } | null;
-    profiles?: {
-      full_name: string;
-    } | null;
   };
   onClick: () => void;
   onDelete?: (orderId: string) => void;
@@ -100,16 +97,6 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           </span>
         </div>
         
-        {/* Técnico Asignado */}
-        {order.assigned_technician && (
-          <div className="flex items-center text-sm text-muted-foreground">
-            <User className="h-4 w-4 mr-2 text-green-600" />
-            <span className="truncate">
-              Técnico: {order.profiles?.full_name || 'Sin asignar'}
-            </span>
-          </div>
-        )}
-        
         <div className="flex items-center text-sm text-muted-foreground">
           <Calendar className="h-4 w-4 mr-2 text-primary" />
           <span>Entrega: {formatDate(order.delivery_date)}</span>
@@ -118,7 +105,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         {order.clients?.client_number && (
           <div className="flex items-center text-sm text-muted-foreground">
             <User className="h-4 w-4 mr-2 text-primary" />
-            <span className="truncate">Cliente: {order.clients.client_number}</span>
+            <span className="truncate">{order.clients.client_number}</span>
           </div>
         )}
         
