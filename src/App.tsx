@@ -14,6 +14,7 @@ import TechnicianDashboard from "./pages/TechnicianDashboard";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/ClientDashboard";
 import Finance from "./pages/Finance";
+import Users from "./pages/Users";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['cliente']}>
                   <ClientDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/users" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador']}>
+                  <Users />
                 </ProtectedRoute>
               }
             />
