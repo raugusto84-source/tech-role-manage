@@ -206,6 +206,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       // **PARA CLIENTES**: Asignar técnico automáticamente sin mostrar interfaz
       if (profile?.role === 'cliente') {
         console.log('🔵 Cliente detectado, iniciando asignación automática para serviceType:', serviceTypeId);
+        console.log('🔵 Profile actual:', profile);
+        console.log('🔵 User actual:', user);
         autoAssignTechnicianForClient(serviceTypeId);
       }
     }
@@ -497,10 +499,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               )}
 
               {/* Mostrar técnico asignado para CLIENTES */}
-              {profile?.role === 'cliente' && formData.assigned_technician && (() => {
-                console.log('🔵 Renderizando técnico para cliente. Técnico asignado:', formData.assigned_technician);
-                console.log('🔵 Lista de técnicos disponibles:', technicians);
-                return (
+              {/* Mostrar técnico asignado para TODOS los usuarios cuando haya uno asignado */}
+              {formData.assigned_technician && (
                 <div className="space-y-2">
                   <Label>Técnico Asignado</Label>
                   <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
@@ -516,7 +516,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                           {technicians.find(t => t.user_id === formData.assigned_technician)?.full_name || 'Técnico Asignado'}
                         </h4>
                         <p className="text-sm text-muted-foreground">
-                          Técnico especializado asignado a tu orden
+                          {profile?.role === 'cliente' 
+                            ? 'Técnico especializado asignado a tu orden'
+                            : 'Técnico asignado para esta orden'
+                          }
                         </p>
                       </div>
                       <div className="text-right">
@@ -532,8 +535,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     )}
                   </div>
                 </div>
-                );
-              })()}
+              )}
 
               {/* Asignación Manual de Técnico (solo para admins y vendedores) */}
               {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
