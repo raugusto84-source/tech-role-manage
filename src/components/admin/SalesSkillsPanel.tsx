@@ -17,7 +17,8 @@ interface ServiceCategory {
 interface SalesSkill {
   id: string;
   salesperson_id: string;
-  category_id: string;
+  category_id?: string;
+  service_type_id?: string; // For backward compatibility
   skill_level: number;
   created_at: string;
   updated_at: string;
@@ -120,8 +121,8 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
       if (error) throw error;
       const skillsData = data || [];
-      setSkills(skillsData);
-      setSelectedCategories(skillsData.map((skill: any) => skill.category_id));
+      setSkills(skillsData as SalesSkill[]);
+      setSelectedCategories(skillsData.map((skill: any) => skill.category_id || skill.service_type_id || '').filter(Boolean));
       
       // Load performance stats for all categories
       const allCategoryIds = serviceCategories.map(st => st.id);
@@ -208,24 +209,25 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
           updated_at: new Date().toISOString(),
         };
         
-        setSkills(prev => [...prev, newSkill]);
+        setSkills((prev: SalesSkill[]) => [...prev, newSkill]);
         
         toast({
           title: 'Habilidad añadida',
           description: `Categoría asignada con nivel ${calculatedLevel}`,
         });
       } else {
-        const { error } = await supabase
+        const deleteQuery = supabase
           .from('sales_skills')
           .delete()
           .eq('salesperson_id', selectedSalespersonId)
           .eq('category_id', categoryId);
+        const { error } = await deleteQuery;
 
         if (error) throw error;
         
         // Update local state without reload
         setSelectedCategories(prev => prev.filter(id => id !== categoryId));
-        setSkills(prev => prev.filter(skill => skill.category_id !== categoryId));
+        setSkills((prev: SalesSkill[]) => prev.filter(skill => (skill.category_id || skill.service_type_id) !== categoryId));
         
         toast({
           title: 'Habilidad removida',
@@ -342,7 +344,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {serviceCategories.map((category) => {
                 const isSelected = selectedCategories.includes(category.id);
-                const skill = skills.find(s => s.category_id === category.id);
+                const skill = skills.find(s => (s.category_id || s.service_type_id) === category.id);
                 const stats = performanceStats[category.id];
                 
                 return (
