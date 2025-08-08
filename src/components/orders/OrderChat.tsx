@@ -41,7 +41,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
 
   const canSend = useMemo(() => !!user && !disabled && newMessage.trim().length > 0, [user, disabled, newMessage]);
 
-  // Cargar historial inicial
+  // Cargar historial inicial y perfil del usuario actual
   useEffect(() => {
     const load = async () => {
       const { data, error } = await supabase
@@ -56,13 +56,18 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
       }
       setMessages(data || []);
       
-      // Cargar perfiles de usuarios únicos
-      if (data && data.length > 0) {
-        const uniqueUserIds = [...new Set(data.map(msg => msg.sender_id))];
+      // Obtener todos los user_ids únicos (incluyendo el usuario actual)
+      const allUserIds = new Set(data?.map(msg => msg.sender_id) || []);
+      if (user?.id) {
+        allUserIds.add(user.id);
+      }
+      
+      // Cargar perfiles de todos los usuarios
+      if (allUserIds.size > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
           .select("user_id, full_name")
-          .in("user_id", uniqueUserIds);
+          .in("user_id", Array.from(allUserIds));
         
         if (profiles) {
           const profileMap = profiles.reduce((acc, profile) => {
@@ -74,7 +79,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
       }
     };
     load();
-  }, [orderId]);
+  }, [orderId, user?.id]);
 
   // Realtime: escuchar nuevos mensajes de esta orden
   useEffect(() => {
@@ -98,7 +103,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
               .from("profiles")
               .select("user_id, full_name")
               .eq("user_id", msg.sender_id)
-              .single();
+              .maybeSingle();
             
             if (profile) {
               setUserProfiles(prev => ({
@@ -166,14 +171,11 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
                     isOwn ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                   }`}
                 >
-                  {!isOwn && (
-                    <div className={`text-xs font-medium mb-1 ${isOwn ? "text-primary-foreground/90" : "text-muted-foreground"}`}>
-                      {senderName}
-                    </div>
-                  )}
+                  <div className={`text-xs font-medium mb-1 ${isOwn ? "text-primary-foreground/90" : "text-muted-foreground"}`}>
+                    {senderName}
+                  </div>
                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.message}</p>
                   <div className={`mt-1 text-[10px] ${isOwn ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                    {isOwn && "Tú • "}
                     {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </div>
                 </div>
