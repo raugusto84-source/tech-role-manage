@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, Star, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { SkillLevelEditor } from './SkillLevelEditor';
 
 // Tipos para TypeScript
 interface ServiceType {
@@ -314,6 +315,57 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
   };
 
   /**
+   * Actualiza manualmente el nivel de habilidad de un técnico
+   */
+  const handleManualSkillUpdate = async (skillId: string, updateData: {
+    skill_level: number;
+    years_experience?: number;
+    notes?: string;
+    certifications?: string[];
+  }) => {
+    try {
+      const { error } = await supabase
+        .from('technician_skills')
+        .update({
+          skill_level: updateData.skill_level,
+          years_experience: updateData.years_experience || 0,
+          notes: updateData.notes || null,
+          certifications: updateData.certifications || [],
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', skillId);
+
+      if (error) throw error;
+
+      // Actualizar estado local
+      setSkills(prev => prev.map(skill => 
+        skill.id === skillId 
+          ? { 
+              ...skill, 
+              skill_level: updateData.skill_level,
+              years_experience: updateData.years_experience || 0,
+              notes: updateData.notes || '',
+              certifications: updateData.certifications || []
+            }
+          : skill
+      ));
+
+      toast({
+        title: 'Habilidad actualizada',
+        description: 'Los cambios se han guardado correctamente',
+      });
+    } catch (error: any) {
+      console.error('Error updating skill:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar la habilidad',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  };
+
+  /**
    * Renderiza estrellas según el nivel de habilidad
    */
   const renderStars = (level: number) => {
@@ -436,15 +488,38 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
                               <h4 className="font-medium">{service.name}</h4>
                               <p className="text-sm text-muted-foreground">{service.description}</p>
                               
-                              {isSelected && skill && (
+                                {isSelected && skill && (
                                 <div className="mt-2 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm">Nivel:</span>
-                                    <div className="flex">{renderStars(skill.skill_level)}</div>
-                                    <span className="text-sm text-muted-foreground">
-                                      ({skill.skill_level}/5)
-                                    </span>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm">Nivel:</span>
+                                      <div className="flex">{renderStars(skill.skill_level)}</div>
+                                      <span className="text-sm text-muted-foreground">
+                                        ({skill.skill_level}/5)
+                                      </span>
+                                    </div>
+                                    <SkillLevelEditor
+                                      currentLevel={skill.skill_level}
+                                      currentExperience={skill.years_experience}
+                                      currentNotes={skill.notes || ''}
+                                      currentCertifications={skill.certifications || []}
+                                      serviceName={service.name}
+                                      onSave={(data) => handleManualSkillUpdate(skill.id, data)}
+                                    />
                                   </div>
+                                  
+                                  {skill.years_experience > 0 && (
+                                    <div className="text-sm text-muted-foreground">
+                                      Experiencia: {skill.years_experience} años
+                                    </div>
+                                  )}
+                                  
+                                  {skill.certifications && skill.certifications.length > 0 && (
+                                    <div className="text-sm">
+                                      <span className="text-muted-foreground">Certificaciones: </span>
+                                      {skill.certifications.join(', ')}
+                                    </div>
+                                  )}
                                   
                                   {stats && (
                                     <div className="space-y-2">

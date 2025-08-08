@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Store, TrendingUp, TrendingDown, CheckCircle, XCircle } from 'lucide-react';
+import { SkillLevelEditor } from './SkillLevelEditor';
 
 interface ServiceType {
   id: string;
@@ -232,6 +233,51 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     }
   };
 
+  /**
+   * Actualiza manualmente el nivel de habilidad de venta
+   */
+  const handleManualSkillUpdate = async (skillId: string, updateData: {
+    skill_level: number;
+    years_experience?: number;
+    notes?: string;
+    certifications?: string[];
+  }) => {
+    try {
+      const { error } = await supabase
+        .from('sales_skills')
+        .update({
+          skill_level: updateData.skill_level,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', skillId);
+
+      if (error) throw error;
+
+      // Actualizar estado local
+      setSkills(prev => prev.map(skill => 
+        skill.id === skillId 
+          ? { 
+              ...skill, 
+              skill_level: updateData.skill_level
+            }
+          : skill
+      ));
+
+      toast({
+        title: 'Habilidad actualizada',
+        description: 'El nivel se ha actualizado correctamente',
+      });
+    } catch (error: any) {
+      console.error('Error updating skill:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar la habilidad',
+        variant: 'destructive'
+      });
+      throw error;
+    }
+  };
+
   const renderSkillLevel = (level: number) => {
     const labels = ['Básico', 'Intermedio', 'Avanzado', 'Experto', 'Master'];
     return (
@@ -351,9 +397,16 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
                     
                     {isSelected && skill && (
                       <CardContent className="space-y-3">
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-1">Nivel calculado:</p>
-                          {renderSkillLevel(skill.skill_level)}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Nivel actual:</p>
+                            {renderSkillLevel(skill.skill_level)}
+                          </div>
+                          <SkillLevelEditor
+                            currentLevel={skill.skill_level}
+                            serviceName={serviceType.name}
+                            onSave={(data) => handleManualSkillUpdate(skill.id, data)}
+                          />
                         </div>
                         
                         <div>
