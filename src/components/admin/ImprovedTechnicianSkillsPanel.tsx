@@ -263,6 +263,22 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
         if (error) throw error;
         
         setSelectedServices(prev => [...prev, serviceTypeId]);
+        
+        // Cargar solo la nueva habilidad sin recargar todo
+        const { data: newSkillData } = await supabase
+          .from('technician_skills')
+          .select(`
+            *,
+            service_type:service_types(id, name, description)
+          `)
+          .eq('technician_id', selectedTechnicianId)
+          .eq('service_type_id', serviceTypeId)
+          .single();
+        
+        if (newSkillData) {
+          setSkills(prev => [...prev, newSkillData]);
+        }
+        
         toast({
           title: 'Habilidad añadida',
           description: `Servicio asignado con nivel ${calculatedLevel}`,
@@ -277,15 +293,16 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
 
         if (error) throw error;
         
+        // Actualizar estado local sin recargar
         setSelectedServices(prev => prev.filter(id => id !== serviceTypeId));
+        setSkills(prev => prev.filter(skill => skill.service_type_id !== serviceTypeId));
+        
         toast({
           title: 'Habilidad removida',
           description: 'Servicio eliminado de las habilidades',
         });
       }
       
-      // Recargar datos
-      loadSkillsForTechnician(selectedTechnicianId);
     } catch (error: any) {
       console.error('Error toggling service:', error);
       toast({
