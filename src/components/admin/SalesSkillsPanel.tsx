@@ -5,22 +5,23 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Store, TrendingUp, TrendingDown, CheckCircle, XCircle } from 'lucide-react';
+import { Store, TrendingUp, TrendingDown, CheckCircle, XCircle, Wrench, Monitor, Wifi, Lightbulb, ShieldCheck } from 'lucide-react';
 
-interface ServiceType {
+interface ServiceCategory {
   id: string;
   name: string;
   description: string;
+  icon: string;
 }
 
 interface SalesSkill {
   id: string;
   salesperson_id: string;
-  service_type_id: string;
+  category_id: string;
   skill_level: number;
   created_at: string;
   updated_at: string;
-  service_type?: ServiceType;
+  service_category?: ServiceCategory;
 }
 
 interface Salesperson {
@@ -44,16 +45,25 @@ interface PerformanceStats {
 export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkillsPanelProps) {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [skills, setSkills] = useState<SalesSkill[]>([]);
-  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [performanceStats, setPerformanceStats] = useState<Record<string, PerformanceStats>>({});
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string | null>(selectedUserId);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // Mapeo de iconos
+  const iconMap: Record<string, any> = {
+    'wrench': Wrench,
+    'monitor': Monitor,
+    'wifi': Wifi,
+    'lightbulb': Lightbulb,
+    'shield-check': ShieldCheck,
+  };
+
   useEffect(() => {
     loadSalespeople();
-    loadServiceTypes();
+    loadServiceCategories();
   }, []);
 
   useEffect(() => {
@@ -63,10 +73,10 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
   }, [selectedUserId, selectedUserRole]);
 
   useEffect(() => {
-    if (selectedSalespersonId && serviceTypes.length > 0) {
+    if (selectedSalespersonId && serviceCategories.length > 0) {
       loadSkillsForSalesperson(selectedSalespersonId);
     }
-  }, [selectedSalespersonId, serviceTypes]);
+  }, [selectedSalespersonId, serviceCategories]);
 
   const loadSalespeople = async () => {
     try {
@@ -86,17 +96,18 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     }
   };
 
-  const loadServiceTypes = async () => {
+  const loadServiceCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from('service_types')
-        .select('id, name, description')
+        .from('service_categories')
+        .select('id, name, description, icon')
+        .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
-      setServiceTypes(data || []);
+      setServiceCategories(data || []);
     } catch (error) {
-      console.error('Error loading service types:', error);
+      console.error('Error loading service categories:', error);
     }
   };
 
@@ -110,20 +121,20 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
       if (error) throw error;
       const skillsData = data || [];
       setSkills(skillsData);
-      setSelectedServices(skillsData.map((skill: any) => skill.service_type_id));
+      setSelectedCategories(skillsData.map((skill: any) => skill.category_id));
       
-      // Load performance stats for all services
-      const allServiceIds = serviceTypes.map(st => st.id);
-      await loadPerformanceStats(salespersonId, allServiceIds);
+      // Load performance stats for all categories
+      const allCategoryIds = serviceCategories.map(st => st.id);
+      await loadPerformanceStats(salespersonId, allCategoryIds);
     } catch (error) {
       console.error('Error loading sales skills:', error);
       setSkills([]);
-      setSelectedServices([]);
+      setSelectedCategories([]);
     }
   };
 
-  const loadPerformanceStats = async (salespersonId: string, serviceTypeIds: string[]) => {
-    if (serviceTypeIds.length === 0) {
+  const loadPerformanceStats = async (salespersonId: string, categoryIds: string[]) => {
+    if (categoryIds.length === 0) {
       setPerformanceStats({});
       return;
     }
@@ -131,10 +142,10 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     try {
       const stats: Record<string, PerformanceStats> = {};
       
-      // For now, we'll just create empty stats since quotes table doesn't have service_type column
+      // For now, we'll just create empty stats since quotes table doesn't have proper category linkage
       // This can be enhanced later when the relationship is properly established
-      for (const serviceTypeId of serviceTypeIds) {
-        stats[serviceTypeId] = {
+      for (const categoryId of categoryIds) {
+        stats[categoryId] = {
           successful_sales: 0,
           failed_sales: 0,
           total_sales: 0,
@@ -159,13 +170,13 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     return 1;
   };
 
-  const handleServiceToggle = async (serviceTypeId: string, isChecked: boolean) => {
+  const handleCategoryToggle = async (categoryId: string, isChecked: boolean) => {
     if (!selectedSalespersonId) return;
 
     try {
       if (isChecked) {
         // Calculate level based on historical performance
-        const stats = performanceStats[serviceTypeId] || {
+        const stats = performanceStats[categoryId] || {
           successful_sales: 0,
           failed_sales: 0,
           total_sales: 0,
@@ -178,20 +189,20 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
           .from('sales_skills')
           .insert({
             salesperson_id: selectedSalespersonId,
-            service_type_id: serviceTypeId,
+            category_id: categoryId,
             skill_level: calculatedLevel
           });
 
         if (error) throw error;
         
         // Update local state without full reload
-        setSelectedServices(prev => [...prev, serviceTypeId]);
+        setSelectedCategories(prev => [...prev, categoryId]);
         
         // Add the new skill to local state
         const newSkill: SalesSkill = {
           id: crypto.randomUUID(),
           salesperson_id: selectedSalespersonId,
-          service_type_id: serviceTypeId,
+          category_id: categoryId,
           skill_level: calculatedLevel,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -201,29 +212,29 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
         
         toast({
           title: 'Habilidad añadida',
-          description: `Servicio asignado con nivel ${calculatedLevel}`,
+          description: `Categoría asignada con nivel ${calculatedLevel}`,
         });
       } else {
         const { error } = await supabase
           .from('sales_skills')
           .delete()
           .eq('salesperson_id', selectedSalespersonId)
-          .eq('service_type_id', serviceTypeId);
+          .eq('category_id', categoryId);
 
         if (error) throw error;
         
         // Update local state without reload
-        setSelectedServices(prev => prev.filter(id => id !== serviceTypeId));
-        setSkills(prev => prev.filter(skill => skill.service_type_id !== serviceTypeId));
+        setSelectedCategories(prev => prev.filter(id => id !== categoryId));
+        setSkills(prev => prev.filter(skill => skill.category_id !== categoryId));
         
         toast({
           title: 'Habilidad removida',
-          description: 'Servicio eliminado de las habilidades',
+          description: 'Categoría eliminada de las habilidades',
         });
       }
       
     } catch (error: any) {
-      console.error('Error toggling service:', error);
+      console.error('Error toggling category:', error);
       toast({
         title: 'Error',
         description: error.message || 'No se pudo actualizar la habilidad',
@@ -249,8 +260,8 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     );
   };
 
-  const renderPerformanceStats = (serviceTypeId: string) => {
-    const stats = performanceStats[serviceTypeId];
+  const renderPerformanceStats = (categoryId: string) => {
+    const stats = performanceStats[categoryId];
     if (!stats || stats.total_sales === 0) {
       return (
         <div className="text-sm text-muted-foreground">
@@ -279,6 +290,11 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
         </div>
       </div>
     );
+  };
+
+  const renderCategoryIcon = (iconName: string) => {
+    const IconComponent = iconMap[iconName] || Store;
+    return <IconComponent className="h-5 w-5" />;
   };
 
   if (loading) {
@@ -310,41 +326,44 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
       {selectedSalespersonId && (
         <div className="space-y-4">
           <h3 className="text-lg font-medium">
-            Conocimientos de Ventas - Servicios ({serviceTypes.length})
+            Conocimientos de Ventas - Categorías ({serviceCategories.length})
           </h3>
           
-          {serviceTypes.length === 0 ? (
+          {serviceCategories.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  No hay tipos de servicios disponibles
+                  No hay categorías de servicios disponibles
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {serviceTypes.map((serviceType) => {
-                const isSelected = selectedServices.includes(serviceType.id);
-                const skill = skills.find(s => s.service_type_id === serviceType.id);
-                const stats = performanceStats[serviceType.id];
+              {serviceCategories.map((category) => {
+                const isSelected = selectedCategories.includes(category.id);
+                const skill = skills.find(s => s.category_id === category.id);
+                const stats = performanceStats[category.id];
                 
                 return (
-                  <Card key={serviceType.id} className={`transition-all ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
+                  <Card key={category.id} className={`transition-all ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start gap-3">
                         <Checkbox
                           checked={isSelected}
-                          onCheckedChange={(checked) => handleServiceToggle(serviceType.id, checked as boolean)}
+                          onCheckedChange={(checked) => handleCategoryToggle(category.id, checked as boolean)}
                           className="mt-1"
                         />
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{serviceType.name}</CardTitle>
-                          {serviceType.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {serviceType.description}
-                            </p>
-                          )}
+                        <div className="flex items-center gap-2 flex-1">
+                          {renderCategoryIcon(category.icon)}
+                          <div className="flex-1">
+                            <CardTitle className="text-base">{category.name}</CardTitle>
+                            {category.description && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {category.description}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
@@ -358,7 +377,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
                         
                         <div>
                           <p className="text-sm text-muted-foreground mb-2">Rendimiento en ventas:</p>
-                          {renderPerformanceStats(serviceType.id)}
+                          {renderPerformanceStats(category.id)}
                         </div>
                       </CardContent>
                     )}
@@ -392,10 +411,10 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
             <Store className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">Gestión de Conocimientos de Ventas</h3>
             <p className="text-muted-foreground mb-4">
-              Selecciona un vendedor para gestionar sus conocimientos y habilidades comerciales
+              Selecciona un vendedor para gestionar sus conocimientos y habilidades comerciales por categoría
             </p>
             <div className="text-sm text-muted-foreground">
-              <p>• Gestión de habilidades por tipo de servicio</p>
+              <p>• Gestión de habilidades por categoría de servicio</p>
               <p>• Niveles calculados automáticamente por rendimiento</p>
               <p>• Estadísticas de éxito vs fallos en ventas</p>
               <p>• Seguimiento de especialización comercial</p>

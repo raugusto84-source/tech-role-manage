@@ -8,24 +8,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { CheckCircle, XCircle, Star, TrendingUp, TrendingDown, Users } from 'lucide-react';
+import { CheckCircle, XCircle, Star, TrendingUp, TrendingDown, Users, Wrench, Monitor, Wifi, Lightbulb, ShieldCheck } from 'lucide-react';
 
 // Tipos para TypeScript
-interface ServiceType {
+interface ServiceCategory {
   id: string;
   name: string;
   description: string;
+  icon: string;
 }
 
 interface TechnicianSkill {
   id: string;
   technician_id: string;
-  service_type_id: string;
+  category_id: string;
   skill_level: number;
   years_experience: number;
-  certifications: string[];
-  notes?: string;
-  service_type?: ServiceType;
+  created_at: string;
+  updated_at: string;
+  service_category?: ServiceCategory;
 }
 
 interface Technician {
@@ -34,9 +35,9 @@ interface Technician {
   email: string;
 }
 
-interface ServiceStats {
-  service_type_id: string;
-  service_name: string;
+interface CategoryStats {
+  category_id: string;
+  category_name: string;
   total_orders: number;
   successful_orders: number;
   failed_orders: number;
@@ -50,23 +51,26 @@ interface ImprovedTechnicianSkillsPanelProps {
 }
 
 /**
- * Panel mejorado de gestión de habilidades técnicas
- * 
- * Funcionalidades:
- * - Checklist de servicios vinculado a service_types
- * - Cálculo automático del nivel basado en servicios exitosos
- * - Estadísticas vs positivas/negativas por servicio
- * - Vista de rendimiento por técnico
+ * Panel mejorado de gestión de habilidades técnicas por categorías
  */
 export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole }: ImprovedTechnicianSkillsPanelProps) {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [skills, setSkills] = useState<TechnicianSkill[]>([]);
-  const [serviceStats, setServiceStats] = useState<ServiceStats[]>([]);
+  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string | null>(selectedUserId);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Mapeo de iconos
+  const iconMap: Record<string, any> = {
+    'wrench': Wrench,
+    'monitor': Monitor,
+    'wifi': Wifi,
+    'lightbulb': Lightbulb,
+    'shield-check': ShieldCheck,
+  };
 
   useEffect(() => {
     loadInitialData();
@@ -75,36 +79,28 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
   useEffect(() => {
     if (selectedUserId && selectedUserRole === 'tecnico') {
       setSelectedTechnicianId(selectedUserId);
-      loadSkillsForTechnician(selectedUserId);
-      loadServiceStatsForTechnician(selectedUserId);
     }
   }, [selectedUserId, selectedUserRole]);
 
   useEffect(() => {
-    if (selectedTechnicianId) {
+    if (selectedTechnicianId && serviceCategories.length > 0) {
       loadSkillsForTechnician(selectedTechnicianId);
-      loadServiceStatsForTechnician(selectedTechnicianId);
+      loadCategoryStatsForTechnician(selectedTechnicianId);
     }
-  }, [selectedTechnicianId]);
+  }, [selectedTechnicianId, serviceCategories]);
 
-  /**
-   * Carga datos iniciales necesarios
-   */
   const loadInitialData = async () => {
     try {
       setLoading(true);
       await Promise.all([
         loadTechnicians(),
-        loadServiceTypes()
+        loadServiceCategories()
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Carga lista de técnicos disponibles
-   */
   const loadTechnicians = async () => {
     try {
       const { data, error } = await supabase
@@ -120,75 +116,66 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
     }
   };
 
-  /**
-   * Carga tipos de servicio disponibles
-   */
-  const loadServiceTypes = async () => {
+  const loadServiceCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from('service_types')
-        .select('id, name, description')
+        .from('service_categories')
+        .select('id, name, description, icon')
         .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
-      setServiceTypes(data || []);
+      setServiceCategories(data || []);
     } catch (error) {
-      console.error('Error loading service types:', error);
+      console.error('Error loading service categories:', error);
     }
   };
 
-  /**
-   * Carga habilidades de un técnico específico
-   */
   const loadSkillsForTechnician = async (technicianId: string) => {
     try {
       const { data, error } = await supabase
         .from('technician_skills')
-        .select(`
-          *,
-          service_type:service_types(id, name, description)
-        `)
+        .select('*')
         .eq('technician_id', technicianId);
 
       if (error) throw error;
       setSkills(data || []);
       
-      // Actualizar servicios seleccionados
-      setSelectedServices(data?.map(skill => skill.service_type_id) || []);
+      // Actualizar categorías seleccionadas
+      setSelectedCategories(data?.map((skill: any) => skill.category_id) || []);
     } catch (error) {
       console.error('Error loading skills:', error);
     }
   };
 
-  /**
-   * Carga estadísticas de servicios para el técnico
-   */
-  const loadServiceStatsForTechnician = async (technicianId: string) => {
+  const loadCategoryStatsForTechnician = async (technicianId: string) => {
     try {
-      // Obtener estadísticas de órdenes por tipo de servicio
+      // Obtener estadísticas de órdenes agrupadas por categoría de servicio
       const { data: orders, error } = await supabase
         .from('orders')
         .select(`
           service_type,
           status,
-          service_types!inner(id, name)
+          service_types!inner(category_id),
+          service_categories!inner(id, name)
         `)
         .eq('assigned_technician', technicianId);
 
       if (error) throw error;
 
-      // Procesar estadísticas
-      const statsMap = new Map<string, ServiceStats>();
+      // Procesar estadísticas por categoría
+      const statsMap = new Map<string, CategoryStats>();
       
       orders?.forEach(order => {
-        const serviceTypeId = order.service_type;
-        const serviceName = order.service_types?.name || 'Desconocido';
+        const categoryId = order.service_types?.category_id;
+        const categoryName = order.service_categories?.name || 'Sin categoría';
         
-        if (!statsMap.has(serviceTypeId)) {
-          statsMap.set(serviceTypeId, {
-            service_type_id: serviceTypeId,
-            service_name: serviceName,
+        if (!categoryId) return;
+        
+        if (!statsMap.has(categoryId)) {
+          statsMap.set(categoryId, {
+            category_id: categoryId,
+            category_name: categoryName,
             total_orders: 0,
             successful_orders: 0,
             failed_orders: 0,
@@ -197,7 +184,7 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
           });
         }
         
-        const stats = statsMap.get(serviceTypeId)!;
+        const stats = statsMap.get(categoryId)!;
         stats.total_orders++;
         
         if (order.status === 'finalizada') {
@@ -231,57 +218,50 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
         return stats;
       });
 
-      setServiceStats(statsArray);
+      setCategoryStats(statsArray);
     } catch (error) {
-      console.error('Error loading service stats:', error);
+      console.error('Error loading category stats:', error);
     }
   };
 
-  /**
-   * Maneja la selección/deselección de servicios
-   */
-  const handleServiceToggle = async (serviceTypeId: string, checked: boolean) => {
+  const handleCategoryToggle = async (categoryId: string, checked: boolean) => {
     if (!selectedTechnicianId) return;
 
     try {
       if (checked) {
         // Añadir habilidad
-        const stats = serviceStats.find(s => s.service_type_id === serviceTypeId);
+        const stats = categoryStats.find(s => s.category_id === categoryId);
         const calculatedLevel = stats?.calculated_skill_level || 1;
         
         const { error } = await supabase
           .from('technician_skills')
           .insert({
             technician_id: selectedTechnicianId,
-            service_type_id: serviceTypeId,
+            category_id: categoryId,
             skill_level: calculatedLevel,
-            years_experience: 0,
-            certifications: [],
-            notes: 'Asignado automáticamente basado en rendimiento'
+            years_experience: 0
           });
 
         if (error) throw error;
         
-        setSelectedServices(prev => [...prev, serviceTypeId]);
+        setSelectedCategories(prev => [...prev, categoryId]);
         
-        // Cargar solo la nueva habilidad sin recargar todo
-        const { data: newSkillData } = await supabase
-          .from('technician_skills')
-          .select(`
-            *,
-            service_type:service_types(id, name, description)
-          `)
-          .eq('technician_id', selectedTechnicianId)
-          .eq('service_type_id', serviceTypeId)
-          .single();
+        // Añadir la nueva habilidad al estado local
+        const newSkill: TechnicianSkill = {
+          id: crypto.randomUUID(),
+          technician_id: selectedTechnicianId,
+          category_id: categoryId,
+          skill_level: calculatedLevel,
+          years_experience: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
         
-        if (newSkillData) {
-          setSkills(prev => [...prev, newSkillData]);
-        }
+        setSkills(prev => [...prev, newSkill]);
         
         toast({
           title: 'Habilidad añadida',
-          description: `Servicio asignado con nivel ${calculatedLevel}`,
+          description: `Categoría asignada con nivel ${calculatedLevel}`,
         });
       } else {
         // Eliminar habilidad
@@ -289,22 +269,22 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
           .from('technician_skills')
           .delete()
           .eq('technician_id', selectedTechnicianId)
-          .eq('service_type_id', serviceTypeId);
+          .eq('category_id', categoryId);
 
         if (error) throw error;
         
         // Actualizar estado local sin recargar
-        setSelectedServices(prev => prev.filter(id => id !== serviceTypeId));
-        setSkills(prev => prev.filter(skill => skill.service_type_id !== serviceTypeId));
+        setSelectedCategories(prev => prev.filter(id => id !== categoryId));
+        setSkills(prev => prev.filter(skill => skill.category_id !== categoryId));
         
         toast({
           title: 'Habilidad removida',
-          description: 'Servicio eliminado de las habilidades',
+          description: 'Categoría eliminada de las habilidades',
         });
       }
       
     } catch (error: any) {
-      console.error('Error toggling service:', error);
+      console.error('Error toggling category:', error);
       toast({
         title: 'Error',
         description: error.message || 'No se pudo actualizar la habilidad',
@@ -313,9 +293,6 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
     }
   };
 
-  /**
-   * Renderiza estrellas según el nivel de habilidad
-   */
   const renderStars = (level: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -325,11 +302,13 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
     ));
   };
 
-  /**
-   * Obtiene estadísticas para un servicio específico
-   */
-  const getServiceStats = (serviceTypeId: string) => {
-    return serviceStats.find(s => s.service_type_id === serviceTypeId);
+  const getCategoryStats = (categoryId: string) => {
+    return categoryStats.find(s => s.category_id === categoryId);
+  };
+
+  const renderCategoryIcon = (iconName: string) => {
+    const IconComponent = iconMap[iconName] || Users;
+    return <IconComponent className="h-5 w-5" />;
   };
 
   if (loading) {
@@ -362,39 +341,39 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
           <CardContent className="text-center py-8">
             <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
-              Selecciona un técnico para ver y gestionar sus habilidades
+              Selecciona un técnico para ver y gestionar sus habilidades por categoría
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
           {/* Resumen de rendimiento */}
-          {serviceStats.length > 0 && (
+          {categoryStats.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Resumen de Rendimiento
+                  Resumen de Rendimiento por Categorías
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      {serviceStats.reduce((acc, s) => acc + s.successful_orders, 0)}
+                      {categoryStats.reduce((acc, s) => acc + s.successful_orders, 0)}
                     </div>
                     <div className="text-sm text-muted-foreground">Servicios Exitosos</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-red-600">
-                      {serviceStats.reduce((acc, s) => acc + s.failed_orders, 0)}
+                      {categoryStats.reduce((acc, s) => acc + s.failed_orders, 0)}
                     </div>
                     <div className="text-sm text-muted-foreground">Servicios Fallidos</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-600">
-                      {serviceStats.length > 0 
-                        ? Math.round(serviceStats.reduce((acc, s) => acc + s.success_rate, 0) / serviceStats.length)
+                      {categoryStats.length > 0 
+                        ? Math.round(categoryStats.reduce((acc, s) => acc + s.success_rate, 0) / categoryStats.length)
                         : 0}%
                     </div>
                     <div className="text-sm text-muted-foreground">Tasa de Éxito Promedio</div>
@@ -404,93 +383,84 @@ export function ImprovedTechnicianSkillsPanel({ selectedUserId, selectedUserRole
             </Card>
           )}
 
-          {/* Checklist de servicios */}
+          {/* Checklist de categorías */}
           <Card>
             <CardHeader>
-              <CardTitle>Servicios y Habilidades</CardTitle>
+              <CardTitle>Categorías de Servicios y Habilidades</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Selecciona los servicios que puede realizar este técnico. 
+                Selecciona las categorías de servicios que puede realizar este técnico. 
                 El nivel se calcula automáticamente basado en el rendimiento.
               </p>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {serviceTypes.map((service) => {
-                  const isSelected = selectedServices.includes(service.id);
-                  const stats = getServiceStats(service.id);
-                  const skill = skills.find(s => s.service_type_id === service.id);
+                {serviceCategories.map((category) => {
+                  const isSelected = selectedCategories.includes(category.id);
+                  const stats = getCategoryStats(category.id);
+                  const skill = skills.find(s => s.category_id === category.id);
                   
                   return (
-                    <Card key={service.id} className={`transition-all ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+                    <Card key={category.id} className={`transition-all ${isSelected ? 'ring-2 ring-primary' : ''}`}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3 flex-1">
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={(checked) => 
-                                handleServiceToggle(service.id, checked as boolean)
+                                handleCategoryToggle(category.id, checked as boolean)
                               }
                               className="mt-1"
                             />
-                            <div className="flex-1">
-                              <h4 className="font-medium">{service.name}</h4>
-                              <p className="text-sm text-muted-foreground">{service.description}</p>
-                              
-                              {isSelected && skill && (
-                                <div className="mt-2 space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm">Nivel:</span>
-                                    <div className="flex">{renderStars(skill.skill_level)}</div>
-                                    <span className="text-sm text-muted-foreground">
-                                      ({skill.skill_level}/5)
-                                    </span>
-                                  </div>
-                                  
-                                  {stats && (
-                                    <div className="space-y-2">
-                                      <div className="flex items-center justify-between text-sm">
-                                        <span>Tasa de éxito:</span>
-                                        <span className={`font-medium ${
-                                          stats.success_rate >= 80 ? 'text-green-600' : 
-                                          stats.success_rate >= 60 ? 'text-yellow-600' : 'text-red-600'
-                                        }`}>
-                                          {stats.success_rate.toFixed(1)}%
-                                        </span>
-                                      </div>
-                                      <Progress value={stats.success_rate} className="h-2" />
-                                      
-                                      <div className="flex justify-between text-xs text-muted-foreground">
-                                        <div className="flex items-center gap-1">
-                                          <CheckCircle className="h-3 w-3 text-green-500" />
-                                          {stats.successful_orders} exitosos
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <XCircle className="h-3 w-3 text-red-500" />
-                                          {stats.failed_orders} fallidos
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                          <TrendingUp className="h-3 w-3" />
-                                          {stats.total_orders} total
-                                        </div>
-                                      </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              {renderCategoryIcon(category.icon)}
+                              <div className="flex-1">
+                                <h4 className="font-medium">{category.name}</h4>
+                                <p className="text-sm text-muted-foreground">{category.description}</p>
+                                
+                                {isSelected && skill && (
+                                  <div className="mt-2 space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm">Nivel:</span>
+                                      <div className="flex">{renderStars(skill.skill_level)}</div>
+                                      <span className="text-sm text-muted-foreground">
+                                        ({skill.skill_level}/5)
+                                      </span>
                                     </div>
-                                  )}
-                                </div>
-                              )}
+                                    
+                                    {stats && (
+                                      <div className="space-y-2">
+                                        <div className="flex items-center justify-between text-sm">
+                                          <span>Tasa de éxito:</span>
+                                          <span className={`font-medium ${
+                                            stats.success_rate >= 80 ? 'text-green-600' : 
+                                            stats.success_rate >= 60 ? 'text-yellow-600' : 'text-red-600'
+                                          }`}>
+                                            {stats.success_rate.toFixed(1)}%
+                                          </span>
+                                        </div>
+                                        <Progress value={stats.success_rate} className="h-2" />
+                                        
+                                        <div className="flex justify-between text-xs text-muted-foreground">
+                                          <div className="flex items-center gap-1">
+                                            <CheckCircle className="h-3 w-3 text-green-500" />
+                                            {stats.successful_orders} exitosos
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <XCircle className="h-3 w-3 text-red-500" />
+                                            {stats.failed_orders} fallidos
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <TrendingUp className="h-3 w-3" />
+                                            {stats.total_orders} total
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          
-                          {isSelected && stats && (
-                            <div className="text-right">
-                              <Badge variant={
-                                stats.success_rate >= 80 ? 'default' : 
-                                stats.success_rate >= 60 ? 'secondary' : 'destructive'
-                              }>
-                                {stats.success_rate >= 80 ? 'Excelente' : 
-                                 stats.success_rate >= 60 ? 'Bueno' : 'Necesita Mejora'}
-                              </Badge>
-                            </div>
-                          )}
                         </div>
                       </CardContent>
                     </Card>
