@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { ImprovedTechnicianSkillsPanel } from '@/components/admin/ImprovedTechnicianSkillsPanel';
-import { SalesSkillsPanel } from '@/components/admin/SalesSkillsPanel';
+import { SalesKnowledgePanel } from '@/components/admin/SalesKnowledgePanel';
 import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -112,7 +112,7 @@ export default function Users() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SalesSkillsPanel 
+                <SalesKnowledgePanel 
                   selectedUserId={selectedUserId}
                   selectedUserRole={selectedUserRole}
                 />

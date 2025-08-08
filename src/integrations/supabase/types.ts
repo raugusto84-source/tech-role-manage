@@ -1916,6 +1916,121 @@ export type Database = {
           },
         ]
       }
+      sales_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales_knowledge: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          knowledge_level: number
+          notes: string | null
+          salesperson_id: string
+          specialization_products: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          knowledge_level?: number
+          notes?: string | null
+          salesperson_id: string
+          specialization_products?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          knowledge_level?: number
+          notes?: string | null
+          salesperson_id?: string
+          specialization_products?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_knowledge_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "sales_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_products: {
+        Row: {
+          brand: string | null
+          category_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          model: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "sales_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_satisfaction_surveys: {
         Row: {
           client_id: string
