@@ -70,8 +70,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       loadClients();
       loadTechnicians();
     } else if (profile?.role === 'cliente') {
-      // Para clientes: cargar su propio cliente automáticamente
+      // Para clientes: cargar su propio cliente automáticamente y técnicos para mostrar nombres
       loadCurrentClient();
+      loadTechnicians(); // Cargar técnicos para mostrar nombres en la asignación
     }
   }, [profile?.role, profile?.email]);
 
@@ -485,6 +486,41 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                   deliveryDate={formData.delivery_date}
                   className="mb-4"
                 />
+              )}
+
+              {/* Mostrar técnico asignado para CLIENTES */}
+              {profile?.role === 'cliente' && formData.assigned_technician && (
+                <div className="space-y-2">
+                  <Label>Técnico Asignado</Label>
+                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold">
+                        {(() => {
+                          const techName = technicians.find(t => t.user_id === formData.assigned_technician)?.full_name || 'Técnico';
+                          return techName.split(' ').map(n => n[0]).join('').toUpperCase();
+                        })()}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-foreground">
+                          {technicians.find(t => t.user_id === formData.assigned_technician)?.full_name || 'Técnico Asignado'}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Técnico especializado asignado a tu orden
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-blue-600 font-medium">✓ ASIGNADO</div>
+                      </div>
+                    </div>
+                    
+                    {/* Mostrar razón de la asignación si está disponible */}
+                    {suggestionReason && (
+                      <div className="mt-3 text-sm text-blue-700 bg-blue-100 rounded p-2">
+                        <strong>¿Por qué este técnico?</strong> {suggestionReason}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
               {/* Asignación Manual de Técnico (solo para admins y vendedores) */}
