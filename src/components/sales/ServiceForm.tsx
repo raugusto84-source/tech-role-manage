@@ -84,7 +84,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       name: '',
       description: '',
       category: 'general',
+      item_type: 'servicio',
       cost_price: 0,
+      base_price: 0,
       vat_rate: 19,
       unit: 'unidad',
       min_quantity: 1,
@@ -94,7 +96,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     },
   });
 
+  const watchedItemType = form.watch('item_type');
   const watchedCostPrice = form.watch('cost_price');
+  const watchedBasePrice = form.watch('base_price');
   const watchedVatRate = form.watch('vat_rate');
 
   /**
@@ -340,16 +344,44 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nombre del Servicio *</FormLabel>
+                      <FormLabel>Nombre *</FormLabel>
                       <FormControl>
                         <Input placeholder="Ej: Formateo de PC" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="item_type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="servicio">🔧 Servicio</SelectItem>
+                          <SelectItem value="articulo">📦 Artículo/Producto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {watchedItemType === 'servicio' 
+                          ? 'Precio fijo establecido manualmente'
+                          : 'Costo base + margen de ganancia'
+                        }
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -485,28 +517,53 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="cost_price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Precio de Costo * (COP)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="100"
-                          {...field}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Costo base sin márgenes ni IVA
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {watchedItemType === 'servicio' ? (
+                  <FormField
+                    control={form.control}
+                    name="base_price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Precio de Venta Fijo * (COP)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="100"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Precio establecido manualmente (sin costo base)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="cost_price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Costo Base * (COP)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="100"
+                            {...field}
+                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Costo de adquisición/producción del artículo
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 <FormField
                   control={form.control}
@@ -580,73 +637,75 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
             </CardContent>
           </Card>
 
-          {/* Niveles de margen de ganancia */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Márgenes de Ganancia por Cantidad
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addMarginTier}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Agregar Nivel
-                </Button>
-              </CardTitle>
-              <CardDescription>
-                Configure diferentes márgenes de ganancia según la cantidad solicitada
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {marginTiers.map((tier, index) => (
-                <div key={tier.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                  <div className="flex-1 grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Cantidad Desde</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={tier.min_qty}
-                        onChange={(e) => updateMarginTier(tier.id, 'min_qty', parseInt(e.target.value) || 1)}
-                      />
+          {/* Niveles de margen - solo para artículos */}
+          {watchedItemType === 'articulo' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Márgenes de Ganancia por Cantidad
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addMarginTier}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Agregar Nivel
+                  </Button>
+                </CardTitle>
+                <CardDescription>
+                  Configure diferentes márgenes según la cantidad (solo para artículos)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {marginTiers.map((tier, index) => (
+                  <div key={tier.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                    <div className="flex-1 grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Cantidad Desde</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={tier.min_qty}
+                          onChange={(e) => updateMarginTier(tier.id, 'min_qty', parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Cantidad Hasta</label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={tier.max_qty}
+                          onChange={(e) => updateMarginTier(tier.id, 'max_qty', parseInt(e.target.value) || 999)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Margen (%)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="1000"
+                          step="0.1"
+                          value={tier.margin}
+                          onChange={(e) => updateMarginTier(tier.id, 'margin', parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium">Cantidad Hasta</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={tier.max_qty}
-                        onChange={(e) => updateMarginTier(tier.id, 'max_qty', parseInt(e.target.value) || 999)}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Margen (%)</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="1000"
-                        step="0.1"
-                        value={tier.margin}
-                        onChange={(e) => updateMarginTier(tier.id, 'margin', parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
+                    {marginTiers.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeMarginTier(tier.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
-                  {marginTiers.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => removeMarginTier(tier.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Preview de precios */}
           {watchedCostPrice > 0 && (
