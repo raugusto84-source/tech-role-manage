@@ -2272,6 +2272,50 @@ export type Database = {
         }
         Relationships: []
       }
+      technician_skills: {
+        Row: {
+          certifications: string[] | null
+          created_at: string
+          id: string
+          notes: string | null
+          service_type_id: string
+          skill_level: number
+          technician_id: string
+          updated_at: string
+          years_experience: number | null
+        }
+        Insert: {
+          certifications?: string[] | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          service_type_id: string
+          skill_level?: number
+          technician_id: string
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Update: {
+          certifications?: string[] | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          service_type_id?: string
+          skill_level?: number
+          technician_id?: string
+          updated_at?: string
+          years_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_skills_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -2807,6 +2851,18 @@ export type Database = {
       get_user_role_safe: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      suggest_optimal_technician: {
+        Args: { p_service_type_id: string; p_delivery_date?: string }
+        Returns: {
+          technician_id: string
+          full_name: string
+          current_workload: number
+          skill_level: number
+          years_experience: number
+          score: number
+          suggestion_reason: string
+        }[]
       }
     }
     Enums: {

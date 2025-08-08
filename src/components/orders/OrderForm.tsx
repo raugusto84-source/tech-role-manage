@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Plus } from 'lucide-react';
 import { ClientForm } from '@/components/ClientForm';
+import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
 
 interface ServiceType {
   id: string;
@@ -56,6 +57,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     average_service_time: '',
     assigned_technician: ''
   });
+  
+  // Estados para el sistema de sugerencias de técnicos
+  const [showTechnicianSuggestions, setShowTechnicianSuggestions] = useState(false);
+  const [suggestionReason, setSuggestionReason] = useState('');
 
   useEffect(() => {
     loadServiceTypes();
@@ -191,6 +196,37 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           delivery_date: requestDate.toISOString().split('T')[0]
         }));
       }
+      
+      // Mostrar sugerencias de técnicos automáticamente para staff
+      if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+        setShowTechnicianSuggestions(true);
+      }
+    }
+  };
+
+  /**
+   * FUNCIÓN: handleTechnicianSuggestionSelect
+   * 
+   * PROPÓSITO:
+   * - Maneja la selección de un técnico desde las sugerencias automáticas
+   * - Actualiza el formulario con el técnico seleccionado
+   * - Guarda la razón de la sugerencia para mostrar al usuario
+   * 
+   * PARÁMETROS:
+   * - technicianId: ID del técnico seleccionado
+   * - reason: Razón por la cual fue sugerido este técnico
+   */
+  const handleTechnicianSuggestionSelect = (technicianId: string, reason: string) => {
+    setFormData(prev => ({ ...prev, assigned_technician: technicianId }));
+    setSuggestionReason(reason);
+    
+    // Encontrar el nombre del técnico para el toast
+    const selectedTechnician = technicians.find(t => t.user_id === technicianId);
+    if (selectedTechnician) {
+      toast({
+        title: "Técnico sugerido seleccionado",
+        description: `${selectedTechnician.full_name}: ${reason}`,
+      });
     }
   };
 
@@ -382,11 +418,38 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               </div>
 
-              {/* Asignación de Técnico (solo para admins y vendedores) */}
+              {/* Sistema de Sugerencias de Técnicos */}
+              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && showTechnicianSuggestions && formData.service_type && (
+                <TechnicianSuggestion
+                  serviceTypeId={formData.service_type}
+                  onTechnicianSelect={handleTechnicianSuggestionSelect}
+                  selectedTechnicianId={formData.assigned_technician}
+                  deliveryDate={formData.delivery_date}
+                  className="mb-4"
+                />
+              )}
+
+              {/* Asignación Manual de Técnico (solo para admins y vendedores) */}
               {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
                 <div className="space-y-2">
-                  <Label htmlFor="assigned_technician">Técnico Asignado</Label>
-                  <Select value={formData.assigned_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_technician: value }))}>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="assigned_technician">Técnico Asignado</Label>
+                    {formData.service_type && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowTechnicianSuggestions(!showTechnicianSuggestions)}
+                      >
+                        {showTechnicianSuggestions ? 'Ocultar sugerencias' : 'Ver sugerencias automáticas'}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <Select value={formData.assigned_technician} onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, assigned_technician: value }));
+                    setSuggestionReason(''); // Limpiar razón al seleccionar manualmente
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona un técnico (opcional)" />
                     </SelectTrigger>
@@ -399,6 +462,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                       ))}
                     </SelectContent>
                   </Select>
+                  
+                  {/* Mostrar razón de la sugerencia si se seleccionó mediante sugerencias */}
+                  {suggestionReason && formData.assigned_technician && (
+                    <div className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded p-3">
+                      <strong>Razón de la sugerencia:</strong> {suggestionReason}
+                    </div>
+                  )}
                 </div>
               )}
 
