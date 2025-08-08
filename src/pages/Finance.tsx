@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -95,6 +95,84 @@ export default function Finance() {
   const incomesTotal = useMemo(() => (incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [incomesQuery.data]);
   const expensesTotal = useMemo(() => (expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [expensesQuery.data]);
 
+  // Desglose por cuenta
+  const incomesData = incomesQuery.data ?? [];
+  const expensesData = expensesQuery.data ?? [];
+  const incomesFiscal = useMemo(() => incomesData.filter((r: any) => r.account_type === 'fiscal'), [incomesData]);
+  const incomesNoFiscal = useMemo(() => incomesData.filter((r: any) => r.account_type === 'no_fiscal'), [incomesData]);
+  const expensesFiscal = useMemo(() => expensesData.filter((r: any) => r.account_type === 'fiscal'), [expensesData]);
+  const expensesNoFiscal = useMemo(() => expensesData.filter((r: any) => r.account_type === 'no_fiscal'), [expensesData]);
+
+  const totIF = useMemo(() => incomesFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [incomesFiscal]);
+  const totINF = useMemo(() => incomesNoFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [incomesNoFiscal]);
+  const totEF = useMemo(() => expensesFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [expensesFiscal]);
+  const totENF = useMemo(() => expensesNoFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [expensesNoFiscal]);
+
+  const [feDesc, setFeDesc] = useState("");
+  const [feAmount, setFeAmount] = useState("");
+  const [feAccount, setFeAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
+  const [feMethod, setFeMethod] = useState("");
+
+  const [pEmployee, setPEmployee] = useState("");
+  const [pBaseSalary, setPBaseSalary] = useState("");
+  const [pNetSalary, setPNetSalary] = useState("");
+  const [pMonth, setPMonth] = useState<number>(new Date().getMonth() + 1);
+  const [pYear, setPYear] = useState<number>(new Date().getFullYear());
+  const [pAccount, setPAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
+  const [pMethod, setPMethod] = useState("");
+
+  const addFixedExpense = async () => {
+    try {
+      const amount = Number(feAmount);
+      if (!feDesc || !amount) throw new Error("Completa descripción y monto válido");
+      const { error } = await supabase.from("expenses").insert({
+        amount,
+        description: feDesc,
+        category: "gasto_fijo",
+        account_type: feAccount as any,
+        payment_method: feMethod || null,
+      } as any);
+      if (error) throw error;
+      toast({ title: "Gasto fijo agregado" });
+      setFeDesc(""); setFeAmount(""); setFeMethod(""); setFeAccount("fiscal");
+      expensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+    }
+  };
+
+  const addPayroll = async () => {
+    try {
+      const baseSalary = Number(pBaseSalary);
+      const netSalary = Number(pNetSalary);
+      if (!pEmployee || !netSalary || !baseSalary) throw new Error("Completa empleado y montos válidos");
+      const { error: payErr } = await supabase.from("payrolls").insert({
+        employee_name: pEmployee,
+        base_salary: baseSalary,
+        net_salary: netSalary,
+        period_month: pMonth,
+        period_year: pYear,
+        status: "pendiente",
+      } as any);
+      if (payErr) throw payErr;
+
+      const { error: expErr } = await supabase.from("expenses").insert({
+        amount: netSalary,
+        description: `Nómina ${pEmployee} ${pMonth}/${pYear}`,
+        category: "nomina",
+        account_type: pAccount as any,
+        payment_method: pMethod || null,
+      } as any);
+      if (expErr) throw expErr;
+
+      toast({ title: "Nómina registrada" });
+      setPEmployee(""); setPBaseSalary(""); setPNetSalary(""); setPMethod(""); setPAccount("fiscal");
+      expensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible registrar", variant: "destructive" });
+    }
+  };
+
   const onExport = (type: "incomes" | "expenses" | "collections") => {
     try {
       if (type === "incomes" && incomesQuery.data) {
@@ -117,7 +195,7 @@ export default function Finance() {
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
       </header>
 
-      <section className="mb-6 grid gap-3 md:grid-cols-4">
+      <section className="mb-6 grid gap-3 md:grid-cols-3">
         <div>
           <label className="text-sm text-muted-foreground">Desde</label>
           <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
@@ -126,116 +204,312 @@ export default function Finance() {
           <label className="text-sm text-muted-foreground">Hasta</label>
           <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
         </div>
-        <div>
-          <label className="text-sm text-muted-foreground">Tipo de cuenta</label>
-          <Select value={accountType} onValueChange={setAccountType}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selector de cuenta" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="fiscal">Fiscal</SelectItem>
-              <SelectItem value="no_fiscal">No fiscal</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      </section>
+
+      <section className="mb-6 grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Cuenta Fiscal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Ingresos</div>
+                <div className="font-semibold">{totIF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Egresos</div>
+                <div className="font-semibold">{totEF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Balance</div>
+                <div className="font-semibold">{(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Cuenta No Fiscal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Ingresos</div>
+                <div className="font-semibold">{totINF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Egresos</div>
+                <div className="font-semibold">{totENF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Balance</div>
+                <div className="font-semibold">{(totINF - totENF).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
       <Tabs defaultValue="incomes">
         <TabsList>
           <TabsTrigger value="incomes">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
+          <TabsTrigger value="gastos">Gastos fijos y nóminas</TabsTrigger>
           <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="incomes">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Ingresos ({incomesQuery.data?.length ?? 0}) · Total: {incomesTotal.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
-              <Button size="sm" onClick={() => onExport("incomes")}>Exportar CSV</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Monto</TableHead>
-                      <TableHead>Cuenta</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>Método</TableHead>
-                      <TableHead>Descripción</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {incomesQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
-                    )}
-                    {!incomesQuery.isLoading && (incomesQuery.data ?? []).map((r: any) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.income_number}</TableCell>
-                        <TableCell>{r.income_date}</TableCell>
-                        <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
-                        <TableCell>{r.account_type}</TableCell>
-                        <TableCell>{r.category}</TableCell>
-                        <TableCell>{r.payment_method}</TableCell>
-                        <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <Button size="sm" onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}>Exportar CSV</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Descripción</TableHead>
                       </TableRow>
-                    ))}
-                    {!incomesQuery.isLoading && (incomesQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>Sin datos en el rango seleccionado.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {incomesQuery.isLoading && (
+                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                      )}
+                      {!incomesQuery.isLoading && incomesFiscal.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.income_number}</TableCell>
+                          <TableCell>{r.income_date}</TableCell>
+                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{r.category}</TableCell>
+                          <TableCell>{r.payment_method}</TableCell>
+                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <Button size="sm" onClick={() => exportCsv(`ingresos_no_fiscal_${startDate}_${endDate}`, incomesNoFiscal as any)}>Exportar CSV</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Descripción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {incomesQuery.isLoading && (
+                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                      )}
+                      {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.income_number}</TableCell>
+                          <TableCell>{r.income_date}</TableCell>
+                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{r.category}</TableCell>
+                          <TableCell>{r.payment_method}</TableCell>
+                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="expenses">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Egresos ({expensesQuery.data?.length ?? 0}) · Total: {expensesTotal.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
-              <Button size="sm" onClick={() => onExport("expenses")}>Exportar CSV</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Monto</TableHead>
-                      <TableHead>Cuenta</TableHead>
-                      <TableHead>Categoría</TableHead>
-                      <TableHead>Método</TableHead>
-                      <TableHead>Descripción</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {expensesQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
-                    )}
-                    {!expensesQuery.isLoading && (expensesQuery.data ?? []).map((r: any) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.expense_number}</TableCell>
-                        <TableCell>{r.expense_date}</TableCell>
-                        <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
-                        <TableCell>{r.account_type}</TableCell>
-                        <TableCell>{r.category}</TableCell>
-                        <TableCell>{r.payment_method}</TableCell>
-                        <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <Button size="sm" onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)}>Exportar CSV</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Descripción</TableHead>
                       </TableRow>
-                    ))}
-                    {!expensesQuery.isLoading && (expensesQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>Sin datos en el rango seleccionado.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {expensesQuery.isLoading && (
+                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                      )}
+                      {!expensesQuery.isLoading && expensesFiscal.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.expense_number}</TableCell>
+                          <TableCell>{r.expense_date}</TableCell>
+                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{r.category}</TableCell>
+                          <TableCell>{r.payment_method}</TableCell>
+                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <Button size="sm" onClick={() => exportCsv(`egresos_no_fiscal_${startDate}_${endDate}`, expensesNoFiscal as any)}>Exportar CSV</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Descripción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expensesQuery.isLoading && (
+                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                      )}
+                      {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.expense_number}</TableCell>
+                          <TableCell>{r.expense_date}</TableCell>
+                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{r.category}</TableCell>
+                          <TableCell>{r.payment_method}</TableCell>
+                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="gastos">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gastos fijos recurrentes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">Descripción</label>
+                  <Input value={feDesc} onChange={e => setFeDesc(e.target.value)} placeholder="Ej. Renta, Luz, Internet" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Monto</label>
+                  <Input type="number" inputMode="decimal" value={feAmount} onChange={e => setFeAmount(e.target.value)} placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Cuenta</label>
+                  <Select value={feAccount} onValueChange={(v) => setFeAccount(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona cuenta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fiscal">Fiscal</SelectItem>
+                      <SelectItem value="no_fiscal">No fiscal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Método de pago</label>
+                  <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
+                </div>
+                <div className="pt-2">
+                  <Button onClick={addFixedExpense}>Agregar gasto fijo</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Se registra como egreso inmediato en la cuenta seleccionada.</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Nóminas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">Empleado</label>
+                  <Input value={pEmployee} onChange={e => setPEmployee(e.target.value)} placeholder="Nombre del empleado" />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-muted-foreground">Sueldo base</label>
+                    <Input type="number" inputMode="decimal" value={pBaseSalary} onChange={e => setPBaseSalary(e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Sueldo neto</label>
+                    <Input type="number" inputMode="decimal" value={pNetSalary} onChange={e => setPNetSalary(e.target.value)} placeholder="0.00" />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
+                    <label className="text-sm text-muted-foreground">Mes</label>
+                    <Input type="number" min={1} max={12} value={pMonth} onChange={e => setPMonth(Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Año</label>
+                    <Input type="number" value={pYear} onChange={e => setPYear(Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Cuenta</label>
+                    <Select value={pAccount} onValueChange={(v) => setPAccount(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona cuenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fiscal">Fiscal</SelectItem>
+                        <SelectItem value="no_fiscal">No fiscal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Método de pago</label>
+                  <Input value={pMethod} onChange={e => setPMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
+                </div>
+                <div className="pt-2">
+                  <Button onClick={addPayroll}>Registrar nómina</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Se crea registro en Nóminas y egreso asociado en la cuenta elegida.</p>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="collections">
