@@ -746,6 +746,51 @@ export type Database = {
           },
         ]
       }
+      fixed_expenses: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          active: boolean
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string
+          frequency: string
+          id: string
+          last_run_date: string | null
+          next_run_date: string
+          payment_method: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          active?: boolean
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          frequency?: string
+          id?: string
+          last_run_date?: string | null
+          next_run_date?: string
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          active?: boolean
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          frequency?: string
+          id?: string
+          last_run_date?: string | null
+          next_run_date?: string
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       incomes: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]

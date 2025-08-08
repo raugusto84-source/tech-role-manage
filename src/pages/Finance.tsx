@@ -91,7 +91,19 @@ export default function Finance() {
       return data ?? [];
     }
   });
-
+  
+  const fixedExpensesQuery = useQuery({
+    queryKey: ["fixed_expenses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fixed_expenses")
+        .select("id,description,amount,account_type,payment_method,next_run_date,active")
+        .order("next_run_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+  
   const incomesTotal = useMemo(() => (incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [incomesQuery.data]);
   const expensesTotal = useMemo(() => (expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [expensesQuery.data]);
 
@@ -125,17 +137,17 @@ export default function Finance() {
     try {
       const amount = Number(feAmount);
       if (!feDesc || !amount) throw new Error("Completa descripción y monto válido");
-      const { error } = await supabase.from("expenses").insert({
-        amount,
+      const { error } = await supabase.from("fixed_expenses").insert({
         description: feDesc,
-        category: "gasto_fijo",
+        amount,
         account_type: feAccount as any,
         payment_method: feMethod || null,
+        frequency: 'monthly',
       } as any);
       if (error) throw error;
-      toast({ title: "Gasto fijo agregado" });
+      toast({ title: "Gasto fijo programado" });
       setFeDesc(""); setFeAmount(""); setFeMethod(""); setFeAccount("fiscal");
-      expensesQuery.refetch();
+      fixedExpensesQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
     }
@@ -170,6 +182,29 @@ export default function Finance() {
       expensesQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible registrar", variant: "destructive" });
+    }
+  };
+  
+  const toggleFixedActive = async (row: any) => {
+    try {
+      const { error } = await supabase.from('fixed_expenses').update({ active: !row.active }).eq('id', row.id);
+      if (error) throw error;
+      toast({ title: row.active ? 'Gasto fijo desactivado' : 'Gasto fijo activado' });
+      fixedExpensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
+    }
+  };
+
+  const runFixedNow = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('run-fixed-expenses');
+      if (error) throw error as any;
+      toast({ title: 'Gastos fijos ejecutados', description: `Procesados: ${data?.created ?? 0}` });
+      expensesQuery.refetch();
+      fixedExpensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible ejecutar', variant: 'destructive' });
     }
   };
 
@@ -451,10 +486,51 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
-                <div className="pt-2">
+                <div className="flex items-center gap-3 pt-2">
                   <Button onClick={addFixedExpense}>Agregar gasto fijo</Button>
+                  <Button variant="secondary" onClick={runFixedNow}>Ejecutar ahora</Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Se registra como egreso inmediato en la cuenta seleccionada.</p>
+                <p className="text-xs text-muted-foreground">Se programa mensual; puedes ejecutarlo manualmente o configurarlo con cron.</p>
+
+                <div className="pt-4">
+                  <div className="text-sm font-medium mb-2">Programados</div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Descripción</TableHead>
+                          <TableHead>Monto</TableHead>
+                          <TableHead>Cuenta</TableHead>
+                          <TableHead>Próxima ejecución</TableHead>
+                          <TableHead>Activo</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {fixedExpensesQuery.isLoading && (
+                          <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                        )}
+                        {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).map((fx: any) => (
+                          <TableRow key={fx.id}>
+                            <TableCell>{fx.description}</TableCell>
+                            <TableCell>{Number(fx.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                            <TableCell>{fx.account_type}</TableCell>
+                            <TableCell>{fx.next_run_date}</TableCell>
+                            <TableCell>{fx.active ? 'Sí' : 'No'}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="outline" onClick={() => toggleFixedActive(fx)}>
+                                {fx.active ? 'Desactivar' : 'Activar'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).length === 0 && (
+                          <TableRow><TableCell colSpan={6}>Sin gastos fijos programados.</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

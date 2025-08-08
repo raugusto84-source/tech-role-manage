@@ -1,1 +1,4 @@
 project_id = "exunjybsermnxvrvyxnj"
+
+[functions.run-fixed-expenses]
+verify_jwt = true
