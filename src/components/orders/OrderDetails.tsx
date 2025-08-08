@@ -63,7 +63,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         .from('order_notes')
         .select(`
           *,
-          profiles!order_notes_user_id_fkey(full_name)
+          profiles(full_name)
         `)
         .eq('order_id', order.id)
         .order('created_at', { ascending: false });
