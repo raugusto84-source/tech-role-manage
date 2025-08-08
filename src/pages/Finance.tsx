@@ -95,6 +95,47 @@ export default function Finance() {
       return data ?? [];
     }
   });
+
+  // Query para gastos fiscales pendientes de retiro
+  const fiscalExpensesQuery = useQuery({
+    queryKey: ["fiscal_expenses_pending"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("id,expense_number,description,amount,expense_date,withdrawal_status,account_type")
+        .eq("account_type", "fiscal")
+        .eq("withdrawal_status", "pendiente")
+        .order("expense_date", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  // Query para gestión de IVA
+  const vatManagementQuery = useQuery({
+    queryKey: ["vat_management", startDate, endDate],
+    queryFn: async () => {
+      let q = supabase.from("vat_management").select("*").order("transaction_date", { ascending: false });
+      if (startDate) q = q.gte("transaction_date", startDate);
+      if (endDate) q = q.lte("transaction_date", endDate);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  // Query para resumen de IVA
+  const vatSummaryQuery = useQuery({
+    queryKey: ["vat_summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("vat_summary")
+        .select("*")
+        .limit(12);
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
   
   const fixedExpensesQuery = useQuery({
     queryKey: ["fixed_expenses"],
@@ -155,6 +196,16 @@ export default function Finance() {
   const [pFrequency, setPFrequency] = useState<"weekly" | "monthly">("weekly");
   const [pCutoffWeekday, setPCutoffWeekday] = useState<number>(5);
   const [pDefaultBonus, setPDefaultBonus] = useState("");
+
+  // Estados para IVA
+  const [vatType, setVatType] = useState<"ingresos" | "egresos">("ingresos");
+  const [vatDescription, setVatDescription] = useState("");
+  const [vatAmount, setVatAmount] = useState("");
+  const [vatRate, setVatRate] = useState("16");
+  const [vatDate, setVatDate] = useState(new Date().toISOString().substring(0, 10));
+  
+  // Estados para gastos fiscales seleccionados
+  const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
 
   const addFixedExpense = async () => {
     try {
@@ -328,6 +379,63 @@ export default function Finance() {
     }
   };
 
+  // Funciones para gestión de IVA
+  const addVatRecord = async () => {
+    try {
+      const amount = Number(vatAmount);
+      const rate = Number(vatRate);
+      if (!vatDescription || !amount || !rate) throw new Error("Completa todos los campos");
+      const { error } = await supabase.from("vat_management").insert({
+        transaction_type: vatType,
+        description: vatDescription,
+        amount,
+        vat_rate: rate,
+        transaction_date: vatDate,
+        account_type: "fiscal",
+      } as any);
+      if (error) throw error;
+      toast({ title: "Registro IVA agregado" });
+      setVatDescription(""); setVatAmount(""); setVatRate("16"); 
+      vatManagementQuery.refetch();
+      vatSummaryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+    }
+  };
+
+  // Funciones para retiro de gastos fiscales
+  const handleExpenseSelection = (expenseId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedExpenses(prev => [...prev, expenseId]);
+    } else {
+      setSelectedExpenses(prev => prev.filter(id => id !== expenseId));
+    }
+  };
+
+  const withdrawSelectedExpenses = async () => {
+    if (selectedExpenses.length === 0) {
+      toast({ title: "Error", description: "Selecciona al menos un gasto", variant: "destructive" });
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from("expenses")
+        .update({
+          withdrawal_status: "retirado",
+          withdrawn_at: new Date().toISOString(),
+          withdrawn_by: profile?.user_id
+        })
+        .in("id", selectedExpenses);
+      if (error) throw error;
+      toast({ title: `${selectedExpenses.length} gastos marcados como retirados` });
+      setSelectedExpenses([]);
+      fiscalExpensesQuery.refetch();
+      expensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible retirar", variant: "destructive" });
+    }
+  };
+
   const onExport = (type: "incomes" | "expenses" | "collections") => {
     try {
       if (type === "incomes" && incomesQuery.data) {
@@ -412,6 +520,8 @@ export default function Finance() {
           <TabsTrigger value="incomes">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="gastos">Gastos fijos y nóminas</TabsTrigger>
+          <TabsTrigger value="fiscal-withdrawal">Retiro Gastos Fiscales</TabsTrigger>
+          <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
           <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
         </TabsList>
 
@@ -811,6 +921,252 @@ export default function Finance() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="fiscal-withdrawal">
+          <Card>
+            <CardHeader>
+              <CardTitle>Retiro de Gastos Fiscales</CardTitle>
+              <p className="text-sm text-muted-foreground">Gastos fiscales pendientes de retiro de la cuenta</p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-3 mb-4">
+                <Button 
+                  onClick={withdrawSelectedExpenses} 
+                  disabled={selectedExpenses.length === 0}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  Retirar Seleccionados ({selectedExpenses.length})
+                </Button>
+                <Button variant="outline" onClick={() => setSelectedExpenses([])}>
+                  Limpiar Selección
+                </Button>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Seleccionar</TableHead>
+                      <TableHead>#</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fiscalExpensesQuery.isLoading && (
+                      <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                    )}
+                    {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
+                      <TableRow key={expense.id}>
+                        <TableCell>
+                          <Checkbox 
+                            checked={selectedExpenses.includes(expense.id)}
+                            onCheckedChange={(checked) => handleExpenseSelection(expense.id, !!checked)}
+                          />
+                        </TableCell>
+                        <TableCell>{expense.expense_number}</TableCell>
+                        <TableCell>{expense.expense_date}</TableCell>
+                        <TableCell className="max-w-[300px] truncate" title={expense.description}>
+                          {expense.description}
+                        </TableCell>
+                        <TableCell>{Number(expense.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-warning text-warning-foreground">
+                            Pendiente
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).length === 0 && (
+                      <TableRow><TableCell colSpan={6}>No hay gastos fiscales pendientes de retiro.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vat-management">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Registrar IVA</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm text-muted-foreground">Tipo de transacción</label>
+                  <Select value={vatType} onValueChange={(v) => setVatType(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ingresos">IVA de facturas emitidas (nosotros cobramos)</SelectItem>
+                      <SelectItem value="egresos">IVA de facturas recibidas (nos cobran)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <label className="text-sm text-muted-foreground">Descripción</label>
+                  <Input 
+                    value={vatDescription} 
+                    onChange={e => setVatDescription(e.target.value)} 
+                    placeholder="Descripción de la transacción" 
+                  />
+                </div>
+                
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-muted-foreground">Monto base (sin IVA)</label>
+                    <Input 
+                      type="number" 
+                      inputMode="decimal" 
+                      value={vatAmount} 
+                      onChange={e => setVatAmount(e.target.value)} 
+                      placeholder="0.00" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Tasa IVA (%)</label>
+                    <Select value={vatRate} onValueChange={setVatRate}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Tasa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">0% (Exento)</SelectItem>
+                        <SelectItem value="8">8%</SelectItem>
+                        <SelectItem value="16">16% (General)</SelectItem>
+                        <SelectItem value="21">21%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="text-sm text-muted-foreground">Fecha</label>
+                  <Input 
+                    type="date" 
+                    value={vatDate} 
+                    onChange={e => setVatDate(e.target.value)} 
+                  />
+                </div>
+                
+                {vatAmount && vatRate && (
+                  <div className="p-3 bg-muted rounded-lg">
+                    <div className="text-sm">
+                      <div>Monto base: {Number(vatAmount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                      <div>IVA ({vatRate}%): {(Number(vatAmount) * Number(vatRate) / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                      <div className="font-semibold">Total: {(Number(vatAmount) * (1 + Number(vatRate) / 100)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                    </div>
+                  </div>
+                )}
+                
+                <Button onClick={addVatRecord} className="w-full">
+                  Registrar IVA
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumen IVA por Mes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Período</TableHead>
+                        <TableHead>IVA Cobrado</TableHead>
+                        <TableHead>IVA Pagado</TableHead>
+                        <TableHead>Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {vatSummaryQuery.isLoading && (
+                        <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>
+                      )}
+                      {!vatSummaryQuery.isLoading && (vatSummaryQuery.data ?? []).map((summary: any) => (
+                        <TableRow key={summary.period}>
+                          <TableCell>{new Date(summary.period).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}</TableCell>
+                          <TableCell className="text-green-600">
+                            {Number(summary.vat_collected || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          </TableCell>
+                          <TableCell className="text-red-600">
+                            {Number(summary.vat_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          </TableCell>
+                          <TableCell className={Number(summary.vat_balance || 0) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                            {Number(summary.vat_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!vatSummaryQuery.isLoading && (vatSummaryQuery.data ?? []).length === 0 && (
+                        <TableRow><TableCell colSpan={4}>No hay datos de IVA registrados.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle>Detalle de Registros IVA</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Monto Base</TableHead>
+                      <TableHead>Tasa IVA</TableHead>
+                      <TableHead>IVA</TableHead>
+                      <TableHead>Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {vatManagementQuery.isLoading && (
+                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
+                    )}
+                    {!vatManagementQuery.isLoading && (vatManagementQuery.data ?? []).map((vat: any) => (
+                      <TableRow key={vat.id}>
+                        <TableCell>{vat.transaction_date}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                            vat.transaction_type === 'ingresos' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {vat.transaction_type === 'ingresos' ? 'Cobrado' : 'Pagado'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate" title={vat.description}>
+                          {vat.description}
+                        </TableCell>
+                        <TableCell>{Number(vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>{vat.vat_rate}%</TableCell>
+                        <TableCell>{Number(vat.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell className="font-semibold">
+                          {(Number(vat.amount) + Number(vat.vat_amount)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {!vatManagementQuery.isLoading && (vatManagementQuery.data ?? []).length === 0 && (
+                      <TableRow><TableCell colSpan={7}>No hay registros de IVA para el período seleccionado.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="collections">
