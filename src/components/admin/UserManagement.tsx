@@ -358,9 +358,13 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                   placeholder="+1234567890"
                 />
               </div>
-              <div>
+                <div>
                 <Label htmlFor="role">Rol</Label>
-                <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as User['role'] }))}>
+                <Select 
+                  value={formData.role} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as User['role'] }))}
+                  disabled={editingUser?.role === 'cliente'}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
@@ -371,6 +375,11 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
+                {editingUser?.role === 'cliente' && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Los clientes no pueden cambiar su tipo de rol
+                  </p>
+                )}
               </div>
               {!editingUser && (
                 <div>
