@@ -2121,6 +2121,48 @@ export type Database = {
           },
         ]
       }
+      vat_management: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          transaction_date: string
+          transaction_type: string
+          updated_at: string
+          vat_amount: number | null
+          vat_rate: number
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          transaction_date?: string
+          transaction_type: string
+          updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          transaction_date?: string
+          transaction_type?: string
+          updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number
+        }
+        Relationships: []
+      }
       vehicle_maintenance: {
         Row: {
           cost: number
@@ -2512,6 +2554,15 @@ export type Database = {
           id: string | null
           order_number: string | null
           status: Database["public"]["Enums"]["order_status"] | null
+        }
+        Relationships: []
+      }
+      vat_summary: {
+        Row: {
+          period: string | null
+          vat_balance: number | null
+          vat_collected: number | null
+          vat_paid: number | null
         }
         Relationships: []
       }
