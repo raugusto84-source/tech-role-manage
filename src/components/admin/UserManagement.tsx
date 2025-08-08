@@ -1,0 +1,500 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Edit, Trash2, UserCircle, Search } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+// Tipos para TypeScript
+interface User {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string;
+  phone?: string;
+  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente';
+  created_at: string;
+  updated_at: string;
+}
+
+interface UserManagementProps {
+  onUserSelect: (userId: string, role: string) => void;
+}
+
+/**
+ * Componente de gestión completa de usuarios
+ * 
+ * Funcionalidades:
+ * - Listar usuarios por categorías (roles)
+ * - Crear nuevos usuarios con autenticación
+ * - Editar información de usuarios existentes
+ * - Eliminar usuarios (solo perfil, no auth.users)
+ * - Búsqueda y filtrado
+ * 
+ * Reutilizable para:
+ * - Panel de administración
+ * - Selección de usuarios en otros módulos
+ * - Asignación de roles y permisos
+ */
+export function UserManagement({ onUserSelect }: UserManagementProps) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const { toast } = useToast();
+
+  // Estado del formulario
+  const [formData, setFormData] = useState({
+    email: '',
+    full_name: '',
+    phone: '',
+    role: 'cliente' as User['role'],
+    password: ''
+  });
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  /**
+   * Carga todos los usuarios desde la base de datos
+   * Incluye información de perfil completa
+   */
+  const loadUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error loading users:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los usuarios',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Filtra usuarios por término de búsqueda y rol
+   * Búsqueda en nombre, email y rol
+   */
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = selectedRole === 'all' || user.role === selectedRole;
+    return matchesSearch && matchesRole;
+  });
+
+  /**
+   * Agrupa usuarios por rol para mejor visualización
+   */
+  const usersByRole = filteredUsers.reduce((acc, user) => {
+    if (!acc[user.role]) acc[user.role] = [];
+    acc[user.role].push(user);
+    return acc;
+  }, {} as Record<string, User[]>);
+
+  /**
+   * Maneja la creación de un nuevo usuario
+   * Crea tanto el usuario de autenticación como el perfil
+   */
+  const handleCreateUser = async () => {
+    try {
+      setLoading(true);
+
+      // Crear usuario en auth.users
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: formData.email,
+        password: formData.password,
+        user_metadata: {
+          full_name: formData.full_name,
+          role: formData.role
+        }
+      });
+
+      if (authError) throw authError;
+
+      // El perfil se crea automáticamente por el trigger handle_new_user
+      // Esperamos un momento y recargamos
+      setTimeout(() => {
+        loadUsers();
+        resetForm();
+        setIsDialogOpen(false);
+        toast({
+          title: 'Usuario creado',
+          description: `Usuario ${formData.full_name} creado exitosamente`
+        });
+      }, 1000);
+
+    } catch (error: any) {
+      console.error('Error creating user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo crear el usuario',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Maneja la edición de un usuario existente
+   * Solo actualiza el perfil, no los datos de autenticación
+   */
+  const handleUpdateUser = async () => {
+    if (!editingUser) return;
+
+    try {
+      setLoading(true);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          phone: formData.phone || null,
+          role: formData.role,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingUser.id);
+
+      if (error) throw error;
+
+      loadUsers();
+      resetForm();
+      setIsDialogOpen(false);
+      toast({
+        title: 'Usuario actualizado',
+        description: `Usuario ${formData.full_name} actualizado exitosamente`
+      });
+
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo actualizar el usuario',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Maneja la eliminación de un usuario
+   * Solo elimina el perfil, mantiene el auth.users para integridad
+   */
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      setLoading(true);
+
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      loadUsers();
+      toast({
+        title: 'Usuario eliminado',
+        description: 'Usuario eliminado exitosamente'
+      });
+
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo eliminar el usuario',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Resetea el formulario a valores iniciales
+   */
+  const resetForm = () => {
+    setFormData({
+      email: '',
+      full_name: '',
+      phone: '',
+      role: 'cliente',
+      password: ''
+    });
+    setEditingUser(null);
+  };
+
+  /**
+   * Prepara el formulario para editar un usuario
+   */
+  const startEdit = (user: User) => {
+    setFormData({
+      email: user.email,
+      full_name: user.full_name,
+      phone: user.phone || '',
+      role: user.role,
+      password: ''
+    });
+    setEditingUser(user);
+    setIsDialogOpen(true);
+  };
+
+  /**
+   * Obtiene el color del badge según el rol
+   */
+  const getRoleBadgeVariant = (role: string) => {
+    switch (role) {
+      case 'administrador': return 'default';
+      case 'vendedor': return 'secondary';
+      case 'tecnico': return 'outline';
+      case 'cliente': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
+  /**
+   * Traduce roles al español
+   */
+  const translateRole = (role: string) => {
+    const translations = {
+      'administrador': 'Administrador',
+      'vendedor': 'Vendedor',
+      'tecnico': 'Técnico',
+      'cliente': 'Cliente'
+    };
+    return translations[role as keyof typeof translations] || role;
+  };
+
+  if (loading && users.length === 0) {
+    return <div className="text-center py-6">Cargando usuarios...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Controles de búsqueda y filtros */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar por nombre o email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+        <Select value={selectedRole} onValueChange={setSelectedRole}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filtrar por rol" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los roles</SelectItem>
+            <SelectItem value="administrador">Administradores</SelectItem>
+            <SelectItem value="vendedor">Vendedores</SelectItem>
+            <SelectItem value="tecnico">Técnicos</SelectItem>
+            <SelectItem value="cliente">Clientes</SelectItem>
+          </SelectContent>
+        </Select>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={resetForm} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Nuevo Usuario
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>
+                {editingUser ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  disabled={!!editingUser}
+                  placeholder="usuario@ejemplo.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="full_name">Nombre Completo</Label>
+                <Input
+                  id="full_name"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                  placeholder="Juan Pérez"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Teléfono (Opcional)</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+1234567890"
+                />
+              </div>
+              <div>
+                <Label htmlFor="role">Rol</Label>
+                <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as User['role'] }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cliente">Cliente</SelectItem>
+                    <SelectItem value="tecnico">Técnico</SelectItem>
+                    <SelectItem value="vendedor">Vendedor</SelectItem>
+                    <SelectItem value="administrador">Administrador</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {!editingUser && (
+                <div>
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={editingUser ? handleUpdateUser : handleCreateUser}
+                  disabled={!formData.email || !formData.full_name || (!editingUser && !formData.password)}
+                >
+                  {editingUser ? 'Actualizar' : 'Crear'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Lista de usuarios agrupados por rol */}
+      <div className="space-y-6">
+        {Object.entries(usersByRole).map(([role, roleUsers]) => (
+          <Card key={role}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserCircle className="h-5 w-5" />
+                {translateRole(role)} ({roleUsers.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {roleUsers.map((user) => (
+                  <Card key={user.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-foreground">{user.full_name}</h4>
+                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          {user.phone && (
+                            <p className="text-xs text-muted-foreground">{user.phone}</p>
+                          )}
+                        </div>
+                        <Badge variant={getRoleBadgeVariant(user.role)}>
+                          {translateRole(user.role)}
+                        </Badge>
+                      </div>
+                      
+                      <Separator className="my-3" />
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="text-xs text-muted-foreground">
+                          Creado: {new Date(user.created_at).toLocaleDateString()}
+                        </div>
+                        <div className="flex gap-1">
+                          {(user.role === 'tecnico' || user.role === 'vendedor') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onUserSelect(user.user_id, user.role)}
+                              className="text-xs"
+                            >
+                              Habilidades
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => startEdit(user)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción eliminará el perfil de {user.full_name}. 
+                                  Los datos de autenticación se conservarán por seguridad.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredUsers.length === 0 && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <UserCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">
+              {searchTerm ? 'No se encontraron usuarios con esos criterios' : 'No hay usuarios registrados'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
