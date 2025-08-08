@@ -741,7 +741,13 @@ export type Database = {
           receipt_url: string | null
           status: string
           supplier_id: string | null
+          taxable_amount: number | null
           updated_at: string
+          vat_amount: number | null
+          vat_rate: number | null
+          withdrawal_status: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
         }
         Insert: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -758,7 +764,13 @@ export type Database = {
           receipt_url?: string | null
           status?: string
           supplier_id?: string | null
+          taxable_amount?: number | null
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
+          withdrawal_status?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -775,7 +787,13 @@ export type Database = {
           receipt_url?: string | null
           status?: string
           supplier_id?: string | null
+          taxable_amount?: number | null
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
+          withdrawal_status?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
         }
         Relationships: [
           {
@@ -854,7 +872,10 @@ export type Database = {
           payment_method: string | null
           project_id: string | null
           status: string
+          taxable_amount: number | null
           updated_at: string
+          vat_amount: number | null
+          vat_rate: number | null
         }
         Insert: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -870,7 +891,10 @@ export type Database = {
           payment_method?: string | null
           project_id?: string | null
           status?: string
+          taxable_amount?: number | null
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
@@ -886,7 +910,10 @@ export type Database = {
           payment_method?: string | null
           project_id?: string | null
           status?: string
+          taxable_amount?: number | null
           updated_at?: string
+          vat_amount?: number | null
+          vat_rate?: number | null
         }
         Relationships: [
           {
