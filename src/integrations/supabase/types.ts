@@ -1334,12 +1334,15 @@ export type Database = {
       payrolls: {
         Row: {
           base_salary: number
+          bonus_amount: number | null
+          bonus_description: string | null
           bonuses: number | null
           created_at: string
           created_by: string | null
           deductions: number | null
           employee_id: string | null
           employee_name: string
+          extra_payments: number | null
           id: string
           net_salary: number
           payment_date: string | null
@@ -1351,12 +1354,15 @@ export type Database = {
         }
         Insert: {
           base_salary: number
+          bonus_amount?: number | null
+          bonus_description?: string | null
           bonuses?: number | null
           created_at?: string
           created_by?: string | null
           deductions?: number | null
           employee_id?: string | null
           employee_name: string
+          extra_payments?: number | null
           id?: string
           net_salary: number
           payment_date?: string | null
@@ -1368,12 +1374,15 @@ export type Database = {
         }
         Update: {
           base_salary?: number
+          bonus_amount?: number | null
+          bonus_description?: string | null
           bonuses?: number | null
           created_at?: string
           created_by?: string | null
           deductions?: number | null
           employee_id?: string | null
           employee_name?: string
+          extra_payments?: number | null
           id?: string
           net_salary?: number
           payment_date?: string | null
@@ -1697,6 +1706,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           cutoff_weekday: number
+          default_bonus: number | null
           employee_name: string
           frequency: string
           id: string
@@ -1713,6 +1723,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cutoff_weekday?: number
+          default_bonus?: number | null
           employee_name: string
           frequency?: string
           id?: string
@@ -1729,6 +1740,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cutoff_weekday?: number
+          default_bonus?: number | null
           employee_name?: string
           frequency?: string
           id?: string
@@ -2508,6 +2520,10 @@ export type Database = {
       auto_assign_cleaning_tasks: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      calculate_weekly_payroll_date: {
+        Args: { base_date: string; cutoff_weekday: number }
+        Returns: string
       }
       check_and_award_achievements: {
         Args: Record<PropertyKey, never>

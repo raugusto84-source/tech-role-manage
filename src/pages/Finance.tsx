@@ -144,11 +144,17 @@ export default function Finance() {
   const [pEmployee, setPEmployee] = useState("");
   const [pBaseSalary, setPBaseSalary] = useState("");
   const [pNetSalary, setPNetSalary] = useState("");
+  const [pBonusAmount, setPBonusAmount] = useState("");
+  const [pBonusDesc, setPBonusDesc] = useState("");
+  const [pExtraPayments, setPExtraPayments] = useState("");
   const [pMonth, setPMonth] = useState<number>(new Date().getMonth() + 1);
   const [pYear, setPYear] = useState<number>(new Date().getFullYear());
   const [pAccount, setPAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
   const [pMethod, setPMethod] = useState("");
   const [pRecurring, setPRecurring] = useState<boolean>(false);
+  const [pFrequency, setPFrequency] = useState<"weekly" | "monthly">("weekly");
+  const [pCutoffWeekday, setPCutoffWeekday] = useState<number>(5);
+  const [pDefaultBonus, setPDefaultBonus] = useState("");
 
   const addFixedExpense = async () => {
     try {
@@ -179,15 +185,20 @@ export default function Finance() {
         employee_name: pEmployee,
         base_salary: baseSalary,
         net_salary: netSalary,
+        bonus_amount: pBonusAmount ? Number(pBonusAmount) : 0,
+        bonus_description: pBonusDesc || null,
+        extra_payments: pExtraPayments ? Number(pExtraPayments) : 0,
         period_month: pMonth,
         period_year: pYear,
+        period_week: pFrequency === 'weekly' ? Math.ceil(new Date().getDate() / 7) : null,
         status: "pendiente",
       } as any);
       if (payErr) throw payErr;
 
+      const totalAmount = netSalary + (pBonusAmount ? Number(pBonusAmount) : 0) + (pExtraPayments ? Number(pExtraPayments) : 0);
       const { error: expErr } = await supabase.from("expenses").insert({
-        amount: netSalary,
-        description: `Nómina ${pEmployee} ${pMonth}/${pYear}`,
+        amount: totalAmount,
+        description: `Nómina ${pEmployee} ${pMonth}/${pYear}${pBonusDesc ? ` - ${pBonusDesc}` : ''}`,
         category: "nomina",
         account_type: pAccount as any,
         payment_method: pMethod || null,
@@ -195,7 +206,8 @@ export default function Finance() {
       if (expErr) throw expErr;
 
       toast({ title: "Nómina registrada" });
-      setPEmployee(""); setPBaseSalary(""); setPNetSalary(""); setPMethod(""); setPAccount("fiscal");
+      setPEmployee(""); setPBaseSalary(""); setPNetSalary(""); setPBonusAmount(""); setPBonusDesc("");
+      setPExtraPayments(""); setPMethod(""); setPAccount("fiscal");
       expensesQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible registrar", variant: "destructive" });
@@ -670,6 +682,20 @@ export default function Finance() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   <div>
+                    <label className="text-sm text-muted-foreground">Bono/Extra</label>
+                    <Input type="number" inputMode="decimal" value={pBonusAmount} onChange={e => setPBonusAmount(e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Descripción bono</label>
+                    <Input value={pBonusDesc} onChange={e => setPBonusDesc(e.target.value)} placeholder="Ej. Bono productividad" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Pagos extras</label>
+                    <Input type="number" inputMode="decimal" value={pExtraPayments} onChange={e => setPExtraPayments(e.target.value)} placeholder="0.00" />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div>
                     <label className="text-sm text-muted-foreground">Mes</label>
                     <Input type="number" min={1} max={12} value={pMonth} onChange={e => setPMonth(Number(e.target.value))} />
                   </div>
@@ -694,9 +720,48 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={pMethod} onChange={e => setPMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
+                {pRecurring && (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm text-muted-foreground">Frecuencia</label>
+                      <Select value={pFrequency} onValueChange={(v) => setPFrequency(v as any)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecciona frecuencia" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="weekly">Semanal</SelectItem>
+                          <SelectItem value="monthly">Mensual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {pFrequency === 'weekly' && (
+                      <div>
+                        <label className="text-sm text-muted-foreground">Día de corte</label>
+                        <Select value={pCutoffWeekday.toString()} onValueChange={(v) => setPCutoffWeekday(Number(v))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Día de corte" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Lunes</SelectItem>
+                            <SelectItem value="2">Martes</SelectItem>
+                            <SelectItem value="3">Miércoles</SelectItem>
+                            <SelectItem value="4">Jueves</SelectItem>
+                            <SelectItem value="5">Viernes</SelectItem>
+                            <SelectItem value="6">Sábado</SelectItem>
+                            <SelectItem value="0">Domingo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-sm text-muted-foreground">Bono por defecto</label>
+                      <Input type="number" inputMode="decimal" value={pDefaultBonus} onChange={e => setPDefaultBonus(e.target.value)} placeholder="0.00" />
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 pt-2">
                   <Checkbox id="rec-pay" checked={pRecurring} onCheckedChange={(v) => setPRecurring(!!v)} />
-                  <label htmlFor="rec-pay" className="text-sm">Programar como recurrente (mensual)</label>
+                  <label htmlFor="rec-pay" className="text-sm">Programar como recurrente</label>
                 </div>
                 <div className="flex items-center gap-3 pt-2">
                   <Button onClick={pRecurring ? addRecurringPayroll : addPayroll}>{pRecurring ? 'Programar nómina' : 'Registrar nómina'}</Button>
