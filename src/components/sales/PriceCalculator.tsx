@@ -14,7 +14,9 @@ import { useToast } from '@/hooks/use-toast';
 interface Service {
   id: string;
   name: string;
+  item_type: string;
   cost_price: number;
+  base_price: number;
   vat_rate: number;
   profit_margin_tiers: Array<{
     min_qty: number;
@@ -75,7 +77,7 @@ export function PriceCalculator() {
     try {
       const { data, error } = await supabase
         .from('service_types')
-        .select('id, name, cost_price, vat_rate, profit_margin_tiers, unit, min_quantity, max_quantity')
+        .select('id, name, item_type, cost_price, base_price, vat_rate, profit_margin_tiers, unit, min_quantity, max_quantity')
         .eq('is_active', true)
         .order('name');
 
@@ -92,6 +94,7 @@ export function PriceCalculator() {
       // Transformar datos para que coincidan con nuestra interface
       const transformedServices = (data || []).map(service => ({
         ...service,
+        item_type: service.item_type || 'servicio',
         profit_margin_tiers: Array.isArray(service.profit_margin_tiers) 
           ? service.profit_margin_tiers as Array<{min_qty: number, max_qty: number, margin: number}>
           : []
@@ -295,7 +298,10 @@ export function PriceCalculator() {
                 <SelectContent>
                   {services.map((service) => (
                     <SelectItem key={service.id} value={service.id}>
-                      {service.name} - {formatCurrency(service.cost_price)}/{service.unit}
+                      {service.name} - {service.item_type === 'servicio' 
+                        ? formatCurrency(service.base_price) 
+                        : formatCurrency(service.cost_price)
+                      }/{service.unit}
                     </SelectItem>
                   ))}
                 </SelectContent>

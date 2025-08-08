@@ -130,7 +130,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         name: data.name,
         description: data.description,
         category: data.category || 'general',
+        item_type: (data.item_type === 'articulo' ? 'articulo' : 'servicio') as 'servicio' | 'articulo',
         cost_price: data.cost_price || 0,
+        base_price: data.base_price || 0,
         vat_rate: data.vat_rate || 19,
         unit: data.unit || 'unidad',
         min_quantity: data.min_quantity || 1,
@@ -251,7 +253,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         name: values.name,
         description: values.description,
         category: values.category,
+        item_type: values.item_type,
         cost_price: values.cost_price,
+        base_price: values.base_price,
         vat_rate: values.vat_rate,
         unit: values.unit,
         min_quantity: values.min_quantity,
@@ -263,8 +267,6 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           max_qty: tier.max_qty,
           margin: tier.margin,
         })),
-        // Mantener compatibilidad con base_price
-        base_price: values.cost_price,
       };
 
       if (serviceId) {
