@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Quotes from "./pages/Quotes";
+import Sales from "./pages/Sales";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/ClientDashboard";
@@ -49,6 +50,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Quotes />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/ventas" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador', 'vendedor']}>
+                  <Sales />
                 </ProtectedRoute>
               } 
             />

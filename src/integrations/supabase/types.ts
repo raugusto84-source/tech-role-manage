@@ -2071,36 +2071,57 @@ export type Database = {
       service_types: {
         Row: {
           base_price: number | null
+          category: string | null
+          cost_price: number | null
           created_at: string
           created_by: string | null
           description: string | null
           estimated_hours: number | null
           id: string
           is_active: boolean
+          max_quantity: number | null
+          min_quantity: number | null
           name: string
+          profit_margin_tiers: Json | null
+          unit: string | null
           updated_at: string
+          vat_rate: number | null
         }
         Insert: {
           base_price?: number | null
+          category?: string | null
+          cost_price?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           estimated_hours?: number | null
           id?: string
           is_active?: boolean
+          max_quantity?: number | null
+          min_quantity?: number | null
           name: string
+          profit_margin_tiers?: Json | null
+          unit?: string | null
           updated_at?: string
+          vat_rate?: number | null
         }
         Update: {
           base_price?: number | null
+          category?: string | null
+          cost_price?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
           estimated_hours?: number | null
           id?: string
           is_active?: boolean
+          max_quantity?: number | null
+          min_quantity?: number | null
           name?: string
+          profit_margin_tiers?: Json | null
+          unit?: string | null
           updated_at?: string
+          vat_rate?: number | null
         }
         Relationships: []
       }
@@ -2806,6 +2827,16 @@ export type Database = {
       auto_assign_cleaning_tasks: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      calculate_service_price: {
+        Args: { p_service_id: string; p_quantity?: number }
+        Returns: {
+          cost_price: number
+          profit_margin: number
+          vat_amount: number
+          final_price: number
+          unit_price: number
+        }[]
       }
       calculate_weekly_payroll_date: {
         Args: { base_date: string; cutoff_weekday: number }
