@@ -677,6 +677,54 @@ export type Database = {
           },
         ]
       }
+      employee_payments: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          employee_id: string
+          employee_name: string
+          id: string
+          payment_date: string
+          payment_method: string | null
+          payment_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id: string
+          employee_name: string
+          id?: string
+          payment_date?: string
+          payment_method?: string | null
+          payment_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          employee_id?: string
+          employee_name?: string
+          id?: string
+          payment_date?: string
+          payment_method?: string | null
+          payment_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -1269,6 +1317,7 @@ export type Database = {
           net_salary: number
           payment_date: string | null
           period_month: number
+          period_week: number | null
           period_year: number
           status: string
           updated_at: string
@@ -1285,6 +1334,7 @@ export type Database = {
           net_salary: number
           payment_date?: string | null
           period_month: number
+          period_week?: number | null
           period_year: number
           status?: string
           updated_at?: string
@@ -1301,6 +1351,7 @@ export type Database = {
           net_salary?: number
           payment_date?: string | null
           period_month?: number
+          period_week?: number | null
           period_year?: number
           status?: string
           updated_at?: string
@@ -1618,6 +1669,7 @@ export type Database = {
           base_salary: number
           created_at: string
           created_by: string | null
+          cutoff_weekday: number
           employee_name: string
           frequency: string
           id: string
@@ -1633,6 +1685,7 @@ export type Database = {
           base_salary: number
           created_at?: string
           created_by?: string | null
+          cutoff_weekday?: number
           employee_name: string
           frequency?: string
           id?: string
@@ -1648,6 +1701,7 @@ export type Database = {
           base_salary?: number
           created_at?: string
           created_by?: string | null
+          cutoff_weekday?: number
           employee_name?: string
           frequency?: string
           id?: string
