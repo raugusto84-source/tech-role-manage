@@ -94,10 +94,7 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
       setLoading(true);
       let query = supabase
         .from('work_schedules')
-        .select(`
-          *,
-          profiles!work_schedules_employee_id_fkey(full_name, role)
-        `)
+        .select('*')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
