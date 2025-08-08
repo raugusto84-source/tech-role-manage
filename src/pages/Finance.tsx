@@ -61,7 +61,7 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,created_at").order("income_date", { ascending: false });
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at").order("income_date", { ascending: false });
       if (startDate) q = q.gte("income_date", startDate);
       if (endDate) q = q.lte("income_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
@@ -74,7 +74,7 @@ export default function Finance() {
   const expensesQuery = useQuery({
     queryKey: ["expenses", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,created_at").order("expense_date", { ascending: false });
+      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,created_at").order("expense_date", { ascending: false });
       if (startDate) q = q.gte("expense_date", startDate);
       if (endDate) q = q.lte("expense_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
@@ -111,16 +111,36 @@ export default function Finance() {
     }
   });
 
-  // Query para gestión de IVA
-  const vatManagementQuery = useQuery({
-    queryKey: ["vat_management", startDate, endDate],
+  // Query para gestión de IVA - ahora desde incomes y expenses
+  const vatDetailsQuery = useQuery({
+    queryKey: ["vat_details", startDate, endDate],
     queryFn: async () => {
-      let q = supabase.from("vat_management").select("*").order("transaction_date", { ascending: false });
-      if (startDate) q = q.gte("transaction_date", startDate);
-      if (endDate) q = q.lte("transaction_date", endDate);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
+      const [incomesData, expensesData] = await Promise.all([
+        supabase.from("incomes")
+          .select("income_date, description, amount, vat_rate, vat_amount, taxable_amount")
+          .eq("account_type", "fiscal")
+          .not("vat_amount", "is", null)
+          .gte("income_date", startDate)
+          .lte("income_date", endDate)
+          .order("income_date", { ascending: false }),
+        supabase.from("expenses")
+          .select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount")
+          .eq("account_type", "fiscal")
+          .not("vat_amount", "is", null)
+          .gte("expense_date", startDate)
+          .lte("expense_date", endDate)
+          .order("expense_date", { ascending: false })
+      ]);
+      
+      if (incomesData.error) throw incomesData.error;
+      if (expensesData.error) throw expensesData.error;
+      
+      const combined = [
+        ...(incomesData.data || []).map(item => ({ ...item, date: item.income_date, type: 'ingresos' })),
+        ...(expensesData.data || []).map(item => ({ ...item, date: item.expense_date, type: 'egresos' }))
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      return combined;
     }
   });
 
@@ -197,12 +217,10 @@ export default function Finance() {
   const [pCutoffWeekday, setPCutoffWeekday] = useState<number>(5);
   const [pDefaultBonus, setPDefaultBonus] = useState("");
 
-  // Estados para IVA
-  const [vatType, setVatType] = useState<"ingresos" | "egresos">("ingresos");
-  const [vatDescription, setVatDescription] = useState("");
-  const [vatAmount, setVatAmount] = useState("");
-  const [vatRate, setVatRate] = useState("16");
-  const [vatDate, setVatDate] = useState(new Date().toISOString().substring(0, 10));
+  // Estados para IVA (ya no se usan para registrar, solo para mostrar cálculos)
+  const [showVatCalculator, setShowVatCalculator] = useState(false);
+  const [tempAmount, setTempAmount] = useState("");
+  const [tempVatRate, setTempVatRate] = useState("16");
   
   // Estados para gastos fiscales seleccionados
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
@@ -379,28 +397,13 @@ export default function Finance() {
     }
   };
 
-  // Funciones para gestión de IVA
-  const addVatRecord = async () => {
-    try {
-      const amount = Number(vatAmount);
-      const rate = Number(vatRate);
-      if (!vatDescription || !amount || !rate) throw new Error("Completa todos los campos");
-      const { error } = await supabase.from("vat_management").insert({
-        transaction_type: vatType,
-        description: vatDescription,
-        amount,
-        vat_rate: rate,
-        transaction_date: vatDate,
-        account_type: "fiscal",
-      } as any);
-      if (error) throw error;
-      toast({ title: "Registro IVA agregado" });
-      setVatDescription(""); setVatAmount(""); setVatRate("16"); 
-      vatManagementQuery.refetch();
-      vatSummaryQuery.refetch();
-    } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
-    }
+  // Funciones para gestión de IVA (ya no se registra manualmente)
+  const calculateVat = (amount: number, rate: number) => {
+    return (amount * rate) / 100;
+  };
+
+  const calculateTotal = (amount: number, rate: number) => {
+    return amount + calculateVat(amount, rate);
   };
 
   // Funciones para retiro de gastos fiscales
@@ -540,6 +543,8 @@ export default function Finance() {
                         <TableHead>#</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
@@ -548,13 +553,19 @@ export default function Finance() {
                     </TableHeader>
                     <TableBody>
                       {incomesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
                       )}
                       {!incomesQuery.isLoading && incomesFiscal.map((r: any) => (
                         <TableRow key={r.id}>
                           <TableCell>{r.income_number}</TableCell>
                           <TableCell>{r.income_date}</TableCell>
-                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell className="text-green-600">
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
@@ -627,6 +638,8 @@ export default function Finance() {
                         <TableHead>#</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
@@ -634,13 +647,19 @@ export default function Finance() {
                     </TableHeader>
                     <TableBody>
                       {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8}>Cargando...</TableCell></TableRow>
                       )}
                       {!expensesQuery.isLoading && expensesFiscal.map((r: any) => (
                         <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
-                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell className="text-red-600">
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
@@ -665,6 +684,8 @@ export default function Finance() {
                         <TableHead>#</TableHead>
                         <TableHead>Fecha</TableHead>
                         <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
@@ -672,13 +693,19 @@ export default function Finance() {
                     </TableHeader>
                     <TableBody>
                       {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8}>Cargando...</TableCell></TableRow>
                       )}
                       {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => (
                         <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
-                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell className="text-red-600">
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
@@ -994,45 +1021,26 @@ export default function Finance() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Registrar IVA</CardTitle>
+                <CardTitle>Calculadora de IVA</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Herramienta para calcular IVA. El IVA se registra automáticamente al crear ingresos/egresos fiscales.
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm text-muted-foreground">Tipo de transacción</label>
-                  <Select value={vatType} onValueChange={(v) => setVatType(v as any)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ingresos">IVA de facturas emitidas (nosotros cobramos)</SelectItem>
-                      <SelectItem value="egresos">IVA de facturas recibidas (nos cobran)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div>
-                  <label className="text-sm text-muted-foreground">Descripción</label>
-                  <Input 
-                    value={vatDescription} 
-                    onChange={e => setVatDescription(e.target.value)} 
-                    placeholder="Descripción de la transacción" 
-                  />
-                </div>
-                
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <label className="text-sm text-muted-foreground">Monto base (sin IVA)</label>
                     <Input 
                       type="number" 
                       inputMode="decimal" 
-                      value={vatAmount} 
-                      onChange={e => setVatAmount(e.target.value)} 
+                      value={tempAmount} 
+                      onChange={e => setTempAmount(e.target.value)} 
                       placeholder="0.00" 
                     />
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Tasa IVA (%)</label>
-                    <Select value={vatRate} onValueChange={setVatRate}>
+                    <Select value={tempVatRate} onValueChange={setTempVatRate}>
                       <SelectTrigger>
                         <SelectValue placeholder="Tasa" />
                       </SelectTrigger>
@@ -1046,28 +1054,31 @@ export default function Finance() {
                   </div>
                 </div>
                 
-                <div>
-                  <label className="text-sm text-muted-foreground">Fecha</label>
-                  <Input 
-                    type="date" 
-                    value={vatDate} 
-                    onChange={e => setVatDate(e.target.value)} 
-                  />
-                </div>
-                
-                {vatAmount && vatRate && (
-                  <div className="p-3 bg-muted rounded-lg">
-                    <div className="text-sm">
-                      <div>Monto base: {Number(vatAmount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
-                      <div>IVA ({vatRate}%): {(Number(vatAmount) * Number(vatRate) / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
-                      <div className="font-semibold">Total: {(Number(vatAmount) * (1 + Number(vatRate) / 100)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                {tempAmount && tempVatRate && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm space-y-2">
+                      <div className="flex justify-between">
+                        <span>Monto base:</span>
+                        <span>{Number(tempAmount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
+                      </div>
+                      <div className="flex justify-between text-blue-600">
+                        <span>IVA ({tempVatRate}%):</span>
+                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                        <span>Total:</span>
+                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
+                      </div>
                     </div>
                   </div>
                 )}
                 
-                <Button onClick={addVatRecord} className="w-full">
-                  Registrar IVA
-                </Button>
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> Para registrar transacciones con IVA, ve a la sección de Ingresos o Egresos 
+                    y configura el IVA al crear cada registro.
+                  </p>
+                </div>
               </CardContent>
             </Card>
 
@@ -1116,7 +1127,10 @@ export default function Finance() {
 
           <Card className="mt-4">
             <CardHeader>
-              <CardTitle>Detalle de Registros IVA</CardTitle>
+              <CardTitle>Detalle de Registros con IVA</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Transacciones fiscales que incluyen IVA registrado automáticamente
+              </p>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -1133,34 +1147,36 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vatManagementQuery.isLoading && (
+                    {vatDetailsQuery.isLoading && (
                       <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
                     )}
-                    {!vatManagementQuery.isLoading && (vatManagementQuery.data ?? []).map((vat: any) => (
-                      <TableRow key={vat.id}>
-                        <TableCell>{vat.transaction_date}</TableCell>
+                    {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).map((vat: any, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell>{vat.date}</TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                            vat.transaction_type === 'ingresos' 
+                            vat.type === 'ingresos' 
                               ? 'bg-green-100 text-green-700' 
                               : 'bg-red-100 text-red-700'
                           }`}>
-                            {vat.transaction_type === 'ingresos' ? 'Cobrado' : 'Pagado'}
+                            {vat.type === 'ingresos' ? 'Ingreso' : 'Egreso'}
                           </span>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate" title={vat.description}>
                           {vat.description}
                         </TableCell>
-                        <TableCell>{Number(vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
-                        <TableCell>{vat.vat_rate}%</TableCell>
-                        <TableCell>{Number(vat.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>{Number(vat.taxable_amount || vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>{vat.vat_rate || 0}%</TableCell>
+                        <TableCell className={vat.type === 'ingresos' ? 'text-green-600' : 'text-red-600'}>
+                          {Number(vat.vat_amount || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                        </TableCell>
                         <TableCell className="font-semibold">
-                          {(Number(vat.amount) + Number(vat.vat_amount)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
                         </TableCell>
                       </TableRow>
                     ))}
-                    {!vatManagementQuery.isLoading && (vatManagementQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>No hay registros de IVA para el período seleccionado.</TableCell></TableRow>
+                    {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).length === 0 && (
+                      <TableRow><TableCell colSpan={7}>No hay registros con IVA para el período seleccionado.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
