@@ -3,9 +3,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { ImprovedTechnicianSkillsPanel } from '@/components/admin/ImprovedTechnicianSkillsPanel';
 import { SalesSkillsPanel } from '@/components/admin/SalesSkillsPanel';
+import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users as UsersIcon, Wrench, Store } from 'lucide-react';
+import { Users as UsersIcon, Wrench, Store, Clock } from 'lucide-react';
 
 /**
  * Página principal de administración de usuarios
@@ -47,7 +48,7 @@ export default function Users() {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UsersIcon className="h-4 w-4" />
               Usuarios
@@ -59,6 +60,10 @@ export default function Users() {
             <TabsTrigger value="sales-skills" className="flex items-center gap-2">
               <Store className="h-4 w-4" />
               Conocimientos de Ventas
+            </TabsTrigger>
+            <TabsTrigger value="work-schedules" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Horarios de Trabajo
             </TabsTrigger>
           </TabsList>
 
@@ -108,6 +113,25 @@ export default function Users() {
               </CardHeader>
               <CardContent>
                 <SalesSkillsPanel 
+                  selectedUserId={selectedUserId}
+                  selectedUserRole={selectedUserRole}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Panel de horarios de trabajo */}
+          <TabsContent value="work-schedules" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Horarios de Trabajo</CardTitle>
+                <CardDescription>
+                  Gestiona los horarios de trabajo de técnicos, vendedores y administradores.
+                  Configura días, horas y tiempos de descanso.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <WorkSchedulePanel 
                   selectedUserId={selectedUserId}
                   selectedUserRole={selectedUserRole}
                 />
