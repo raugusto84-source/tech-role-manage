@@ -255,9 +255,9 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
 
   const calculateSalaryBreakdown = (schedule: WorkSchedule) => {
     const weeklyHours = calculateWeeklyHours(schedule);
-    const monthlyHours = weeklyHours * 4.33; // Average weeks per month
-    const hourlyRate = monthlyHours > 0 ? schedule.monthly_salary / monthlyHours : 0;
-    const dailyRate = hourlyRate * (weeklyHours / schedule.work_days.length);
+    // Calculate hourly rate: salary / 4 weeks / 5 days / 8 hours
+    const hourlyRate = schedule.monthly_salary / 4 / 5 / 8;
+    const dailyRate = hourlyRate * 8; // 8 hours per day
     const overtimeRate = hourlyRate * schedule.overtime_rate_multiplier;
     
     return {
