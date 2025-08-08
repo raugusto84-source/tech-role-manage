@@ -26,6 +26,9 @@ interface ChatMessage {
   message: string;
   created_at: string;
   read_at?: string | null;
+  sender_profile?: {
+    full_name: string;
+  } | null;
 }
 
 export function OrderChat({ orderId, disabled }: OrderChatProps) {
@@ -33,6 +36,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [userProfiles, setUserProfiles] = useState<Record<string, string>>({});
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const canSend = useMemo(() => !!user && !disabled && newMessage.trim().length > 0, [user, disabled, newMessage]);
@@ -51,6 +55,23 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
         return;
       }
       setMessages(data || []);
+      
+      // Cargar perfiles de usuarios únicos
+      if (data && data.length > 0) {
+        const uniqueUserIds = [...new Set(data.map(msg => msg.sender_id))];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", uniqueUserIds);
+        
+        if (profiles) {
+          const profileMap = profiles.reduce((acc, profile) => {
+            acc[profile.user_id] = profile.full_name;
+            return acc;
+          }, {} as Record<string, string>);
+          setUserProfiles(profileMap);
+        }
+      }
     };
     load();
   }, [orderId]);
@@ -67,9 +88,25 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
           table: "order_chat_messages",
           filter: `order_id=eq.${orderId}`,
         },
-        (payload) => {
+        async (payload) => {
           const msg = payload.new as ChatMessage;
           setMessages((prev) => [...prev, msg]);
+          
+          // Cargar el perfil del nuevo usuario si no lo tenemos
+          if (!userProfiles[msg.sender_id]) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("user_id, full_name")
+              .eq("user_id", msg.sender_id)
+              .single();
+            
+            if (profile) {
+              setUserProfiles(prev => ({
+                ...prev,
+                [profile.user_id]: profile.full_name
+              }));
+            }
+          }
         }
       )
       .subscribe();
@@ -77,7 +114,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orderId]);
+  }, [orderId, userProfiles]);
 
   // Auto-scroll al último mensaje
   useEffect(() => {
@@ -121,6 +158,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
         <div className="flex flex-col gap-3">
           {messages.map((m) => {
             const isOwn = m.sender_id === user?.id;
+            const senderName = userProfiles[m.sender_id] || "Usuario";
             return (
               <div key={m.id} className={`flex ${isOwn ? "justify-end" : "justify-start"}`}>
                 <div
@@ -128,8 +166,14 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
                     isOwn ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                   }`}
                 >
+                  {!isOwn && (
+                    <div className={`text-xs font-medium mb-1 ${isOwn ? "text-primary-foreground/90" : "text-muted-foreground"}`}>
+                      {senderName}
+                    </div>
+                  )}
                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.message}</p>
                   <div className={`mt-1 text-[10px] ${isOwn ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                    {isOwn && "Tú • "}
                     {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </div>
                 </div>
