@@ -2,3 +2,6 @@ project_id = "exunjybsermnxvrvyxnj"
 
 [functions.run-fixed-expenses]
 verify_jwt = true
+
+[functions.run-recurring-payrolls]
+verify_jwt = true

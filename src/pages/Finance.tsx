@@ -35,6 +35,8 @@ function exportCsv(filename: string, rows: Record<string, any>[]) {
 
 export default function Finance() {
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const isAdmin = profile?.role === 'administrador';
 
   // SEO básico
   useEffect(() => {
@@ -106,6 +108,18 @@ export default function Finance() {
     }
   });
   
+  const recurringPayrollsQuery = useQuery({
+    queryKey: ["recurring_payrolls"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("recurring_payrolls")
+        .select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active")
+        .order("next_run_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+  
   const incomesTotal = useMemo(() => (incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [incomesQuery.data]);
   const expensesTotal = useMemo(() => (expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [expensesQuery.data]);
 
@@ -134,6 +148,7 @@ export default function Finance() {
   const [pYear, setPYear] = useState<number>(new Date().getFullYear());
   const [pAccount, setPAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
   const [pMethod, setPMethod] = useState("");
+  const [pRecurring, setPRecurring] = useState<boolean>(false);
 
   const addFixedExpense = async () => {
     try {
@@ -207,6 +222,97 @@ export default function Finance() {
       fixedExpensesQuery.refetch();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible ejecutar', variant: 'destructive' });
+    }
+  };
+
+  const addRecurringPayroll = async () => {
+    try {
+      const baseSalary = Number(pBaseSalary);
+      const netSalary = Number(pNetSalary);
+      if (!pEmployee || !netSalary || !baseSalary) throw new Error('Completa empleado y montos válidos');
+      const { error } = await supabase.from('recurring_payrolls').insert({
+        employee_name: pEmployee,
+        base_salary: baseSalary,
+        net_salary: netSalary,
+        account_type: pAccount as any,
+        payment_method: pMethod || null,
+        frequency: 'monthly',
+      } as any);
+      if (error) throw error;
+      toast({ title: 'Nómina recurrente programada' });
+      setPEmployee(''); setPBaseSalary(''); setPNetSalary(''); setPMethod(''); setPAccount('fiscal'); setPRecurring(false);
+      recurringPayrollsQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible programar', variant: 'destructive' });
+    }
+  };
+
+  const toggleRecurringPayrollActive = async (row: any) => {
+    try {
+      const { error } = await supabase.from('recurring_payrolls').update({ active: !row.active }).eq('id', row.id);
+      if (error) throw error;
+      toast({ title: row.active ? 'Recurrente desactivado' : 'Recurrente activado' });
+      recurringPayrollsQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
+    }
+  };
+
+  const runRecurringNow = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('run-recurring-payrolls');
+      if (error) throw error as any;
+      toast({ title: 'Nóminas recurrentes ejecutadas', description: `Procesadas: ${data?.created ?? 0}` });
+      expensesQuery.refetch();
+      recurringPayrollsQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible ejecutar', variant: 'destructive' });
+    }
+  };
+
+  const handleRevertExpense = async (row: any) => {
+    if (!isAdmin) return;
+    try {
+      const today = new Date().toISOString().substring(0,10);
+      const { error: insErr } = await supabase.from('incomes').insert({
+        amount: row.amount,
+        description: `Reverso egreso ${row.expense_number ?? ''} - ${row.description ?? ''}`.trim(),
+        account_type: row.account_type,
+        category: 'reverso',
+        income_date: today,
+        payment_method: row.payment_method ?? null,
+      } as any);
+      if (insErr) throw insErr;
+      const { error: delErr } = await supabase.from('expenses').delete().eq('id', row.id);
+      if (delErr) throw delErr;
+      toast({ title: 'Egreso revertido' });
+      incomesQuery.refetch();
+      expensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
+    }
+  };
+
+  const handleRevertIncome = async (row: any) => {
+    if (!isAdmin) return;
+    try {
+      const today = new Date().toISOString().substring(0,10);
+      const { error: insErr } = await supabase.from('expenses').insert({
+        amount: row.amount,
+        description: `Reverso ingreso ${row.income_number ?? ''} - ${row.description ?? ''}`.trim(),
+        category: 'reverso',
+        account_type: row.account_type,
+        payment_method: row.payment_method ?? null,
+        expense_date: today,
+      } as any);
+      if (insErr) throw insErr;
+      const { error: delErr } = await supabase.from('incomes').delete().eq('id', row.id);
+      if (delErr) throw delErr;
+      toast({ title: 'Ingreso revertido' });
+      incomesQuery.refetch();
+      expensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
     }
   };
 
@@ -315,11 +421,12 @@ export default function Finance() {
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {incomesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
                       )}
                       {!incomesQuery.isLoading && incomesFiscal.map((r: any) => (
                         <TableRow key={r.id}>
@@ -329,6 +436,11 @@ export default function Finance() {
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                          <TableCell>
+                            {isAdmin && (
+                              <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -353,6 +465,7 @@ export default function Finance() {
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -581,10 +694,55 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={pMethod} onChange={e => setPMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
-                <div className="pt-2">
-                  <Button onClick={addPayroll}>Registrar nómina</Button>
+                <div className="flex items-center gap-2 pt-2">
+                  <Checkbox id="rec-pay" checked={pRecurring} onCheckedChange={(v) => setPRecurring(!!v)} />
+                  <label htmlFor="rec-pay" className="text-sm">Programar como recurrente (mensual)</label>
                 </div>
-                <p className="text-xs text-muted-foreground">Se crea registro en Nóminas y egreso asociado en la cuenta elegida.</p>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={pRecurring ? addRecurringPayroll : addPayroll}>{pRecurring ? 'Programar nómina' : 'Registrar nómina'}</Button>
+                  <Button variant="secondary" onClick={runRecurringNow}>Ejecutar recurrentes ahora</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Si marcas recurrente, se programará mensual y podrás ejecutarlo manualmente o con cron.</p>
+
+                <div className="pt-4">
+                  <div className="text-sm font-medium mb-2">Nóminas programadas</div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Empleado</TableHead>
+                          <TableHead>Neto</TableHead>
+                          <TableHead>Cuenta</TableHead>
+                          <TableHead>Próxima ejecución</TableHead>
+                          <TableHead>Activo</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {recurringPayrollsQuery.isLoading && (
+                          <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                        )}
+                        {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).map((rp: any) => (
+                          <TableRow key={rp.id}>
+                            <TableCell>{rp.employee_name}</TableCell>
+                            <TableCell>{Number(rp.net_salary).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                            <TableCell>{rp.account_type}</TableCell>
+                            <TableCell>{rp.next_run_date}</TableCell>
+                            <TableCell>{rp.active ? 'Sí' : 'No'}</TableCell>
+                            <TableCell>
+                              <Button size="sm" variant="outline" onClick={() => toggleRecurringPayrollActive(rp)}>
+                                {rp.active ? 'Desactivar' : 'Activar'}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).length === 0 && (
+                          <TableRow><TableCell colSpan={6}>Sin nóminas programadas.</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
