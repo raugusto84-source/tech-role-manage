@@ -76,7 +76,7 @@ export function CategoryManager({ type, categories, onCategoriesChange }: Catego
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const tableName = type === 'sales' ? 'sales_categories' : 'technical_categories';
+  const tableName = 'sales_categories'; // Only sales categories for now
   const categoryTypeLabel = type === 'sales' ? 'ventas' : 'técnicas';
 
   const resetForm = () => {
