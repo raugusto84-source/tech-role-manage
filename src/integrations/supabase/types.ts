@@ -2769,6 +2769,8 @@ export type Database = {
           end_time: string
           id: string
           is_active: boolean
+          monthly_salary: number | null
+          overtime_rate_multiplier: number | null
           shift_type: Database["public"]["Enums"]["shift_type"]
           start_time: string
           updated_at: string
@@ -2782,6 +2784,8 @@ export type Database = {
           end_time: string
           id?: string
           is_active?: boolean
+          monthly_salary?: number | null
+          overtime_rate_multiplier?: number | null
           shift_type?: Database["public"]["Enums"]["shift_type"]
           start_time: string
           updated_at?: string
@@ -2795,6 +2799,8 @@ export type Database = {
           end_time?: string
           id?: string
           is_active?: boolean
+          monthly_salary?: number | null
+          overtime_rate_multiplier?: number | null
           shift_type?: Database["public"]["Enums"]["shift_type"]
           start_time?: string
           updated_at?: string
@@ -2830,6 +2836,15 @@ export type Database = {
       auto_assign_cleaning_tasks: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      calculate_schedule_weekly_hours: {
+        Args: {
+          work_days: number[]
+          start_time: string
+          end_time: string
+          break_duration_minutes: number
+        }
+        Returns: number
       }
       calculate_service_price: {
         Args: { p_service_id: string; p_quantity?: number }

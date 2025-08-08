@@ -17,6 +17,8 @@ interface WorkSchedule {
   end_time: string;
   work_days: number[];
   break_duration_minutes: number;
+  monthly_salary: number;
+  overtime_rate_multiplier: number;
   is_active: boolean;
   created_at: string;
 }
@@ -54,6 +56,8 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
     end_time: '17:00',
     work_days: [1, 2, 3, 4, 5],
     break_duration_minutes: 60,
+    monthly_salary: 0,
+    overtime_rate_multiplier: 1.5,
   });
   const { toast } = useToast();
 
@@ -138,6 +142,8 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
         end_time: formData.end_time,
         work_days: formData.work_days,
         break_duration_minutes: formData.break_duration_minutes,
+        monthly_salary: formData.monthly_salary,
+        overtime_rate_multiplier: formData.overtime_rate_multiplier,
       };
 
       let error;
@@ -207,6 +213,8 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
       end_time: '17:00',
       work_days: [1, 2, 3, 4, 5],
       break_duration_minutes: 60,
+      monthly_salary: 0,
+      overtime_rate_multiplier: 1.5,
     });
   };
 
@@ -218,6 +226,8 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
       end_time: schedule.end_time,
       work_days: schedule.work_days,
       break_duration_minutes: schedule.break_duration_minutes,
+      monthly_salary: schedule.monthly_salary,
+      overtime_rate_multiplier: schedule.overtime_rate_multiplier,
     });
     setIsDialogOpen(true);
   };
@@ -233,6 +243,29 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
 
   const formatWorkDays = (days: number[]) => {
     return days.map(day => weekDays[day]?.label).join(', ');
+  };
+
+  const calculateWeeklyHours = (schedule: WorkSchedule) => {
+    const startTime = new Date(`2000-01-01T${schedule.start_time}`);
+    const endTime = new Date(`2000-01-01T${schedule.end_time}`);
+    const dailyHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+    const workingHours = dailyHours - (schedule.break_duration_minutes / 60);
+    return workingHours * schedule.work_days.length;
+  };
+
+  const calculateSalaryBreakdown = (schedule: WorkSchedule) => {
+    const weeklyHours = calculateWeeklyHours(schedule);
+    const monthlyHours = weeklyHours * 4.33; // Average weeks per month
+    const hourlyRate = monthlyHours > 0 ? schedule.monthly_salary / monthlyHours : 0;
+    const dailyRate = hourlyRate * (weeklyHours / schedule.work_days.length);
+    const overtimeRate = hourlyRate * schedule.overtime_rate_multiplier;
+    
+    return {
+      weeklyHours: weeklyHours.toFixed(1),
+      hourlyRate: hourlyRate.toFixed(2),
+      dailyRate: dailyRate.toFixed(2),
+      overtimeRate: overtimeRate.toFixed(2)
+    };
   };
 
   const selectedUser = users.find(u => u.user_id === selectedUserId);
@@ -358,6 +391,40 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="monthly_salary">Salario Mensual (₡)</Label>
+                  <Input
+                    id="monthly_salary"
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={formData.monthly_salary}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      monthly_salary: parseFloat(e.target.value) || 0 
+                    }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="overtime_multiplier">Multiplicador Horas Extra</Label>
+                  <Input
+                    id="overtime_multiplier"
+                    type="number"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={formData.overtime_rate_multiplier}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      overtime_rate_multiplier: parseFloat(e.target.value) || 1.5 
+                    }))}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="flex gap-2 pt-4">
                 <Button type="submit" disabled={loading}>
                   {editingSchedule ? 'Actualizar' : 'Crear'}
@@ -392,11 +459,12 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
         <div className="grid gap-4">
           {schedules.map((schedule) => {
             const user = users.find(u => u.user_id === schedule.employee_id);
+            const salaryBreakdown = calculateSalaryBreakdown(schedule);
             return (
               <Card key={schedule.id}>
                 <CardContent className="pt-6">
                   <div className="flex justify-between items-start">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2">
                         <h4 className="font-semibold">
                           {user?.full_name || 'Usuario no encontrado'}
@@ -405,15 +473,38 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
                           {user?.role || 'Sin rol'}
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Horario:</strong> {schedule.start_time} - {schedule.end_time}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Días:</strong> {formatWorkDays(schedule.work_days)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Break:</strong> {schedule.break_duration_minutes} minutos
-                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <p className="text-muted-foreground">
+                            <strong>Horario:</strong> {schedule.start_time} - {schedule.end_time}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <strong>Días:</strong> {formatWorkDays(schedule.work_days)}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <strong>Break:</strong> {schedule.break_duration_minutes} minutos
+                          </p>
+                          <p className="text-muted-foreground">
+                            <strong>Horas/semana:</strong> {salaryBreakdown.weeklyHours}h
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-1">
+                          <p className="text-muted-foreground">
+                            <strong>Salario mensual:</strong> ₡{schedule.monthly_salary.toLocaleString()}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <strong>Tarifa diaria:</strong> ₡{parseFloat(salaryBreakdown.dailyRate).toLocaleString()}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <strong>Tarifa por hora:</strong> ₡{parseFloat(salaryBreakdown.hourlyRate).toLocaleString()}
+                          </p>
+                          <p className="text-muted-foreground">
+                            <strong>Hora extra:</strong> ₡{parseFloat(salaryBreakdown.overtimeRate).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <Button
