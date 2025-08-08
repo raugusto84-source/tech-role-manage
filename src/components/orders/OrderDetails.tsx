@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { OrderChat } from '@/components/orders/OrderChat';
 
 interface OrderDetailsProps {
   order: {
@@ -365,6 +366,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                   <Label className="text-sm font-medium text-muted-foreground">Fecha de Entrega</Label>
                   <p className="text-foreground">{formatDate(order.delivery_date)}</p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Chat de la Orden - visible solo cuando la orden está activa */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MessageSquare className="h-5 w-5 mr-2 text-primary" />
+                  Chat de la Orden
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Se deshabilita cuando la orden NO está activa (finalizada/cancelada) */}
+                <OrderChat orderId={order.id} disabled={!['pendiente','en_proceso'].includes(order.status)} />
               </CardContent>
             </Card>
 
