@@ -123,7 +123,7 @@ export function CategoryManager({ type, categories, onCategoriesChange }: Catego
 
       if (editingCategory) {
         const { error } = await supabase
-          .from(tableName)
+          .from(tableName as any)
           .update(categoryData)
           .eq('id', editingCategory.id);
 
@@ -135,7 +135,7 @@ export function CategoryManager({ type, categories, onCategoriesChange }: Catego
         });
       } else {
         const { error } = await supabase
-          .from(tableName)
+          .from(tableName as any)
           .insert([categoryData]);
 
         if (error) throw error;
@@ -166,7 +166,7 @@ export function CategoryManager({ type, categories, onCategoriesChange }: Catego
       setLoading(true);
 
       const { error } = await supabase
-        .from(tableName)
+        .from(tableName as any)
         .update({ is_active: false })
         .eq('id', categoryId);
 

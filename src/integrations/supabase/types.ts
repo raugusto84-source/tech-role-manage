@@ -2407,6 +2407,127 @@ export type Database = {
           },
         ]
       }
+      technical_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      technical_knowledge: {
+        Row: {
+          category_id: string
+          certifications: string[] | null
+          created_at: string
+          id: string
+          notes: string | null
+          skill_level: number
+          specialization_products: string[] | null
+          technician_id: string
+          updated_at: string
+          years_experience: number
+        }
+        Insert: {
+          category_id: string
+          certifications?: string[] | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          skill_level?: number
+          specialization_products?: string[] | null
+          technician_id: string
+          updated_at?: string
+          years_experience?: number
+        }
+        Update: {
+          category_id?: string
+          certifications?: string[] | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          skill_level?: number
+          specialization_products?: string[] | null
+          technician_id?: string
+          updated_at?: string
+          years_experience?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_knowledge_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "technical_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technical_products: {
+        Row: {
+          brand: string | null
+          category_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          model: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          model?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "technical_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       technician_satisfaction_surveys: {
         Row: {
           client_id: string

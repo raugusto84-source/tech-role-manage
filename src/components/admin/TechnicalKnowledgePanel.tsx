@@ -8,22 +8,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
-  Store, 
-  TrendingUp, 
+  Wrench, 
   Camera, 
   Key, 
   ShieldAlert, 
   Wifi, 
   Lightbulb,
   Package,
-  Plus,
+  Cpu,
+  Monitor,
   Users,
   Settings
 } from 'lucide-react';
 import { SkillLevelEditor } from './SkillLevelEditor';
 import { CategoryManager } from './CategoryManager';
 
-interface SalesCategory {
+interface TechnicalCategory {
   id: string;
   name: string;
   description: string;
@@ -31,7 +31,7 @@ interface SalesCategory {
   is_active: boolean;
 }
 
-interface SalesProduct {
+interface TechnicalProduct {
   id: string;
   category_id: string;
   name: string;
@@ -41,24 +41,26 @@ interface SalesProduct {
   is_active: boolean;
 }
 
-interface SalesKnowledge {
+interface TechnicalKnowledge {
   id: string;
-  salesperson_id: string;
+  technician_id: string;
   category_id: string;
-  knowledge_level: number;
+  skill_level: number;
+  years_experience: number;
   specialization_products: string[];
+  certifications: string[];
   notes?: string;
   created_at: string;
   updated_at: string;
 }
 
-interface Salesperson {
+interface Technician {
   user_id: string;
   full_name: string;
   email: string;
 }
 
-interface SalesKnowledgePanelProps {
+interface TechnicalKnowledgePanelProps {
   selectedUserId?: string | null;
   selectedUserRole?: string | null;
 }
@@ -70,14 +72,17 @@ const CATEGORY_ICONS = {
   wifi: Wifi,
   lightbulb: Lightbulb,
   package: Package,
+  wrench: Wrench,
+  cpu: Cpu,
+  monitor: Monitor,
 };
 
-export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesKnowledgePanelProps) {
-  const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
-  const [categories, setCategories] = useState<SalesCategory[]>([]);
-  const [products, setProducts] = useState<SalesProduct[]>([]);
-  const [knowledge, setKnowledge] = useState<SalesKnowledge[]>([]);
-  const [selectedSalespersonId, setSelectedSalespersonId] = useState<string | null>(selectedUserId);
+export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: TechnicalKnowledgePanelProps) {
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [categories, setCategories] = useState<TechnicalCategory[]>([]);
+  const [products, setProducts] = useState<TechnicalProduct[]>([]);
+  const [knowledge, setKnowledge] = useState<TechnicalKnowledge[]>([]);
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState<string | null>(selectedUserId);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -87,22 +92,22 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
   }, []);
 
   useEffect(() => {
-    if (selectedUserId && selectedUserRole === 'vendedor') {
-      setSelectedSalespersonId(selectedUserId);
+    if (selectedUserId && selectedUserRole === 'tecnico') {
+      setSelectedTechnicianId(selectedUserId);
     }
   }, [selectedUserId, selectedUserRole]);
 
   useEffect(() => {
-    if (selectedSalespersonId) {
-      loadKnowledgeForSalesperson(selectedSalespersonId);
+    if (selectedTechnicianId) {
+      loadKnowledgeForTechnician(selectedTechnicianId);
     }
-  }, [selectedSalespersonId]);
+  }, [selectedTechnicianId]);
 
   const loadInitialData = async () => {
     try {
       setLoading(true);
       await Promise.all([
-        loadSalespeople(),
+        loadTechnicians(),
         loadCategories(),
         loadProducts()
       ]);
@@ -111,25 +116,25 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
     }
   };
 
-  const loadSalespeople = async () => {
+  const loadTechnicians = async () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('user_id, full_name, email')
-        .eq('role', 'vendedor')
+        .eq('role', 'tecnico')
         .order('full_name');
 
       if (error) throw error;
-      setSalespeople(data || []);
+      setTechnicians(data || []);
     } catch (error) {
-      console.error('Error loading salespeople:', error);
+      console.error('Error loading technicians:', error);
     }
   };
 
   const loadCategories = async () => {
     try {
       const { data, error } = await supabase
-        .from('sales_categories')
+        .from('technical_categories')
         .select('*')
         .eq('is_active', true)
         .order('name');
@@ -144,7 +149,7 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
   const loadProducts = async () => {
     try {
       const { data, error } = await supabase
-        .from('sales_products')
+        .from('technical_products')
         .select('*')
         .eq('is_active', true)
         .order('name');
@@ -156,12 +161,12 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
     }
   };
 
-  const loadKnowledgeForSalesperson = async (salespersonId: string) => {
+  const loadKnowledgeForTechnician = async (technicianId: string) => {
     try {
       const { data, error } = await supabase
-        .from('sales_knowledge')
+        .from('technical_knowledge')
         .select('*')
-        .eq('salesperson_id', salespersonId);
+        .eq('technician_id', technicianId);
 
       if (error) throw error;
       setKnowledge(data || []);
@@ -172,29 +177,33 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
   };
 
   const handleCategoryToggle = async (categoryId: string, isChecked: boolean) => {
-    if (!selectedSalespersonId) return;
+    if (!selectedTechnicianId) return;
 
     try {
       if (isChecked) {
         const { error } = await supabase
-          .from('sales_knowledge')
+          .from('technical_knowledge')
           .insert({
-            salesperson_id: selectedSalespersonId,
+            technician_id: selectedTechnicianId,
             category_id: categoryId,
-            knowledge_level: 1,
+            skill_level: 1,
+            years_experience: 0,
             specialization_products: [],
+            certifications: [],
             notes: ''
           });
 
         if (error) throw error;
 
         // Add to local state
-        const newKnowledge: SalesKnowledge = {
+        const newKnowledge: TechnicalKnowledge = {
           id: crypto.randomUUID(),
-          salesperson_id: selectedSalespersonId,
+          technician_id: selectedTechnicianId,
           category_id: categoryId,
-          knowledge_level: 1,
+          skill_level: 1,
+          years_experience: 0,
           specialization_products: [],
+          certifications: [],
           notes: '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
@@ -204,13 +213,13 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
 
         toast({
           title: 'Categoría asignada',
-          description: 'Conocimiento agregado con nivel básico',
+          description: 'Habilidad agregada con nivel básico',
         });
       } else {
         const { error } = await supabase
-          .from('sales_knowledge')
+          .from('technical_knowledge')
           .delete()
-          .eq('salesperson_id', selectedSalespersonId)
+          .eq('technician_id', selectedTechnicianId)
           .eq('category_id', categoryId);
 
         if (error) throw error;
@@ -219,30 +228,34 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
 
         toast({
           title: 'Categoría removida',
-          description: 'Conocimiento eliminado de la categoría',
+          description: 'Habilidad eliminada de la categoría',
         });
       }
     } catch (error: any) {
       console.error('Error toggling category:', error);
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo actualizar el conocimiento',
+        description: error.message || 'No se pudo actualizar la habilidad',
         variant: 'destructive'
       });
     }
   };
 
   const handleKnowledgeUpdate = async (knowledgeId: string, updateData: {
-    knowledge_level: number;
+    skill_level: number;
+    years_experience?: number;
     specialization_products?: string[];
+    certifications?: string[];
     notes?: string;
   }) => {
     try {
       const { error } = await supabase
-        .from('sales_knowledge')
+        .from('technical_knowledge')
         .update({
-          knowledge_level: updateData.knowledge_level,
+          skill_level: updateData.skill_level,
+          years_experience: updateData.years_experience || 0,
           specialization_products: updateData.specialization_products || [],
+          certifications: updateData.certifications || [],
           notes: updateData.notes || '',
           updated_at: new Date().toISOString()
         })
@@ -254,22 +267,24 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
         k.id === knowledgeId 
           ? { 
               ...k, 
-              knowledge_level: updateData.knowledge_level,
+              skill_level: updateData.skill_level,
+              years_experience: updateData.years_experience || 0,
               specialization_products: updateData.specialization_products || [],
+              certifications: updateData.certifications || [],
               notes: updateData.notes || ''
             }
           : k
       ));
 
       toast({
-        title: 'Conocimiento actualizado',
+        title: 'Habilidad actualizada',
         description: 'Los cambios se han guardado correctamente',
       });
     } catch (error: any) {
       console.error('Error updating knowledge:', error);
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo actualizar el conocimiento',
+        description: error.message || 'No se pudo actualizar la habilidad',
         variant: 'destructive'
       });
       throw error;
@@ -285,13 +300,15 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
       : currentKnowledge.specialization_products.filter(id => id !== productId);
 
     await handleKnowledgeUpdate(knowledgeId, {
-      knowledge_level: currentKnowledge.knowledge_level,
+      skill_level: currentKnowledge.skill_level,
+      years_experience: currentKnowledge.years_experience,
       specialization_products: updatedProducts,
+      certifications: currentKnowledge.certifications,
       notes: currentKnowledge.notes
     });
   };
 
-  const renderKnowledgeLevel = (level: number) => {
+  const renderSkillLevel = (level: number) => {
     const labels = ['Principiante', 'Básico', 'Intermedio', 'Avanzado', 'Experto'];
     return (
       <div className="flex items-center gap-2">
@@ -317,7 +334,7 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
   };
 
   const getIconComponent = (iconName: string) => {
-    const IconComponent = CATEGORY_ICONS[iconName as keyof typeof CATEGORY_ICONS] || Package;
+    const IconComponent = CATEGORY_ICONS[iconName as keyof typeof CATEGORY_ICONS] || Wrench;
     return IconComponent;
   };
 
@@ -327,18 +344,18 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
 
   return (
     <div className="space-y-6">
-      {/* Selector de vendedor */}
+      {/* Selector de técnico */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
-          <Label htmlFor="salesperson">Seleccionar Vendedor</Label>
-          <Select value={selectedSalespersonId || ''} onValueChange={setSelectedSalespersonId}>
+          <Label htmlFor="technician">Seleccionar Técnico</Label>
+          <Select value={selectedTechnicianId || ''} onValueChange={setSelectedTechnicianId}>
             <SelectTrigger>
-              <SelectValue placeholder="Selecciona un vendedor para gestionar sus conocimientos" />
+              <SelectValue placeholder="Selecciona un técnico para gestionar sus habilidades" />
             </SelectTrigger>
             <SelectContent>
-              {salespeople.map((salesperson) => (
-                <SelectItem key={salesperson.user_id} value={salesperson.user_id}>
-                  {salesperson.full_name} - {salesperson.email}
+              {technicians.map((technician) => (
+                <SelectItem key={technician.user_id} value={technician.user_id}>
+                  {technician.full_name} - {technician.email}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -346,19 +363,19 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
         </div>
       </div>
 
-      {!selectedSalespersonId ? (
+      {!selectedTechnicianId ? (
         <Card>
           <CardContent className="text-center py-12">
-            <Store className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Gestión de Conocimientos de Ventas</h3>
+            <Wrench className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Gestión de Habilidades Técnicas</h3>
             <p className="text-muted-foreground mb-4">
-              Selecciona un vendedor para gestionar sus conocimientos por categorías de productos
+              Selecciona un técnico para gestionar sus habilidades por categorías técnicas
             </p>
             <div className="text-sm text-muted-foreground">
-              <p>• Organización por categorías de productos</p>
-              <p>• Especialización en productos específicos</p>
-              <p>• Niveles de conocimiento por categoría</p>
-              <p>• Seguimiento detallado de habilidades comerciales</p>
+              <p>• Organización por categorías técnicas</p>
+              <p>• Especialización en productos y tecnologías</p>
+              <p>• Seguimiento de certificaciones</p>
+              <p>• Gestión de años de experiencia</p>
             </div>
           </CardContent>
         </Card>
@@ -366,7 +383,7 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">
-              Conocimientos por Categorías ({categories.length} disponibles)
+              Habilidades por Categorías ({categories.length} disponibles)
             </h3>
             <Button 
               variant="outline" 
@@ -382,7 +399,7 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
             <Card>
               <CardContent className="pt-6">
                 <CategoryManager 
-                  type="sales" 
+                  type="technical" 
                   categories={categories} 
                   onCategoriesChange={loadCategories} 
                 />
@@ -393,9 +410,9 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
           {categories.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
-                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  No hay categorías de productos disponibles
+                  No hay categorías técnicas disponibles
                 </p>
               </CardContent>
             </Card>
@@ -422,11 +439,15 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
                             <CardTitle className="text-lg">{category.name}</CardTitle>
                             {isAssigned && categoryKnowledge && (
                               <SkillLevelEditor
-                                currentLevel={categoryKnowledge.knowledge_level}
+                                currentLevel={categoryKnowledge.skill_level}
+                                currentExperience={categoryKnowledge.years_experience}
+                                currentCertifications={categoryKnowledge.certifications || []}
                                 currentNotes={categoryKnowledge.notes || ''}
                                 serviceName={category.name}
                                 onSave={(data) => handleKnowledgeUpdate(categoryKnowledge.id, {
-                                  knowledge_level: data.skill_level,
+                                  skill_level: data.skill_level,
+                                  years_experience: data.years_experience,
+                                  certifications: data.certifications,
                                   notes: data.notes,
                                   specialization_products: categoryKnowledge.specialization_products
                                 })}
@@ -442,11 +463,35 @@ export function SalesKnowledgePanel({ selectedUserId, selectedUserRole }: SalesK
 
                     {isAssigned && categoryKnowledge && (
                       <CardContent className="space-y-4">
-                        {/* Nivel de conocimiento */}
+                        {/* Nivel de habilidad */}
                         <div>
-                          <p className="text-sm text-muted-foreground mb-2">Nivel de conocimiento:</p>
-                          {renderKnowledgeLevel(categoryKnowledge.knowledge_level)}
+                          <p className="text-sm text-muted-foreground mb-2">Nivel de habilidad:</p>
+                          {renderSkillLevel(categoryKnowledge.skill_level)}
                         </div>
+
+                        {/* Años de experiencia */}
+                        {categoryKnowledge.years_experience > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Experiencia:</p>
+                            <Badge variant="outline">
+                              {categoryKnowledge.years_experience} año{categoryKnowledge.years_experience !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* Certificaciones */}
+                        {categoryKnowledge.certifications && categoryKnowledge.certifications.length > 0 && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-2">Certificaciones:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {categoryKnowledge.certifications.map((cert, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs">
+                                  {cert}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Productos de especialización */}
                         {categoryProducts.length > 0 && (

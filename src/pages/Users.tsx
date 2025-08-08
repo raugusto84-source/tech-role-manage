@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UserManagement } from '@/components/admin/UserManagement';
-import { ImprovedTechnicianSkillsPanel } from '@/components/admin/ImprovedTechnicianSkillsPanel';
+import { TechnicalKnowledgePanel } from '@/components/admin/TechnicalKnowledgePanel';
 import { SalesKnowledgePanel } from '@/components/admin/SalesKnowledgePanel';
 import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -93,7 +93,7 @@ export default function Users() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ImprovedTechnicianSkillsPanel 
+                <TechnicalKnowledgePanel 
                   selectedUserId={selectedUserId}
                   selectedUserRole={selectedUserRole}
                 />
