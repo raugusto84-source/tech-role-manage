@@ -7,25 +7,22 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
 import { Plus, Store, Target, BookOpen, Award, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
-// Tipos para TypeScript
+// Tipos para TypeScript basados en el esquema de la base de datos
 interface SalesSkill {
   id: string;
   salesperson_id: string;
-  skill_category: 'producto' | 'servicio' | 'territorio' | 'industria' | 'herramienta';
+  skill_category: string;
   skill_name: string;
   expertise_level: number; // 1-5
   years_experience: number;
   certifications: string[];
-  achievements: string[];
-  notes?: string;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
 }
 
 interface Salesperson {
@@ -47,8 +44,6 @@ interface SalesSkillsPanelProps {
  * - Categorización de habilidades (productos, servicios, territorios, etc.)
  * - Niveles de expertise (1-5)
  * - Registro de certificaciones comerciales
- * - Logros y objetivos alcanzados
- * - Notas adicionales
  * 
  * Categorías de habilidades:
  * - Productos: Conocimiento específico de productos
@@ -71,20 +66,17 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
-  // Estado del formulario
+  // Estado del formulario - solo campos que existen en la base de datos
   const [skillForm, setSkillForm] = useState({
-    skill_category: 'producto' as SalesSkill['skill_category'],
+    skill_category: 'producto',
     skill_name: '',
     expertise_level: 1,
     years_experience: 0,
-    certifications: [] as string[],
-    achievements: [] as string[],
-    notes: ''
+    certifications: [] as string[]
   });
 
-  // Estados para nuevos elementos
+  // Estado para nuevas certificaciones
   const [newCertification, setNewCertification] = useState('');
-  const [newAchievement, setNewAchievement] = useState('');
 
   useEffect(() => {
     loadSalespeople();
@@ -129,20 +121,13 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
    */
   const loadSkillsForSalesperson = async (salespersonId: string) => {
     try {
-      // Como no existe la tabla sales_skills aún, usaremos la técnica de crear/verificar
       const { data, error } = await supabase
         .from('sales_skills')
         .select('*')
         .eq('salesperson_id', salespersonId)
         .order('skill_category', { ascending: true });
 
-      if (error) {
-        // Si la tabla no existe, inicializamos vacío
-        console.warn('Sales skills table not found, initializing empty state');
-        setSkills([]);
-        return;
-      }
-      
+      if (error) throw error;
       setSkills(data || []);
     } catch (error) {
       console.error('Error loading sales skills:', error);
@@ -165,9 +150,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
           skill_name: skillForm.skill_name,
           expertise_level: skillForm.expertise_level,
           years_experience: skillForm.years_experience,
-          certifications: skillForm.certifications,
-          achievements: skillForm.achievements,
-          notes: skillForm.notes || null
+          certifications: skillForm.certifications
         });
 
       if (error) throw error;
@@ -182,17 +165,6 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
     } catch (error: any) {
       console.error('Error creating sales skill:', error);
-      
-      // Si la tabla no existe, sugerimos crear la migración
-      if (error.code === '42P01') {
-        toast({
-          title: 'Tabla requerida',
-          description: 'La tabla de habilidades de ventas necesita ser creada en la base de datos',
-          variant: 'destructive'
-        });
-        return;
-      }
-
       toast({
         title: 'Error',
         description: error.message || 'No se pudo añadir el conocimiento',
@@ -255,29 +227,6 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
   };
 
   /**
-   * Añade un nuevo logro
-   */
-  const addAchievement = () => {
-    if (newAchievement.trim()) {
-      setSkillForm(prev => ({
-        ...prev,
-        achievements: [...prev.achievements, newAchievement.trim()]
-      }));
-      setNewAchievement('');
-    }
-  };
-
-  /**
-   * Elimina un logro
-   */
-  const removeAchievement = (index: number) => {
-    setSkillForm(prev => ({
-      ...prev,
-      achievements: prev.achievements.filter((_, i) => i !== index)
-    }));
-  };
-
-  /**
    * Resetea el formulario
    */
   const resetForm = () => {
@@ -286,12 +235,9 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
       skill_name: '',
       expertise_level: 1,
       years_experience: 0,
-      certifications: [],
-      achievements: [],
-      notes: ''
+      certifications: []
     });
     setNewCertification('');
-    setNewAchievement('');
   };
 
   /**
@@ -390,7 +336,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="category">Categoría</Label>
-                  <Select value={skillForm.skill_category} onValueChange={(value) => setSkillForm(prev => ({ ...prev, skill_category: value as SalesSkill['skill_category'] }))}>
+                  <Select value={skillForm.skill_category} onValueChange={(value) => setSkillForm(prev => ({ ...prev, skill_category: value }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
@@ -477,49 +423,6 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
                   </div>
                 </div>
                 
-                <div>
-                  <Label>Logros y Objetivos</Label>
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Descripción del logro"
-                        value={newAchievement}
-                        onChange={(e) => setNewAchievement(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && addAchievement()}
-                      />
-                      <Button type="button" onClick={addAchievement} size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {skillForm.achievements.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {skillForm.achievements.map((achievement, index) => (
-                          <Badge key={index} variant="outline" className="flex items-center gap-1">
-                            {achievement}
-                            <button
-                              type="button"
-                              onClick={() => removeAchievement(index)}
-                              className="ml-1 text-xs"
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="notes">Notas Adicionales</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Observaciones, planes de desarrollo, etc."
-                    value={skillForm.notes}
-                    onChange={(e) => setSkillForm(prev => ({ ...prev, notes: e.target.value }))}
-                  />
-                </div>
-                
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                     Cancelar
@@ -550,9 +453,6 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
                 <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
                   Este vendedor no tiene conocimientos registrados aún
-                </p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Nota: Se requiere crear la tabla 'sales_skills' en la base de datos
                 </p>
               </CardContent>
             </Card>
@@ -624,29 +524,6 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
                                 </div>
                               </div>
                             )}
-                            
-                            {skill.achievements && skill.achievements.length > 0 && (
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Target className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm font-medium">Logros:</span>
-                                </div>
-                                <div className="flex flex-wrap gap-1">
-                                  {skill.achievements.map((achievement, index) => (
-                                    <Badge key={index} variant="secondary" className="text-xs">
-                                      {achievement}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {skill.notes && (
-                              <div>
-                                <Separator className="my-2" />
-                                <p className="text-xs text-muted-foreground">{skill.notes}</p>
-                              </div>
-                            )}
                           </CardContent>
                         </Card>
                       ))}
@@ -673,7 +550,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
                 industrias y herramientas de cada vendedor.
               </p>
               <p>
-                Incluye certificaciones, logros y planes de desarrollo profesional.
+                Incluye certificaciones y niveles de experiencia.
               </p>
             </div>
           </CardContent>
