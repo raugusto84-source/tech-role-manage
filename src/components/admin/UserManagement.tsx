@@ -444,16 +444,6 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                           Creado: {new Date(user.created_at).toLocaleDateString()}
                         </div>
                         <div className="flex gap-1">
-                          {(user.role === 'tecnico' || user.role === 'vendedor') && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => onUserSelect(user.user_id, user.role)}
-                              className="text-xs"
-                            >
-                              Habilidades
-                            </Button>
-                          )}
                           <Button
                             size="sm"
                             variant="outline"
