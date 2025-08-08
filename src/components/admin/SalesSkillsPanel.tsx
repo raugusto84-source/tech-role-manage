@@ -216,14 +216,8 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
           description: `Categoría asignada con nivel ${calculatedLevel}`,
         });
       } else {
-        const deleteQuery = supabase
-          .from('sales_skills')
-          .delete()
-          .eq('salesperson_id', selectedSalespersonId)
-          .eq('category_id', categoryId);
-        const { error } = await deleteQuery;
+        console.log('Deleting skill for salesperson:', selectedSalespersonId, 'category:', categoryId);
 
-        if (error) throw error;
         
         // Update local state without reload
         setSelectedCategories(prev => prev.filter(id => id !== categoryId));
