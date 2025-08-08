@@ -20,7 +20,7 @@ interface SalesSkill {
   skill_level: number;
   created_at: string;
   updated_at: string;
-  service_type: ServiceType;
+  service_type?: ServiceType;
 }
 
 interface Salesperson {
@@ -59,15 +59,14 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
   useEffect(() => {
     if (selectedUserId && selectedUserRole === 'vendedor') {
       setSelectedSalespersonId(selectedUserId);
-      loadSkillsForSalesperson(selectedUserId);
     }
   }, [selectedUserId, selectedUserRole]);
 
   useEffect(() => {
-    if (selectedSalespersonId) {
+    if (selectedSalespersonId && serviceTypes.length > 0) {
       loadSkillsForSalesperson(selectedSalespersonId);
     }
-  }, [selectedSalespersonId]);
+  }, [selectedSalespersonId, serviceTypes]);
 
   const loadSalespeople = async () => {
     try {
@@ -105,20 +104,17 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     try {
       const { data, error } = await supabase
         .from('sales_skills')
-        .select(`
-          *,
-          service_type:service_types(id, name, description)
-        `)
-        .eq('salesperson_id', salespersonId)
-        .order('created_at', { ascending: false });
+        .select('*')
+        .eq('salesperson_id', salespersonId);
 
       if (error) throw error;
-      const skillsData = (data || []) as SalesSkill[];
+      const skillsData = data || [];
       setSkills(skillsData);
-      setSelectedServices(skillsData.map(skill => skill.service_type_id));
+      setSelectedServices(skillsData.map((skill: any) => skill.service_type_id));
       
-      // Cargar estadísticas de rendimiento
-      await loadPerformanceStats(salespersonId, skillsData.map(skill => skill.service_type_id));
+      // Load performance stats for all services
+      const allServiceIds = serviceTypes.map(st => st.id);
+      await loadPerformanceStats(salespersonId, allServiceIds);
     } catch (error) {
       console.error('Error loading sales skills:', error);
       setSkills([]);
@@ -135,32 +131,14 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     try {
       const stats: Record<string, PerformanceStats> = {};
       
+      // For now, we'll just create empty stats since quotes table doesn't have service_type column
+      // This can be enhanced later when the relationship is properly established
       for (const serviceTypeId of serviceTypeIds) {
-        // Contar ventas exitosas (cotizaciones aceptadas)
-        const { count: successCount } = await supabase
-          .from('quotes')
-          .select('*', { count: 'exact', head: true })
-          .eq('service_type', serviceTypeId)
-          .eq('created_by', salespersonId)
-          .eq('status', 'aceptada');
-
-        // Contar ventas fallidas (cotizaciones rechazadas)
-        const { count: failCount } = await supabase
-          .from('quotes')
-          .select('*', { count: 'exact', head: true })
-          .eq('service_type', serviceTypeId)
-          .eq('created_by', salespersonId)
-          .eq('status', 'rechazada');
-
-        const successful = successCount || 0;
-        const failed = failCount || 0;
-        const total = successful + failed;
-
         stats[serviceTypeId] = {
-          successful_sales: successful,
-          failed_sales: failed,
-          total_sales: total,
-          success_rate: total > 0 ? (successful / total) * 100 : 0
+          successful_sales: 0,
+          failed_sales: 0,
+          total_sales: 0,
+          success_rate: 0
         };
       }
 
@@ -186,7 +164,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
     try {
       if (isChecked) {
-        // Calcular nivel basado en rendimiento histórico
+        // Calculate level based on historical performance
         const stats = performanceStats[serviceTypeId] || {
           successful_sales: 0,
           failed_sales: 0,
@@ -206,22 +184,20 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
         if (error) throw error;
         
+        // Update local state without full reload
         setSelectedServices(prev => [...prev, serviceTypeId]);
         
-        // Cargar solo la nueva habilidad sin recargar todo
-        const { data: newSkillData } = await supabase
-          .from('sales_skills')
-          .select(`
-            *,
-            service_type:service_types(id, name, description)
-          `)
-          .eq('salesperson_id', selectedSalespersonId)
-          .eq('service_type_id', serviceTypeId)
-          .single();
+        // Add the new skill to local state
+        const newSkill: SalesSkill = {
+          id: crypto.randomUUID(),
+          salesperson_id: selectedSalespersonId,
+          service_type_id: serviceTypeId,
+          skill_level: calculatedLevel,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
         
-        if (newSkillData) {
-          setSkills(prev => [...prev, newSkillData as SalesSkill]);
-        }
+        setSkills(prev => [...prev, newSkill]);
         
         toast({
           title: 'Habilidad añadida',
@@ -236,7 +212,7 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
         if (error) throw error;
         
-        // Actualizar estado local sin recargar
+        // Update local state without reload
         setSelectedServices(prev => prev.filter(id => id !== serviceTypeId));
         setSkills(prev => prev.filter(skill => skill.service_type_id !== serviceTypeId));
         

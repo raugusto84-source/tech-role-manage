@@ -1960,42 +1960,41 @@ export type Database = {
       }
       sales_skills: {
         Row: {
-          certifications: string[] | null
           created_at: string
           created_by: string | null
-          expertise_level: number
           id: string
           salesperson_id: string
-          skill_category: string
-          skill_name: string
+          service_type_id: string | null
+          skill_level: number
           updated_at: string
-          years_experience: number
         }
         Insert: {
-          certifications?: string[] | null
           created_at?: string
           created_by?: string | null
-          expertise_level?: number
           id?: string
           salesperson_id: string
-          skill_category: string
-          skill_name: string
+          service_type_id?: string | null
+          skill_level?: number
           updated_at?: string
-          years_experience?: number
         }
         Update: {
-          certifications?: string[] | null
           created_at?: string
           created_by?: string | null
-          expertise_level?: number
           id?: string
           salesperson_id?: string
-          skill_category?: string
-          skill_name?: string
+          service_type_id?: string | null
+          skill_level?: number
           updated_at?: string
-          years_experience?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sales_skills_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       satisfaction_surveys: {
         Row: {
