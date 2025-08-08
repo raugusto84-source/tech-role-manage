@@ -1143,6 +1143,75 @@ export type Database = {
         }
         Relationships: []
       }
+      order_satisfaction_surveys: {
+        Row: {
+          client_id: string
+          created_at: string
+          general_comments: string | null
+          id: string
+          order_id: string
+          overall_recommendation: number | null
+          sales_attitude: number | null
+          sales_comments: string | null
+          sales_customer_service: number | null
+          sales_knowledge: number | null
+          technician_attitude: number | null
+          technician_comments: string | null
+          technician_customer_service: number | null
+          technician_knowledge: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          general_comments?: string | null
+          id?: string
+          order_id: string
+          overall_recommendation?: number | null
+          sales_attitude?: number | null
+          sales_comments?: string | null
+          sales_customer_service?: number | null
+          sales_knowledge?: number | null
+          technician_attitude?: number | null
+          technician_comments?: string | null
+          technician_customer_service?: number | null
+          technician_knowledge?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          general_comments?: string | null
+          id?: string
+          order_id?: string
+          overall_recommendation?: number | null
+          sales_attitude?: number | null
+          sales_comments?: string | null
+          sales_customer_service?: number | null
+          sales_knowledge?: number | null
+          technician_attitude?: number | null
+          technician_comments?: string | null
+          technician_customer_service?: number | null
+          technician_knowledge?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_satisfaction_surveys_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_satisfaction_surveys_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_signatures: {
         Row: {
           id: string

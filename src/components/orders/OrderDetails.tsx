@@ -8,10 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
+import { SatisfactionSurvey } from './SatisfactionSurvey';
 
 interface OrderDetailsProps {
   order: {
@@ -52,10 +53,29 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [status, setStatus] = useState(order.status);
   const [notes, setNotes] = useState('');
   const [orderNotes, setOrderNotes] = useState<any[]>([]);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [surveyCompleted, setSurveyCompleted] = useState(false);
 
   useEffect(() => {
     loadOrderNotes();
+    checkSurveyStatus();
   }, [order.id]);
+
+  const checkSurveyStatus = async () => {
+    if (profile?.role === 'cliente' && order.status === 'finalizada') {
+      const { data } = await supabase
+        .from('order_satisfaction_surveys')
+        .select('id')
+        .eq('order_id', order.id)
+        .eq('client_id', user?.id)
+        .maybeSingle();
+      
+      setSurveyCompleted(!!data);
+      if (!data) {
+        setShowSurvey(true);
+      }
+    }
+  };
 
   const loadOrderNotes = async () => {
     try {
@@ -113,6 +133,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const canUpdateStatus = profile?.role === 'administrador' || 
                           (profile?.role === 'tecnico' && order.assigned_technician === user?.id);
 
+  const isClient = profile?.role === 'cliente';
+  const canSeeSurvey = isClient && order.status === 'finalizada' && !surveyCompleted;
+
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -150,6 +173,22 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
+  // Si se debe mostrar la encuesta, mostrarla en lugar del detalle
+  if (showSurvey && canSeeSurvey) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <SatisfactionSurvey
+          orderId={order.id}
+          onComplete={() => {
+            setSurveyCompleted(true);
+            setShowSurvey(false);
+          }}
+          onCancel={() => setShowSurvey(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-4xl mx-auto">
@@ -169,6 +208,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             <Badge className={getStatusColor(order.status)} variant="outline">
               {order.status.replace('_', ' ').toUpperCase()}
             </Badge>
+            
+            {canSeeSurvey && !showSurvey && (
+              <Button 
+                onClick={() => setShowSurvey(true)}
+                className="flex items-center gap-2"
+              >
+                <Star size={16} />
+                Evaluar Servicio
+              </Button>
+            )}
+            
             {canEdit && (
               <Button 
                 variant={isEditing ? "default" : "outline"} 
