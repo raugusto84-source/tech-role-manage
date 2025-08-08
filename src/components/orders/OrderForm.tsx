@@ -205,6 +205,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       
       // **PARA CLIENTES**: Asignar técnico automáticamente sin mostrar interfaz
       if (profile?.role === 'cliente') {
+        console.log('🔵 Cliente detectado, iniciando asignación automática para serviceType:', serviceTypeId);
         autoAssignTechnicianForClient(serviceTypeId);
       }
     }
@@ -231,6 +232,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
    * - Proporciona transparencia sobre la asignación realizada
    */
   const autoAssignTechnicianForClient = async (serviceTypeId: string) => {
+    console.log('🔵 autoAssignTechnicianForClient iniciada para serviceType:', serviceTypeId);
     try {
       // Consultar sugerencias del sistema
       const { data: suggestions, error } = await supabase
@@ -239,8 +241,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           p_delivery_date: formData.delivery_date || null
         });
 
+      console.log('🔵 Respuesta de suggest_optimal_technician:', { suggestions, error });
+
       if (error) {
-        console.error('Error getting technician suggestions for client:', error);
+        console.error('❌ Error getting technician suggestions for client:', error);
         return;
       }
 
@@ -249,6 +253,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       
       if (sortedSuggestions.length > 0) {
         const bestTechnician = sortedSuggestions[0];
+        console.log('🔵 Mejor técnico encontrado:', bestTechnician);
         
         // Asignar automáticamente
         setFormData(prev => ({ 
@@ -256,6 +261,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           assigned_technician: bestTechnician.technician_id 
         }));
         setSuggestionReason(bestTechnician.suggestion_reason);
+        
+        console.log('🔵 Estado actualizado. assigned_technician:', bestTechnician.technician_id);
+        console.log('🔵 Razón de sugerencia:', bestTechnician.suggestion_reason);
         
         // Notificar al cliente sobre la asignación
         toast({
@@ -489,7 +497,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               )}
 
               {/* Mostrar técnico asignado para CLIENTES */}
-              {profile?.role === 'cliente' && formData.assigned_technician && (
+              {profile?.role === 'cliente' && formData.assigned_technician && (() => {
+                console.log('🔵 Renderizando técnico para cliente. Técnico asignado:', formData.assigned_technician);
+                console.log('🔵 Lista de técnicos disponibles:', technicians);
+                return (
                 <div className="space-y-2">
                   <Label>Técnico Asignado</Label>
                   <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
@@ -521,7 +532,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     )}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Asignación Manual de Técnico (solo para admins y vendedores) */}
               {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
