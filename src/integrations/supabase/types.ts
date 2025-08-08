@@ -2079,6 +2079,7 @@ export type Database = {
           estimated_hours: number | null
           id: string
           is_active: boolean
+          item_type: string | null
           max_quantity: number | null
           min_quantity: number | null
           name: string
@@ -2097,6 +2098,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_active?: boolean
+          item_type?: string | null
           max_quantity?: number | null
           min_quantity?: number | null
           name: string
@@ -2115,6 +2117,7 @@ export type Database = {
           estimated_hours?: number | null
           id?: string
           is_active?: boolean
+          item_type?: string | null
           max_quantity?: number | null
           min_quantity?: number | null
           name?: string
