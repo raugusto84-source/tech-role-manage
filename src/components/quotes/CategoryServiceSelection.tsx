@@ -94,22 +94,21 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
     try {
       setLoading(true);
       
-      // Load categories
-      const { data: categoriesData } = await supabase
-        .from('service_categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-
-      // Load services with categories
+      // Load services directly from service_types (same as sales module)
       const { data: servicesData } = await supabase
         .from('service_types')
-        .select(`
-          *,
-          service_categories(name)
-        `)
+        .select('*')
         .eq('is_active', true)
-        .order('name');
+        .order('category, name');
+
+      // Extract unique categories from services
+      const uniqueCategories = [...new Set(servicesData?.map(s => s.category).filter(Boolean) || [])];
+      const categoriesFormatted = uniqueCategories.map(categoryName => ({
+        id: categoryName,
+        name: categoryName,
+        description: `Servicios de ${categoryName}`,
+        icon: getCategoryIcon(categoryName)
+      }));
 
       // Load global taxes
       const { data: taxesData } = await supabase
@@ -118,19 +117,35 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
         .eq('is_active', true)
         .order('tax_type, tax_rate');
 
-      if (categoriesData) setCategories(categoriesData);
       if (servicesData) {
         setServices(servicesData.map(service => ({
           ...service,
-          category_name: Array.isArray(service.service_categories) ? service.service_categories[0]?.name : undefined
+          category_name: service.category || 'Sin categoría'
         })));
       }
+      
+      setCategories(categoriesFormatted);
       if (taxesData) setGlobalTaxes(taxesData as TaxDefinition[]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCategoryIcon = (categoryName: string): string => {
+    const iconMap: Record<string, string> = {
+      'general': '🔧',
+      'mantenimiento': '🛠️',
+      'reparacion': '🔨',
+      'instalacion': '📦',
+      'consultoria': '💡',
+      'soporte': '🆘',
+      'desarrollo': '💻',
+      'formacion': '📚',
+      'otros': '📋'
+    };
+    return iconMap[categoryName.toLowerCase()] || '🔧';
   };
 
   const calculateItemTotals = (baseItem: Omit<QuoteItem, 'total' | 'subtotal' | 'vat_amount' | 'withholding_amount' | 'taxes'>) => {
@@ -244,7 +259,9 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
     services: filteredServices.filter(service => service.category_name === category.name)
   }));
 
-  const uncategorizedServices = filteredServices.filter(service => !service.category_name);
+  const uncategorizedServices = filteredServices.filter(service => 
+    !service.category_name || service.category_name === 'Sin categoría'
+  );
 
   return (
     <div className="space-y-6">
@@ -412,7 +429,9 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
             {uncategorizedServices.length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Otros Servicios</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    📋 Sin Categoría
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
