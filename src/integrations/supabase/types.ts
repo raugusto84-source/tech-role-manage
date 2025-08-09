@@ -1067,6 +1067,92 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          order_id: string
+          profit_margin_rate: number
+          quantity: number
+          service_description: string | null
+          service_name: string
+          service_type_id: string
+          subtotal: number
+          total_amount: number
+          unit_base_price: number
+          unit_cost_price: number
+          updated_at: string
+          vat_amount: number
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          order_id: string
+          profit_margin_rate?: number
+          quantity?: number
+          service_description?: string | null
+          service_name: string
+          service_type_id: string
+          subtotal: number
+          total_amount: number
+          unit_base_price: number
+          unit_cost_price: number
+          updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          order_id?: string
+          profit_margin_rate?: number
+          quantity?: number
+          service_description?: string | null
+          service_name?: string
+          service_type_id?: string
+          subtotal?: number
+          total_amount?: number
+          unit_base_price?: number
+          unit_cost_price?: number
+          updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_notes: {
         Row: {
           created_at: string
@@ -3368,6 +3454,19 @@ export type Database = {
       auto_assign_cleaning_tasks: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      calculate_order_item_pricing: {
+        Args: { p_service_type_id: string; p_quantity?: number }
+        Returns: {
+          unit_cost_price: number
+          unit_base_price: number
+          profit_margin_rate: number
+          subtotal: number
+          vat_rate: number
+          vat_amount: number
+          total_amount: number
+          item_type: string
+        }[]
       }
       calculate_schedule_weekly_hours: {
         Args: {

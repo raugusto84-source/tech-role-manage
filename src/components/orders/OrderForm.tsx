@@ -304,12 +304,49 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
+      // Primero calcular los precios del servicio con IVA e impuestos
+      const { data: pricingData, error: pricingError } = await supabase
+        .rpc('calculate_order_item_pricing', {
+          p_service_type_id: formData.service_type,
+          p_quantity: 1
+        });
+
+      if (pricingError) {
+        console.error('Error calculating pricing:', pricingError);
+        toast({
+          title: "Error",
+          description: "No se pudo calcular el precio del servicio",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const pricing = pricingData[0];
+      
+      // Obtener información del servicio
+      const { data: serviceData, error: serviceError } = await supabase
+        .from('service_types')
+        .select('name, description')
+        .eq('id', formData.service_type)
+        .single();
+
+      if (serviceError) {
+        console.error('Error loading service:', serviceError);
+        toast({
+          title: "Error",
+          description: "No se pudo cargar la información del servicio",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Crear la orden principal
       const orderData = {
         client_id: formData.client_id,
         service_type: formData.service_type,
         failure_description: formData.failure_description,
         delivery_date: formData.delivery_date,
-        estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
+        estimated_cost: pricing.total_amount, // Usar el precio calculado con IVA
         average_service_time: formData.average_service_time ? parseFloat(formData.average_service_time) : null,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
@@ -317,15 +354,45 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         status: 'pendiente' as const
       };
 
-      const { error } = await supabase
+      const { data: orderResult, error: orderError } = await supabase
         .from('orders')
-        .insert(orderData as any);
+        .insert(orderData as any)
+        .select('id')
+        .single();
 
-      if (error) throw error;
+      if (orderError) throw orderError;
+
+      // Crear el item de la orden con precios fijos calculados
+      const orderItemData = {
+        order_id: orderResult.id,
+        service_type_id: formData.service_type,
+        service_name: serviceData.name,
+        service_description: serviceData.description,
+        quantity: 1,
+        unit_cost_price: pricing.unit_cost_price,
+        unit_base_price: pricing.unit_base_price,
+        profit_margin_rate: pricing.profit_margin_rate,
+        subtotal: pricing.subtotal,
+        vat_rate: pricing.vat_rate,
+        vat_amount: pricing.vat_amount,
+        total_amount: pricing.total_amount,
+        item_type: pricing.item_type
+      };
+
+      const { error: itemError } = await supabase
+        .from('order_items')
+        .insert(orderItemData);
+
+      if (itemError) {
+        console.error('Error creating order item:', itemError);
+        // Si falla crear el item, eliminar la orden
+        await supabase.from('orders').delete().eq('id', orderResult.id);
+        throw itemError;
+      }
 
       toast({
         title: "Orden creada",
-        description: "La orden de servicio se ha creado exitosamente",
+        description: `Orden creada exitosamente con precio final de $${pricing.total_amount} (incluye IVA)`,
       });
 
       onSuccess();
