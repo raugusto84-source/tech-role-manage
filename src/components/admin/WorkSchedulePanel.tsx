@@ -398,7 +398,7 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
                     id="monthly_salary"
                     type="number"
                     min="0"
-                    step="1000"
+                    step="100"
                     value={formData.monthly_salary}
                     onChange={(e) => setFormData(prev => ({ 
                       ...prev, 
