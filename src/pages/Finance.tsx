@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
+import { CollectionDialog } from "@/components/finance/CollectionDialog";
 
 // Util simple para exportar CSV en cliente
 function exportCsv(filename: string, rows: Record<string, any>[]) {
@@ -224,6 +225,10 @@ export default function Finance() {
   
   // Estados para gastos fiscales seleccionados
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
+  
+  // Estados para el diálogo de cobro
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<any>(null);
 
   const addFixedExpense = async () => {
     try {
@@ -1200,13 +1205,14 @@ export default function Finance() {
                       <TableHead>Cliente</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Entrega</TableHead>
-                      <TableHead>Estado</TableHead>
+                     <TableHead>Estado</TableHead>
                       <TableHead>Estimado</TableHead>
+                      <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {collectionsQuery.isLoading && (
-                      <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
                     )}
                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((r: any) => (
                       <TableRow key={r.id}>
@@ -1216,10 +1222,21 @@ export default function Finance() {
                         <TableCell>{r.delivery_date}</TableCell>
                         <TableCell>{r.status}</TableCell>
                         <TableCell>{Number(r.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>
+                          <Button 
+                            size="sm" 
+                            onClick={() => {
+                              setSelectedCollection(r);
+                              setCollectionDialogOpen(true);
+                            }}
+                          >
+                            Cobrar
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={6}>Sin cobranzas pendientes.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7}>Sin cobranzas pendientes.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -1228,6 +1245,16 @@ export default function Finance() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <CollectionDialog
+        open={collectionDialogOpen}
+        onOpenChange={setCollectionDialogOpen}
+        collection={selectedCollection}
+        onSuccess={() => {
+          incomesQuery.refetch();
+          collectionsQuery.refetch();
+        }}
+      />
     </AppLayout>
   );
 }
