@@ -82,9 +82,17 @@ export default function ProfitMarginConfig() {
         if (error) throw error;
         toast({ title: "Éxito", description: "Configuración actualizada correctamente" });
       } else {
+        // Ensure all required fields are present for insert
+        const insertData = {
+          min_price: values.min_price,
+          max_price: values.max_price,
+          margin_percentage: values.margin_percentage,
+          is_active: true
+        };
+
         const { error } = await supabase
           .from("profit_margin_configs")
-          .insert([values]);
+          .insert([insertData]);
 
         if (error) throw error;
         toast({ title: "Éxito", description: "Nueva configuración creada correctamente" });
