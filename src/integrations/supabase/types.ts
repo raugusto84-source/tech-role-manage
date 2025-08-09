@@ -1012,6 +1012,13 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_chat_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_diagnostics: {
@@ -1049,6 +1056,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_diagnostics_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1100,7 +1114,62 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_notes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      order_payments: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          client_name: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          income_id: string | null
+          order_id: string
+          order_number: string
+          payment_amount: number
+          payment_date: string
+          payment_method: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          client_name: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          income_id?: string | null
+          order_id: string
+          order_number: string
+          payment_amount: number
+          payment_date?: string
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          income_id?: string | null
+          order_id?: string
+          order_number?: string
+          payment_amount?: number
+          payment_date?: string
+          payment_method?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       order_requests: {
         Row: {
@@ -1217,6 +1286,13 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_satisfaction_surveys_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "pending_collections_with_payments"
+            referencedColumns: ["id"]
+          },
         ]
       }
       order_signatures: {
@@ -1257,6 +1333,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_signatures_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1302,6 +1385,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -3247,6 +3337,20 @@ export type Database = {
           id: string | null
           order_number: string | null
           status: Database["public"]["Enums"]["order_status"] | null
+        }
+        Relationships: []
+      }
+      pending_collections_with_payments: {
+        Row: {
+          client_email: string | null
+          client_name: string | null
+          delivery_date: string | null
+          estimated_cost: number | null
+          id: string | null
+          order_number: string | null
+          remaining_balance: number | null
+          status: Database["public"]["Enums"]["order_status"] | null
+          total_paid: number | null
         }
         Relationships: []
       }
