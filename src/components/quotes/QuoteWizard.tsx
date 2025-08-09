@@ -112,8 +112,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   // Filtrar clientes por búsqueda
   useEffect(() => {
     const filtered = clients.filter(client =>
-      client.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
-      client.email.toLowerCase().includes(clientSearchTerm.toLowerCase())
+      (client.name?.toLowerCase() || '').includes(clientSearchTerm.toLowerCase()) ||
+      (client.email?.toLowerCase() || '').includes(clientSearchTerm.toLowerCase())
     );
     setFilteredClients(filtered);
   }, [clients, clientSearchTerm]);
