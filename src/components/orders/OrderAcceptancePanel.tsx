@@ -1,32 +1,10 @@
 /**
- * COMPONENTE: TechnicianSuggestion
+ * COMPONENTE: OrderAcceptancePanel
  * 
  * PROPÓSITO:
- * - Muestra sugerencias automáticas de técnicos basadas en disponibilidad y habilidades
- * - Permite seleccionar el técnico sugerido o elegir manualmente
- * - Explica la razón de cada sugerencia para transparencia en la decisión
- * 
- * LÓGICA DE SUGERENCIA:
- * 1. Consulta la función suggest_optimal_technician() en la base de datos
- * 2. La función evalúa cada técnico considerando:
- *    - Carga de trabajo actual (40% del peso): menos órdenes activas = mejor
- *    - Nivel de habilidad en el servicio (60% del peso): mayor habilidad = mejor
- *    - Años de experiencia (información adicional)
- * 3. Ordena técnicos por puntuación descendente
- * 4. Muestra razón clara de por qué cada técnico es sugerido
- * 
- * REUTILIZACIÓN:
- * - Este componente puede reutilizarse en:
- *   - Formulario de creación de órdenes
- *   - Reasignación de órdenes existentes
- *   - Módulo de planificación de recursos
- *   - Dashboard de administración
- * 
- * PARÁMETROS:
- * - serviceTypeId: ID del tipo de servicio para evaluar habilidades específicas
- * - onTechnicianSelect: Callback cuando se selecciona un técnico
- * - selectedTechnicianId: ID del técnico actualmente seleccionado
- * - deliveryDate: Fecha de entrega (opcional, para futuras mejoras de disponibilidad)
+ * - Mostrar sugerencias de técnicos para órdenes pendientes
+ * - Permitir al administrador aceptar la orden y asignar el técnico seleccionado
+ * - Reemplaza la asignación automática con un proceso manual controlado
  */
 
 import { useState, useEffect } from 'react';
@@ -35,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useToast } from '@/hooks/use-toast';
 import { 
   User, 
   Star, 
@@ -42,11 +21,9 @@ import {
   Briefcase, 
   CheckCircle, 
   AlertCircle,
-  Info,
   RefreshCw
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useToast } from '@/hooks/use-toast';
 
 interface TechnicianSuggestion {
   technician_id: string;
@@ -58,46 +35,38 @@ interface TechnicianSuggestion {
   suggestion_reason: string;
 }
 
-interface TechnicianSuggestionProps {
+interface OrderAcceptancePanelProps {
+  orderId: string;
   serviceTypeId: string;
-  onTechnicianSelect: (technicianId: string, reason: string) => void;
-  selectedTechnicianId?: string;
   deliveryDate?: string;
+  onOrderAccepted: () => void;
   className?: string;
 }
 
-export function TechnicianSuggestion({
+export function OrderAcceptancePanel({
+  orderId,
   serviceTypeId,
-  onTechnicianSelect,
-  selectedTechnicianId,
   deliveryDate,
+  onOrderAccepted,
   className = ""
-}: TechnicianSuggestionProps) {
+}: OrderAcceptancePanelProps) {
   const { toast } = useToast();
   const [suggestions, setSuggestions] = useState<TechnicianSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showAllTechnicians, setShowAllTechnicians] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
+  const [selectedReason, setSelectedReason] = useState<string>('');
 
-  /**
-   * FUNCIÓN: loadTechnicianSuggestions
-   * 
-   * PROPÓSITO:
-   * - Consulta la función suggest_optimal_technician() de la base de datos
-   * - Obtiene la lista ordenada de técnicos con sus puntuaciones y razones
-   * - Maneja errores y estados de carga
-   * 
-   * PROCESO:
-   * 1. Llama a la función RPC con el tipo de servicio y fecha de entrega
-   * 2. Ordena resultados por puntuación descendente (mejor técnico primero)
-   * 3. Actualiza el estado con las sugerencias obtenidas
-   */
+  useEffect(() => {
+    loadTechnicianSuggestions();
+  }, [serviceTypeId, deliveryDate]);
+
   const loadTechnicianSuggestions = async () => {
     if (!serviceTypeId) return;
     
     try {
       setLoading(true);
       
-      // Llamar a la función de sugerencia en la base de datos
       const { data, error } = await supabase
         .rpc('suggest_optimal_technician', {
           p_service_type_id: serviceTypeId,
@@ -109,9 +78,15 @@ export function TechnicianSuggestion({
         throw error;
       }
 
-      // Ordenar por puntuación descendente (mejor técnico primero)
       const sortedSuggestions = (data || []).sort((a, b) => b.score - a.score);
       setSuggestions(sortedSuggestions);
+
+      // Pre-seleccionar el mejor técnico
+      if (sortedSuggestions.length > 0) {
+        const bestTechnician = sortedSuggestions[0];
+        setSelectedTechnicianId(bestTechnician.technician_id);
+        setSelectedReason(bestTechnician.suggestion_reason);
+      }
 
     } catch (error) {
       console.error('Error loading technician suggestions:', error);
@@ -125,18 +100,55 @@ export function TechnicianSuggestion({
     }
   };
 
-  // Cargar sugerencias cuando cambie el tipo de servicio
-  useEffect(() => {
-    loadTechnicianSuggestions();
-  }, [serviceTypeId, deliveryDate]);
+  const handleAcceptOrder = async () => {
+    if (!selectedTechnicianId) {
+      toast({
+        title: "Error",
+        description: "Debes seleccionar un técnico antes de aceptar la orden",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  /**
-   * FUNCIÓN: getWorkloadColor
-   * 
-   * PROPÓSITO:
-   * - Determina el color del badge según la carga de trabajo
-   * - Proporciona feedback visual rápido sobre disponibilidad
-   */
+    try {
+      setAccepting(true);
+
+      // Actualizar la orden con el técnico asignado
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          assigned_technician: selectedTechnicianId,
+          assignment_reason: selectedReason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Orden aceptada",
+        description: "La orden ha sido aceptada y el técnico asignado exitosamente",
+      });
+
+      onOrderAccepted();
+
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aceptar la orden",
+        variant: "destructive"
+      });
+    } finally {
+      setAccepting(false);
+    }
+  };
+
+  const handleTechnicianSelect = (suggestion: TechnicianSuggestion) => {
+    setSelectedTechnicianId(suggestion.technician_id);
+    setSelectedReason(suggestion.suggestion_reason);
+  };
+
   const getWorkloadColor = (workload: number) => {
     if (workload === 0) return 'bg-green-100 text-green-800';
     if (workload <= 2) return 'bg-yellow-100 text-yellow-800';
@@ -144,13 +156,6 @@ export function TechnicianSuggestion({
     return 'bg-red-100 text-red-800';
   };
 
-  /**
-   * FUNCIÓN: getSkillStars
-   * 
-   * PROPÓSITO:
-   * - Convierte el nivel de habilidad numérico en estrellas visuales
-   * - Facilita la interpretación rápida del nivel de competencia
-   */
   const getSkillStars = (level: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star 
@@ -160,23 +165,6 @@ export function TechnicianSuggestion({
     ));
   };
 
-  /**
-   * FUNCIÓN: handleTechnicianSelect
-   * 
-   * PROPÓSITO:
-   * - Maneja la selección de un técnico
-   * - Proporciona feedback al usuario sobre la selección
-   * - Envía la razón de la sugerencia al componente padre
-   */
-  const handleTechnicianSelect = (suggestion: TechnicianSuggestion) => {
-    onTechnicianSelect(suggestion.technician_id, suggestion.suggestion_reason);
-    toast({
-      title: "Técnico seleccionado",
-      description: `${suggestion.full_name} ha sido asignado a la orden`,
-    });
-  };
-
-  // Mostrar estado de carga
   if (loading) {
     return (
       <Card className={className}>
@@ -197,7 +185,6 @@ export function TechnicianSuggestion({
     );
   }
 
-  // Mostrar mensaje si no hay técnicos disponibles
   if (suggestions.length === 0) {
     return (
       <Card className={className}>
@@ -209,10 +196,10 @@ export function TechnicianSuggestion({
         </CardHeader>
         <CardContent>
           <Alert>
-            <Info className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               No se encontraron técnicos disponibles para este tipo de servicio. 
-              Puedes asignar manualmente un técnico o crear la orden sin asignación.
+              Puedes asignar manualmente un técnico o dejar la orden pendiente.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -220,8 +207,6 @@ export function TechnicianSuggestion({
     );
   }
 
-  // Determinar cuántos técnicos mostrar
-  const techniciansToShow = showAllTechnicians ? suggestions : suggestions.slice(0, 3);
   const bestSuggestion = suggestions[0];
 
   return (
@@ -242,7 +227,7 @@ export function TechnicianSuggestion({
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {techniciansToShow.map((suggestion, index) => (
+        {suggestions.slice(0, 3).map((suggestion, index) => (
           <div 
             key={suggestion.technician_id}
             className={`
@@ -255,7 +240,6 @@ export function TechnicianSuggestion({
             `}
             onClick={() => handleTechnicianSelect(suggestion)}
           >
-            {/* Header del técnico */}
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-3">
                 <Avatar>
@@ -274,7 +258,6 @@ export function TechnicianSuggestion({
                     )}
                   </h4>
                   
-                  {/* Puntuación y estrellas de habilidad */}
                   <div className="flex items-center gap-2 mt-1">
                     <div className="flex items-center gap-1">
                       {getSkillStars(suggestion.skill_level)}
@@ -291,7 +274,6 @@ export function TechnicianSuggestion({
               )}
             </div>
 
-            {/* Métricas del técnico */}
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div className="text-center">
                 <Badge 
@@ -321,28 +303,33 @@ export function TechnicianSuggestion({
               </div>
             </div>
 
-            {/* Razón de la sugerencia */}
             <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
               <strong>Razón:</strong> {suggestion.suggestion_reason}
             </div>
           </div>
         ))}
 
-        {/* Botón para mostrar más técnicos */}
-        {suggestions.length > 3 && (
+        <div className="pt-4 border-t">
           <Button 
-            variant="outline" 
-            onClick={() => setShowAllTechnicians(!showAllTechnicians)}
+            onClick={handleAcceptOrder}
+            disabled={!selectedTechnicianId || accepting}
             className="w-full"
+            size="lg"
           >
-            {showAllTechnicians 
-              ? `Mostrar menos (${suggestions.length - 3} técnicos ocultos)`
-              : `Ver todos los técnicos (${suggestions.length - 3} más)`
-            }
+            {accepting ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Aceptando orden...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Aceptar Orden y Asignar Técnico
+              </>
+            )}
           </Button>
-        )}
+        </div>
 
-        {/* Botón para actualizar sugerencias */}
         <Button 
           variant="ghost" 
           onClick={loadTechnicianSuggestions}

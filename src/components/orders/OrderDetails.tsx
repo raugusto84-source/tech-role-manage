@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
+import { OrderAcceptancePanel } from './OrderAcceptancePanel';
 
 interface OrderDetailsProps {
   order: {
@@ -461,6 +462,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Panel de Aceptación de Orden - Solo para administradores con órdenes pendientes sin técnico */}
+            {profile?.role === 'administrador' && order.status === 'pendiente' && !order.assigned_technician && (
+              <OrderAcceptancePanel
+                orderId={order.id}
+                serviceTypeId={order.service_type}
+                deliveryDate={order.delivery_date}
+                onOrderAccepted={onUpdate}
+                className="mb-6"
+              />
+            )}
 
             {/* Técnico Asignado */}
             {(order.assigned_technician || order.assignment_reason) && (
