@@ -99,20 +99,14 @@ export default function Orders() {
       if (error) throw error;
 
       // Get technician profiles separately for assigned orders
-      console.log('Raw orders data:', ordersData);
-      
       const ordersWithTechnicianNames = await Promise.all(
         (ordersData || []).map(async (order: any) => {
-          console.log(`Order ${order.order_number}: assigned_technician = ${order.assigned_technician}`);
-          
           if (order.assigned_technician) {
-            const { data: techProfile, error } = await supabase
+            const { data: techProfile } = await supabase
               .from('profiles')
               .select('full_name')
               .eq('user_id', order.assigned_technician)
               .maybeSingle();
-            
-            console.log(`Technician profile for ${order.order_number}:`, techProfile, 'Error:', error);
             
             return {
               ...order,
@@ -125,8 +119,6 @@ export default function Orders() {
           } as Order;
         })
       );
-
-      console.log('Final processed orders:', ordersWithTechnicianNames);
       setOrders(ordersWithTechnicianNames);
     } catch (error) {
       console.error('Error loading orders:', error);
