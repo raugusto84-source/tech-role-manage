@@ -25,6 +25,7 @@ const serviceSchema = z.object({
   item_type: z.enum(['servicio', 'articulo'], { required_error: 'Selecciona el tipo' }),
   cost_price: z.number().min(0, 'El precio de costo debe ser mayor a 0'),
   base_price: z.number().min(0, 'El precio fijo debe ser mayor a 0'),
+  profit_margin: z.number().min(0).max(100, 'El margen debe estar entre 0 y 100%'),
   vat_rate: z.number().min(0).max(100, 'El IVA debe estar entre 0 y 100%'),
   unit: z.string().min(1, 'Especifica la unidad de medida'),
   min_quantity: z.number().min(1, 'La cantidad mínima debe ser mayor a 0'),
@@ -36,15 +37,6 @@ const serviceSchema = z.object({
   path: ['max_quantity'],
 });
 
-/**
- * Interface para niveles de margen de ganancia
- */
-interface MarginTier {
-  id: string;
-  min_qty: number;
-  max_qty: number;
-  margin: number;
-}
 
 interface ServiceFormProps {
   serviceId?: string | null;
@@ -71,12 +63,6 @@ interface ServiceFormProps {
 export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [marginTiers, setMarginTiers] = useState<MarginTier[]>([
-    { id: '1', min_qty: 1, max_qty: 10, margin: 30 },
-    { id: '2', min_qty: 11, max_qty: 50, margin: 25 },
-    { id: '3', min_qty: 51, max_qty: 999, margin: 20 },
-  ]);
-  const [previewQuantity, setPreviewQuantity] = useState(1);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -87,6 +73,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       item_type: 'servicio',
       cost_price: 0,
       base_price: 0,
+      profit_margin: 30,
       vat_rate: 19,
       unit: 'unidad',
       min_quantity: 1,
@@ -99,6 +86,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const watchedItemType = form.watch('item_type');
   const watchedCostPrice = form.watch('cost_price');
   const watchedBasePrice = form.watch('base_price');
+  const watchedProfitMargin = form.watch('profit_margin');
   const watchedVatRate = form.watch('vat_rate');
 
   /**
@@ -133,6 +121,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         item_type: (data.item_type === 'articulo' ? 'articulo' : 'servicio') as 'servicio' | 'articulo',
         cost_price: data.cost_price || 0,
         base_price: data.base_price || 0,
+        profit_margin: (data as any).profit_margin || 30,
         vat_rate: data.vat_rate || 19,
         unit: data.unit || 'unidad',
         min_quantity: data.min_quantity || 1,
@@ -141,16 +130,6 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         is_active: data.is_active,
       });
 
-      // Cargar niveles de margen si existen
-      if (data.profit_margin_tiers && Array.isArray(data.profit_margin_tiers)) {
-        const tiers = data.profit_margin_tiers.map((tier: any, index: number) => ({
-          id: (index + 1).toString(),
-          min_qty: tier.min_qty,
-          max_qty: tier.max_qty,
-          margin: tier.margin,
-        }));
-        setMarginTiers(tiers);
-      }
     } catch (error) {
       console.error('Error loading service:', error);
       toast({
@@ -164,87 +143,23 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   };
 
   /**
-   * Agrega un nuevo nivel de margen
-   */
-  const addMarginTier = () => {
-    const lastTier = marginTiers[marginTiers.length - 1];
-    const newTier: MarginTier = {
-      id: Date.now().toString(),
-      min_qty: lastTier ? lastTier.max_qty + 1 : 1,
-      max_qty: 999,
-      margin: 20,
-    };
-    setMarginTiers([...marginTiers, newTier]);
-  };
-
-  /**
-   * Elimina un nivel de margen
-   */
-  const removeMarginTier = (id: string) => {
-    if (marginTiers.length <= 1) {
-      toast({
-        title: "Error",
-        description: "Debe haber al menos un nivel de margen.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setMarginTiers(marginTiers.filter(tier => tier.id !== id));
-  };
-
-  /**
-   * Actualiza un nivel de margen específico
-   */
-  const updateMarginTier = (id: string, field: keyof Omit<MarginTier, 'id'>, value: number) => {
-    setMarginTiers(tiers =>
-      tiers.map(tier =>
-        tier.id === id ? { ...tier, [field]: value } : tier
-      )
-    );
-  };
-
-  /**
-   * Calcula el precio final para la cantidad de preview
+   * Calcula el precio final
    */
   const calculatePreviewPrice = (): number => {
-    if (!watchedCostPrice) return 0;
-
-    // Encontrar el nivel de margen aplicable
-    const applicableTier = marginTiers.find(tier =>
-      previewQuantity >= tier.min_qty && previewQuantity <= tier.max_qty
-    );
-    
-    const margin = applicableTier ? applicableTier.margin : 30;
-    const priceWithMargin = watchedCostPrice * (1 + margin / 100);
-    const priceWithVat = priceWithMargin * (1 + watchedVatRate / 100);
-    
-    return priceWithVat * previewQuantity;
-  };
-
-  /**
-   * Valida que los niveles de margen no se solapen
-   */
-  const validateMarginTiers = (): boolean => {
-    const sortedTiers = [...marginTiers].sort((a, b) => a.min_qty - b.min_qty);
-    
-    for (let i = 0; i < sortedTiers.length - 1; i++) {
-      if (sortedTiers[i].max_qty >= sortedTiers[i + 1].min_qty) {
-        toast({
-          title: "Error en niveles de margen",
-          description: "Los rangos de cantidad no pueden solaparse.",
-          variant: "destructive",
-        });
-        return false;
-      }
+    if (watchedItemType === 'servicio') {
+      // Para servicios: precio base + IVA
+      return watchedBasePrice * (1 + watchedVatRate / 100);
+    } else {
+      // Para artículos: precio base + margen + IVA
+      const priceWithMargin = watchedBasePrice * (1 + watchedProfitMargin / 100);
+      return priceWithMargin * (1 + watchedVatRate / 100);
     }
-    return true;
   };
 
   /**
    * Maneja el envío del formulario
    */
   const onSubmit = async (values: z.infer<typeof serviceSchema>) => {
-    if (!validateMarginTiers()) return;
 
     try {
       setLoading(true);
@@ -256,17 +171,13 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         item_type: values.item_type,
         cost_price: values.cost_price,
         base_price: values.base_price,
+        profit_margin: values.profit_margin,
         vat_rate: values.vat_rate,
         unit: values.unit,
         min_quantity: values.min_quantity,
         max_quantity: values.max_quantity,
         estimated_hours: values.estimated_hours,
         is_active: values.is_active,
-        profit_margin_tiers: marginTiers.map(tier => ({
-          min_qty: tier.min_qty,
-          max_qty: tier.max_qty,
-          margin: tier.margin,
-        })),
       };
 
       if (serviceId) {
@@ -543,28 +454,53 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                     )}
                   />
                 ) : (
-                  <FormField
-                    control={form.control}
-                    name="cost_price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Costo Base * (COP)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="100"
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Costo de adquisición/producción del artículo
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="base_price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Precio Base * (COP)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="100"
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Precio base del artículo (sin margen ni IVA)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="profit_margin"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Margen de Ganancia (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="1000"
+                              step="0.1"
+                              {...field}
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            % de ganancia sobre el precio base
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 )}
 
                 <FormField
@@ -639,78 +575,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
             </CardContent>
           </Card>
 
-          {/* Niveles de margen - solo para artículos */}
-          {watchedItemType === 'articulo' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  Márgenes de Ganancia por Cantidad
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addMarginTier}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar Nivel
-                  </Button>
-                </CardTitle>
-                <CardDescription>
-                  Configure diferentes márgenes según la cantidad (solo para artículos)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {marginTiers.map((tier, index) => (
-                  <div key={tier.id} className="flex items-center gap-4 p-4 border rounded-lg">
-                    <div className="flex-1 grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-sm font-medium">Cantidad Desde</label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={tier.min_qty}
-                          onChange={(e) => updateMarginTier(tier.id, 'min_qty', parseInt(e.target.value) || 1)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Cantidad Hasta</label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={tier.max_qty}
-                          onChange={(e) => updateMarginTier(tier.id, 'max_qty', parseInt(e.target.value) || 999)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium">Margen (%)</label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="1000"
-                          step="0.1"
-                          value={tier.margin}
-                          onChange={(e) => updateMarginTier(tier.id, 'margin', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-                    </div>
-                    {marginTiers.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeMarginTier(tier.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Preview de precios */}
-          {watchedCostPrice > 0 && (
+          {(watchedBasePrice > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -722,23 +589,27 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <label className="text-sm font-medium">Cantidad para preview:</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={previewQuantity}
-                    onChange={(e) => setPreviewQuantity(parseInt(e.target.value) || 1)}
-                    className="w-32"
-                  />
-                </div>
                 <div className="p-4 bg-muted rounded-lg">
-                  <div className="text-lg font-bold text-green-600">
-                    Precio Final: {formatCurrency(calculatePreviewPrice())}
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-2">
-                    Para {previewQuantity} {form.watch('unit')}(es) •
-                    Incluye margen de ganancia e IVA
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Precio Base:</span>
+                      <span>{formatCurrency(watchedBasePrice)}</span>
+                    </div>
+                    {watchedItemType === 'articulo' && (
+                      <div className="flex justify-between text-green-600">
+                        <span>+ Margen ({watchedProfitMargin}%):</span>
+                        <span>{formatCurrency(watchedBasePrice * watchedProfitMargin / 100)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-blue-600">
+                      <span>+ IVA ({watchedVatRate}%):</span>
+                      <span>{formatCurrency((watchedItemType === 'articulo' ? watchedBasePrice * (1 + watchedProfitMargin / 100) : watchedBasePrice) * watchedVatRate / 100)}</span>
+                    </div>
+                    <hr />
+                    <div className="flex justify-between text-lg font-bold text-green-600">
+                      <span>Precio Final:</span>
+                      <span>{formatCurrency(calculatePreviewPrice())}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>

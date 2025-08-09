@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServicesList } from '@/components/sales/ServicesList';
 import { ServiceForm } from '@/components/sales/ServiceForm';
-import { PriceCalculator } from '@/components/sales/PriceCalculator';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Calculator, Package } from 'lucide-react';
@@ -103,7 +102,7 @@ export default function Sales() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Servicios
@@ -111,10 +110,6 @@ export default function Sales() {
             <TabsTrigger value="form" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {selectedService ? 'Editar' : 'Nuevo'}
-            </TabsTrigger>
-            <TabsTrigger value="calculator" className="flex items-center gap-2">
-              <Calculator className="h-4 w-4" />
-              Calculadora
             </TabsTrigger>
           </TabsList>
 
@@ -161,20 +156,6 @@ export default function Sales() {
             </Card>
           </TabsContent>
 
-          {/* Calculadora de precios */}
-          <TabsContent value="calculator" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Calculadora de Precios</CardTitle>
-                <CardDescription>
-                  Calcula precios finales con IVA y márgenes de ganancia según cantidad
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <PriceCalculator />
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </AppLayout>

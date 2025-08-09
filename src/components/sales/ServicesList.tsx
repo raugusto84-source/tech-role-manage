@@ -175,34 +175,23 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
    */
   const getDisplayPrice = (service: Service): number => {
     if (service.item_type === 'servicio') {
-      // Para servicios: precio fijo + IVA
+      // Para servicios: precio base + IVA
       return service.base_price * (1 + service.vat_rate / 100);
     } else {
-      // Para artículos: costo + margen más alto + IVA
-      if (!service.profit_margin_tiers || service.profit_margin_tiers.length === 0) {
-        return service.cost_price * 1.3 * (1 + service.vat_rate / 100); // 30% por defecto
-      }
-      const maxMargin = Math.max(...service.profit_margin_tiers.map(tier => tier.margin));
-      const priceWithMargin = service.cost_price * (1 + maxMargin / 100);
+      // Para artículos: precio base + margen + IVA
+      const profitMargin = (service as any).profit_margin || 30;
+      const priceWithMargin = service.base_price * (1 + profitMargin / 100);
       return priceWithMargin * (1 + service.vat_rate / 100);
     }
   };
 
   /**
-   * Obtiene el rango de márgenes configurados (solo artículos)
+   * Obtiene el margen de ganancia (solo artículos)
    */
-  const getMarginRange = (service: Service): string => {
+  const getMarginText = (service: Service): string => {
     if (service.item_type === 'servicio') return 'N/A';
-    
-    if (!service.profit_margin_tiers || service.profit_margin_tiers.length === 0) {
-      return '30%';
-    }
-
-    const margins = service.profit_margin_tiers.map(tier => tier.margin);
-    const min = Math.min(...margins);
-    const max = Math.max(...margins);
-    
-    return min === max ? `${min}%` : `${min}%-${max}%`;
+    const profitMargin = (service as any).profit_margin || 30;
+    return `${profitMargin}%`;
   };
 
   /**
@@ -465,12 +454,12 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                           )}
                         </div>
                         <div className="space-y-1 text-right text-sm">
-                          <div>
-                            <span className="font-medium">Costo:</span> {formatCurrency(service.cost_price)}
-                          </div>
-                          <div>
-                            <span className="font-medium">Margen:</span> {getMarginRange(service)}
-                          </div>
+                           <div>
+                             <span className="font-medium">Precio Base:</span> {formatCurrency(service.base_price)}
+                           </div>
+                           <div>
+                             <span className="font-medium">Margen:</span> {getMarginText(service)}
+                           </div>
                           <div>
                             <span className="font-medium">IVA:</span> {service.vat_rate}%
                           </div>
@@ -480,9 +469,9 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                         <div className="text-sm font-medium text-green-800">
                           Precio Venta: {formatCurrency(getDisplayPrice(service))}
                         </div>
-                        <div className="text-xs text-green-600">
-                          (Con margen máximo + IVA)
-                        </div>
+                         <div className="text-xs text-green-600">
+                           (Con margen + IVA)
+                         </div>
                       </div>
                     </div>
                   </CardContent>
