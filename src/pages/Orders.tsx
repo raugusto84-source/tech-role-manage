@@ -119,6 +119,7 @@ export default function Orders() {
           } as Order;
         })
       );
+
       setOrders(ordersWithTechnicianNames);
     } catch (error) {
       console.error('Error loading orders:', error);

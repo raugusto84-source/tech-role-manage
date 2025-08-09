@@ -203,7 +203,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         setShowTechnicianSuggestions(true);
       }
       
-      // Los clientes solo verán sugerencias, no asignación automática
+      // **PARA CLIENTES**: Asignar técnico automáticamente sin mostrar interfaz
+      if (profile?.role === 'cliente') {
+        autoAssignTechnicianForClient(serviceTypeId);
+      }
     }
   };
 
@@ -219,7 +222,58 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
    * - technicianId: ID del técnico seleccionado
    * - reason: Razón por la cual fue sugerido este técnico
    */
-  // Función eliminada - ya no se asigna automáticamente
+  /**
+   * FUNCIÓN: autoAssignTechnicianForClient
+   * 
+   * PROPÓSITO:
+   * - Asignar automáticamente el mejor técnico para clientes
+   * - Los clientes no ven la interfaz de selección, pero obtienen asignación óptima
+   * - Proporciona transparencia sobre la asignación realizada
+   */
+  const autoAssignTechnicianForClient = async (serviceTypeId: string) => {
+    try {
+      // Consultar sugerencias del sistema
+      const { data: suggestions, error } = await supabase
+        .rpc('suggest_optimal_technician', {
+          p_service_type_id: serviceTypeId,
+          p_delivery_date: formData.delivery_date || null
+        });
+
+      if (error) {
+        console.error('Error getting technician suggestions for client:', error);
+        return;
+      }
+
+      // Ordenar por puntuación y seleccionar el mejor
+      const sortedSuggestions = (suggestions || []).sort((a, b) => b.score - a.score);
+      
+      if (sortedSuggestions.length > 0) {
+        const bestTechnician = sortedSuggestions[0];
+        
+        // Asignar automáticamente
+        setFormData(prev => ({ 
+          ...prev, 
+          assigned_technician: bestTechnician.technician_id 
+        }));
+        setSuggestionReason(bestTechnician.suggestion_reason);
+        
+        // Notificar al cliente sobre la asignación
+        toast({
+          title: "Técnico asignado automáticamente",
+          description: `${bestTechnician.full_name} será el técnico asignado. ${bestTechnician.suggestion_reason}`,
+        });
+      } else {
+        // No hay técnicos disponibles
+        toast({
+          title: "Asignación pendiente",
+          description: "No hay técnicos disponibles en este momento. Un técnico será asignado por el equipo administrativo.",
+          variant: "default"
+        });
+      }
+    } catch (error) {
+      console.error('Error in auto-assignment for client:', error);
+    }
+  };
 
   const handleTechnicianSuggestionSelect = (technicianId: string, reason: string) => {
     setFormData(prev => ({ ...prev, assigned_technician: technicianId }));

@@ -113,6 +113,17 @@ export function TechnicianSuggestion({
       const sortedSuggestions = (data || []).sort((a, b) => b.score - a.score);
       setSuggestions(sortedSuggestions);
 
+      // **SELECCIÓN AUTOMÁTICA**: Asignar automáticamente el mejor técnico
+      if (sortedSuggestions.length > 0 && !selectedTechnicianId) {
+        const bestTechnician = sortedSuggestions[0];
+        onTechnicianSelect(bestTechnician.technician_id, bestTechnician.suggestion_reason);
+        
+        toast({
+          title: "Técnico asignado automáticamente",
+          description: `${bestTechnician.full_name} - ${bestTechnician.suggestion_reason}`,
+        });
+      }
+
     } catch (error) {
       console.error('Error loading technician suggestions:', error);
       toast({

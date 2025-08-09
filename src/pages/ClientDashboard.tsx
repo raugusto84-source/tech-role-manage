@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, RefreshCw, Gift, FileText, ClipboardList, User } from "lucide-react";
+import { Plus, RefreshCw, Gift, FileText, ClipboardList } from "lucide-react";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 
 // Tipos locales para órdenes y cotizaciones (ligeros para no depender de types.ts)
@@ -142,6 +142,7 @@ export default function ClientDashboard() {
         };
       })
     );
+
     setOrders(ordersWithTechnicianNames);
   };
 
@@ -291,40 +292,22 @@ export default function ClientDashboard() {
               <p className="text-muted-foreground">Aún no tienes órdenes</p>
             ) : (
               orders.map((o) => (
-                <div key={o.id} className="flex items-start justify-between rounded-lg border p-3 hover:bg-muted/30 transition-colors">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium">{o.order_number}</p>
-                      {statusBadge(o.status)}
-                    </div>
-                    
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {o.failure_description || "Sin descripción"}
-                    </p>
-                    
+                <div key={o.id} className="flex items-start justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="font-medium">{o.order_number}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{o.failure_description || "Sin descripción"}</p>
                     {o.technician_profile && (
-                      <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-2 rounded-md w-fit">
-                        <User className="h-4 w-4" />
-                        <div>
-                          <span className="text-sm font-medium">
-                            {o.technician_profile.full_name}
-                          </span>
-                          {o.assignment_reason && (
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                              {o.assignment_reason}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {!o.technician_profile && (
-                      <div className="flex items-center gap-2 bg-muted/50 text-muted-foreground px-3 py-2 rounded-md w-fit">
-                        <User className="h-4 w-4" />
-                        <span className="text-sm">Sin técnico asignado</span>
+                      <div className="text-xs text-primary font-medium mt-1">
+                        Técnico: {o.technician_profile.full_name}
+                        {o.assignment_reason && (
+                          <div className="text-xs text-muted-foreground italic">
+                            {o.assignment_reason}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
+                  {statusBadge(o.status)}
                 </div>
               ))
             )}
