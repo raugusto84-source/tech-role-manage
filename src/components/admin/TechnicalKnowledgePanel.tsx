@@ -47,6 +47,7 @@ interface TechnicalKnowledge {
   category_id: string;
   skill_level: number;
   years_experience: number;
+  months_experience?: number;
   specialization_products: string[];
   certifications: string[];
   notes?: string;
@@ -188,6 +189,7 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
             category_id: categoryId,
             skill_level: 1,
             years_experience: 0,
+            months_experience: 0,
             specialization_products: [],
             certifications: [],
             notes: ''
@@ -202,6 +204,7 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
           category_id: categoryId,
           skill_level: 1,
           years_experience: 0,
+          months_experience: 0,
           specialization_products: [],
           certifications: [],
           notes: '',
@@ -244,6 +247,7 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
   const handleKnowledgeUpdate = async (knowledgeId: string, updateData: {
     skill_level: number;
     years_experience?: number;
+    months_experience?: number;
     specialization_products?: string[];
     certifications?: string[];
     notes?: string;
@@ -254,6 +258,7 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
         .update({
           skill_level: updateData.skill_level,
           years_experience: updateData.years_experience || 0,
+          months_experience: updateData.months_experience || 0,
           specialization_products: updateData.specialization_products || [],
           certifications: updateData.certifications || [],
           notes: updateData.notes || '',
@@ -269,6 +274,7 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
               ...k, 
               skill_level: updateData.skill_level,
               years_experience: updateData.years_experience || 0,
+              months_experience: updateData.months_experience || 0,
               specialization_products: updateData.specialization_products || [],
               certifications: updateData.certifications || [],
               notes: updateData.notes || ''
@@ -302,6 +308,7 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
     await handleKnowledgeUpdate(knowledgeId, {
       skill_level: currentKnowledge.skill_level,
       years_experience: currentKnowledge.years_experience,
+      months_experience: currentKnowledge.months_experience,
       specialization_products: updatedProducts,
       certifications: currentKnowledge.certifications,
       notes: currentKnowledge.notes
@@ -441,12 +448,14 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
                               <SkillLevelEditor
                                 currentLevel={categoryKnowledge.skill_level}
                                 currentExperience={categoryKnowledge.years_experience}
+                                currentExperienceMonths={categoryKnowledge.months_experience || 0}
                                 currentCertifications={categoryKnowledge.certifications || []}
                                 currentNotes={categoryKnowledge.notes || ''}
                                 serviceName={category.name}
                                 onSave={(data) => handleKnowledgeUpdate(categoryKnowledge.id, {
                                   skill_level: data.skill_level,
                                   years_experience: data.years_experience,
+                                  months_experience: data.months_experience,
                                   certifications: data.certifications,
                                   notes: data.notes,
                                   specialization_products: categoryKnowledge.specialization_products
@@ -469,12 +478,14 @@ export function TechnicalKnowledgePanel({ selectedUserId, selectedUserRole }: Te
                           {renderSkillLevel(categoryKnowledge.skill_level)}
                         </div>
 
-                        {/* Años de experiencia */}
-                        {categoryKnowledge.years_experience > 0 && (
+                        {/* Experiencia */}
+                        {(categoryKnowledge.years_experience > 0 || (categoryKnowledge.months_experience && categoryKnowledge.months_experience > 0)) && (
                           <div>
                             <p className="text-sm text-muted-foreground mb-1">Experiencia:</p>
                             <Badge variant="outline">
-                              {categoryKnowledge.years_experience} año{categoryKnowledge.years_experience !== 1 ? 's' : ''}
+                              {categoryKnowledge.years_experience > 0 && `${categoryKnowledge.years_experience} año${categoryKnowledge.years_experience !== 1 ? 's' : ''}`}
+                              {categoryKnowledge.years_experience > 0 && categoryKnowledge.months_experience && categoryKnowledge.months_experience > 0 && ' y '}
+                              {categoryKnowledge.months_experience && categoryKnowledge.months_experience > 0 && `${categoryKnowledge.months_experience} mes${categoryKnowledge.months_experience !== 1 ? 'es' : ''}`}
                             </Badge>
                           </div>
                         )}

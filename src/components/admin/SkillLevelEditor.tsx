@@ -10,12 +10,14 @@ import { Edit2, Star } from 'lucide-react';
 interface SkillLevelEditorProps {
   currentLevel: number;
   currentExperience?: number;
+  currentExperienceMonths?: number;
   currentNotes?: string;
   currentCertifications?: string[];
   serviceName: string;
   onSave: (data: {
     skill_level: number;
     years_experience?: number;
+    months_experience?: number;
     notes?: string;
     certifications?: string[];
   }) => Promise<void>;
@@ -25,6 +27,7 @@ interface SkillLevelEditorProps {
 export function SkillLevelEditor({ 
   currentLevel, 
   currentExperience = 0,
+  currentExperienceMonths = 0,
   currentNotes = '',
   currentCertifications = [],
   serviceName, 
@@ -34,6 +37,7 @@ export function SkillLevelEditor({
   const [isOpen, setIsOpen] = useState(false);
   const [skillLevel, setSkillLevel] = useState(currentLevel);
   const [yearsExperience, setYearsExperience] = useState(currentExperience);
+  const [monthsExperience, setMonthsExperience] = useState(currentExperienceMonths);
   const [notes, setNotes] = useState(currentNotes);
   const [certifications, setCertifications] = useState(currentCertifications.join(', '));
   const [loading, setLoading] = useState(false);
@@ -50,6 +54,7 @@ export function SkillLevelEditor({
       await onSave({
         skill_level: skillLevel,
         years_experience: yearsExperience,
+        months_experience: monthsExperience,
         notes: notes || undefined,
         certifications: certArray.length > 0 ? certArray : undefined
       });
@@ -120,18 +125,35 @@ export function SkillLevelEditor({
             </div>
           </div>
 
-          {/* Años de Experiencia */}
-          <div className="space-y-2">
-            <Label htmlFor="experience">Años de Experiencia</Label>
-            <Input
-              id="experience"
-              type="number"
-              min="0"
-              max="50"
-              value={yearsExperience}
-              onChange={(e) => setYearsExperience(parseInt(e.target.value) || 0)}
-              placeholder="0"
-            />
+          {/* Experiencia */}
+          <div className="space-y-3">
+            <Label>Experiencia</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="years" className="text-sm text-muted-foreground">Años</Label>
+                <Input
+                  id="years"
+                  type="number"
+                  min="0"
+                  max="50"
+                  value={yearsExperience}
+                  onChange={(e) => setYearsExperience(parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <Label htmlFor="months" className="text-sm text-muted-foreground">Meses</Label>
+                <Input
+                  id="months"
+                  type="number"
+                  min="0"
+                  max="11"
+                  value={monthsExperience}
+                  onChange={(e) => setMonthsExperience(parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Certificaciones */}
