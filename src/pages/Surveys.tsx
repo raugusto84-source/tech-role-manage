@@ -126,6 +126,29 @@ export default function Surveys() {
     return matchesSearch;
   });
 
+  // Calculate averages by technician
+  const technicianAverages = orderSurveys.reduce((acc, survey) => {
+    const techName = survey.technician_profile?.full_name || 'Sin asignar';
+    if (!acc[techName]) {
+      acc[techName] = { surveys: [], avgTech: 0, avgSales: 0, count: 0 };
+    }
+    acc[techName].surveys.push(survey);
+    acc[techName].count++;
+    return acc;
+  }, {} as Record<string, any>);
+
+  // Calculate actual averages
+  Object.keys(technicianAverages).forEach(techName => {
+    const surveys = technicianAverages[techName].surveys;
+    const techAvg = surveys.reduce((sum: number, s: any) => 
+      sum + ((s.technician_knowledge + s.technician_attitude + s.technician_customer_service) / 3), 0) / surveys.length;
+    const salesAvg = surveys.reduce((sum: number, s: any) => 
+      sum + ((s.sales_knowledge + s.sales_attitude + s.sales_customer_service) / 3), 0) / surveys.length;
+    
+    technicianAverages[techName].avgTech = techAvg;
+    technicianAverages[techName].avgSales = salesAvg;
+  });
+
   if (profile?.role !== 'administrador') {
     return (
       <AppLayout>
@@ -143,6 +166,33 @@ export default function Surveys() {
           <h1 className="text-3xl font-bold">Panel de Encuestas de Satisfacción</h1>
           <p className="text-muted-foreground">Encuestas de órdenes completadas</p>
         </header>
+
+        {/* Statistics by Technician */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-4">Promedios por Técnico</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(technicianAverages).map(([techName, data]) => (
+              <Card key={techName}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">{techName}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Técnico:</span>
+                    <span className="font-medium">{data.avgTech.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Ventas:</span>
+                    <span className="font-medium">{data.avgSales.toFixed(1)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {data.count} encuesta{data.count !== 1 ? 's' : ''}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
