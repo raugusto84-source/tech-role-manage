@@ -25,7 +25,7 @@ interface OrderDetailsProps {
     delivery_date: string;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
+    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino';
     assigned_technician?: string;
     evidence_photos?: string[];
     created_at: string;

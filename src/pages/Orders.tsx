@@ -34,7 +34,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
+  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino';
   assigned_technician?: string;
   evidence_photos?: string[];
   created_at: string;
@@ -73,8 +73,7 @@ export default function Orders() {
         .select(`
           *,
           service_types:service_type(name, description),
-          clients:client_id(name, client_number, email, phone, address),
-          technician_profile:assigned_technician(full_name)
+          clients:client_id(name, client_number, email, phone, address)
         `)
         .order('created_at', { ascending: false });
 
@@ -94,10 +93,33 @@ export default function Orders() {
         query = query.eq('assigned_technician', user?.id);
       }
 
-      const { data, error } = await query;
+      const { data: ordersData, error } = await query;
 
       if (error) throw error;
-      setOrders((data as any) || []);
+
+      // Get technician profiles separately for assigned orders
+      const ordersWithTechnicianNames = await Promise.all(
+        (ordersData || []).map(async (order: any) => {
+          if (order.assigned_technician) {
+            const { data: techProfile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('user_id', order.assigned_technician)
+              .maybeSingle();
+            
+            return {
+              ...order,
+              technician_profile: techProfile
+            } as Order;
+          }
+          return {
+            ...order,
+            technician_profile: null
+          } as Order;
+        })
+      );
+
+      setOrders(ordersWithTechnicianNames);
     } catch (error) {
       console.error('Error loading orders:', error);
       toast({
@@ -139,6 +161,7 @@ export default function Orders() {
   // Group orders by status
   const groupedOrders = {
     pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
+    en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
     en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
     finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
     cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
@@ -147,6 +170,7 @@ export default function Orders() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente': return 'bg-warning/10 text-warning border-warning/20';
+      case 'en_camino': return 'bg-info/10 text-info border-info/20';
       case 'en_proceso': return 'bg-info/10 text-info border-info/20';
       case 'finalizada': return 'bg-success/10 text-success border-success/20';
       case 'cancelada': return 'bg-destructive/10 text-destructive border-destructive/20';
@@ -157,6 +181,7 @@ export default function Orders() {
   const getStatusTitle = (status: string) => {
     switch (status) {
       case 'pendiente': return 'Pendientes';
+      case 'en_camino': return 'En Camino';
       case 'en_proceso': return 'En Proceso';
       case 'finalizada': return 'Finalizadas';
       case 'cancelada': return 'Canceladas';
@@ -281,6 +306,7 @@ export default function Orders() {
                   <SelectContent>
                     <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="en_camino">En Camino</SelectItem>
                     <SelectItem value="en_proceso">En Proceso</SelectItem>
                     <SelectItem value="finalizada">Finalizada</SelectItem>
                     <SelectItem value="cancelada">Cancelada</SelectItem>
