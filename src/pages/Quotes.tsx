@@ -121,25 +121,61 @@ export default function Quotes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Filtrar cotizaciones
+  // Filtrar cotizaciones solo por búsqueda (sin filtro de estado)
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = quote.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.quote_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quote.service_description.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || quote.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
-  // Obtener color del estado
-  const getStatusColor = (status: string) => {
+  // Separar cotizaciones por estado
+  const quotesByStatus = {
+    solicitud: filteredQuotes.filter(q => q.status === 'solicitud'),
+    enviada: filteredQuotes.filter(q => q.status === 'enviada'),
+    aceptada: filteredQuotes.filter(q => q.status === 'aceptada'),
+    rechazada: filteredQuotes.filter(q => q.status === 'rechazada'),
+  };
+
+  // Obtener información del estado
+  const getStatusInfo = (status: string) => {
     switch (status) {
-      case 'solicitud': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'enviada': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'aceptada': return 'bg-green-100 text-green-800 border-green-200';
-      case 'rechazada': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'solicitud': 
+        return { 
+          label: 'Nuevas', 
+          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+          bgColor: 'bg-yellow-50',
+          icon: '📝'
+        };
+      case 'enviada': 
+        return { 
+          label: 'Enviadas', 
+          color: 'bg-blue-100 text-blue-800 border-blue-200',
+          bgColor: 'bg-blue-50',
+          icon: '📤'
+        };
+      case 'aceptada': 
+        return { 
+          label: 'Aceptadas', 
+          color: 'bg-green-100 text-green-800 border-green-200',
+          bgColor: 'bg-green-50',
+          icon: '✅'
+        };
+      case 'rechazada': 
+        return { 
+          label: 'No Aceptadas', 
+          color: 'bg-red-100 text-red-800 border-red-200',
+          bgColor: 'bg-red-50',
+          icon: '❌'
+        };
+      default: 
+        return { 
+          label: status, 
+          color: 'bg-gray-100 text-gray-800 border-gray-200',
+          bgColor: 'bg-gray-50',
+          icon: '📄'
+        };
     }
   };
 
@@ -248,7 +284,7 @@ export default function Quotes() {
           )}
         </div>
 
-        {/* Filtros */}
+        {/* Solo filtro de búsqueda */}
         <div className="flex gap-4">
           <div className="flex-1 max-w-sm">
             <div className="relative">
@@ -261,53 +297,71 @@ export default function Quotes() {
               />
             </div>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filtrar por estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los estados</SelectItem>
-              <SelectItem value="solicitud">Nueva</SelectItem>
-              <SelectItem value="enviada">Enviada</SelectItem>
-              <SelectItem value="aceptada">Aceptada</SelectItem>
-              <SelectItem value="rechazada">Rechazada</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        {/* Lista de cotizaciones */}
-        <div className="grid gap-4">
-          {filteredQuotes.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-                <Plus className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">No hay cotizaciones</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'No se encontraron cotizaciones con los filtros aplicados'
-                  : 'Aún no tienes cotizaciones registradas'}
-              </p>
-              {canCreateQuotes && (
-                <Button onClick={() => setShowWizard(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Primera Cotización
-                </Button>
-              )}
+        {/* Vista de cotizaciones por estado */}
+        {filteredQuotes.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Plus className="h-8 w-8 text-muted-foreground" />
             </div>
-          ) : (
-            filteredQuotes.map((quote) => (
-              <QuoteCard
-                key={quote.id}
-                quote={quote}
-                getStatusColor={getStatusColor}
-                onViewDetails={() => setSelectedQuote(quote)}
-                onDelete={() => setDeleteQuoteId(quote.id)}
-                canManage={canCreateQuotes}
-              />
-            ))
-          )}
-        </div>
+            <h3 className="text-lg font-medium mb-2">No hay cotizaciones</h3>
+            <p className="text-muted-foreground mb-4">
+              {searchTerm 
+                ? 'No se encontraron cotizaciones con los filtros aplicados'
+                : 'Aún no tienes cotizaciones registradas'}
+            </p>
+            {canCreateQuotes && (
+              <Button onClick={() => setShowWizard(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Primera Cotización
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Renderizar cada estado como una sección */}
+            {Object.entries(quotesByStatus).map(([status, statusQuotes]) => {
+              const statusInfo = getStatusInfo(status);
+              
+              if (statusQuotes.length === 0) return null;
+              
+              return (
+                <div key={status} className={`rounded-lg border p-6 ${statusInfo.bgColor}`}>
+                  {/* Header de la sección */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{statusInfo.icon}</span>
+                      <div>
+                        <h2 className="text-xl font-semibold">{statusInfo.label}</h2>
+                        <p className="text-sm text-muted-foreground">
+                          {statusQuotes.length} {statusQuotes.length === 1 ? 'cotización' : 'cotizaciones'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full border text-sm font-medium ${statusInfo.color}`}>
+                      {statusQuotes.length}
+                    </div>
+                  </div>
+                  
+                  {/* Lista de cotizaciones del estado */}
+                  <div className="grid gap-4">
+                    {statusQuotes.map((quote) => (
+                      <QuoteCard
+                        key={quote.id}
+                        quote={quote}
+                        getStatusColor={() => statusInfo.color}
+                        onViewDetails={() => setSelectedQuote(quote)}
+                        onDelete={() => setDeleteQuoteId(quote.id)}
+                        canManage={canCreateQuotes}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Dialog de confirmación de eliminación */}
