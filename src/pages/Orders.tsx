@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, User } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { OrderForm } from '@/components/orders/OrderForm';
@@ -355,7 +355,7 @@ export default function Orders() {
                         className="p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
                       >
                         <div className="flex items-center justify-between">
-                          <div className="space-y-1">
+                          <div className="space-y-1 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="font-medium text-sm">{order.order_number}</span>
                               <span className="text-muted-foreground text-xs">•</span>
@@ -365,13 +365,16 @@ export default function Orders() {
                               {order.service_types?.name} - {formatDate(order.delivery_date)}
                             </div>
                             {order.technician_profile && (
-                              <div className="text-xs text-primary font-medium">
-                                Técnico: {order.technician_profile.full_name}
-                                {order.assignment_reason && (
-                                  <div className="text-xs text-muted-foreground mt-1 italic">
-                                    {order.assignment_reason}
-                                  </div>
-                                )}
+                              <div className="flex items-center gap-1 text-sm bg-primary/10 text-primary px-2 py-1 rounded-md w-fit">
+                                <User className="h-3 w-3" />
+                                <span className="font-medium">
+                                  Técnico: {order.technician_profile.full_name}
+                                </span>
+                              </div>
+                            )}
+                            {order.assignment_reason && (
+                              <div className="text-xs text-muted-foreground italic bg-muted/50 px-2 py-1 rounded">
+                                {order.assignment_reason}
                               </div>
                             )}
                             <div className="text-xs text-muted-foreground line-clamp-1">
