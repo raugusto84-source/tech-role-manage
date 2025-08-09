@@ -545,17 +545,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                 </>
               )}
 
-              {quote.account_type && (
-                <>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium">Tipo de Cuenta</p>
-                    <p className="text-sm text-muted-foreground capitalize">
-                      {quote.account_type === 'no_fiscal' ? 'No Fiscal' : 'Fiscal'}
-                    </p>
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
 

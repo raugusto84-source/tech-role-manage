@@ -59,6 +59,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   // Estado del formulario
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [filteredClients, setFilteredClients] = useState<Client[]>([]);
+  const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [quoteDetails, setQuoteDetails] = useState({
     service_description: '',
@@ -101,10 +103,20 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
       }
 
       setClients(data || []);
+      setFilteredClients(data || []);
     } catch (error) {
       console.error('Error loading clients:', error);
     }
   };
+
+  // Filtrar clientes por búsqueda
+  useEffect(() => {
+    const filtered = clients.filter(client =>
+      client.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientSearchTerm.toLowerCase())
+    );
+    setFilteredClients(filtered);
+  }, [clients, clientSearchTerm]);
 
   // Calcular total
   const calculateTotal = () => {
@@ -370,29 +382,41 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                   </CardContent>
                 </Card>
               ) : (
-                <div>
-                  <Label htmlFor="client-select">Cliente</Label>
-                  <Select 
-                    value={selectedClient?.id || ''} 
-                    onValueChange={(value) => {
-                      const client = clients.find(c => c.id === value);
-                      setSelectedClient(client || null);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          <div>
-                            <div className="font-medium">{client.name}</div>
-                            <div className="text-sm text-muted-foreground">{client.email}</div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="client-search">Buscar Cliente</Label>
+                    <Input
+                      id="client-search"
+                      placeholder="Buscar por nombre o email..."
+                      value={clientSearchTerm}
+                      onChange={(e) => setClientSearchTerm(e.target.value)}
+                      className="mb-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="client-select">Cliente</Label>
+                    <Select 
+                      value={selectedClient?.id || ''} 
+                      onValueChange={(value) => {
+                        const client = clients.find(c => c.id === value);
+                        setSelectedClient(client || null);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona un cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filteredClients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            <div>
+                              <div className="font-medium">{client.name}</div>
+                              <div className="text-sm text-muted-foreground">{client.email}</div>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               )}
             </div>

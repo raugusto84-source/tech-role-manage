@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Package, Search, Settings } from 'lucide-react';
+import { Plus, Package, Search, Settings, Trash2 } from 'lucide-react';
 import { TaxConfiguration } from './TaxConfiguration';
 
 interface ServiceType {
@@ -130,6 +130,31 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateTaxDefinition = async (taxId: string, field: string, value: string | number) => {
+    const { error } = await supabase
+      .from('tax_definitions')
+      .update({ [field]: value })
+      .eq('id', taxId);
+    
+    if (!error) {
+      setGlobalTaxes(taxes => taxes.map(tax => 
+        tax.id === taxId ? { ...tax, [field]: value } : tax
+      ));
+    }
+  };
+
+  const deleteTaxDefinition = async (taxId: string) => {
+    const { error } = await supabase
+      .from('tax_definitions')
+      .delete()
+      .eq('id', taxId);
+    
+    if (!error) {
+      setGlobalTaxes(taxes => taxes.filter(tax => tax.id !== taxId));
+      setSelectedTaxes(selected => selected.filter(id => id !== taxId));
     }
   };
 
@@ -266,9 +291,10 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
   return (
     <div className="space-y-6">
       <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="services">Servicios por Categoría</TabsTrigger>
-          <TabsTrigger value="taxes">Configuración Global de Impuestos</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="services">Servicios</TabsTrigger>
+          <TabsTrigger value="products">Productos</TabsTrigger>
+          <TabsTrigger value="taxes">Impuestos Globales</TabsTrigger>
           <TabsTrigger value="custom">Artículo Personalizado</TabsTrigger>
         </TabsList>
 
@@ -286,61 +312,155 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                 Selecciona los impuestos que se aplicarán automáticamente a todos los artículos añadidos.
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-green-700 mb-3">IVAs Disponibles</h4>
-                  <div className="space-y-2">
-                    {globalTaxes.filter(tax => tax.tax_type === 'iva').map(tax => (
-                      <div key={tax.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`tax-${tax.id}`}
-                          checked={selectedTaxes.includes(tax.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedTaxes([...selectedTaxes, tax.id]);
-                            } else {
-                              setSelectedTaxes(selectedTaxes.filter(id => id !== tax.id));
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`tax-${tax.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 flex justify-between"
-                        >
-                          <span>{tax.tax_name}</span>
-                          <span className="text-green-600">+{tax.tax_rate}%</span>
-                        </label>
-                      </div>
-                    ))}
+              {/* Gestión de impuestos editables */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-medium">Impuestos Disponibles</h4>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const { error } = await supabase
+                        .from('tax_definitions')
+                        .insert({
+                          tax_name: 'Nuevo Impuesto',
+                          tax_type: 'iva',
+                          tax_rate: 0,
+                          is_active: true
+                        });
+                      if (!error) loadData();
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Impuesto
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium text-green-700 mb-3">IVAs Disponibles</h4>
+                    <div className="space-y-2">
+                      {globalTaxes.filter(tax => tax.tax_type === 'iva').map(tax => (
+                        <div key={tax.id} className="flex items-center space-x-2 p-2 border rounded">
+                          <Checkbox
+                            id={`tax-${tax.id}`}
+                            checked={selectedTaxes.includes(tax.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedTaxes([...selectedTaxes, tax.id]);
+                              } else {
+                                setSelectedTaxes(selectedTaxes.filter(id => id !== tax.id));
+                              }
+                            }}
+                          />
+                          <Input
+                            value={tax.tax_name}
+                            onChange={(e) => updateTaxDefinition(tax.id, 'tax_name', e.target.value)}
+                            className="flex-1 h-8"
+                          />
+                          <Input
+                            type="number"
+                            value={tax.tax_rate}
+                            onChange={(e) => updateTaxDefinition(tax.id, 'tax_rate', parseFloat(e.target.value) || 0)}
+                            className="w-20 h-8"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                          />
+                          <span className="text-xs text-green-600">%</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTaxDefinition(tax.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-red-700 mb-3">Retenciones Disponibles</h4>
+                    <div className="space-y-2">
+                      {globalTaxes.filter(tax => tax.tax_type === 'retencion').map(tax => (
+                        <div key={tax.id} className="flex items-center space-x-2 p-2 border rounded">
+                          <Checkbox
+                            id={`tax-${tax.id}`}
+                            checked={selectedTaxes.includes(tax.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedTaxes([...selectedTaxes, tax.id]);
+                              } else {
+                                setSelectedTaxes(selectedTaxes.filter(id => id !== tax.id));
+                              }
+                            }}
+                          />
+                          <Input
+                            value={tax.tax_name}
+                            onChange={(e) => updateTaxDefinition(tax.id, 'tax_name', e.target.value)}
+                            className="flex-1 h-8"
+                          />
+                          <Input
+                            type="number"
+                            value={tax.tax_rate}
+                            onChange={(e) => updateTaxDefinition(tax.id, 'tax_rate', parseFloat(e.target.value) || 0)}
+                            className="w-20 h-8"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                          />
+                          <span className="text-xs text-red-600">%</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteTaxDefinition(tax.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <h4 className="font-medium text-red-700 mb-3">Retenciones Disponibles</h4>
-                  <div className="space-y-2">
-                    {globalTaxes.filter(tax => tax.tax_type === 'retencion').map(tax => (
-                      <div key={tax.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`tax-${tax.id}`}
-                          checked={selectedTaxes.includes(tax.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedTaxes([...selectedTaxes, tax.id]);
-                            } else {
-                              setSelectedTaxes(selectedTaxes.filter(id => id !== tax.id));
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`tax-${tax.id}`}
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 flex justify-between"
-                        >
-                          <span>{tax.tax_name}</span>
-                          <span className="text-red-600">-{tax.tax_rate}%</span>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const { error } = await supabase
+                        .from('tax_definitions')
+                        .insert({
+                          tax_name: 'IVA ' + (globalTaxes.filter(t => t.tax_type === 'iva').length + 1),
+                          tax_type: 'iva',
+                          tax_rate: 19,
+                          is_active: true
+                        });
+                      if (!error) loadData();
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar IVA
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      const { error } = await supabase
+                        .from('tax_definitions')
+                        .insert({
+                          tax_name: 'Retención ' + (globalTaxes.filter(t => t.tax_type === 'retencion').length + 1),
+                          tax_type: 'retencion',
+                          tax_rate: 1,
+                          is_active: true
+                        });
+                      if (!error) loadData();
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Retención
+                  </Button>
                 </div>
               </div>
 
@@ -356,7 +476,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
           </Card>
         </TabsContent>
 
-        {/* Services by Category */}
+        {/* Services */}
         <TabsContent value="services" className="space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -372,16 +492,25 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                 />
               </div>
             </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.open('/ventas?tab=form', '_blank');
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Crear Servicio
+            </Button>
           </div>
 
           <div className="space-y-6">
             {servicesByCategory.map(category => (
-              category.services.length > 0 && (
-                <Card key={category.id}>
+              category.services.filter(s => s.item_type === 'servicio').length > 0 && (
+                <Card key={`${category.id}-servicios`}>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       {category.icon && <span className="text-xl">{category.icon}</span>}
-                      {category.name}
+                      {category.name} - Servicios
                     </CardTitle>
                     {category.description && (
                       <p className="text-sm text-muted-foreground">{category.description}</p>
@@ -389,14 +518,14 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {category.services.map(service => (
+                      {category.services.filter(service => service.item_type === 'servicio').map(service => (
                         <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
                           <CardContent className="p-4">
                             <div className="space-y-2">
                               <div className="flex items-start justify-between">
                                 <h4 className="font-medium text-sm">{service.name}</h4>
-                                <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'} className="text-xs">
-                                  {service.item_type}
+                                <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                                  Servicio
                                 </Badge>
                               </div>
                               {service.description && (
@@ -404,10 +533,10 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                                   {service.description}
                                 </p>
                               )}
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm">
-                                {formatCurrency(service.base_price || 0)}
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">
+                                  {formatCurrency(service.base_price || 0)}
+                                </span>
                                 <Button
                                   size="sm"
                                   onClick={() => addService(service)}
@@ -426,23 +555,23 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
               )
             ))}
 
-            {uncategorizedServices.length > 0 && (
+            {uncategorizedServices.filter(s => s.item_type === 'servicio').length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    📋 Sin Categoría
+                    📋 Sin Categoría - Servicios
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {uncategorizedServices.map(service => (
+                    {uncategorizedServices.filter(service => service.item_type === 'servicio').map(service => (
                       <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
                         <CardContent className="p-4">
                           <div className="space-y-2">
                             <div className="flex items-start justify-between">
                               <h4 className="font-medium text-sm">{service.name}</h4>
-                              <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'} className="text-xs">
-                                {service.item_type}
+                              <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                                Servicio
                               </Badge>
                             </div>
                             {service.description && (
@@ -450,10 +579,136 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                                 {service.description}
                               </p>
                             )}
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">
+                                {formatCurrency(service.base_price || 0)}
+                              </span>
+                              <Button
+                                size="sm"
+                                onClick={() => addService(service)}
+                                className="h-7 px-2"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Products */}
+        <TabsContent value="products" className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Label htmlFor="search-products">Buscar productos</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="search-products"
+                  placeholder="Buscar por nombre o descripción..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                window.open('/ventas?tab=form', '_blank');
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Crear Producto
+            </Button>
+          </div>
+
+          <div className="space-y-6">
+            {servicesByCategory.map(category => (
+              category.services.filter(s => s.item_type === 'articulo').length > 0 && (
+                <Card key={`${category.id}-productos`}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      {category.icon && <span className="text-xl">{category.icon}</span>}
+                      {category.name} - Productos
+                    </CardTitle>
+                    {category.description && (
+                      <p className="text-sm text-muted-foreground">{category.description}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {category.services.filter(service => service.item_type === 'articulo').map(service => (
+                        <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                          <CardContent className="p-4">
+                            <div className="space-y-2">
+                              <div className="flex items-start justify-between">
+                                <h4 className="font-medium text-sm">{service.name}</h4>
+                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                  Producto
+                                </Badge>
+                              </div>
+                              {service.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {service.description}
+                                </p>
+                              )}
                               <div className="flex items-center justify-between">
                                 <span className="font-medium text-sm">
-                                  {formatCurrency(service.base_price || 0)}
+                                  {formatCurrency(service.cost_price || 0)}
                                 </span>
+                                <Button
+                                  size="sm"
+                                  onClick={() => addService(service)}
+                                  className="h-7 px-2"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            ))}
+
+            {uncategorizedServices.filter(s => s.item_type === 'articulo').length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    📋 Sin Categoría - Productos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {uncategorizedServices.filter(service => service.item_type === 'articulo').map(service => (
+                      <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between">
+                              <h4 className="font-medium text-sm">{service.name}</h4>
+                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                Producto
+                              </Badge>
+                            </div>
+                            {service.description && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {service.description}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">
+                                {formatCurrency(service.cost_price || 0)}
+                              </span>
                               <Button
                                 size="sm"
                                 onClick={() => addService(service)}
