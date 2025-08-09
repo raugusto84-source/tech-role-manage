@@ -129,14 +129,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   };
 
   const canEdit = profile?.role === 'administrador' || 
-                  profile?.role === 'tecnico' || 
-                  (profile?.role === 'cliente' && order.status === 'pendiente');
+                  profile?.role === 'tecnico';
 
   const canUpdateStatus = profile?.role === 'administrador' || 
                           (profile?.role === 'tecnico' && order.assigned_technician === user?.id);
 
   const isClient = profile?.role === 'cliente';
   const canSeeSurvey = isClient && order.status === 'finalizada' && !surveyCompleted;
+  
+  // Check if service was completed before estimated time
+  const isEarlyCompletion = order.status === 'finalizada' && 
+    order.average_service_time && 
+    order.delivery_date && 
+    order.created_at &&
+    new Date(order.delivery_date).getTime() - new Date(order.created_at).getTime() < 
+    (order.average_service_time * 60 * 60 * 1000);
 
   const handleSave = async () => {
     setLoading(true);
@@ -214,12 +221,19 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             {canSeeSurvey && (
               <Button 
                 onClick={() => setShowSurvey(true)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 animate-pulse bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg shadow-primary/25"
                 variant="default"
               >
-                <Star size={16} />
+                <Star size={16} className="animate-bounce" />
                 Evaluar Servicio
               </Button>
+            )}
+            
+            {isEarlyCompletion && (
+              <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-md animate-bounce">
+                <Clock size={16} className="text-green-600" />
+                <span className="text-sm font-medium">¡Completado antes de tiempo!</span>
+              </div>
             )}
             
             {canEdit && (
