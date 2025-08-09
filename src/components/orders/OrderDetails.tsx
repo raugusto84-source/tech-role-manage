@@ -27,6 +27,7 @@ interface OrderDetailsProps {
     average_service_time?: number;
     status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino';
     assigned_technician?: string;
+    assignment_reason?: string;
     evidence_photos?: string[];
     created_at: string;
     service_types?: {
@@ -56,11 +57,25 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [surveyData, setSurveyData] = useState<any>(null);
+  const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
 
   useEffect(() => {
     loadOrderNotes();
     checkSurveyStatus();
+    loadAssignedTechnician();
   }, [order.id]);
+
+  const loadAssignedTechnician = async () => {
+    if (order.assigned_technician) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('user_id', order.assigned_technician)
+        .maybeSingle();
+      
+      setAssignedTechnician(data);
+    }
+  };
 
   const checkSurveyStatus = async () => {
     if (profile?.role === 'cliente' && order.status === 'finalizada') {
@@ -446,6 +461,38 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Técnico Asignado */}
+            {(order.assigned_technician || order.assignment_reason) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <User className="h-5 w-5 mr-2 text-primary" />
+                    Técnico Asignado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {assignedTechnician && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Técnico</Label>
+                      <p className="text-foreground font-medium">{assignedTechnician.full_name}</p>
+                      {assignedTechnician.email && (
+                        <p className="text-sm text-muted-foreground">{assignedTechnician.email}</p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {order.assignment_reason && (
+                    <div>
+                      <Label className="text-sm font-medium text-muted-foreground">Razón de Asignación</Label>
+                      <p className="text-foreground text-sm bg-muted/50 p-3 rounded-lg">
+                        {order.assignment_reason}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Chat de la Orden - visible solo cuando la orden está activa */}
             <Card>

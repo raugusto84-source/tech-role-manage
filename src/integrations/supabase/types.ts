@@ -1302,6 +1302,7 @@ export type Database = {
       orders: {
         Row: {
           assigned_technician: string | null
+          assignment_reason: string | null
           average_service_time: number | null
           client_approval: boolean | null
           client_approval_notes: string | null
@@ -1326,6 +1327,7 @@ export type Database = {
         }
         Insert: {
           assigned_technician?: string | null
+          assignment_reason?: string | null
           average_service_time?: number | null
           client_approval?: boolean | null
           client_approval_notes?: string | null
@@ -1350,6 +1352,7 @@ export type Database = {
         }
         Update: {
           assigned_technician?: string | null
+          assignment_reason?: string | null
           average_service_time?: number | null
           client_approval?: boolean | null
           client_approval_notes?: string | null

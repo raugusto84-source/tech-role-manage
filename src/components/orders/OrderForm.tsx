@@ -312,6 +312,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         estimated_cost: formData.estimated_cost ? parseFloat(formData.estimated_cost) : null,
         average_service_time: formData.average_service_time ? parseFloat(formData.average_service_time) : null,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
+        assignment_reason: suggestionReason || null,
         created_by: user?.id,
         status: 'pendiente' as const
       };

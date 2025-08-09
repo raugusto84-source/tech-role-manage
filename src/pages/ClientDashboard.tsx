@@ -18,6 +18,7 @@ interface Order {
   delivery_date?: string;
   failure_description?: string;
   assigned_technician?: string;
+  assignment_reason?: string;
   technician_profile?: {
     full_name: string;
   } | null;
@@ -296,9 +297,14 @@ export default function ClientDashboard() {
                     <p className="font-medium">{o.order_number}</p>
                     <p className="text-sm text-muted-foreground line-clamp-2">{o.failure_description || "Sin descripción"}</p>
                     {o.technician_profile && (
-                      <p className="text-xs text-primary font-medium mt-1">
+                      <div className="text-xs text-primary font-medium mt-1">
                         Técnico: {o.technician_profile.full_name}
-                      </p>
+                        {o.assignment_reason && (
+                          <div className="text-xs text-muted-foreground italic">
+                            {o.assignment_reason}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                   {statusBadge(o.status)}

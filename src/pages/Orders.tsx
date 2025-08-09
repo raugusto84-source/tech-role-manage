@@ -36,6 +36,7 @@ interface Order {
   average_service_time?: number;
   status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino';
   assigned_technician?: string;
+  assignment_reason?: string;
   evidence_photos?: string[];
   created_at: string;
   service_types?: {
@@ -366,6 +367,11 @@ export default function Orders() {
                             {order.technician_profile && (
                               <div className="text-xs text-primary font-medium">
                                 Técnico: {order.technician_profile.full_name}
+                                {order.assignment_reason && (
+                                  <div className="text-xs text-muted-foreground mt-1 italic">
+                                    {order.assignment_reason}
+                                  </div>
+                                )}
                               </div>
                             )}
                             <div className="text-xs text-muted-foreground line-clamp-1">
