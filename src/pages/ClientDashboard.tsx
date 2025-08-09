@@ -158,8 +158,14 @@ export default function ClientDashboard() {
         .on(
           "postgres_changes",
           { event: "UPDATE", schema: "public", table: "orders", filter: `client_id=eq.${client.id}` },
-          (_payload) => {
+          (payload) => {
             loadOrders();
+            // Si la orden se completó, forzar recarga de página para que SurveyManager detecte nuevas encuestas
+            if (payload.new && payload.new.status === 'finalizada') {
+              setTimeout(() => {
+                window.location.reload();
+              }, 1000);
+            }
           }
         )
         .subscribe();
