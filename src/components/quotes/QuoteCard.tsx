@@ -58,67 +58,57 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
 
   return (
     <Card className="hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="font-semibold text-lg">{quote.quote_number}</h3>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-              <User className="h-4 w-4" />
-              <span>{quote.client_name}</span>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-base truncate">{quote.quote_number}</h3>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <User className="h-3 w-3" />
+              <span className="truncate">{quote.client_name}</span>
             </div>
           </div>
-          <Badge className={`${getStatusColor(quote.status)} border`}>
+          <Badge className={`${getStatusColor(quote.status)} border text-xs`}>
             {getStatusText(quote.status)}
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="py-2 space-y-2">
         <div>
-          <p className="text-sm font-medium mb-1">Descripción del Servicio</p>
-          <p className="text-sm text-muted-foreground line-clamp-2">
+          <p className="text-xs text-muted-foreground line-clamp-1">
             {quote.service_description}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-green-600" />
-            <div>
-              <p className="text-xs text-muted-foreground">Valor Estimado</p>
-              <p className="text-sm font-medium">
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3 text-green-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">
                 {quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-600" />
-            <div>
-              <p className="text-xs text-muted-foreground">Fecha de Solicitud</p>
-              <p className="text-sm font-medium">{formatDate(quote.request_date)}</p>
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3 text-blue-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">{formatDate(quote.request_date)}</p>
             </div>
           </div>
         </div>
-
-        {quote.salesperson_name && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span>Vendedor: {quote.salesperson_name}</span>
-          </div>
-        )}
       </CardContent>
 
-      <CardFooter className="pt-3 border-t">
-        <div className="flex gap-2 w-full">
+      <CardFooter className="pt-2 pb-2">
+        <div className="flex gap-1 w-full">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={onViewDetails}
-            className="flex-1"
+            className="flex-1 h-7 text-xs"
           >
-            <Eye className="h-4 w-4 mr-2" />
-            Ver Detalles
+            <Eye className="h-3 w-3 mr-1" />
+            Ver
           </Button>
           
           {canManage && (
@@ -126,9 +116,9 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
               variant="outline" 
               size="sm" 
               onClick={onDelete}
-              className="text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive h-7 px-2"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3 w-3" />
             </Button>
           )}
         </div>
