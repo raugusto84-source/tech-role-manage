@@ -13,16 +13,10 @@ interface OrderSatisfactionSurvey {
   id: string;
   order_id: string;
   client_id: string;
-  technician_knowledge: number;
-  technician_attitude: number;
-  technician_customer_service: number;
-  technician_comments?: string;
-  sales_knowledge: number;
-  sales_attitude: number;
-  sales_customer_service: number;
-  sales_comments?: string;
-  overall_recommendation: number;
-  general_comments?: string;
+  technician_rating: number;
+  sales_rating: number;
+  overall_rating: number;
+  comments?: string;
   created_at: string;
   orders?: {
     order_number: string;
@@ -33,6 +27,9 @@ interface OrderSatisfactionSurvey {
     };
   };
   technician_profile?: {
+    full_name: string;
+  };
+  sales_profile?: {
     full_name: string;
   };
 }
@@ -55,11 +52,18 @@ export default function Surveys() {
     try {
       setLoading(true);
       
-      // Load order satisfaction surveys
+      // Load order satisfaction surveys with simplified structure
       const { data: surveys, error } = await supabase
         .from('order_satisfaction_surveys')
         .select(`
-          *,
+          id,
+          order_id,
+          client_id,
+          technician_knowledge,
+          sales_knowledge,
+          overall_recommendation,
+          general_comments,
+          created_at,
           orders!inner(
             order_number,
             assigned_technician,
@@ -70,22 +74,43 @@ export default function Surveys() {
 
       if (error) throw error;
 
-      // Get technician profiles separately
+      // Get technician and sales profiles
       const surveyData = await Promise.all(
         (surveys || []).map(async (survey) => {
+          let techProfile = null;
+          let salesProfile = null;
+          
           if (survey.orders?.assigned_technician) {
-            const { data: techProfile } = await supabase
+            const { data: tech } = await supabase
               .from('profiles')
               .select('full_name')
               .eq('user_id', survey.orders.assigned_technician)
               .single();
-            
-            return {
-              ...survey,
-              technician_profile: techProfile
-            };
+            techProfile = tech;
           }
-          return survey;
+          
+          // Get sales person - for now we'll use a default or first admin/vendedor
+          const { data: sales } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('role', 'vendedor')
+            .limit(1)
+            .single();
+          salesProfile = sales;
+          
+          return {
+            id: survey.id,
+            order_id: survey.order_id,
+            client_id: survey.client_id,
+            technician_rating: survey.technician_knowledge || 0,
+            sales_rating: survey.sales_knowledge || 0,
+            overall_rating: survey.overall_recommendation || 0,
+            comments: survey.general_comments,
+            created_at: survey.created_at,
+            orders: survey.orders,
+            technician_profile: techProfile,
+            sales_profile: salesProfile
+          };
         })
       );
 
@@ -140,10 +165,10 @@ export default function Surveys() {
   // Calculate actual averages
   Object.keys(technicianAverages).forEach(techName => {
     const surveys = technicianAverages[techName].surveys;
-    const techAvg = surveys.reduce((sum: number, s: any) => 
-      sum + ((s.technician_knowledge + s.technician_attitude + s.technician_customer_service) / 3), 0) / surveys.length;
-    const salesAvg = surveys.reduce((sum: number, s: any) => 
-      sum + ((s.sales_knowledge + s.sales_attitude + s.sales_customer_service) / 3), 0) / surveys.length;
+    const techAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
+      sum + s.technician_rating, 0) / surveys.length;
+    const salesAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
+      sum + s.sales_rating, 0) / surveys.length;
     
     technicianAverages[techName].avgTech = techAvg;
     technicianAverages[techName].avgSales = salesAvg;
@@ -212,7 +237,7 @@ export default function Surveys() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {orderSurveys.length > 0 
-                  ? (orderSurveys.reduce((sum, s) => sum + ((s.technician_knowledge + s.technician_attitude + s.technician_customer_service) / 3), 0) / orderSurveys.length).toFixed(1)
+                  ? (orderSurveys.reduce((sum, s) => sum + s.technician_rating, 0) / orderSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
@@ -226,7 +251,7 @@ export default function Surveys() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {orderSurveys.length > 0 
-                  ? (orderSurveys.reduce((sum, s) => sum + ((s.sales_knowledge + s.sales_attitude + s.sales_customer_service) / 3), 0) / orderSurveys.length).toFixed(1)
+                  ? (orderSurveys.reduce((sum, s) => sum + s.sales_rating, 0) / orderSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
@@ -273,63 +298,42 @@ export default function Surveys() {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Recomendación</p>
-                          {renderStarRating(survey.overall_recommendation || 0)}
+                          <p className="text-sm text-muted-foreground">Evaluación General SYSLAG</p>
+                          {renderStarRating(survey.overall_rating || 0)}
                         </div>
                       </div>
 
-                      {/* Technical Ratings */}
-                      <div>
-                        <h4 className="font-medium mb-3 text-blue-700">Evaluación Técnica</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Conocimiento</p>
-                            {renderStarRating(survey.technician_knowledge || 0)}
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Actitud</p>
-                            {renderStarRating(survey.technician_attitude || 0)}
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Atención</p>
-                            {renderStarRating(survey.technician_customer_service || 0)}
-                          </div>
+                      {/* Simplified Survey Questions */}
+                      <div className="space-y-6">
+                        {/* Question 1: Technician Evaluation */}
+                        <div className="p-4 border rounded-lg bg-blue-50/50">
+                          <h4 className="font-medium mb-2 text-blue-700">
+                            1. ¿Cómo evalúas al Técnico "{survey.technician_profile?.full_name || 'Sin asignar'}"?
+                          </h4>
+                          {renderStarRating(survey.technician_rating || 0)}
                         </div>
-                        {survey.technician_comments && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm">"{survey.technician_comments}"</p>
-                          </div>
-                        )}
+
+                        {/* Question 2: Sales/Customer Service Evaluation */}
+                        <div className="p-4 border rounded-lg bg-green-50/50">
+                          <h4 className="font-medium mb-2 text-green-700">
+                            2. ¿Cómo evalúas la Atención a Clientes "{survey.sales_profile?.full_name || 'Departamento de Ventas'}"?
+                          </h4>
+                          {renderStarRating(survey.sales_rating || 0)}
+                        </div>
+
+                        {/* Question 3: Overall SYSLAG Evaluation */}
+                        <div className="p-4 border rounded-lg bg-purple-50/50">
+                          <h4 className="font-medium mb-2 text-purple-700">
+                            3. En general, ¿cómo evalúas a SYSLAG?
+                          </h4>
+                          {renderStarRating(survey.overall_rating || 0)}
+                        </div>
                       </div>
 
-                      {/* Sales Ratings */}
-                      <div>
-                        <h4 className="font-medium mb-3 text-green-700">Evaluación Ventas</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Conocimiento</p>
-                            {renderStarRating(survey.sales_knowledge || 0)}
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Actitud</p>
-                            {renderStarRating(survey.sales_attitude || 0)}
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Atención</p>
-                            {renderStarRating(survey.sales_customer_service || 0)}
-                          </div>
-                        </div>
-                        {survey.sales_comments && (
-                          <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                            <p className="text-sm">"{survey.sales_comments}"</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* General Comments */}
-                      {survey.general_comments && (
+                      {/* Comments */}
+                      {survey.comments && (
                         <div className="p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm"><strong>Comentarios generales:</strong> "{survey.general_comments}"</p>
+                          <p className="text-sm"><strong>Comentarios:</strong> "{survey.comments}"</p>
                         </div>
                       )}
 

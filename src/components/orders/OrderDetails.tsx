@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star } from 'lucide-react';
+import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -141,9 +141,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const isEarlyCompletion = order.status === 'finalizada' && 
     order.average_service_time && 
     order.delivery_date && 
-    order.created_at &&
-    new Date(order.delivery_date).getTime() - new Date(order.created_at).getTime() < 
-    (order.average_service_time * 60 * 60 * 1000);
+    order.created_at && (() => {
+      const startTime = new Date(order.created_at).getTime();
+      const endTime = new Date(order.delivery_date).getTime();
+      const actualDurationHours = (endTime - startTime) / (1000 * 60 * 60);
+      return actualDurationHours < order.average_service_time;
+    })();
 
   const handleSave = async () => {
     setLoading(true);
@@ -345,9 +348,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                       <Label className="text-sm font-medium text-muted-foreground flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
                         Tiempo Estimado
+                        {isEarlyCompletion && (
+                          <Trophy className="h-4 w-4 ml-2 text-green-600 animate-pulse" />
+                        )}
                       </Label>
-                      <p className="text-foreground font-medium">
+                      <p className="text-foreground font-medium flex items-center gap-2">
                         {formatTime(order.average_service_time)}
+                        {isEarlyCompletion && (
+                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                            ¡Logrado!
+                          </Badge>
+                        )}
                       </p>
                     </div>
                   )}
