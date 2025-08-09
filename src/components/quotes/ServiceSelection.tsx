@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Package, ShoppingCart } from 'lucide-react';
+import { TaxConfiguration } from './TaxConfiguration';
 
 interface ServiceType {
   id: string;
@@ -29,6 +30,9 @@ interface QuoteItem {
   subtotal: number;
   vat_rate: number;
   vat_amount: number;
+  withholding_rate: number;
+  withholding_amount: number;
+  withholding_type: string;
   total: number;
   is_custom: boolean;
 }
@@ -100,22 +104,26 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       const newQuantity = updatedItems[existingItemIndex].quantity + quantity;
       const subtotal = newQuantity * updatedItems[existingItemIndex].unit_price;
       const vatAmount = subtotal * (updatedItems[existingItemIndex].vat_rate / 100);
-      const total = subtotal + vatAmount;
+      const withholding_amount = subtotal * (updatedItems[existingItemIndex].withholding_rate / 100);
+      const total = subtotal + vatAmount - withholding_amount;
       
       updatedItems[existingItemIndex] = {
         ...updatedItems[existingItemIndex],
         quantity: newQuantity,
         subtotal,
         vat_amount: vatAmount,
+        withholding_amount,
         total
       };
       onItemsChange(updatedItems);
     } else {
       // Agregar nuevo
       const subtotal = quantity * (serviceType.base_price || 0);
-      const vatRate = 19;
+      const vatRate = 16;
       const vatAmount = subtotal * (vatRate / 100);
-      const total = subtotal + vatAmount;
+      const withholding_rate = 0;
+      const withholding_amount = 0;
+      const total = subtotal + vatAmount - withholding_amount;
       
       const newItem: QuoteItem = {
         id: `predefined-${serviceType.id}-${Date.now()}`,
@@ -127,6 +135,9 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
         subtotal,
         vat_rate: vatRate,
         vat_amount: vatAmount,
+        withholding_rate,
+        withholding_amount,
+        withholding_type: '',
         total,
         is_custom: false,
       };
@@ -152,9 +163,11 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
     }
 
     const subtotal = customItem.quantity * customItem.unit_price;
-    const vatRate = 19;
+    const vatRate = 16;
     const vatAmount = subtotal * (vatRate / 100);
-    const total = subtotal + vatAmount;
+    const withholding_rate = 0;
+    const withholding_amount = 0;
+    const total = subtotal + vatAmount - withholding_amount;
 
     const newItem: QuoteItem = {
       id: `custom-${Date.now()}`,
@@ -165,6 +178,9 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       subtotal,
       vat_rate: vatRate,
       vat_amount: vatAmount,
+      withholding_rate,
+      withholding_amount,
+      withholding_type: '',
       total,
       is_custom: true,
     };
@@ -184,6 +200,14 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
     onItemsChange(updatedItems);
   };
 
+  // Update item with tax configuration
+  const updateItemTaxes = (updatedItem: QuoteItem) => {
+    const updatedItems = selectedItems.map(item => 
+      item.id === updatedItem.id ? updatedItem : item
+    );
+    onItemsChange(updatedItems);
+  };
+
   // Actualizar cantidad de artículo
   const updateItemQuantity = (id: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -195,8 +219,9 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       if (item.id === id) {
         const subtotal = newQuantity * item.unit_price;
         const vatAmount = subtotal * (item.vat_rate / 100);
-        const total = subtotal + vatAmount;
-        return { ...item, quantity: newQuantity, subtotal, vat_amount: vatAmount, total };
+        const withholding_amount = subtotal * (item.withholding_rate / 100);
+        const total = subtotal + vatAmount - withholding_amount;
+        return { ...item, quantity: newQuantity, subtotal, vat_amount: vatAmount, withholding_amount, total };
       }
       return item;
     });
@@ -388,6 +413,14 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
                         </div>
                         <span className="text-sm">Precio: {formatCurrency(item.unit_price)}</span>
                         <span className="text-sm font-medium">Total: {formatCurrency(item.total)}</span>
+                      </div>
+                      
+                      {/* Tax configuration */}
+                      <div className="mt-3 flex gap-2">
+                        <TaxConfiguration 
+                          item={item} 
+                          onItemChange={updateItemTaxes} 
+                        />
                       </div>
                     </div>
                     <Button

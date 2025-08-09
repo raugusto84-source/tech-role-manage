@@ -22,6 +22,9 @@ interface QuoteItem {
   subtotal: number;
   vat_rate: number;
   vat_amount: number;
+  withholding_rate: number;
+  withholding_amount: number;
+  withholding_type: string;
   total: number;
   is_custom: boolean;
 }
@@ -310,12 +313,13 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const calculateTotals = () => {
     const subtotal = quoteItems.reduce((sum, item) => sum + item.subtotal, 0);
     const totalVat = quoteItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    const totalWithholdings = quoteItems.reduce((sum, item) => sum + item.withholding_amount, 0);
     const total = quoteItems.reduce((sum, item) => sum + item.total, 0);
     
-    return { subtotal, totalVat, total };
+    return { subtotal, totalVat, totalWithholdings, total };
   };
 
-  const { subtotal, totalVat, total } = calculateTotals();
+  const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();
 
   return (
     <div className="space-y-6">
@@ -389,7 +393,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         <TableHead className="text-center">Cantidad</TableHead>
                         <TableHead className="text-right">Precio Unitario</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead className="text-right">IVA ({quoteItems[0]?.vat_rate || 19}%)</TableHead>
+                        <TableHead className="text-right">IVA ({quoteItems[0]?.vat_rate || 16}%)</TableHead>
+                        <TableHead className="text-right">Retención</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -408,6 +413,18 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                           <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.vat_amount)}</TableCell>
+                          <TableCell className="text-right">
+                            {item.withholding_amount > 0 ? (
+                              <div>
+                                <div className="text-sm">{formatCurrency(-item.withholding_amount)}</div>
+                                {item.withholding_type && (
+                                  <div className="text-xs text-muted-foreground">{item.withholding_type} ({item.withholding_rate}%)</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                         </TableRow>
                       ))}
@@ -426,6 +443,12 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                           <span>IVA Total:</span>
                           <span>{formatCurrency(totalVat)}</span>
                         </div>
+                        {totalWithholdings > 0 && (
+                          <div className="flex justify-between text-red-600">
+                            <span>Retenciones:</span>
+                            <span>-{formatCurrency(totalWithholdings)}</span>
+                          </div>
+                        )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                           <span>Total:</span>

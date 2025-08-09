@@ -1757,6 +1757,9 @@ export type Database = {
           updated_at: string
           vat_amount: number
           vat_rate: number
+          withholding_amount: number | null
+          withholding_rate: number | null
+          withholding_type: string | null
         }
         Insert: {
           created_at?: string
@@ -1773,6 +1776,9 @@ export type Database = {
           updated_at?: string
           vat_amount?: number
           vat_rate?: number
+          withholding_amount?: number | null
+          withholding_rate?: number | null
+          withholding_type?: string | null
         }
         Update: {
           created_at?: string
@@ -1789,6 +1795,9 @@ export type Database = {
           updated_at?: string
           vat_amount?: number
           vat_rate?: number
+          withholding_amount?: number | null
+          withholding_rate?: number | null
+          withholding_type?: string | null
         }
         Relationships: [
           {

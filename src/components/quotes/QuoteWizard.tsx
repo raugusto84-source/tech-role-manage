@@ -31,6 +31,9 @@ interface QuoteItem {
   subtotal: number;
   vat_rate: number;
   vat_amount: number;
+  withholding_rate: number;
+  withholding_amount: number;
+  withholding_type: string;
   total: number;
   is_custom: boolean;
 }
@@ -205,8 +208,11 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           quantity: item.quantity,
           unit_price: item.unit_price,
           subtotal: item.subtotal || item.unit_price * item.quantity,
-          vat_rate: item.vat_rate || 19,
+          vat_rate: item.vat_rate || 16,
           vat_amount: item.vat_amount || 0,
+          withholding_rate: item.withholding_rate || 0,
+          withholding_amount: item.withholding_amount || 0,
+          withholding_type: item.withholding_type || '',
           total: item.total,
           is_custom: item.is_custom
         }));
