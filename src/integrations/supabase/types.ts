@@ -2530,6 +2530,39 @@ export type Database = {
           },
         ]
       }
+      tax_definitions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          tax_name: string
+          tax_rate: number
+          tax_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          tax_name: string
+          tax_rate: number
+          tax_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          tax_name?: string
+          tax_rate?: number
+          tax_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       technical_categories: {
         Row: {
           created_at: string

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,23 +49,28 @@ export function TaxConfiguration({ item, onItemChange }: TaxConfigurationProps) 
   const [isOpen, setIsOpen] = useState(false);
   const [taxes, setTaxes] = useState<Tax[]>(item.taxes || []);
 
-  const availableTaxes = [
-    // IVAs
-    { type: 'iva' as const, name: 'IVA Exento', rate: 0 },
-    { type: 'iva' as const, name: 'IVA Productos Básicos', rate: 5 },
-    { type: 'iva' as const, name: 'IVA Estándar', rate: 16 },
-    { type: 'iva' as const, name: 'IVA Servicios', rate: 19 },
-    
-    // Retenciones
-    { type: 'retencion' as const, name: 'Retención Compras Generales', rate: 1 },
-    { type: 'retencion' as const, name: 'Retención Servicios', rate: 2 },
-    { type: 'retencion' as const, name: 'Retención Servicios Profesionales', rate: 3.5 },
-    { type: 'retencion' as const, name: 'Retención Servicios Técnicos', rate: 4 },
-    { type: 'retencion' as const, name: 'Retención Honorarios', rate: 6 },
-    { type: 'retencion' as const, name: 'Retención Pagos al Exterior', rate: 10 },
-    { type: 'retencion' as const, name: 'Retención ICA', rate: 0.414 },
-    { type: 'retencion' as const, name: 'Retención IVA', rate: 15 },
-  ];
+  const [availableTaxes, setAvailableTaxes] = useState<any[]>([]);
+
+  // Cargar impuestos desde la base de datos
+  useEffect(() => {
+    const loadTaxes = async () => {
+      const { data, error } = await supabase
+        .from('tax_definitions')
+        .select('*')
+        .eq('is_active', true)
+        .order('tax_type, tax_rate');
+      
+      if (!error && data) {
+        setAvailableTaxes(data.map(tax => ({
+          type: tax.tax_type,
+          name: tax.tax_name,
+          rate: tax.tax_rate,
+          id: tax.id
+        })));
+      }
+    };
+    loadTaxes();
+  }, []);
 
   const calculateTotals = (updatedTaxes: Tax[]) => {
     const subtotal = item.quantity * item.unit_price;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { ServiceSelection } from './ServiceSelection';
+import { CategoryServiceSelection } from './CategoryServiceSelection';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -400,7 +400,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
           {/* Paso 2: Artículos */}
           {currentStep === 'items' && (
-            <ServiceSelection 
+            <CategoryServiceSelection 
               selectedItems={quoteItems}
               onItemsChange={setQuoteItems}
             />
