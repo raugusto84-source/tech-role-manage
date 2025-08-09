@@ -1658,6 +1658,39 @@ export type Database = {
         }
         Relationships: []
       }
+      profit_margin_configs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          margin_percentage: number
+          max_price: number
+          min_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          margin_percentage: number
+          max_price: number
+          min_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          margin_percentage?: number
+          max_price?: number
+          min_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           actual_cost: number | null

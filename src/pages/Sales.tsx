@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServicesList } from '@/components/sales/ServicesList';
 import { ServiceForm } from '@/components/sales/ServiceForm';
+import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calculator, Package } from 'lucide-react';
+import { Plus, Calculator, Package, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -102,7 +103,7 @@ export default function Sales() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Servicios
@@ -110,6 +111,10 @@ export default function Sales() {
             <TabsTrigger value="form" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {selectedService ? 'Editar' : 'Nuevo'}
+            </TabsTrigger>
+            <TabsTrigger value="margins" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Márgenes
             </TabsTrigger>
           </TabsList>
 
@@ -152,6 +157,21 @@ export default function Sales() {
                   onSuccess={selectedService ? handleServiceUpdated : handleServiceCreated}
                   onCancel={handleCancelEdit}
                 />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Configuración de márgenes */}
+          <TabsContent value="margins" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración de Márgenes</CardTitle>
+                <CardDescription>
+                  Define los porcentajes de ganancia automáticos por rangos de precio
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProfitMarginConfig />
               </CardContent>
             </Card>
           </TabsContent>

@@ -63,6 +63,8 @@ interface ServiceFormProps {
 export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [marginConfigs, setMarginConfigs] = useState<any[]>([]);
+  const [autoMargin, setAutoMargin] = useState<number | null>(null);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -239,6 +241,46 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       maximumFractionDigits: 0,
     }).format(amount);
   };
+
+  // Load margin configurations
+  useEffect(() => {
+    const loadMarginConfigs = async () => {
+      try {
+        const { data } = await supabase
+          .from("profit_margin_configs")
+          .select("*")
+          .eq("is_active", true)
+          .order("min_price", { ascending: true });
+        
+        setMarginConfigs(data || []);
+      } catch (error) {
+        console.error("Error loading margin configs:", error);
+      }
+    };
+
+    loadMarginConfigs();
+  }, []);
+
+  // Calculate automatic margin based on base price  
+  useEffect(() => {
+    const basePrice = form.watch("base_price");
+    const itemType = form.watch("item_type");
+    
+    if (itemType === "articulo" && basePrice > 0 && marginConfigs.length > 0) {
+      const applicableConfig = marginConfigs.find(
+        config => basePrice >= config.min_price && basePrice <= config.max_price
+      );
+      
+      if (applicableConfig) {
+        setAutoMargin(applicableConfig.margin_percentage);
+        form.setValue("profit_margin", applicableConfig.margin_percentage);
+      } else {
+        setAutoMargin(null);
+      }
+    } else {
+      setAutoMargin(null);
+    }
+  }, [form.watch("base_price"), form.watch("item_type"), marginConfigs]);
 
   useEffect(() => {
     if (serviceId) {
@@ -479,12 +521,19 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                         </FormItem>
                       )}
                     />
-                    <FormField
+                     <FormField
                       control={form.control}
                       name="profit_margin"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Margen de Ganancia (%)</FormLabel>
+                          <FormLabel>
+                            Margen de Ganancia (%)
+                            {autoMargin !== null && (
+                              <span className="text-sm text-muted-foreground ml-2">
+                                (Auto: {autoMargin}%)
+                              </span>
+                            )}
+                          </FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -493,10 +542,12 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                               step="0.1"
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              disabled={autoMargin !== null}
                             />
                           </FormControl>
                           <FormDescription>
                             % de ganancia sobre el precio base
+                            {autoMargin !== null && " (calculado automáticamente)"}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
