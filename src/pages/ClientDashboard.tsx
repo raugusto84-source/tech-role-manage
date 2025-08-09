@@ -122,20 +122,14 @@ export default function ClientDashboard() {
     }
 
     // Get technician profiles separately for assigned orders
-    console.log('CLIENT: Raw orders data:', ordersData);
-    
     const ordersWithTechnicianNames = await Promise.all(
       (ordersData || []).map(async (order: any) => {
-        console.log(`CLIENT: Order ${order.order_number}: assigned_technician = ${order.assigned_technician}`);
-        
         if (order.assigned_technician) {
-          const { data: techProfile, error } = await supabase
+          const { data: techProfile } = await supabase
             .from('profiles')
             .select('full_name')
             .eq('user_id', order.assigned_technician)
             .maybeSingle();
-          
-          console.log(`CLIENT: Technician profile for ${order.order_number}:`, techProfile, 'Error:', error);
           
           return {
             ...order,
@@ -148,8 +142,6 @@ export default function ClientDashboard() {
         };
       })
     );
-
-    console.log('CLIENT: Final orders with technician names:', ordersWithTechnicianNames);
     setOrders(ordersWithTechnicianNames);
   };
 

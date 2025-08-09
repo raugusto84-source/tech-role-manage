@@ -1080,6 +1080,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_order_notes_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "order_notes_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
