@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -7,8 +7,24 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, User, Calendar, DollarSign, FileText, ShoppingCart, Send, CheckCircle, XCircle } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ArrowLeft, User, Calendar, DollarSign, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
+interface QuoteItem {
+  id: string;
+  quote_id: string;
+  service_type_id?: string;
+  name: string;
+  description?: string;
+  quantity: number;
+  unit_price: number;
+  subtotal: number;
+  vat_rate: number;
+  vat_amount: number;
+  total: number;
+  is_custom: boolean;
+}
 
 interface Quote {
   id: string;
@@ -24,6 +40,8 @@ interface Quote {
   marketing_channel?: string;
   account_type?: string;
   sale_type?: string;
+  created_by?: string;
+  assigned_to?: string;
 }
 
 interface QuoteDetailsProps {
@@ -41,6 +59,47 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [newStatus, setNewStatus] = useState<'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento'>(quote.status);
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [salesperson, setSalesperson] = useState<string>('');
+
+  // Load quote items and salesperson information
+  useEffect(() => {
+    const loadQuoteDetails = async () => {
+      try {
+        // Load quote items
+        const { data: items, error: itemsError } = await supabase
+          .from('quote_items')
+          .select('*')
+          .eq('quote_id', quote.id)
+          .order('created_at', { ascending: true });
+
+        if (itemsError) {
+          console.error('Error loading quote items:', itemsError);
+        } else {
+          setQuoteItems(items || []);
+        }
+
+        // Load salesperson information
+        if (quote.assigned_to || quote.created_by) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', quote.assigned_to || quote.created_by)
+            .single();
+
+          if (profileError) {
+            console.error('Error loading salesperson:', profileError);
+          } else {
+            setSalesperson(profileData?.full_name || '');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading quote details:', error);
+      }
+    };
+
+    loadQuoteDetails();
+  }, [quote.id, quote.assigned_to, quote.created_by]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -247,6 +306,17 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
   const StatusIcon = getStatusIcon(quote.status);
 
+  // Calculate totals from quote items
+  const calculateTotals = () => {
+    const subtotal = quoteItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalVat = quoteItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    const total = quoteItems.reduce((sum, item) => sum + item.total, 0);
+    
+    return { subtotal, totalVat, total };
+  };
+
+  const { subtotal, totalVat, total } = calculateTotals();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -301,16 +371,79 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             </CardContent>
           </Card>
 
-          {/* Descripción del servicio */}
+          {/* Artículos cotizados */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Descripción del Servicio
+                <Package className="h-5 w-5" />
+                Artículos y Servicios Cotizados
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-base leading-relaxed">{quote.service_description}</p>
+              {quoteItems.length > 0 ? (
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Artículo/Servicio</TableHead>
+                        <TableHead className="text-center">Cantidad</TableHead>
+                        <TableHead className="text-right">Precio Unitario</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        <TableHead className="text-right">IVA ({quoteItems[0]?.vat_rate || 19}%)</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quoteItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(item.vat_amount)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {/* Totales */}
+                  <div className="border-t pt-4">
+                    <div className="flex justify-end">
+                      <div className="w-64 space-y-2">
+                        <div className="flex justify-between">
+                          <span>Subtotal:</span>
+                          <span>{formatCurrency(subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>IVA Total:</span>
+                          <span>{formatCurrency(totalVat)}</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                          <span>Total:</span>
+                          <span>{formatCurrency(total)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No hay artículos en esta cotización</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Descripción general: {quote.service_description}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -348,12 +481,23 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
               <div className="flex items-center gap-3">
                 <DollarSign className="h-4 w-4 text-green-600" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Valor Estimado</p>
+                  <p className="text-sm font-medium">Valor Total</p>
                   <p className="text-xl font-bold text-green-600">
-                    {quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'}
+                    {total > 0 ? formatCurrency(total) : 
+                     quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'}
                   </p>
                 </div>
               </div>
+
+              {salesperson && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium">Vendedor Asignado</p>
+                    <p className="text-sm text-muted-foreground">{salesperson}</p>
+                  </div>
+                </>
+              )}
 
               {quote.marketing_channel && (
                 <>

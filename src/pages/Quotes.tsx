@@ -22,6 +22,9 @@ interface Quote {
   status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento';
   request_date: string;
   created_by?: string;
+  assigned_to?: string;
+  created_at: string;
+  salesperson_name?: string;
 }
 
 /**
@@ -66,7 +69,29 @@ export default function Quotes() {
         return;
       }
 
-      setQuotes(data || []);
+      // Get salesperson names
+      const userIds = [...new Set([...data.map(q => q.assigned_to), ...data.map(q => q.created_by)].filter(Boolean))];
+      
+      let salespersonData: any[] = [];
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', userIds);
+        
+        salespersonData = profilesData || [];
+      }
+      
+      // Transform the data to include salesperson name
+      const transformedData = (data || []).map(quote => {
+        const salesperson = salespersonData.find(p => p.user_id === (quote.assigned_to || quote.created_by));
+        return {
+          ...quote,
+          salesperson_name: salesperson?.full_name || ''
+        };
+      });
+      
+      setQuotes(transformedData);
     } catch (error) {
       console.error('Unexpected error loading quotes:', error);
       toast({

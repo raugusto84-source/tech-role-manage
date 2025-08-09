@@ -28,6 +28,9 @@ interface QuoteItem {
   description: string;
   quantity: number;
   unit_price: number;
+  subtotal: number;
+  vat_rate: number;
+  vat_amount: number;
   total: number;
   is_custom: boolean;
 }
@@ -177,17 +180,45 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         assigned_to: (profile as any).user_id || undefined,
       };
 
-      const { error } = await supabase
+      const { data: quoteResult, error: quoteError } = await supabase
         .from('quotes')
-        .insert(quoteData as any);
+        .insert(quoteData as any)
+        .select('id')
+        .single();
 
-      if (error) {
+      if (quoteError) {
         toast({
           title: "Error",
-          description: `Error al crear la cotización: ${error.message}`,
+          description: `Error al crear la cotización: ${quoteError.message}`,
           variant: "destructive",
         });
         return;
+      }
+
+      // Insert quote items
+      if (quoteItems.length > 0 && quoteResult) {
+        const itemsData = quoteItems.map(item => ({
+          quote_id: quoteResult.id,
+          service_type_id: item.service_type_id || null,
+          name: item.name,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          subtotal: item.subtotal || item.unit_price * item.quantity,
+          vat_rate: item.vat_rate || 19,
+          vat_amount: item.vat_amount || 0,
+          total: item.total,
+          is_custom: item.is_custom
+        }));
+
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .insert(itemsData);
+
+        if (itemsError) {
+          console.error('Error creating quote items:', itemsError);
+          // Continue anyway as quote was created successfully
+        }
       }
 
       toast({

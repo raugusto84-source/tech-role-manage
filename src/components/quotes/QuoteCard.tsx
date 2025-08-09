@@ -12,6 +12,8 @@ interface Quote {
   estimated_amount: number;
   status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento';
   request_date: string;
+  created_at: string;
+  salesperson_name?: string;
 }
 
 interface QuoteCardProps {
@@ -98,6 +100,13 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
             </div>
           </div>
         </div>
+
+        {quote.salesperson_name && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4" />
+            <span>Vendedor: {quote.salesperson_name}</span>
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="pt-3 border-t">

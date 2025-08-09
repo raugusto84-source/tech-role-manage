@@ -26,6 +26,9 @@ interface QuoteItem {
   description: string;
   quantity: number;
   unit_price: number;
+  subtotal: number;
+  vat_rate: number;
+  vat_amount: number;
   total: number;
   is_custom: boolean;
 }
@@ -94,14 +97,26 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
     if (existingItemIndex >= 0) {
       // Si ya existe, actualizar cantidad
       const updatedItems = [...selectedItems];
+      const newQuantity = updatedItems[existingItemIndex].quantity + quantity;
+      const subtotal = newQuantity * updatedItems[existingItemIndex].unit_price;
+      const vatAmount = subtotal * (updatedItems[existingItemIndex].vat_rate / 100);
+      const total = subtotal + vatAmount;
+      
       updatedItems[existingItemIndex] = {
         ...updatedItems[existingItemIndex],
-        quantity: updatedItems[existingItemIndex].quantity + quantity,
-        total: (updatedItems[existingItemIndex].quantity + quantity) * updatedItems[existingItemIndex].unit_price
+        quantity: newQuantity,
+        subtotal,
+        vat_amount: vatAmount,
+        total
       };
       onItemsChange(updatedItems);
     } else {
       // Agregar nuevo
+      const subtotal = quantity * (serviceType.base_price || 0);
+      const vatRate = 19;
+      const vatAmount = subtotal * (vatRate / 100);
+      const total = subtotal + vatAmount;
+      
       const newItem: QuoteItem = {
         id: `predefined-${serviceType.id}-${Date.now()}`,
         service_type_id: serviceType.id,
@@ -109,7 +124,10 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
         description: serviceType.description || '',
         quantity,
         unit_price: serviceType.base_price || 0,
-        total: quantity * (serviceType.base_price || 0),
+        subtotal,
+        vat_rate: vatRate,
+        vat_amount: vatAmount,
+        total,
         is_custom: false,
       };
 
@@ -133,13 +151,21 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       return;
     }
 
+    const subtotal = customItem.quantity * customItem.unit_price;
+    const vatRate = 19;
+    const vatAmount = subtotal * (vatRate / 100);
+    const total = subtotal + vatAmount;
+
     const newItem: QuoteItem = {
       id: `custom-${Date.now()}`,
       name: customItem.name,
       description: customItem.description,
       quantity: customItem.quantity,
       unit_price: customItem.unit_price,
-      total: customItem.quantity * customItem.unit_price,
+      subtotal,
+      vat_rate: vatRate,
+      vat_amount: vatAmount,
+      total,
       is_custom: true,
     };
 
@@ -165,11 +191,15 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       return;
     }
 
-    const updatedItems = selectedItems.map(item => 
-      item.id === id 
-        ? { ...item, quantity: newQuantity, total: newQuantity * item.unit_price }
-        : item
-    );
+    const updatedItems = selectedItems.map(item => {
+      if (item.id === id) {
+        const subtotal = newQuantity * item.unit_price;
+        const vatAmount = subtotal * (item.vat_rate / 100);
+        const total = subtotal + vatAmount;
+        return { ...item, quantity: newQuantity, subtotal, vat_amount: vatAmount, total };
+      }
+      return item;
+    });
     onItemsChange(updatedItems);
   };
 

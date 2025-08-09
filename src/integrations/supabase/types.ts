@@ -1080,6 +1080,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_order_notes_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
             foreignKeyName: "order_notes_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -1730,6 +1737,72 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_custom: boolean
+          name: string
+          quantity: number
+          quote_id: string
+          service_type_id: string | null
+          subtotal: number
+          total: number
+          unit_price: number
+          updated_at: string
+          vat_amount: number
+          vat_rate: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_custom?: boolean
+          name: string
+          quantity?: number
+          quote_id: string
+          service_type_id?: string | null
+          subtotal?: number
+          total?: number
+          unit_price?: number
+          updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_custom?: boolean
+          name?: string
+          quantity?: number
+          quote_id?: string
+          service_type_id?: string | null
+          subtotal?: number
+          total?: number
+          unit_price?: number
+          updated_at?: string
+          vat_amount?: number
+          vat_rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
             referencedColumns: ["id"]
           },
         ]
