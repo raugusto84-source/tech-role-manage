@@ -49,9 +49,6 @@ interface Order {
     phone?: string;
     address: string;
   } | null;
-  technician_profile?: {
-    full_name: string;
-  } | null;
 }
 
 export default function Orders() {
@@ -73,8 +70,7 @@ export default function Orders() {
         .select(`
           *,
           service_types:service_type(name, description),
-          clients:client_id(name, client_number, email, phone, address),
-          technician_profile:assigned_technician(full_name)
+          clients:client_id(name, client_number, email, phone, address)
         `)
         .order('created_at', { ascending: false });
 
@@ -269,7 +265,7 @@ export default function Orders() {
           </CardContent>
         </Card>
 
-        {/* Orders List by Status */}
+        {/* Orders Grid */}
         {filteredOrders.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -287,62 +283,17 @@ export default function Orders() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {['pendiente', 'en_proceso', 'finalizada', 'cancelada'].map(status => {
-              const statusOrders = filteredOrders.filter(order => order.status === status);
-              if (statusOrders.length === 0) return null;
-              
-              return (
-                <Card key={status}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Badge className={getStatusColor(status)}>
-                        {status.replace('_', ' ').toUpperCase()}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        ({statusOrders.length} orden{statusOrders.length !== 1 ? 'es' : ''})
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {statusOrders.map((order) => (
-                      <div 
-                        key={order.id}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <span className="font-medium">{order.order_number}</span>
-                            {profile?.role === 'cliente' && order.technician_profile?.full_name && (
-                              <span className="text-sm text-muted-foreground">
-                                Técnico: {order.technician_profile.full_name}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {order.clients?.name} - {order.service_types?.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {order.failure_description}
-                          </p>
-                        </div>
-                        <div className="text-right text-sm">
-                          <p className="text-muted-foreground">
-                            {new Date(order.delivery_date).toLocaleDateString()}
-                          </p>
-                          {order.estimated_cost && (
-                            <p className="font-medium">
-                              ${order.estimated_cost.toLocaleString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onClick={() => setSelectedOrder(order)}
+                onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                canDelete={canDeleteOrder}
+                getStatusColor={getStatusColor}
+              />
+            ))}
           </div>
         )}
       </div>
