@@ -73,9 +73,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       
       setSurveyCompleted(!!data);
       setSurveyData(data);
-      if (!data) {
-        setShowSurvey(true);
-      }
+      
+      // NO mostrar automáticamente la encuesta, solo marcar si existe
+      setShowSurvey(false);
     }
   };
 
@@ -211,10 +211,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               {order.status.replace('_', ' ').toUpperCase()}
             </Badge>
             
-            {canSeeSurvey && !showSurvey && (
+            {canSeeSurvey && (
               <Button 
                 onClick={() => setShowSurvey(true)}
                 className="flex items-center gap-2"
+                variant="default"
               >
                 <Star size={16} />
                 Evaluar Servicio
