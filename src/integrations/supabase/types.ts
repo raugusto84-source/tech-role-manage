@@ -1741,6 +1741,44 @@ export type Database = {
           },
         ]
       }
+      quote_item_taxes: {
+        Row: {
+          created_at: string
+          id: string
+          quote_item_id: string
+          tax_amount: number
+          tax_name: string
+          tax_rate: number
+          tax_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quote_item_id: string
+          tax_amount: number
+          tax_name: string
+          tax_rate: number
+          tax_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quote_item_id?: string
+          tax_amount?: number
+          tax_name?: string
+          tax_rate?: number
+          tax_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_item_taxes_quote_item_id_fkey"
+            columns: ["quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           created_at: string

@@ -35,6 +35,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  taxes?: any[];
 }
 
 interface ServiceSelectionProps {
@@ -125,6 +126,15 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       const withholding_amount = 0;
       const total = subtotal + vatAmount - withholding_amount;
       
+      // Default tax for new items
+      const defaultTaxes = [{
+        id: `default-iva-${Date.now()}`,
+        tax_type: 'iva' as const,
+        tax_name: 'IVA Estándar',
+        tax_rate: vatRate,
+        tax_amount: vatAmount
+      }];
+      
       const newItem: QuoteItem = {
         id: `predefined-${serviceType.id}-${Date.now()}`,
         service_type_id: serviceType.id,
@@ -140,6 +150,7 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
         withholding_type: '',
         total,
         is_custom: false,
+        taxes: defaultTaxes,
       };
 
       onItemsChange([...selectedItems, newItem]);
@@ -169,6 +180,15 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
     const withholding_amount = 0;
     const total = subtotal + vatAmount - withholding_amount;
 
+    // Default tax for custom items
+    const defaultTaxes = [{
+      id: `default-iva-${Date.now()}`,
+      tax_type: 'iva' as const,
+      tax_name: 'IVA Estándar',
+      tax_rate: vatRate,
+      tax_amount: vatAmount
+    }];
+
     const newItem: QuoteItem = {
       id: `custom-${Date.now()}`,
       name: customItem.name,
@@ -183,6 +203,7 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       withholding_type: '',
       total,
       is_custom: true,
+      taxes: defaultTaxes,
     };
 
     onItemsChange([...selectedItems, newItem]);

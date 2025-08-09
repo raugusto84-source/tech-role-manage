@@ -36,6 +36,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  taxes?: any[];
 }
 
 interface QuoteWizardProps {
@@ -217,13 +218,41 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           is_custom: item.is_custom
         }));
 
-        const { error: itemsError } = await supabase
+        const { data: savedItems, error: itemsError } = await supabase
           .from('quote_items')
-          .insert(itemsData);
+          .insert(itemsData)
+          .select('id');
 
         if (itemsError) {
           console.error('Error creating quote items:', itemsError);
           // Continue anyway as quote was created successfully
+        } else if (savedItems && quoteItems.some(item => item.taxes && item.taxes.length > 0)) {
+          // Save individual taxes for items that have them
+          const taxesData: any[] = [];
+          
+          quoteItems.forEach((item, index) => {
+            if (item.taxes && item.taxes.length > 0 && savedItems[index]) {
+              item.taxes.forEach(tax => {
+                taxesData.push({
+                  quote_item_id: savedItems[index].id,
+                  tax_type: tax.tax_type,
+                  tax_name: tax.tax_name,
+                  tax_rate: tax.tax_rate,
+                  tax_amount: tax.tax_amount
+                });
+              });
+            }
+          });
+
+          if (taxesData.length > 0) {
+            const { error: taxesError } = await supabase
+              .from('quote_item_taxes')
+              .insert(taxesData);
+
+            if (taxesError) {
+              console.error('Error creating quote item taxes:', taxesError);
+            }
+          }
         }
       }
 

@@ -27,6 +27,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  taxes?: any[];
 }
 
 interface Quote {
@@ -393,8 +394,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         <TableHead className="text-center">Cantidad</TableHead>
                         <TableHead className="text-right">Precio Unitario</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead className="text-right">IVA ({quoteItems[0]?.vat_rate || 16}%)</TableHead>
-                        <TableHead className="text-right">Retención</TableHead>
+                        <TableHead className="text-right">Impuestos</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -412,18 +412,31 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                           <TableCell className="text-center">{item.quantity}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.vat_amount)}</TableCell>
                           <TableCell className="text-right">
-                            {item.withholding_amount > 0 ? (
-                              <div>
-                                <div className="text-sm">{formatCurrency(-item.withholding_amount)}</div>
-                                {item.withholding_type && (
-                                  <div className="text-xs text-muted-foreground">{item.withholding_type} ({item.withholding_rate}%)</div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
+                            <div className="space-y-1">
+                              {item.taxes && item.taxes.length > 0 ? (
+                                item.taxes.map((tax, index) => (
+                                  <div key={index} className="text-xs">
+                                    <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
+                                      {tax.tax_name}: {tax.tax_type === 'iva' ? '+' : '-'}{formatCurrency(tax.tax_amount)}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="space-y-1">
+                                  {item.vat_amount > 0 && (
+                                    <div className="text-xs text-green-600">
+                                      IVA ({item.vat_rate}%): +{formatCurrency(item.vat_amount)}
+                                    </div>
+                                  )}
+                                  {item.withholding_amount > 0 && (
+                                    <div className="text-xs text-red-600">
+                                      {item.withholding_type} ({item.withholding_rate}%): -{formatCurrency(item.withholding_amount)}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
                         </TableRow>

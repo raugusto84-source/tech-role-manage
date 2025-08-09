@@ -5,7 +5,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Plus, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Settings, Plus, Trash2, Calculator } from 'lucide-react';
+
+interface Tax {
+  id: string;
+  tax_type: 'iva' | 'retencion';
+  tax_name: string;
+  tax_rate: number;
+  tax_amount: number;
+}
 
 interface QuoteItem {
   id: string;
@@ -22,6 +32,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  taxes?: Tax[];
 }
 
 interface TaxConfigurationProps {
@@ -30,66 +41,108 @@ interface TaxConfigurationProps {
 }
 
 /**
- * Componente para configurar IVA y retenciones de un artículo
- * Permite ajustar tasas de IVA y agregar diferentes tipos de retenciones
+ * Componente para configurar múltiples IVAs y retenciones de un artículo
+ * Permite agregar/quitar diferentes tipos de impuestos simultáneamente
  */
 export function TaxConfiguration({ item, onItemChange }: TaxConfigurationProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [customVat, setCustomVat] = useState(item.vat_rate);
-  const [customWithholdingRate, setCustomWithholdingRate] = useState(item.withholding_rate);
-  const [customWithholdingType, setCustomWithholdingType] = useState(item.withholding_type);
+  const [taxes, setTaxes] = useState<Tax[]>(item.taxes || []);
 
-  const vatOptions = [
-    { value: 0, label: '0% - Exento' },
-    { value: 5, label: '5% - Productos básicos' },
-    { value: 16, label: '16% - Estándar' },
-    { value: 19, label: '19% - Servicios' },
+  const availableTaxes = [
+    // IVAs
+    { type: 'iva' as const, name: 'IVA Exento', rate: 0 },
+    { type: 'iva' as const, name: 'IVA Productos Básicos', rate: 5 },
+    { type: 'iva' as const, name: 'IVA Estándar', rate: 16 },
+    { type: 'iva' as const, name: 'IVA Servicios', rate: 19 },
+    
+    // Retenciones
+    { type: 'retencion' as const, name: 'Retención Compras Generales', rate: 1 },
+    { type: 'retencion' as const, name: 'Retención Servicios', rate: 2 },
+    { type: 'retencion' as const, name: 'Retención Servicios Profesionales', rate: 3.5 },
+    { type: 'retencion' as const, name: 'Retención Servicios Técnicos', rate: 4 },
+    { type: 'retencion' as const, name: 'Retención Honorarios', rate: 6 },
+    { type: 'retencion' as const, name: 'Retención Pagos al Exterior', rate: 10 },
+    { type: 'retencion' as const, name: 'Retención ICA', rate: 0.414 },
+    { type: 'retencion' as const, name: 'Retención IVA', rate: 15 },
   ];
 
-  const withholdingOptions = [
-    { value: 0, type: '', label: 'Sin retención' },
-    { value: 1, type: 'Retención en la fuente', label: '1% - Compras generales' },
-    { value: 2, type: 'Retención en la fuente', label: '2% - Servicios' },
-    { value: 3.5, type: 'Retención en la fuente', label: '3.5% - Servicios profesionales' },
-    { value: 4, type: 'Retención en la fuente', label: '4% - Servicios técnicos' },
-    { value: 6, type: 'Retención en la fuente', label: '6% - Honorarios' },
-    { value: 10, type: 'Retención en la fuente', label: '10% - Pagos al exterior' },
-  ];
-
-  const calculateTotals = (vatRate: number, withholdingRate: number, withholdingType: string) => {
+  const calculateTotals = (updatedTaxes: Tax[]) => {
     const subtotal = item.quantity * item.unit_price;
-    const vatAmount = subtotal * (vatRate / 100);
-    const withholdingAmount = subtotal * (withholdingRate / 100);
-    const total = subtotal + vatAmount - withholdingAmount;
+    let totalIva = 0;
+    let totalRetenciones = 0;
+
+    updatedTaxes.forEach(tax => {
+      const taxAmount = subtotal * (tax.tax_rate / 100);
+      if (tax.tax_type === 'iva') {
+        totalIva += taxAmount;
+      } else {
+        totalRetenciones += taxAmount;
+      }
+    });
+
+    const total = subtotal + totalIva - totalRetenciones;
 
     return {
       subtotal,
-      vat_rate: vatRate,
-      vat_amount: vatAmount,
-      withholding_rate: withholdingRate,
-      withholding_amount: withholdingAmount,
-      withholding_type: withholdingType,
-      total
+      totalIva,
+      totalRetenciones,
+      total,
+      taxes: updatedTaxes.map(tax => ({
+        ...tax,
+        tax_amount: subtotal * (tax.tax_rate / 100)
+      }))
     };
   };
 
-  const handleVatChange = (vatRate: number) => {
-    setCustomVat(vatRate);
-    const updatedTotals = calculateTotals(vatRate, customWithholdingRate, customWithholdingType);
-    onItemChange({
+  const addTax = (taxType: 'iva' | 'retencion', name: string, rate: number) => {
+    const newTax: Tax = {
+      id: `${taxType}-${Date.now()}-${Math.random()}`,
+      tax_type: taxType,
+      tax_name: name,
+      tax_rate: rate,
+      tax_amount: 0, // Will be calculated
+    };
+
+    const updatedTaxes = [...taxes, newTax];
+    setTaxes(updatedTaxes);
+    
+    const totals = calculateTotals(updatedTaxes);
+    
+    // Update the item with new totals and backward compatibility fields
+    const updatedItem = {
       ...item,
-      ...updatedTotals
-    });
+      subtotal: totals.subtotal,
+      vat_rate: totals.taxes.find(t => t.tax_type === 'iva')?.tax_rate || 0,
+      vat_amount: totals.totalIva,
+      withholding_rate: totals.taxes.find(t => t.tax_type === 'retencion')?.tax_rate || 0,
+      withholding_amount: totals.totalRetenciones,
+      withholding_type: totals.taxes.find(t => t.tax_type === 'retencion')?.tax_name || '',
+      total: totals.total,
+      taxes: totals.taxes
+    };
+
+    onItemChange(updatedItem);
   };
 
-  const handleWithholdingChange = (withholdingRate: number, withholdingType: string) => {
-    setCustomWithholdingRate(withholdingRate);
-    setCustomWithholdingType(withholdingType);
-    const updatedTotals = calculateTotals(customVat, withholdingRate, withholdingType);
-    onItemChange({
+  const removeTax = (taxId: string) => {
+    const updatedTaxes = taxes.filter(tax => tax.id !== taxId);
+    setTaxes(updatedTaxes);
+    
+    const totals = calculateTotals(updatedTaxes);
+    
+    const updatedItem = {
       ...item,
-      ...updatedTotals
-    });
+      subtotal: totals.subtotal,
+      vat_rate: totals.taxes.find(t => t.tax_type === 'iva')?.tax_rate || 0,
+      vat_amount: totals.totalIva,
+      withholding_rate: totals.taxes.find(t => t.tax_type === 'retencion')?.tax_rate || 0,
+      withholding_amount: totals.totalRetenciones,
+      withholding_type: totals.taxes.find(t => t.tax_type === 'retencion')?.tax_name || '',
+      total: totals.total,
+      taxes: totals.taxes
+    };
+
+    onItemChange(updatedItem);
   };
 
   const formatCurrency = (amount: number) => {
@@ -100,24 +153,34 @@ export function TaxConfiguration({ item, onItemChange }: TaxConfigurationProps) 
     }).format(amount);
   };
 
+  const { totalIva, totalRetenciones } = calculateTotals(taxes);
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Settings className="h-4 w-4 mr-1" />
-          IVA/Retenciones
+          Impuestos
+          {taxes.length > 0 && (
+            <Badge variant="secondary" className="ml-2">
+              {taxes.length}
+            </Badge>
+          )}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Configurar Impuestos y Retenciones</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Calculator className="h-5 w-5" />
+            Configurar Impuestos - {item.name}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Información del artículo */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm">{item.name}</CardTitle>
+              <CardTitle className="text-sm">Resumen del Artículo</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -135,64 +198,128 @@ export function TaxConfiguration({ item, onItemChange }: TaxConfigurationProps) 
             </CardContent>
           </Card>
 
-          {/* Configuración de IVA */}
-          <div className="space-y-3">
-            <Label>Tasa de IVA</Label>
-            <Select value={customVat.toString()} onValueChange={(value) => handleVatChange(Number(value))}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {vatOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value.toString()}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <div className="text-sm text-muted-foreground">
-              IVA: {formatCurrency(item.vat_amount)}
-            </div>
-          </div>
+          {/* Agregar impuestos */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Agregar Impuestos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* IVAs */}
+                <div>
+                  <Label className="text-sm font-medium text-green-700">IVAs Disponibles</Label>
+                  <div className="space-y-2 mt-2">
+                    {availableTaxes
+                      .filter(tax => tax.type === 'iva')
+                      .map((tax) => (
+                        <Button
+                          key={`${tax.type}-${tax.rate}`}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addTax(tax.type, tax.name, tax.rate)}
+                          className="w-full justify-between text-xs"
+                          disabled={taxes.some(t => t.tax_type === 'iva' && t.tax_rate === tax.rate)}
+                        >
+                          <span>{tax.name}</span>
+                          <span className="text-green-600">+{tax.rate}%</span>
+                        </Button>
+                      ))}
+                  </div>
+                </div>
 
-          {/* Configuración de retenciones */}
-          <div className="space-y-3">
-            <Label>Retención en la Fuente</Label>
-            <Select 
-              value={`${customWithholdingRate}-${customWithholdingType}`} 
-              onValueChange={(value) => {
-                const [rate, type] = value.split('-');
-                handleWithholdingChange(Number(rate), type === 'undefined' ? '' : type);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {withholdingOptions.map((option) => (
-                  <SelectItem 
-                    key={`${option.value}-${option.type}`} 
-                    value={`${option.value}-${option.type}`}
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {item.withholding_amount > 0 && (
-              <div className="text-sm text-red-600">
-                Retención: -{formatCurrency(item.withholding_amount)}
+                {/* Retenciones */}
+                <div>
+                  <Label className="text-sm font-medium text-red-700">Retenciones Disponibles</Label>
+                  <div className="space-y-2 mt-2">
+                    {availableTaxes
+                      .filter(tax => tax.type === 'retencion')
+                      .map((tax) => (
+                        <Button
+                          key={`${tax.type}-${tax.rate}`}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addTax(tax.type, tax.name, tax.rate)}
+                          className="w-full justify-between text-xs"
+                          disabled={taxes.some(t => t.tax_type === 'retencion' && t.tax_rate === tax.rate)}
+                        >
+                          <span>{tax.name}</span>
+                          <span className="text-red-600">-{tax.rate}%</span>
+                        </Button>
+                      ))}
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Total final */}
-          <div className="border-t pt-3">
-            <div className="flex justify-between font-bold text-lg">
-              <span>Total final:</span>
-              <span>{formatCurrency(item.total)}</span>
-            </div>
-          </div>
+          {/* Impuestos aplicados */}
+          {taxes.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Impuestos Aplicados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {taxes.map((tax) => (
+                    <div key={tax.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Badge 
+                          variant={tax.tax_type === 'iva' ? 'default' : 'destructive'}
+                          className="text-xs"
+                        >
+                          {tax.tax_type === 'iva' ? 'IVA' : 'RET'}
+                        </Badge>
+                        <div>
+                          <p className="text-sm font-medium">{tax.tax_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {tax.tax_rate}% = {formatCurrency(tax.tax_amount)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeTax(tax.id)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Resumen de totales */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-base">Resumen de Totales</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <div className="flex justify-between">
+                <span>Subtotal:</span>
+                <span>{formatCurrency(item.subtotal)}</span>
+              </div>
+              {totalIva > 0 && (
+                <div className="flex justify-between text-green-700">
+                  <span>Total IVAs:</span>
+                  <span>+{formatCurrency(totalIva)}</span>
+                </div>
+              )}
+              {totalRetenciones > 0 && (
+                <div className="flex justify-between text-red-700">
+                  <span>Total Retenciones:</span>
+                  <span>-{formatCurrency(totalRetenciones)}</span>
+                </div>
+              )}
+              <Separator />
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total Final:</span>
+                <span className="text-primary">{formatCurrency(item.total)}</span>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
