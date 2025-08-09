@@ -13,10 +13,14 @@ import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 interface Order {
   id: string;
   order_number: string;
-  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | string;
+  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | "en_camino" | string;
   created_at: string;
   delivery_date?: string;
   failure_description?: string;
+  assigned_technician?: string;
+  technician_profile?: {
+    full_name: string;
+  } | null;
 }
 
 interface Quote {
@@ -103,7 +107,7 @@ export default function ClientDashboard() {
       return;
     }
 
-    const { data, error } = await supabase
+    const { data: ordersData, error } = await supabase
       .from("orders")
       .select("*")
       .eq("client_id", client.id)
@@ -113,9 +117,32 @@ export default function ClientDashboard() {
     if (error) {
       console.error("Error loading orders:", error);
       toast({ title: "Error", description: "No se pudieron cargar órdenes", variant: "destructive" });
-    } else {
-      setOrders((data as any) || []);
+      return;
     }
+
+    // Get technician profiles separately for assigned orders
+    const ordersWithTechnicianNames = await Promise.all(
+      (ordersData || []).map(async (order: any) => {
+        if (order.assigned_technician) {
+          const { data: techProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', order.assigned_technician)
+            .maybeSingle();
+          
+          return {
+            ...order,
+            technician_profile: techProfile
+          };
+        }
+        return {
+          ...order,
+          technician_profile: null
+        };
+      })
+    );
+
+    setOrders(ordersWithTechnicianNames);
   };
 
   // Carga inicial
@@ -173,17 +200,18 @@ export default function ClientDashboard() {
   // Utilidades UI
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
-      pendiente: "bg-yellow-100 text-yellow-800",
-      en_proceso: "bg-blue-100 text-blue-800",
-      finalizada: "bg-green-100 text-green-800",
-      cancelada: "bg-red-100 text-red-800",
+      pendiente: "bg-warning/10 text-warning border-warning/20",
+      en_camino: "bg-info/10 text-info border-info/20",
+      en_proceso: "bg-info/10 text-info border-info/20",
+      finalizada: "bg-success/10 text-success border-success/20",
+      cancelada: "bg-destructive/10 text-destructive border-destructive/20",
     };
     return <Badge className={map[status] || "bg-muted text-foreground"}>{status.replace("_", " ")}</Badge>;
   };
 
   const metrics = useMemo(() => ({
     totalOrders: orders.length,
-    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso").length,
+    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino").length,
     quotesCount: quotes.length,
   }), [orders, quotes]);
 
@@ -267,6 +295,11 @@ export default function ClientDashboard() {
                   <div>
                     <p className="font-medium">{o.order_number}</p>
                     <p className="text-sm text-muted-foreground line-clamp-2">{o.failure_description || "Sin descripción"}</p>
+                    {o.technician_profile && (
+                      <p className="text-xs text-primary font-medium mt-1">
+                        Técnico: {o.technician_profile.full_name}
+                      </p>
+                    )}
                   </div>
                   {statusBadge(o.status)}
                 </div>
