@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,6 +21,12 @@ interface SurveyData {
   sales_comments: string;
   overall_recommendation: number;
   general_comments: string;
+}
+
+interface QuoteInfo {
+  quote_number: string;
+  created_by: string;
+  sales_name?: string;
 }
 
 const StarRating = ({ value, onChange, disabled = false }: { 
@@ -54,6 +61,7 @@ const StarRating = ({ value, onChange, disabled = false }: {
 export function SalesSurvey({ quoteId, onComplete, onSkip }: SalesSurveyProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [quoteInfo, setQuoteInfo] = useState<QuoteInfo | null>(null);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     sales_knowledge: 0,
     sales_customer_service: 0,
@@ -62,6 +70,47 @@ export function SalesSurvey({ quoteId, onComplete, onSkip }: SalesSurveyProps) {
     overall_recommendation: 0,
     general_comments: ''
   });
+
+  useEffect(() => {
+    loadQuoteInfo();
+  }, [quoteId]);
+
+  const loadQuoteInfo = async () => {
+    try {
+      const { data: quote, error } = await supabase
+        .from('quotes')
+        .select(`
+          quote_number,
+          created_by
+        `)
+        .eq('id', quoteId)
+        .single();
+
+      if (error) throw error;
+
+      if (quote?.created_by) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', quote.created_by)
+          .single();
+
+        setQuoteInfo({
+          quote_number: quote.quote_number,
+          created_by: quote.created_by,
+          sales_name: profile?.full_name || 'No asignado'
+        });
+      } else {
+        setQuoteInfo({
+          quote_number: quote?.quote_number || 'Sin número',
+          created_by: '',
+          sales_name: 'No asignado'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading quote info:', error);
+    }
+  };
 
   const updateRating = (field: keyof SurveyData, value: number) => {
     setSurveyData(prev => ({ ...prev, [field]: value }));
@@ -119,10 +168,20 @@ export function SalesSurvey({ quoteId, onComplete, onSkip }: SalesSurveyProps) {
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-center">Evaluación del Ejecutivo de Ventas</CardTitle>
-        <CardDescription className="text-center">
-          Tu opinión sobre nuestro proceso de ventas es muy importante.
-        </CardDescription>
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <CardTitle className="text-center">Evaluación de Ventas</CardTitle>
+            <CardDescription className="text-center">
+              Tu opinión sobre nuestro proceso de ventas es muy importante para nosotros.
+            </CardDescription>
+          </div>
+        </div>
+        {quoteInfo && (
+          <div className="flex gap-2 justify-center">
+            <Badge variant="outline">Cotización: {quoteInfo.quote_number}</Badge>
+            <Badge variant="secondary">Vendedor: {quoteInfo.sales_name}</Badge>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Evaluación del Ejecutivo de Ventas */}

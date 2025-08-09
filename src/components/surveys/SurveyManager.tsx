@@ -30,12 +30,15 @@ export function SurveyManager({ children }: SurveyManagerProps) {
 
   const checkPendingSurveys = async () => {
     try {
-      // Check for pending technician surveys
+      // Check for pending technician surveys (only surveys that haven't been completed at all)
       const { data: techSurveys } = await supabase
         .from('technician_satisfaction_surveys')
         .select('id, order_id')
         .eq('client_id', user?.id)
         .is('technician_knowledge', null)
+        .is('technician_customer_service', null)
+        .is('technician_attitude', null)
+        .is('overall_recommendation', null)
         .limit(1);
 
       if (techSurveys && techSurveys.length > 0) {
@@ -48,12 +51,15 @@ export function SurveyManager({ children }: SurveyManagerProps) {
         return;
       }
 
-      // Check for pending sales surveys
+      // Check for pending sales surveys (only surveys that haven't been completed at all)
       const { data: salesSurveys } = await supabase
         .from('sales_satisfaction_surveys')
         .select('id, quote_id')
         .eq('client_id', user?.id)
         .is('sales_knowledge', null)
+        .is('sales_customer_service', null)
+        .is('sales_attitude', null)
+        .is('overall_recommendation', null)
         .limit(1);
 
       if (salesSurveys && salesSurveys.length > 0) {
@@ -83,20 +89,24 @@ export function SurveyManager({ children }: SurveyManagerProps) {
         await supabase
           .from('technician_satisfaction_surveys')
           .update({
-            technician_knowledge: -1, // Marca como omitido
-            technician_customer_service: -1,
-            technician_attitude: -1,
-            overall_recommendation: -1
+            technician_knowledge: 0, // Marca como omitido sin valor
+            technician_customer_service: 0,
+            technician_attitude: 0,
+            overall_recommendation: 0,
+            technician_comments: 'Encuesta omitida por el cliente',
+            general_comments: 'Encuesta omitida por el cliente'
           })
           .eq('id', pendingSurvey.id);
       } else if (pendingSurvey?.type === 'sales') {
         await supabase
           .from('sales_satisfaction_surveys')
           .update({
-            sales_knowledge: -1, // Marca como omitido
-            sales_customer_service: -1,
-            sales_attitude: -1,
-            overall_recommendation: -1
+            sales_knowledge: 0, // Marca como omitido sin valor
+            sales_customer_service: 0,
+            sales_attitude: 0,
+            overall_recommendation: 0,
+            sales_comments: 'Encuesta omitida por el cliente',
+            general_comments: 'Encuesta omitida por el cliente'
           })
           .eq('id', pendingSurvey.id);
       }

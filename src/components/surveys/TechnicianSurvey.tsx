@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -20,6 +21,12 @@ interface SurveyData {
   technician_comments: string;
   overall_recommendation: number;
   general_comments: string;
+}
+
+interface OrderInfo {
+  order_number: string;
+  assigned_technician: string;
+  technician_name?: string;
 }
 
 const StarRating = ({ value, onChange, disabled = false }: { 
@@ -54,6 +61,7 @@ const StarRating = ({ value, onChange, disabled = false }: {
 export function TechnicianSurvey({ orderId, onComplete, onSkip }: TechnicianSurveyProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     technician_knowledge: 0,
     technician_customer_service: 0,
@@ -62,6 +70,47 @@ export function TechnicianSurvey({ orderId, onComplete, onSkip }: TechnicianSurv
     overall_recommendation: 0,
     general_comments: ''
   });
+
+  useEffect(() => {
+    loadOrderInfo();
+  }, [orderId]);
+
+  const loadOrderInfo = async () => {
+    try {
+      const { data: order, error } = await supabase
+        .from('orders')
+        .select(`
+          order_number,
+          assigned_technician
+        `)
+        .eq('id', orderId)
+        .single();
+
+      if (error) throw error;
+
+      if (order?.assigned_technician) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', order.assigned_technician)
+          .single();
+
+        setOrderInfo({
+          order_number: order.order_number,
+          assigned_technician: order.assigned_technician,
+          technician_name: profile?.full_name || 'No asignado'
+        });
+      } else {
+        setOrderInfo({
+          order_number: order?.order_number || 'Sin número',
+          assigned_technician: '',
+          technician_name: 'No asignado'
+        });
+      }
+    } catch (error) {
+      console.error('Error loading order info:', error);
+    }
+  };
 
   const updateRating = (field: keyof SurveyData, value: number) => {
     setSurveyData(prev => ({ ...prev, [field]: value }));
@@ -119,10 +168,20 @@ export function TechnicianSurvey({ orderId, onComplete, onSkip }: TechnicianSurv
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-center">Evaluación del Técnico</CardTitle>
-        <CardDescription className="text-center">
-          Tu opinión sobre el servicio técnico es muy importante para nosotros.
-        </CardDescription>
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <CardTitle className="text-center">Evaluación del Técnico</CardTitle>
+            <CardDescription className="text-center">
+              Tu opinión sobre el servicio técnico es muy importante para nosotros.
+            </CardDescription>
+          </div>
+        </div>
+        {orderInfo && (
+          <div className="flex gap-2 justify-center">
+            <Badge variant="outline">Orden: {orderInfo.order_number}</Badge>
+            <Badge variant="secondary">Técnico: {orderInfo.technician_name}</Badge>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Evaluación del Técnico */}

@@ -55,6 +55,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [orderNotes, setOrderNotes] = useState<any[]>([]);
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
+  const [surveyData, setSurveyData] = useState<any>(null);
 
   useEffect(() => {
     loadOrderNotes();
@@ -65,12 +66,13 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     if (profile?.role === 'cliente' && order.status === 'finalizada') {
       const { data } = await supabase
         .from('order_satisfaction_surveys')
-        .select('id')
+        .select('*')
         .eq('order_id', order.id)
         .eq('client_id', user?.id)
         .maybeSingle();
       
       setSurveyCompleted(!!data);
+      setSurveyData(data);
       if (!data) {
         setShowSurvey(true);
       }
@@ -475,6 +477,104 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                       </p>
                     </div>
                   ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Resultados de la Encuesta de Satisfacción */}
+            {surveyData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Star className="h-5 w-5 mr-2 text-primary" />
+                    Evaluación de Satisfacción
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Evaluación del Técnico */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-sm text-muted-foreground">Evaluación del Técnico</h4>
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span>Conocimiento Técnico:</span>
+                        <div className="flex">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              size={14}
+                              className={`${
+                                i < (surveyData.technician_knowledge || 0) 
+                                  ? 'fill-yellow-400 text-yellow-400' 
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Atención al Cliente:</span>
+                        <div className="flex">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              size={14}
+                              className={`${
+                                i < (surveyData.technician_customer_service || 0) 
+                                  ? 'fill-yellow-400 text-yellow-400' 
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Actitud:</span>
+                        <div className="flex">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              size={14}
+                              className={`${
+                                i < (surveyData.technician_attitude || 0) 
+                                  ? 'fill-yellow-400 text-yellow-400' 
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>¿Recomendarías SYSLAG?:</span>
+                        <div className="flex">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              size={14}
+                              className={`${
+                                i < (surveyData.overall_recommendation || 0) 
+                                  ? 'fill-yellow-400 text-yellow-400' 
+                                  : 'text-muted-foreground'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {surveyData.technician_comments && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Comentarios sobre el técnico:</span>
+                        <p className="text-sm text-foreground mt-1">{surveyData.technician_comments}</p>
+                      </div>
+                    )}
+                    
+                    {surveyData.general_comments && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Comentarios generales:</span>
+                        <p className="text-sm text-foreground mt-1">{surveyData.general_comments}</p>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )}
