@@ -86,11 +86,11 @@ export default function Finance() {
   });
 
   const collectionsQuery = useQuery({
-    queryKey: ["pending_collections"],
+    queryKey: ["pending_collections_with_payments"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("pending_collections")
-        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,status")
+        .from("pending_collections_with_payments")
+        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,status,total_paid,remaining_balance")
         .order("delivery_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1205,14 +1205,16 @@ export default function Finance() {
                       <TableHead>Cliente</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Entrega</TableHead>
-                     <TableHead>Estado</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Estimado</TableHead>
+                      <TableHead>Pagado</TableHead>
+                      <TableHead>Saldo</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {collectionsQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
                     )}
                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((r: any) => (
                       <TableRow key={r.id}>
@@ -1222,6 +1224,12 @@ export default function Finance() {
                         <TableCell>{r.delivery_date}</TableCell>
                         <TableCell>{r.status}</TableCell>
                         <TableCell>{Number(r.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell className="text-green-600 font-medium">
+                          {Number(r.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                        </TableCell>
+                        <TableCell className="text-red-600 font-medium">
+                          {Number(r.remaining_balance || r.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                        </TableCell>
                         <TableCell>
                           <Button 
                             size="sm" 
@@ -1236,7 +1244,7 @@ export default function Finance() {
                       </TableRow>
                     ))}
                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>Sin cobranzas pendientes.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={9}>Sin cobranzas pendientes.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
