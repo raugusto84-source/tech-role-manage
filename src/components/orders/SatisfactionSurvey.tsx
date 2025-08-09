@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,15 +14,9 @@ interface SatisfactionSurveyProps {
 }
 
 interface SurveyData {
-  technician_knowledge: number;
-  technician_customer_service: number;
-  technician_attitude: number;
-  technician_comments: string;
-  sales_knowledge: number;
-  sales_customer_service: number;
-  sales_attitude: number;
-  sales_comments: string;
-  overall_recommendation: number;
+  technician_rating: number;
+  sales_rating: number;
+  overall_rating: number;
   general_comments: string;
 }
 
@@ -58,18 +52,47 @@ const StarRating = ({ value, onChange, disabled = false }: {
 export function SatisfactionSurvey({ orderId, onComplete, onCancel }: SatisfactionSurveyProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [technicianName, setTechnicianName] = useState<string>('');
+  const [salesName, setSalesName] = useState<string>('Vendedor');
   const [surveyData, setSurveyData] = useState<SurveyData>({
-    technician_knowledge: 0,
-    technician_customer_service: 0,
-    technician_attitude: 0,
-    technician_comments: '',
-    sales_knowledge: 0,
-    sales_customer_service: 0,
-    sales_attitude: 0,
-    sales_comments: '',
-    overall_recommendation: 0,
+    technician_rating: 0,
+    sales_rating: 0,
+    overall_rating: 0,
     general_comments: ''
   });
+
+  // Load order info to get technician name
+  useEffect(() => {
+    const loadOrderInfo = async () => {
+      try {
+        // First get the order with assigned technician
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select('assigned_technician')
+          .eq('id', orderId)
+          .single();
+
+        if (orderError) throw orderError;
+        
+        // Then get technician profile if assigned
+        if (orderData?.assigned_technician) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', orderData.assigned_technician)
+            .single();
+
+          if (!profileError && profileData?.full_name) {
+            setTechnicianName(profileData.full_name);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading order info:', error);
+      }
+    };
+
+    loadOrderInfo();
+  }, [orderId]);
 
   const updateRating = (field: keyof SurveyData, value: number) => {
     setSurveyData(prev => ({ ...prev, [field]: value }));
@@ -79,13 +102,9 @@ export function SatisfactionSurvey({ orderId, onComplete, onCancel }: Satisfacti
     setSurveyData(prev => ({ ...prev, [field]: value }));
   };
 
-  const canSubmit = surveyData.technician_knowledge > 0 && 
-                   surveyData.technician_customer_service > 0 && 
-                   surveyData.technician_attitude > 0 &&
-                   surveyData.sales_knowledge > 0 && 
-                   surveyData.sales_customer_service > 0 && 
-                   surveyData.sales_attitude > 0 &&
-                   surveyData.overall_recommendation > 0;
+  const canSubmit = surveyData.technician_rating > 0 && 
+                   surveyData.sales_rating > 0 && 
+                   surveyData.overall_rating > 0;
 
   const handleSubmit = async () => {
     if (!canSubmit) {
@@ -104,7 +123,14 @@ export function SatisfactionSurvey({ orderId, onComplete, onCancel }: Satisfacti
         .insert({
           order_id: orderId,
           client_id: (await supabase.auth.getUser()).data.user?.id!,
-          ...surveyData
+          technician_knowledge: surveyData.technician_rating,
+          technician_customer_service: surveyData.technician_rating,
+          technician_attitude: surveyData.technician_rating,
+          sales_knowledge: surveyData.sales_rating,
+          sales_customer_service: surveyData.sales_rating,
+          sales_attitude: surveyData.sales_rating,
+          overall_recommendation: surveyData.overall_rating,
+          general_comments: surveyData.general_comments
         });
 
       if (error) throw error;
@@ -136,109 +162,61 @@ export function SatisfactionSurvey({ orderId, onComplete, onCancel }: Satisfacti
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Evaluación del Técnico */}
+        {/* 1. Evaluación del Técnico */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Evaluación del Técnico</h3>
+          <h3 className="font-semibold text-lg">
+            1. ¿Cómo evalúas al Técnico {technicianName ? `"${technicianName}"` : ''}?
+          </h3>
           
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Conocimiento Técnico</span>
-              <StarRating 
-                value={surveyData.technician_knowledge} 
-                onChange={(value) => updateRating('technician_knowledge', value)}
-              />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Atención al Cliente</span>
-              <StarRating 
-                value={surveyData.technician_customer_service} 
-                onChange={(value) => updateRating('technician_customer_service', value)}
-              />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Actitud Positiva</span>
-              <StarRating 
-                value={surveyData.technician_attitude} 
-                onChange={(value) => updateRating('technician_attitude', value)}
-              />
-            </div>
-            
-            <Textarea
-              placeholder="Comentarios sobre el técnico (opcional)"
-              value={surveyData.technician_comments}
-              onChange={(e) => updateComment('technician_comments', e.target.value)}
-              className="resize-none"
-              rows={2}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Califica del 1 al 5</span>
+            <StarRating 
+              value={surveyData.technician_rating} 
+              onChange={(value) => updateRating('technician_rating', value)}
             />
           </div>
         </div>
 
         <Separator />
 
-        {/* Evaluación del Ejecutivo de Ventas */}
+        {/* 2. Evaluación de Atención a Clientes */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Evaluación del Ejecutivo de Ventas</h3>
+          <h3 className="font-semibold text-lg">
+            2. ¿Cómo evalúas la Atención a Clientes "{salesName}"?
+          </h3>
           
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Conocimiento</span>
-              <StarRating 
-                value={surveyData.sales_knowledge} 
-                onChange={(value) => updateRating('sales_knowledge', value)}
-              />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Atención al Cliente</span>
-              <StarRating 
-                value={surveyData.sales_customer_service} 
-                onChange={(value) => updateRating('sales_customer_service', value)}
-              />
-            </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Actitud Positiva</span>
-              <StarRating 
-                value={surveyData.sales_attitude} 
-                onChange={(value) => updateRating('sales_attitude', value)}
-              />
-            </div>
-            
-            <Textarea
-              placeholder="Comentarios sobre el ejecutivo de ventas (opcional)"
-              value={surveyData.sales_comments}
-              onChange={(e) => updateComment('sales_comments', e.target.value)}
-              className="resize-none"
-              rows={2}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Califica del 1 al 5</span>
+            <StarRating 
+              value={surveyData.sales_rating} 
+              onChange={(value) => updateRating('sales_rating', value)}
             />
           </div>
         </div>
 
         <Separator />
 
-        {/* Evaluación General */}
+        {/* 3. Evaluación General de SYSLAG */}
         <div className="space-y-4">
-          <h3 className="font-semibold text-lg">Evaluación General</h3>
+          <h3 className="font-semibold text-lg">
+            3. En general, ¿cómo evalúas a SYSLAG?
+          </h3>
           
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">¿Recomendarías a SYSLAG por este servicio?</span>
-              <StarRating 
-                value={surveyData.overall_recommendation} 
-                onChange={(value) => updateRating('overall_recommendation', value)}
-              />
-            </div>
-            
-            <Textarea
-              placeholder="Comentarios generales (opcional)"
-              value={surveyData.general_comments}
-              onChange={(e) => updateComment('general_comments', e.target.value)}
-              className="resize-none"
-              rows={3}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Califica del 1 al 5</span>
+            <StarRating 
+              value={surveyData.overall_rating} 
+              onChange={(value) => updateRating('overall_rating', value)}
             />
           </div>
+          
+          <Textarea
+            placeholder="Comentarios generales (opcional)"
+            value={surveyData.general_comments}
+            onChange={(e) => updateComment('general_comments', e.target.value)}
+            className="resize-none"
+            rows={3}
+          />
         </div>
 
         {/* Botones de Acción */}
