@@ -171,7 +171,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         item_type: values.item_type,
         cost_price: values.cost_price,
         base_price: values.base_price,
-        profit_margin: values.profit_margin,
+        profit_margin_tiers: values.item_type === 'articulo' ? [
+          { min_qty: 1, max_qty: 999, margin: values.profit_margin }
+        ] : [],
         vat_rate: values.vat_rate,
         unit: values.unit,
         min_quantity: values.min_quantity,
