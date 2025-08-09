@@ -2443,6 +2443,7 @@ export type Database = {
           certifications: string[] | null
           created_at: string
           id: string
+          months_experience: number | null
           notes: string | null
           skill_level: number
           specialization_products: string[] | null
@@ -2455,6 +2456,7 @@ export type Database = {
           certifications?: string[] | null
           created_at?: string
           id?: string
+          months_experience?: number | null
           notes?: string | null
           skill_level?: number
           specialization_products?: string[] | null
@@ -2467,6 +2469,7 @@ export type Database = {
           certifications?: string[] | null
           created_at?: string
           id?: string
+          months_experience?: number | null
           notes?: string | null
           skill_level?: number
           specialization_products?: string[] | null
