@@ -132,14 +132,36 @@ export default function Orders() {
     return matchesSearch && matchesStatus;
   });
 
+  // Group orders by status
+  const groupedOrders = {
+    pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
+    en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
+    finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
+    cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'bg-yellow-100 text-yellow-800';
-      case 'en_proceso': return 'bg-blue-100 text-blue-800';
-      case 'finalizada': return 'bg-green-100 text-green-800';
-      case 'cancelada': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pendiente': return 'bg-warning/10 text-warning border-warning/20';
+      case 'en_proceso': return 'bg-info/10 text-info border-info/20';
+      case 'finalizada': return 'bg-success/10 text-success border-success/20';
+      case 'cancelada': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted/10 text-muted-foreground border-border';
     }
+  };
+
+  const getStatusTitle = (status: string) => {
+    switch (status) {
+      case 'pendiente': return 'Pendientes';
+      case 'en_proceso': return 'En Proceso';
+      case 'finalizada': return 'Finalizadas';
+      case 'cancelada': return 'Canceladas';
+      default: return status;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('es-ES');
   };
 
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
@@ -265,7 +287,7 @@ export default function Orders() {
           </CardContent>
         </Card>
 
-        {/* Orders Grid */}
+        {/* Orders Grouped by Status */}
         {filteredOrders.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -283,17 +305,65 @@ export default function Orders() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredOrders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                onClick={() => setSelectedOrder(order)}
-                onDelete={canDeleteOrder ? setOrderToDelete : undefined}
-                canDelete={canDeleteOrder}
-                getStatusColor={getStatusColor}
-              />
-            ))}
+          <div className="space-y-6">
+            {Object.entries(groupedOrders).map(([status, orders]) => 
+              orders.length > 0 && (
+                <Card key={status}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Badge variant="outline" className={getStatusColor(status)}>
+                        {getStatusTitle(status)} ({orders.length})
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {orders.map((order) => (
+                      <div 
+                        key={order.id}
+                        onClick={() => setSelectedOrder(order)}
+                        className="p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{order.order_number}</span>
+                              <span className="text-muted-foreground text-xs">•</span>
+                              <span className="text-sm text-muted-foreground">{order.clients?.name}</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {order.service_types?.name} - {formatDate(order.delivery_date)}
+                            </div>
+                            <div className="text-xs text-muted-foreground line-clamp-1">
+                              {order.failure_description}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {order.estimated_cost && (
+                              <span className="text-sm font-medium">
+                                ${order.estimated_cost.toLocaleString()}
+                              </span>
+                            )}
+                            {canDeleteOrder && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOrderToDelete(order.id);
+                                }}
+                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                              >
+                                ×
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )
+            )}
           </div>
         )}
       </div>
