@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Star } from 'lucide-react';
+import { Search, Star, Calendar } from 'lucide-react';
 
 interface OrderSatisfactionSurvey {
   id: string;
@@ -41,6 +41,8 @@ export default function Surveys() {
   const [loading, setLoading] = useState(true);
   const [orderSurveys, setOrderSurveys] = useState<OrderSatisfactionSurvey[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     if (profile?.role === 'administrador') {
@@ -148,14 +150,19 @@ export default function Surveys() {
       survey.orders?.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       survey.technician_profile?.full_name?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch;
+    const surveyDate = new Date(survey.created_at);
+    const matchesDateRange = 
+      (!startDate || surveyDate >= new Date(startDate)) &&
+      (!endDate || surveyDate <= new Date(endDate + 'T23:59:59'));
+    
+    return matchesSearch && matchesDateRange;
   });
 
-  // Calculate averages by technician
-  const technicianAverages = orderSurveys.reduce((acc, survey) => {
+  // Calculate averages by technician (based on filtered data)
+  const technicianAverages = filteredSurveys.reduce((acc, survey) => {
     const techName = survey.technician_profile?.full_name || 'Sin asignar';
     if (!acc[techName]) {
-      acc[techName] = { surveys: [], avgTech: 0, avgSales: 0, count: 0 };
+      acc[techName] = { surveys: [], avgTech: 0, avgSales: 0, avgGeneral: 0, count: 0 };
     }
     acc[techName].surveys.push(survey);
     acc[techName].count++;
@@ -169,9 +176,12 @@ export default function Surveys() {
       sum + s.technician_rating, 0) / surveys.length;
     const salesAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
       sum + s.sales_rating, 0) / surveys.length;
+    const generalAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
+      sum + s.overall_rating, 0) / surveys.length;
     
     technicianAverages[techName].avgTech = techAvg;
     technicianAverages[techName].avgSales = salesAvg;
+    technicianAverages[techName].avgGeneral = generalAvg;
   });
 
   if (profile?.role !== 'administrador') {
@@ -210,6 +220,10 @@ export default function Surveys() {
                     <span>Ventas:</span>
                     <span className="font-medium">{data.avgSales.toFixed(1)}</span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span>General:</span>
+                    <span className="font-medium">{data.avgGeneral.toFixed(1)}</span>
+                  </div>
                   <div className="text-xs text-muted-foreground">
                     {data.count} encuesta{data.count !== 1 ? 's' : ''}
                   </div>
@@ -219,14 +233,55 @@ export default function Surveys() {
           </div>
         </div>
 
+        {/* Date Filters */}
+        <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Filtrar por período:</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Desde:</span>
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-auto"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">Hasta:</span>
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-auto"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+              }}
+            >
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
+
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader>
               <CardTitle>Total Encuestas</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{orderSurveys.length}</div>
+              <div className="text-2xl font-bold">{filteredSurveys.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {startDate || endDate ? 'En período seleccionado' : 'Total histórico'}
+              </p>
             </CardContent>
           </Card>
           
@@ -236,8 +291,8 @@ export default function Surveys() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {orderSurveys.length > 0 
-                  ? (orderSurveys.reduce((sum, s) => sum + s.technician_rating, 0) / orderSurveys.length).toFixed(1)
+                {filteredSurveys.length > 0 
+                  ? (filteredSurveys.reduce((sum, s) => sum + s.technician_rating, 0) / filteredSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
@@ -250,8 +305,22 @@ export default function Surveys() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {orderSurveys.length > 0 
-                  ? (orderSurveys.reduce((sum, s) => sum + s.sales_rating, 0) / orderSurveys.length).toFixed(1)
+                {filteredSurveys.length > 0 
+                  ? (filteredSurveys.reduce((sum, s) => sum + s.sales_rating, 0) / filteredSurveys.length).toFixed(1)
+                  : '0'
+                }
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Promedio General</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {filteredSurveys.length > 0 
+                  ? (filteredSurveys.reduce((sum, s) => sum + s.overall_rating, 0) / filteredSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
