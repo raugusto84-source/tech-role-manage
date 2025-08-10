@@ -11,13 +11,18 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Plus } from 'lucide-react';
 import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
+import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 
 interface ServiceType {
   id: string;
   name: string;
-  description?: string;
-  base_price?: number;
-  estimated_hours?: number;
+  description?: string | null;
+  cost_price: number | null;
+  base_price?: number | null;
+  estimated_hours?: number | null;
+  vat_rate: number;
+  item_type: string;
+  category: string;
 }
 
 interface Technician {
@@ -178,36 +183,51 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  const handleServiceTypeChange = (serviceTypeId: string) => {
-    const selectedService = serviceTypes.find(st => st.id === serviceTypeId);
-    if (selectedService) {
+  const handleServiceSelect = (service: ServiceType) => {
+    setFormData(prev => ({
+      ...prev,
+      service_type: service.id,
+      estimated_cost: service.base_price?.toString() || '',
+      average_service_time: service.estimated_hours?.toString() || ''
+    }));
+    
+    // Calcular fecha de entrega estimada basada en horas estimadas
+    if (service.estimated_hours) {
+      const deliveryDate = calculateBusinessDays(service.estimated_hours);
       setFormData(prev => ({
         ...prev,
-        service_type: serviceTypeId,
-        estimated_cost: selectedService.base_price?.toString() || '',
-        average_service_time: selectedService.estimated_hours?.toString() || ''
+        delivery_date: deliveryDate
       }));
+    }
+    
+    // Mostrar sugerencias de técnicos automáticamente para staff
+    if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+      setShowTechnicianSuggestions(true);
+    }
+    
+    // **PARA CLIENTES**: Asignar técnico automáticamente sin mostrar interfaz
+    if (profile?.role === 'cliente') {
+      autoAssignTechnicianForClient(service.id);
+    }
+  };
+
+  const calculateBusinessDays = (estimatedHours: number): string => {
+    const businessDays = Math.ceil(estimatedHours / 8); // 8 horas por día laboral
+    const now = new Date();
+    let deliveryDate = new Date(now);
+    let addedDays = 0;
+    
+    // Agregar días laborables (excluyendo fines de semana)
+    while (addedDays < businessDays) {
+      deliveryDate.setDate(deliveryDate.getDate() + 1);
       
-      // Calcular fecha de entrega estimada (agregando las horas estimadas)
-      if (selectedService.estimated_hours) {
-        const requestDate = new Date();
-        requestDate.setDate(requestDate.getDate() + Math.ceil(selectedService.estimated_hours / 8)); // Asumiendo 8 horas por día
-        setFormData(prev => ({
-          ...prev,
-          delivery_date: requestDate.toISOString().split('T')[0]
-        }));
-      }
-      
-      // Mostrar sugerencias de técnicos automáticamente para staff
-      if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
-        setShowTechnicianSuggestions(true);
-      }
-      
-      // **PARA CLIENTES**: Asignar técnico automáticamente sin mostrar interfaz
-      if (profile?.role === 'cliente') {
-        autoAssignTechnicianForClient(serviceTypeId);
+      // Si no es fin de semana (0 = domingo, 6 = sábado)
+      if (deliveryDate.getDay() !== 0 && deliveryDate.getDay() !== 6) {
+        addedDays++;
       }
     }
+    
+    return deliveryDate.toISOString().split('T')[0];
   };
 
   /**
@@ -478,21 +498,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               )}
 
-              {/* Información del Servicio */}
+              {/* Selección de Servicio por Categoría */}
               <div className="space-y-2">
-                <Label htmlFor="service_type">Tipo de Servicio *</Label>
-                <Select value={formData.service_type} onValueChange={handleServiceTypeChange} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona el tipo de servicio" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {serviceTypes.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        {service.name} {service.base_price && `- $${service.base_price}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Tipo de Servicio *</Label>
+                <OrderServiceSelection 
+                  onServiceSelect={handleServiceSelect}
+                  selectedServiceId={formData.service_type}
+                />
               </div>
 
               <div className="space-y-2">
