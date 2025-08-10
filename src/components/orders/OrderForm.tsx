@@ -465,6 +465,16 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
+      // Validar técnico asignado
+      if (!formData.assigned_technician || formData.assigned_technician === 'unassigned' || formData.assigned_technician === 'none') {
+        toast({
+          title: "Asigne un técnico",
+          description: "Debes seleccionar un técnico para crear la orden",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Calcular totales de todos los items
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
@@ -480,7 +490,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
         created_by: user?.id,
-        status: 'pendiente' as const
+        status: 'en_proceso' as const
       };
 
       const { data: orderResult, error: orderError } = await supabase
