@@ -40,7 +40,7 @@ export function calculateSharedTimeHours(items: OrderItem[]): number {
     totalHours += item.estimated_hours || 0;
   });
 
-  // Para items con tiempo compartido, aplicar lógica de límite de 3 combinaciones
+  // Para items con tiempo compartido, aplicar lógica simple por servicio
   const sharedItemsByService = new Map<string, OrderItem[]>();
   
   sharedItems.forEach(item => {
@@ -53,34 +53,19 @@ export function calculateSharedTimeHours(items: OrderItem[]): number {
 
   // Para cada tipo de servicio con tiempo compartido
   sharedItemsByService.forEach((serviceItems) => {
-    if (serviceItems.length > 0) {
-      // Calcular tiempo base por unidad del servicio
-      const baseTimePerUnit = serviceItems[0].estimated_hours / (serviceItems[0].quantity || 1);
+    serviceItems.forEach((item, index) => {
+      const baseTime = item.estimated_hours || 0;
       
-      // Calcular cantidad total de artículos de este servicio
-      const totalQuantity = serviceItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+      // Calcular porcentaje según posición: 1ro=100%, 2do=20%, 3ro=20%, 4to=100%, etc.
+      let percentage = 1.0; // 100% por defecto
+      const position = (index % 3) + 1; // Ciclo de 3: posición 1, 2, 3, luego vuelve a 1
       
-      // Aplicar límite de 3 combinaciones: máximo beneficio hasta 3 artículos
-      const effectiveQuantity = Math.min(totalQuantity, 3);
-      
-      // El tiempo compartido se calcula usando solo el tiempo de la primera unidad
-      // más incrementos menores para artículos adicionales (hasta 3)
-      let sharedServiceHours = baseTimePerUnit; // Tiempo base
-      
-      if (effectiveQuantity > 1) {
-        // Agregar tiempo adicional: 20% del tiempo base por cada artículo adicional
-        const additionalTime = (effectiveQuantity - 1) * (baseTimePerUnit * 0.2);
-        sharedServiceHours += additionalTime;
+      if (position === 2 || position === 3) {
+        percentage = 0.2; // 20%
       }
       
-      // Si hay más de 3 artículos, los restantes se calculan con tiempo completo
-      if (totalQuantity > 3) {
-        const remainingQuantity = totalQuantity - 3;
-        sharedServiceHours += remainingQuantity * baseTimePerUnit;
-      }
-      
-      totalHours += sharedServiceHours;
-    }
+      totalHours += baseTime * percentage;
+    });
   });
 
   return totalHours;
