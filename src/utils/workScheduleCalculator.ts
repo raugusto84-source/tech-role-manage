@@ -548,7 +548,7 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
   const { technicianId, ...baseParams } = params;
   
   let currentWorkload = baseParams.currentWorkload || 0;
-  let effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
+  let effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems) + 0.5; // +0.5h tiempo muerto por orden
   
   if (technicianId) {
     try {
@@ -603,6 +603,8 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
           effectiveSharedHoursTotal += totalHours / sharingFactor;
         });
         currentWorkload = nonSharedHours + effectiveSharedHoursTotal;
+        // +0.5h por orden activa (tiempo muerto)
+        currentWorkload += (activeOrders?.length || 0) * 0.5;
 
         // Calcular horas efectivas de la nueva orden aplicando el contexto activo
         const clientAddedForService = new Set<string>();
@@ -636,8 +638,9 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
           }
         });
 
-        effectiveHoursOverride = newEffective;
-        console.log(`Carga activa: ${currentWorkload}h, Horas efectivas nueva orden (compartido con tope): ${effectiveHoursOverride}h`);
+        // +0.5h por tiempo muerto de la nueva orden
+        effectiveHoursOverride = newEffective + 0.5;
+        console.log(`Carga activa: ${currentWorkload}h (+${(activeOrders?.length || 0)*0.5}h tiempo muerto), Horas efectivas nueva orden (+0.5h tiempo muerto): ${effectiveHoursOverride}h`);
       }
     } catch (error) {
       console.error('Error calculando carga y horas compartidas con tope:', error);
