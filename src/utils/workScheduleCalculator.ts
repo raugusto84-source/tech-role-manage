@@ -16,6 +16,8 @@ interface OrderItem {
   estimated_hours: number;
   shared_time: boolean;
   status: 'pendiente' | 'en_proceso' | 'completado';
+  service_type_id?: string;
+  quantity?: number;
 }
 
 interface DeliveryCalculationParams {
@@ -30,13 +32,35 @@ export function calculateSharedTimeHours(items: OrderItem[]): number {
   let totalHours = 0;
   let sharedHours = 0;
 
-  items.forEach(item => {
-    if (item.shared_time) {
-      // Para items con tiempo compartido, solo tomamos el tiempo del item con más horas
-      sharedHours = Math.max(sharedHours, item.estimated_hours || 0);
-    } else {
-      // Items sin tiempo compartido se suman normalmente
-      totalHours += item.estimated_hours || 0;
+  // Agrupar items por shared_time
+  const sharedItems = items.filter(item => item.shared_time);
+  const individualItems = items.filter(item => !item.shared_time);
+
+  // Para items individuales, sumar normalmente
+  individualItems.forEach(item => {
+    totalHours += item.estimated_hours || 0;
+  });
+
+  // Para items con tiempo compartido, calcular por FSR
+  const sharedItemsByFSR = new Map<string, OrderItem[]>();
+  
+  sharedItems.forEach(item => {
+    const fsrKey = item.service_type_id || 'unknown';
+    if (!sharedItemsByFSR.has(fsrKey)) {
+      sharedItemsByFSR.set(fsrKey, []);
+    }
+    sharedItemsByFSR.get(fsrKey)!.push(item);
+  });
+
+  // Para cada FSR, el tiempo es compartido entre todos los artículos
+  sharedItemsByFSR.forEach((fsrItems) => {
+    if (fsrItems.length > 0) {
+      // El tiempo total de un FSR con tiempo compartido es el tiempo del item con más horas
+      // independientemente de la cantidad
+      const maxHours = Math.max(...fsrItems.map(item => 
+        (item.estimated_hours || 0) / (item.quantity || 1) // Tiempo por unidad
+      ));
+      sharedHours += maxHours;
     }
   });
 

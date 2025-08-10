@@ -31,6 +31,7 @@ const serviceSchema = z.object({
   min_quantity: z.number().min(1, 'La cantidad mínima debe ser mayor a 0'),
   max_quantity: z.number().min(1, 'La cantidad máxima debe ser mayor a 0'),
   estimated_hours: z.number().min(0, 'Las horas estimadas deben ser 0 o más'),
+  shared_time: z.boolean().default(false),
   is_active: z.boolean(),
 }).refine(data => data.max_quantity >= data.min_quantity, {
   message: 'La cantidad máxima debe ser mayor o igual a la mínima',
@@ -81,6 +82,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       min_quantity: 1,
       max_quantity: 999,
       estimated_hours: 0,
+      shared_time: false,
       is_active: true,
     },
   });
@@ -129,6 +131,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         min_quantity: data.min_quantity || 1,
         max_quantity: data.max_quantity || 999,
         estimated_hours: data.estimated_hours || 0,
+        shared_time: (data as any).shared_time || false,
         is_active: data.is_active,
       });
 
@@ -181,6 +184,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         min_quantity: values.min_quantity,
         max_quantity: values.max_quantity,
         estimated_hours: values.estimated_hours,
+        shared_time: values.shared_time,
         is_active: values.is_active,
       };
 
@@ -436,6 +440,27 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                         Tiempo estimado para completar el servicio
                       </FormDescription>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="shared_time"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Tiempo Compartido</FormLabel>
+                        <FormDescription>
+                          Múltiples artículos comparten el mismo tiempo de ejecución
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
