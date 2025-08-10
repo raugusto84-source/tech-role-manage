@@ -626,7 +626,13 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
 
             for (let i = 0; i < qty; i++) {
               const unitsCount = existingUnits + addedUnits + 1; // incluir esta unidad
-              const sharingFactor = Math.max(1, Math.min(3, existingClients + clientIncrement, 5, unitsCount));
+              let sharingFactor: number;
+              // Si ya se alcanzó el tope (3 clientes o 5 servicios), NO compartir: se agenda después
+              if ((existingClients >= 3) || (existingUnits >= 5)) {
+                sharingFactor = 1;
+              } else {
+                sharingFactor = Math.max(1, Math.min(3, existingClients + clientIncrement, 5, unitsCount));
+              }
               newEffective += perUnit / sharingFactor;
               addedUnits++;
             }
