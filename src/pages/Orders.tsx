@@ -157,7 +157,28 @@ export default function Orders() {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     return matchesSearch && matchesStatus;
-  });
+  }).sort((a, b) => new Date(a.delivery_date).getTime() - new Date(b.delivery_date).getTime()); // Ordenar por fecha de entrega
+
+  // Función para calcular tiempo restante
+  const getTimeRemaining = (deliveryDate: string) => {
+    const now = new Date();
+    const delivery = new Date(deliveryDate);
+    const diffMs = delivery.getTime() - now.getTime();
+    
+    if (diffMs < 0) return 'Vencido';
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays}d ${diffHours}h`;
+    } else if (diffHours > 0) {
+      return `${diffHours}h`;
+    } else {
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${diffMinutes}m`;
+    }
+  };
 
   // Group orders by status
   const groupedOrders = {
@@ -363,6 +384,9 @@ export default function Orders() {
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {order.service_types?.name} - {formatDate(order.delivery_date)}
+                              <span className="ml-2 font-medium text-primary">
+                                ({getTimeRemaining(order.delivery_date)})
+                              </span>
                             </div>
                             {order.technician_profile && (
                               <div className="flex items-center gap-1 text-sm bg-primary/10 text-primary px-2 py-1 rounded-md w-fit">

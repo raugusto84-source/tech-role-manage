@@ -247,9 +247,7 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   const totalDays = Math.ceil((currentDate.getTime() - creationDate.getTime()) / (24 * 60 * 60 * 1000));
   const deadDays = totalDays - daysAdded;
   
-  const breakdown = supportTechnicianSchedule 
-    ? `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${totalHoursPerDay}h por día (${primaryHoursPerDay}h técnico principal + ${supportHoursPerDay}h técnico apoyo) = ${daysAdded} días laborales${deadDays > 0 ? ` + ${deadDays} días no laborales` : ''}`
-    : `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${primaryHoursPerDay}h por día = ${daysAdded} días laborales${deadDays > 0 ? ` + ${deadDays} días no laborales` : ''}`;
+  const breakdown = ''; // Texto detallado removido por solicitud del usuario
 
   return {
     deliveryDate: currentDate,
