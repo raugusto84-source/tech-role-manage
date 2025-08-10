@@ -154,7 +154,7 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Si la orden se crea después del horario laboral, empezar al día siguiente
+  // Calcular tiempo de creación y horarios de trabajo en minutos
   const creationTime = creationDate.getHours() * 60 + creationDate.getMinutes();
   const workStartTime = parseInt(primaryTechnicianSchedule.start_time.split(':')[0]) * 60 + 
                        parseInt(primaryTechnicianSchedule.start_time.split(':')[1]);
@@ -162,7 +162,24 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
                      parseInt(primaryTechnicianSchedule.end_time.split(':')[1]);
 
   let startFromNextDay = false;
-  if (creationTime > workEndTime || creationTime < workStartTime) {
+  let remainingHoursToday = 0;
+  
+  // Verificar si la orden se crea dentro del horario laboral
+  if (creationTime >= workStartTime && creationTime <= workEndTime && workingDays.includes(currentDate.getDay())) {
+    // Calcular horas restantes del día actual
+    const remainingMinutesToday = workEndTime - creationTime;
+    remainingHoursToday = Math.max(0, (remainingMinutesToday - (primaryTechnicianSchedule.break_duration_minutes || 0)) / 60);
+    
+    // Si hay técnico de apoyo, sumar sus horas también
+    if (supportTechnicianSchedule) {
+      const supportRemainingMinutes = workEndTime - creationTime;
+      const supportRemainingHours = Math.max(0, (supportRemainingMinutes - (supportTechnicianSchedule.break_duration_minutes || 0)) / 60);
+      remainingHoursToday += supportRemainingHours;
+    }
+    
+    startFromNextDay = false;
+  } else {
+    // Si está fuera del horario laboral o no es día laboral, empezar al día siguiente
     startFromNextDay = true;
   }
 
@@ -179,11 +196,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     if (workingDays.includes(dayOfWeek)) {
       let availableHoursToday = totalHoursPerDay;
       
-      // En el primer día de trabajo, considerar las horas restantes del día
+      // En el primer día de trabajo, usar las horas restantes calculadas anteriormente
       if (daysAdded === 0 && !startFromNextDay) {
-        const remainingMinutesToday = workEndTime - Math.max(creationTime, workStartTime);
-        availableHoursToday = Math.max(0, remainingMinutesToday / 60);
-        availableHoursToday = Math.min(availableHoursToday, totalHoursPerDay);
+        availableHoursToday = remainingHoursToday;
       }
       
       const hoursToSubtract = Math.min(remainingHours, availableHoursToday);
