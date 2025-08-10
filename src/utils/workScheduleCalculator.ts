@@ -165,20 +165,20 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   
   // Verificar si la orden se crea dentro del horario laboral
   if (creationTime >= workStartTime && creationTime <= workEndTime && workingDays.includes(currentDate.getDay())) {
-    // Calcular horas restantes del día actual considerando el descanso
+    // Calcular horas restantes del día actual de manera simple
     const remainingMinutesToday = workEndTime - creationTime;
     
-    // Calcular si el descanso ya pasó o está por venir
+    // Simplificar: solo restar el tiempo de descanso proporcionalmente
     const totalWorkMinutes = workEndTime - workStartTime;
-    const elapsedMinutes = creationTime - workStartTime;
-    const remainingBreakTime = Math.max(0, breakMinutes - Math.max(0, elapsedMinutes * (breakMinutes / totalWorkMinutes)));
+    const workProgress = (creationTime - workStartTime) / totalWorkMinutes;
+    const remainingBreakMinutes = workProgress < 0.5 ? breakMinutes : 0; // Si ya pasó la mitad del día, no hay más descanso
     
-    remainingHoursToday = Math.max(0, (remainingMinutesToday - remainingBreakTime) / 60);
+    remainingHoursToday = Math.max(0, (remainingMinutesToday - remainingBreakMinutes) / 60);
     
     // Si hay técnico de apoyo, calcular sus horas disponibles también
     if (supportTechnicianSchedule) {
       const supportBreakMinutes = supportTechnicianSchedule.break_duration_minutes || 0;
-      const supportRemainingBreak = Math.max(0, supportBreakMinutes - Math.max(0, elapsedMinutes * (supportBreakMinutes / totalWorkMinutes)));
+      const supportRemainingBreak = workProgress < 0.5 ? supportBreakMinutes : 0;
       const supportRemainingHours = Math.max(0, (remainingMinutesToday - supportRemainingBreak) / 60);
       remainingHoursToday += supportRemainingHours;
     }

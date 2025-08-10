@@ -221,7 +221,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const subtotal = newQuantity * existingItem.unit_price;
       const vatAmount = subtotal * (existingItem.vat_rate / 100);
       const total = subtotal + vatAmount;
-      const totalEstimatedHours = newQuantity * (service.estimated_hours || 0);
+      // Calcular horas por unidad basándose en el servicio original, no en las horas ya calculadas
+      const hoursPerUnit = (service.estimated_hours || 0);
+      const totalEstimatedHours = newQuantity * hoursPerUnit;
       
       updatedItems[existingItemIndex] = {
         ...existingItem,
