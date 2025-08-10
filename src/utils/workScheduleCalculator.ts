@@ -605,11 +605,14 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
         currentWorkload = nonSharedHours + effectiveSharedHoursTotal;
         // +0.5h por orden activa (tiempo muerto)
         currentWorkload += (activeOrders?.length || 0) * 0.5;
+        // Total de unidades compartidas activas (global)
+        const totalActiveSharedUnits = Array.from(serviceUnits.values()).reduce((sum, v) => sum + v, 0);
 
         // Calcular horas efectivas de la nueva orden aplicando el contexto activo
         const clientAddedForService = new Set<string>();
         const addedUnitsMap = new Map<string, number>();
         let newEffective = 0;
+        let remainingSharedSlots = Math.max(0, 3 - totalActiveSharedUnits);
 
         (baseParams.orderItems || []).forEach((item) => {
           const serviceId = item.service_type_id || 'unknown';
@@ -627,13 +630,24 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
             for (let i = 0; i < qty; i++) {
               const unitsCount = existingUnits + addedUnits + 1; // incluir esta unidad
               let sharingFactor: number;
-              // Si ya se alcanzó el tope (3 clientes o 5 servicios), NO compartir: se agenda después
-              if ((existingClients >= 3) || (existingUnits >= 5)) {
+              const canShareGlobally = remainingSharedSlots > 0;
+
+              if (!canShareGlobally) {
+                // Tope global alcanzado (3 artículos compartidos)
+                sharingFactor = 1;
+              } else if ((existingClients >= 3) || ((existingUnits + addedUnits) >= 5)) {
+                // Tope por servicio alcanzado
                 sharingFactor = 1;
               } else {
                 sharingFactor = Math.max(1, Math.min(3, existingClients + clientIncrement, 5, unitsCount));
               }
+
               newEffective += perUnit / sharingFactor;
+
+              if (canShareGlobally && sharingFactor > 1) {
+                remainingSharedSlots--; // consumimos un cupo global de compartido
+              }
+
               addedUnits++;
             }
 
