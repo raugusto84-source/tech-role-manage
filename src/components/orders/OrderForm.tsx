@@ -60,9 +60,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [formData, setFormData] = useState({
     client_id: '',
     failure_description: '',
-    delivery_date: '',
+    delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow
     assigned_technician: '',
-    support_technician: '' // Nuevo campo para técnico de apoyo
+    support_technician: 'none' // Initialize with 'none' instead of empty string
   });
   
   // Estados para el sistema de sugerencias de técnicos
@@ -297,9 +297,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const adjustedHours = totalHours * reductionFactor;
       
       const { deliveryDate } = calculateDeliveryDate(adjustedHours, standardSchedule);
+      const deliveryDateString = deliveryDate.toISOString().split('T')[0];
+      
       setFormData(prev => ({
         ...prev,
-        delivery_date: deliveryDate.toISOString().split('T')[0]
+        delivery_date: deliveryDateString
       }));
       
       // Sugerir técnico de apoyo si es necesario
@@ -423,6 +425,16 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
+      // Validar que tenemos fecha de entrega
+      if (!formData.delivery_date) {
+        toast({
+          title: "Error",
+          description: "Debe seleccionar una fecha de entrega",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Calcular totales de todos los items
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
@@ -432,7 +444,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         client_id: formData.client_id,
         service_type: orderItems[0].service_type_id, // Usar el primer servicio como tipo principal
         failure_description: formData.failure_description,
-        delivery_date: formData.delivery_date,
+        delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow if empty
         estimated_cost: totalAmount,
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
@@ -640,13 +652,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
               {/* Fecha de Entrega */}
               <div className="space-y-2">
-                <Label htmlFor="delivery_date">Fecha de Entrega Estimada</Label>
+                <Label htmlFor="delivery_date">Fecha de Entrega Estimada *</Label>
                 <Input
                   id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
                   onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
                   min={new Date().toISOString().split('T')[0]}
+                  required
                 />
                 {orderItems.length > 0 && (
                   <div className="text-xs text-muted-foreground space-y-1">
