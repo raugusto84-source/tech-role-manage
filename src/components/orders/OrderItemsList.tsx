@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Package, Clock } from 'lucide-react';
+import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export interface OrderItem {
   id: string;
@@ -20,6 +22,8 @@ export interface OrderItem {
   vat_amount: number;
   total: number;
   item_type: string;
+  shared_time: boolean; // Nueva propiedad para tiempo compartido
+  status?: 'pendiente' | 'en_proceso' | 'completado'; // Estado individual del artículo
 }
 
 interface OrderItemsListProps {
@@ -55,6 +59,26 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
     onItemsChange(updatedItems);
   };
 
+  const toggleSharedTime = (itemId: string) => {
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, shared_time: !item.shared_time };
+      }
+      return item;
+    });
+    onItemsChange(updatedItems);
+  };
+
+  const updateItemStatus = (itemId: string, status: 'pendiente' | 'en_proceso' | 'completado') => {
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, status };
+      }
+      return item;
+    });
+    onItemsChange(updatedItems);
+  };
+
   const removeItem = (itemId: string) => {
     const updatedItems = items.filter(item => item.id !== itemId);
     onItemsChange(updatedItems);
@@ -80,7 +104,14 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
   };
 
   const getTotalHours = () => {
-    return items.reduce((sum, item) => sum + item.estimated_hours, 0);
+    // Calcular horas considerando el tiempo compartido
+    const sharedItems = items.filter(item => item.shared_time);
+    const individualItems = items.filter(item => !item.shared_time);
+    
+    const sharedHours = sharedItems.length > 0 ? Math.max(...sharedItems.map(item => item.estimated_hours)) : 0;
+    const individualHours = individualItems.reduce((sum, item) => sum + item.estimated_hours, 0);
+    
+    return sharedHours + individualHours;
   };
 
   const getTotalItems = () => {
@@ -118,12 +149,29 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
               {index > 0 && <Separator />}
               <div className="flex justify-between items-start py-2">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-medium">{item.name}</h4>
-                    <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
-                      {item.item_type}
-                    </Badge>
-                  </div>
+                   <div className="flex items-center gap-2 mb-2">
+                     <h4 className="font-medium">{item.name}</h4>
+                     <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
+                       {item.item_type}
+                     </Badge>
+                     {item.shared_time && (
+                       <Badge variant="outline" className="text-blue-600 border-blue-200">
+                         <Share2 className="h-3 w-3 mr-1" />
+                         Tiempo Compartido
+                       </Badge>
+                     )}
+                     {item.status && (
+                       <Badge variant={
+                         item.status === 'completado' ? 'default' : 
+                         item.status === 'en_proceso' ? 'secondary' : 'outline'
+                       }>
+                         {item.status === 'completado' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                         {item.status === 'en_proceso' && <Play className="h-3 w-3 mr-1" />}
+                         {item.status === 'pendiente' && <Pause className="h-3 w-3 mr-1" />}
+                         {item.status}
+                       </Badge>
+                     )}
+                   </div>
                   
                   {item.description && (
                     <p className="text-sm text-muted-foreground mb-3">
@@ -131,42 +179,74 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                     </p>
                   )}
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <Label className="text-xs">Cantidad</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
-                        className="w-20 h-8 mt-1"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label className="text-xs">Precio Unit.</Label>
-                      <div className="text-green-600 font-medium mt-1">
-                        {formatCurrency(item.unit_price)}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-blue-600" />
-                      <div>
-                        <Label className="text-xs">Tiempo Est.</Label>
-                        <div className="text-blue-600 mt-1">
-                          {formatHours(item.estimated_hours)}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-xs">Total</Label>
-                      <div className="font-bold text-primary mt-1">
-                        {formatCurrency(item.total)}
-                      </div>
-                    </div>
-                  </div>
+                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                     <div>
+                       <Label className="text-xs">Cantidad</Label>
+                       <Input
+                         type="number"
+                         min="1"
+                         value={item.quantity}
+                         onChange={(e) => updateItemQuantity(item.id, parseInt(e.target.value) || 1)}
+                         className="w-20 h-8 mt-1"
+                       />
+                     </div>
+                     
+                     <div>
+                       <Label className="text-xs">Precio Unit.</Label>
+                       <div className="text-green-600 font-medium mt-1">
+                         {formatCurrency(item.unit_price)}
+                       </div>
+                     </div>
+                     
+                     <div className="flex items-center gap-1">
+                       <Clock className="h-4 w-4 text-blue-600" />
+                       <div>
+                         <Label className="text-xs">Tiempo Est.</Label>
+                         <div className="text-blue-600 mt-1">
+                           {formatHours(item.estimated_hours)}
+                         </div>
+                       </div>
+                     </div>
+                     
+                     <div>
+                       <Label className="text-xs">Total</Label>
+                       <div className="font-bold text-primary mt-1">
+                         {formatCurrency(item.total)}
+                       </div>
+                     </div>
+
+                     {item.status && (
+                       <div>
+                         <Label className="text-xs">Estado</Label>
+                         <Select 
+                           value={item.status} 
+                           onValueChange={(value: 'pendiente' | 'en_proceso' | 'completado') => updateItemStatus(item.id, value)}
+                         >
+                           <SelectTrigger className="h-8 mt-1">
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="pendiente">Pendiente</SelectItem>
+                             <SelectItem value="en_proceso">En Proceso</SelectItem>
+                             <SelectItem value="completado">Completado</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     )}
+                   </div>
+                   
+                   <div className="flex justify-between items-center mt-3">
+                     <div className="flex items-center space-x-2">
+                       <Switch
+                         checked={item.shared_time}
+                         onCheckedChange={() => toggleSharedTime(item.id)}
+                         id={`shared-time-${item.id}`}
+                       />
+                       <Label htmlFor={`shared-time-${item.id}`} className="text-xs text-muted-foreground">
+                         Tiempo compartido con otros servicios
+                       </Label>
+                     </div>
+                   </div>
                   
                   <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                     <span>Subtotal: {formatCurrency(item.subtotal)}</span>

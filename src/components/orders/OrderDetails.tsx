@@ -319,17 +319,30 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               </CardContent>
             </Card>
 
-            {/* Información del Servicio */}
+            {/* Descripción del Problema */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MessageSquare className="h-5 w-5 mr-2 text-primary" />
+                  Descripción del Problema
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-foreground whitespace-pre-wrap">{order.failure_description}</p>
+              </CardContent>
+            </Card>
+
+            {/* Servicios Solicitados */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Wrench className="h-5 w-5 mr-2 text-primary" />
-                  Detalles del Servicio
+                  Servicios y Productos
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Tipo de Servicio</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">Servicio Principal</Label>
                   <p className="text-foreground font-medium">
                     {order.service_types?.name || 'Servicio no especificado'}
                   </p>
@@ -340,19 +353,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                   )}
                 </div>
 
-                <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Descripción del Problema</Label>
-                  <p className="text-foreground whitespace-pre-wrap">{order.failure_description}</p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {order.estimated_cost && (
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground flex items-center">
                         <DollarSign className="h-4 w-4 mr-1" />
-                        Costo Estimado
+                        Costo Total Estimado
                       </Label>
-                      <p className="text-foreground font-medium">
+                      <p className="text-foreground font-medium text-lg text-green-600">
                         ${order.estimated_cost.toLocaleString()}
                       </p>
                     </div>
@@ -362,22 +370,32 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground flex items-center">
                         <Clock className="h-4 w-4 mr-1" />
-                        Tiempo Estimado
+                        Tiempo Total Estimado
                         {isEarlyCompletion && (
                           <Trophy className="h-4 w-4 ml-2 text-green-600 animate-pulse" />
                         )}
                       </Label>
-                      <p className="text-foreground font-medium flex items-center gap-2">
+                      <p className="text-foreground font-medium flex items-center gap-2 text-lg text-blue-600">
                         {formatTime(order.average_service_time)}
                         {isEarlyCompletion && (
                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                            ¡Logrado!
+                            ¡Completado antes de tiempo!
                           </Badge>
                         )}
                       </p>
                     </div>
                   )}
+                </div>
 
+                {/* Fecha de Entrega */}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Fecha de Entrega Estimada
+                  </Label>
+                  <p className="text-foreground font-medium text-lg text-orange-600">
+                    {formatDate(order.delivery_date)}
+                  </p>
                 </div>
               </CardContent>
             </Card>

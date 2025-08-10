@@ -252,7 +252,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         vat_rate: vatRate,
         vat_amount: vatAmount,
         total,
-        item_type: service.item_type
+        item_type: service.item_type,
+        shared_time: false, // Por defecto no compartido
+        status: 'pendiente' // Estado inicial
       };
       
       setOrderItems([...orderItems, newItem]);
@@ -266,8 +268,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     recalculateDeliveryAndSuggestSupport();
   };
 
+  const calculateTotalHours = () => {
+    // Calcular horas considerando tiempo compartido
+    const sharedItems = orderItems.filter(item => item.shared_time);
+    const individualItems = orderItems.filter(item => !item.shared_time);
+    
+    const sharedHours = sharedItems.length > 0 ? Math.max(...sharedItems.map(item => item.estimated_hours)) : 0;
+    const individualHours = individualItems.reduce((sum, item) => sum + item.estimated_hours, 0);
+    
+    return sharedHours + individualHours;
+  };
+
   const recalculateDeliveryAndSuggestSupport = () => {
-    const totalHours = orderItems.reduce((sum, item) => sum + item.estimated_hours, 0);
+    const totalHours = calculateTotalHours();
     
     if (totalHours > 0 && formData.assigned_technician) {
       // Simular horario estándar (se puede obtener de la base de datos)
@@ -278,7 +291,12 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         break_duration_minutes: 60
       };
       
-      const { deliveryDate } = calculateDeliveryDate(totalHours, standardSchedule);
+      // Calcular reducción por técnicos de apoyo (0.5% por técnico)
+      const supportTechnicians = formData.support_technician ? 1 : 0;
+      const reductionFactor = 1 - (supportTechnicians * 0.005); // 0.5% de reducción
+      const adjustedHours = totalHours * reductionFactor;
+      
+      const { deliveryDate } = calculateDeliveryDate(adjustedHours, standardSchedule);
       setFormData(prev => ({
         ...prev,
         delivery_date: deliveryDate.toISOString().split('T')[0]
@@ -407,7 +425,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       // Calcular totales de todos los items
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
-      const totalHours = orderItems.reduce((sum, item) => sum + item.estimated_hours, 0);
+      const totalHours = calculateTotalHours();
       
       // Crear la orden principal
       const orderData = {
@@ -547,6 +565,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               )}
 
+              {/* Descripción del Problema - Arriba */}
+              <div className="space-y-2">
+                <Label htmlFor="failure_description">Descripción del Problema *</Label>
+                <Textarea
+                  id="failure_description"
+                  value={formData.failure_description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, failure_description: e.target.value }))}
+                  placeholder="Describe detalladamente el problema o servicio requerido..."
+                  rows={4}
+                  required
+                />
+              </div>
+
               {/* Selección de Servicios por Categoría */}
               <div className="space-y-4">
                 <Label>Servicios y Productos *</Label>
@@ -562,46 +593,69 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 onItemsChange={setOrderItems}
               />
 
-              <div className="space-y-2">
-                <Label htmlFor="failure_description">Descripción del Problema *</Label>
-                <Textarea
-                  id="failure_description"
-                  value={formData.failure_description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, failure_description: e.target.value }))}
-                  placeholder="Describe detalladamente el problema o servicio requerido..."
-                  rows={4}
-                  required
-                />
-              </div>
+              {/* Asignación de Técnicos */}
+              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="assigned_technician">Técnico Principal</Label>
+                      <Select value={formData.assigned_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_technician: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar técnico" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {technicians.map((technician) => (
+                            <SelectItem key={technician.user_id} value={technician.user_id}>
+                              {technician.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="support_technician">Técnico de Apoyo (Opcional)</Label>
+                      <Select value={formData.support_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, support_technician: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccionar técnico de apoyo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Sin técnico de apoyo</SelectItem>
+                          {technicians.filter(t => t.user_id !== formData.assigned_technician).map((technician) => (
+                            <SelectItem key={technician.user_id} value={technician.user_id}>
+                              {technician.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formData.support_technician && (
+                        <p className="text-xs text-green-600">
+                          Tiempo estimado reducido en 0.5% con técnico de apoyo
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              {/* Fechas y Costos */}
+              {/* Fecha de Entrega */}
               <div className="space-y-2">
-                <Label htmlFor="delivery_date">Fecha de Entrega Estimada *</Label>
+                <Label htmlFor="delivery_date">Fecha de Entrega Estimada</Label>
                 <Input
                   id="delivery_date"
                   type="date"
                   value={formData.delivery_date}
                   onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
-                  required
+                  min={new Date().toISOString().split('T')[0]}
                 />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="delivery_date">Fecha de Entrega Estimada</Label>
-                  <Input
-                    id="delivery_date"
-                    type="date"
-                    value={formData.delivery_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                  {orderItems.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Calculado automáticamente basado en {orderItems.reduce((sum, item) => sum + item.estimated_hours, 0)} horas totales
-                    </p>
-                  )}
-                </div>
+                {orderItems.length > 0 && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>Calculado automáticamente basado en {calculateTotalHours()} horas totales estimadas</p>
+                    {formData.support_technician && (
+                      <p className="text-green-600">Con técnico de apoyo: tiempo reducido</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Sugerencias de Técnicos para Staff */}

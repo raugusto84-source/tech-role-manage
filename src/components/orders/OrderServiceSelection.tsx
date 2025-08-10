@@ -39,6 +39,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     loadData();
@@ -118,6 +119,18 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
       const days = Math.ceil(hours / 8); // Asumiendo 8 horas laborables por día
       return `${days} día${days !== 1 ? 's' : ''} laborables`;
     }
+  };
+
+  const updateQuantity = (serviceId: string, quantity: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [serviceId]: Math.max(1, quantity)
+    }));
+  };
+
+  const handleServiceAdd = (service: ServiceType) => {
+    const quantity = quantities[service.id] || 1;
+    onServiceAdd(service, quantity);
   };
 
   const calculateDeliveryDate = (estimatedHours: number | null): string => {
@@ -272,14 +285,26 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                           </div>
                         </div>
                         
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="ml-4"
-                          onClick={() => onServiceAdd(service, 1)}
-                        >
-                          Agregar
-                        </Button>
+                        <div className="flex items-center gap-2 ml-4">
+                          <div className="flex items-center gap-1">
+                            <Label htmlFor={`qty-${service.id}`} className="text-xs">Cant:</Label>
+                            <Input
+                              id={`qty-${service.id}`}
+                              type="number"
+                              min="1"
+                              value={quantities[service.id] || 1}
+                              onChange={(e) => updateQuantity(service.id, parseInt(e.target.value) || 1)}
+                              className="w-16 h-8"
+                            />
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleServiceAdd(service)}
+                          >
+                            Agregar
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -359,14 +384,26 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                         </div>
                       </div>
                       
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="ml-4"
-                        onClick={() => onServiceAdd(service, 1)}
-                      >
-                        Agregar
-                      </Button>
+                      <div className="flex items-center gap-2 ml-4">
+                        <div className="flex items-center gap-1">
+                          <Label htmlFor={`qty-uncategorized-${service.id}`} className="text-xs">Cant:</Label>
+                          <Input
+                            id={`qty-uncategorized-${service.id}`}
+                            type="number"
+                            min="1"
+                            value={quantities[service.id] || 1}
+                            onChange={(e) => updateQuantity(service.id, parseInt(e.target.value) || 1)}
+                            className="w-16 h-8"
+                          />
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleServiceAdd(service)}
+                        >
+                          Agregar
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
