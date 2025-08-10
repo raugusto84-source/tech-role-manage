@@ -215,11 +215,13 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
         hoursWorkedToday = hoursToSubtract;
         break;
       }
+      
+      // Solo avanzar al siguiente día si aún quedan horas por trabajar
+      currentDate.setDate(currentDate.getDate() + 1);
     } else {
-      // Día no laboral = tiempo muerto
+      // Día no laboral = tiempo muerto, solo avanzar la fecha
+      currentDate.setDate(currentDate.getDate() + 1);
     }
-    
-    currentDate.setDate(currentDate.getDate() + 1);
   }
 
   // Calcular hora estimada de entrega basada en las horas trabajadas el día final
