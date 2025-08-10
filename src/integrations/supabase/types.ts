@@ -2531,6 +2531,7 @@ export type Database = {
           min_quantity: number | null
           name: string
           profit_margin_tiers: Json | null
+          shared_time: boolean
           unit: string | null
           updated_at: string
           vat_rate: number | null
@@ -2550,6 +2551,7 @@ export type Database = {
           min_quantity?: number | null
           name: string
           profit_margin_tiers?: Json | null
+          shared_time?: boolean
           unit?: string | null
           updated_at?: string
           vat_rate?: number | null
@@ -2569,6 +2571,7 @@ export type Database = {
           min_quantity?: number | null
           name?: string
           profit_margin_tiers?: Json | null
+          shared_time?: boolean
           unit?: string | null
           updated_at?: string
           vat_rate?: number | null
