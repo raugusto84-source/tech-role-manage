@@ -140,6 +140,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   const workingDays = primaryTechnicianSchedule.work_days;
   let currentDate = new Date(creationDate);
+  // Crear una nueva fecha para no modificar la fecha original
+  currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+  
   let remainingHours = adjustedHours;
   let daysAdded = 0;
 
@@ -195,8 +198,11 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   // Calcular día por día considerando tiempo muerto
   let accumulatedHours = 0;
+  console.log(`Iniciando cálculo: ${remainingHours} horas restantes, fecha actual: ${currentDate.toDateString()}`);
+  
   while (remainingHours > 0) {
     const dayOfWeek = currentDate.getDay();
+    console.log(`Día ${currentDate.toDateString()}, día de semana: ${dayOfWeek}, es laboral: ${workingDays.includes(dayOfWeek)}`);
     
     if (workingDays.includes(dayOfWeek)) {
       let availableHoursToday = totalHoursPerDay;
@@ -204,6 +210,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       // En el primer día de trabajo, usar las horas restantes calculadas anteriormente
       if (daysAdded === 0 && !startFromNextDay) {
         availableHoursToday = remainingHoursToday;
+        console.log(`Primer día: usando ${availableHoursToday} horas restantes`);
+      } else {
+        console.log(`Día completo: ${availableHoursToday} horas disponibles`);
       }
       
       const hoursToSubtract = Math.min(remainingHours, availableHoursToday);
@@ -211,8 +220,11 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       accumulatedHours += hoursToSubtract;
       daysAdded++;
       
+      console.log(`Trabajadas: ${hoursToSubtract}h, quedan: ${remainingHours}h, días laborales: ${daysAdded}`);
+      
       if (remainingHours <= 0) {
         hoursWorkedToday = hoursToSubtract;
+        console.log(`Terminado en ${currentDate.toDateString()} con ${hoursWorkedToday}h el último día`);
         break;
       }
       
@@ -220,6 +232,7 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       currentDate.setDate(currentDate.getDate() + 1);
     } else {
       // Día no laboral = tiempo muerto, solo avanzar la fecha
+      console.log(`Día no laboral, avanzando fecha`);
       currentDate.setDate(currentDate.getDate() + 1);
     }
   }
@@ -235,7 +248,21 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     // Agregar las horas trabajadas considerando los descansos
     const workMinutesWithBreaks = hoursWorkedToday * 60 + (hoursWorkedToday > 4 ? breakMinutes : 0);
     const endTime = new Date(startTime.getTime() + workMinutesWithBreaks * 60 * 1000);
-    deliveryTime = endTime.toTimeString().slice(0, 5);
+    
+    // Formatear la hora con AM/PM
+    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+  } else {
+    // Formatear la hora de fin con AM/PM
+    const endTime = new Date(`1970-01-01T${primaryTechnicianSchedule.end_time}`);
+    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
   }
 
   // Calcular días no laborales para el breakdown
