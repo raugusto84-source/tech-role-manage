@@ -67,7 +67,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [formData, setFormData] = useState({
     client_id: '',
     failure_description: '',
-    delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow
+    delivery_date: format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Default to tomorrow (local)
     assigned_technician: '',
     support_technician: 'none' // Initialize with 'none' instead of empty string
   });
@@ -474,7 +474,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         client_id: formData.client_id,
         service_type: orderItems[0].service_type_id, // Usar el primer servicio como tipo principal
         failure_description: formData.failure_description,
-        delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow if empty
+        delivery_date: formData.delivery_date || format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Default to tomorrow if empty (local)
         estimated_cost: totalAmount,
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
@@ -693,18 +693,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.delivery_date ? format(new Date(formData.delivery_date), "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+                      {formData.delivery_date ? format(new Date(`${formData.delivery_date}T00:00:00`), "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={formData.delivery_date ? new Date(formData.delivery_date) : undefined}
+                      selected={formData.delivery_date ? new Date(`${formData.delivery_date}T00:00:00`) : undefined}
                       onSelect={(date) => {
                         if (date) {
                           setFormData(prev => ({ 
                             ...prev, 
-                            delivery_date: date.toISOString().split('T')[0] 
+                            delivery_date: format(date, 'yyyy-MM-dd') 
                           }));
                         }
                       }}

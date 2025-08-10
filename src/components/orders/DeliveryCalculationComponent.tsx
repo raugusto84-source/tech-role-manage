@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { calculateAdvancedDeliveryDateWithWorkload } from '@/utils/workScheduleCalculator';
 import { OrderItem } from '@/components/orders/OrderItemsList';
 
@@ -71,8 +72,8 @@ export function DeliveryCalculationComponent({
           technicianId: formData.assigned_technician || undefined
         });
         
-        // Actualizar automáticamente la fecha si es diferente
-        const calculatedDateString = deliveryDate.toISOString().split('T')[0];
+        // Actualizar automáticamente la fecha si es diferente (formateo local)
+        const calculatedDateString = format(deliveryDate, 'yyyy-MM-dd');
         if (calculatedDateString !== formData.delivery_date) {
           onDateUpdate(calculatedDateString);
         }

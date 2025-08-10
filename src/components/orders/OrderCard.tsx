@@ -41,7 +41,7 @@ interface OrderCardProps {
 export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+      return format(new Date(`${dateString}T00:00:00`), 'dd/MM/yyyy', { locale: es });
     } catch {
       return dateString;
     }

@@ -115,7 +115,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+      return format(new Date(`${dateString}T00:00:00`), 'dd/MM/yyyy', { locale: es });
     } catch {
       return dateString;
     }
@@ -159,7 +159,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     order.delivery_date && 
     order.created_at && (() => {
       const startTime = new Date(order.created_at).getTime();
-      const endTime = new Date(order.delivery_date).getTime();
+      const endTime = new Date(`${order.delivery_date}T23:59:59`).getTime();
       const actualDurationHours = (endTime - startTime) / (1000 * 60 * 60);
       return actualDurationHours < order.average_service_time;
     })();

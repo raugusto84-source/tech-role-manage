@@ -158,12 +158,12 @@ export default function Orders() {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     return matchesSearch && matchesStatus;
-  }).sort((a, b) => new Date(a.delivery_date).getTime() - new Date(b.delivery_date).getTime()); // Ordenar por fecha de entrega
+  }).sort((a, b) => new Date(`${a.delivery_date}T00:00:00`).getTime() - new Date(`${b.delivery_date}T00:00:00`).getTime()); // Ordenar por fecha de entrega (zona local)
 
   // Función para calcular tiempo restante
   const getTimeRemaining = (deliveryDate: string) => {
     const now = new Date();
-    const delivery = new Date(deliveryDate);
+    const delivery = new Date(`${deliveryDate}T23:59:59`);
     const diffMs = delivery.getTime() - now.getTime();
     
     if (diffMs < 0) return 'Vencido';
@@ -213,7 +213,7 @@ export default function Orders() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES');
+    return new Date(`${dateString}T00:00:00`).toLocaleDateString('es-ES');
   };
 
   // Función para calcular fecha y hora de entrega
