@@ -80,7 +80,9 @@ export function calculateSharedTimeHours(items: OrderItem[]): number {
   return totalHours;
 }
 
-export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams): { 
+export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams & { 
+  effectiveHoursOverride?: number
+}): { 
   deliveryDate: Date; 
   deliveryTime: string; 
   breakdown: string;
@@ -94,7 +96,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     currentWorkload = 0
   } = params;
 
-  const effectiveHours = calculateSharedTimeHours(orderItems);
+  const effectiveHours = typeof params.effectiveHoursOverride === 'number'
+    ? params.effectiveHoursOverride
+    : calculateSharedTimeHours(orderItems);
   
   if (effectiveHours <= 0) {
     return {
@@ -482,29 +486,47 @@ export async function calculateTechnicianActiveWorkload(
       return 0;
     }
 
-    // Convertir a formato OrderItem para calcular tiempo compartido
-    const activeOrderItems: OrderItem[] = [];
-    
+    // Construir contexto por servicio: clientes distintos y unidades (cantidades)
+    const serviceClientSets = new Map<string, Set<string>>();
+    const serviceUnits = new Map<string, number>();
+    const serviceSharedHours = new Map<string, number>();
+    let nonSharedHours = 0;
+
     activeOrders?.forEach(order => {
       order.order_items?.forEach((item: any) => {
-        activeOrderItems.push({
-          id: item.id || `${order.id}-${item.service_type_id}`,
-          estimated_hours: item.estimated_hours || 0,
-          shared_time: item.service_types?.shared_time || false,
-          status: 'en_proceso',
-          service_type_id: item.service_type_id,
-          quantity: item.quantity || 1
-        });
+        const serviceId = item.service_type_id || 'unknown';
+        const qty = item.quantity || 1;
+        const hrs = item.estimated_hours || 0;
+        const isShared = item.service_types?.shared_time || false;
+
+        if (isShared) {
+          if (!serviceClientSets.has(serviceId)) serviceClientSets.set(serviceId, new Set<string>());
+          serviceClientSets.get(serviceId)!.add(order.id);
+
+          serviceUnits.set(serviceId, (serviceUnits.get(serviceId) || 0) + qty);
+          serviceSharedHours.set(serviceId, (serviceSharedHours.get(serviceId) || 0) + hrs);
+        } else {
+          nonSharedHours += hrs;
+        }
       });
     });
 
     // Si no hay órdenes activas, no hay carga adicional
-    if (activeOrderItems.length === 0) {
+    if ((serviceClientSets.size === 0 && nonSharedHours === 0)) {
       return 0;
     }
 
-    // Calcular solo el tiempo de las órdenes activas (sin la nueva orden)
-    const activeWorkloadTime = calculateSharedTimeHours(activeOrderItems);
+    // Calcular horas efectivas aplicando tope: máximo 3 clientes o 5 servicios (lo que ocurra primero)
+    let effectiveSharedHoursTotal = 0;
+
+    serviceSharedHours.forEach((totalHours, serviceId) => {
+      const clients = serviceClientSets.get(serviceId)?.size || 0;
+      const units = serviceUnits.get(serviceId) || 0;
+      const sharingFactor = Math.max(1, Math.min(3, clients, 5, units));
+      effectiveSharedHoursTotal += totalHours / sharingFactor;
+    });
+
+    const activeWorkloadTime = nonSharedHours + effectiveSharedHoursTotal;
     
     return Math.max(0, activeWorkloadTime);
     
@@ -525,23 +547,106 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
 }> {
   const { technicianId, ...baseParams } = params;
   
-  // Si hay técnico asignado, calcular su carga activa
   let currentWorkload = baseParams.currentWorkload || 0;
+  let effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
   
   if (technicianId) {
     try {
-      const activeWorkload = await calculateTechnicianActiveWorkload(technicianId, baseParams.orderItems);
-      currentWorkload = activeWorkload;
-      console.log(`Carga activa del técnico ${technicianId}: ${activeWorkload} horas`);
+      const { supabase } = await import('@/integrations/supabase/client');
+
+      const { data: activeOrders, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_items!inner(
+            estimated_hours,
+            service_type_id,
+            quantity,
+            service_types!inner(shared_time)
+          )
+        `)
+        .eq('assigned_technician', technicianId)
+        .in('status', ['pendiente', 'en_proceso', 'en_camino']);
+
+      if (!error) {
+        // Contexto activo por servicio
+        const serviceClientSets = new Map<string, Set<string>>();
+        const serviceUnits = new Map<string, number>();
+        const serviceSharedHours = new Map<string, number>();
+        let nonSharedHours = 0;
+
+        activeOrders?.forEach(order => {
+          order.order_items?.forEach((item: any) => {
+            const serviceId = item.service_type_id || 'unknown';
+            const qty = item.quantity || 1;
+            const hrs = item.estimated_hours || 0;
+            const isShared = item.service_types?.shared_time || false;
+
+            if (isShared) {
+              if (!serviceClientSets.has(serviceId)) serviceClientSets.set(serviceId, new Set<string>());
+              serviceClientSets.get(serviceId)!.add(order.id);
+
+              serviceUnits.set(serviceId, (serviceUnits.get(serviceId) || 0) + qty);
+              serviceSharedHours.set(serviceId, (serviceSharedHours.get(serviceId) || 0) + hrs);
+            } else {
+              nonSharedHours += hrs;
+            }
+          });
+        });
+
+        // Carga activa efectiva
+        let effectiveSharedHoursTotal = 0;
+        serviceSharedHours.forEach((totalHours, serviceId) => {
+          const clients = serviceClientSets.get(serviceId)?.size || 0;
+          const units = serviceUnits.get(serviceId) || 0;
+          const sharingFactor = Math.max(1, Math.min(3, clients, 5, units));
+          effectiveSharedHoursTotal += totalHours / sharingFactor;
+        });
+        currentWorkload = nonSharedHours + effectiveSharedHoursTotal;
+
+        // Calcular horas efectivas de la nueva orden aplicando el contexto activo
+        const clientAddedForService = new Set<string>();
+        const addedUnitsMap = new Map<string, number>();
+        let newEffective = 0;
+
+        (baseParams.orderItems || []).forEach((item) => {
+          const serviceId = item.service_type_id || 'unknown';
+          const qty = item.quantity || 1;
+          const baseHours = item.estimated_hours || 0;
+
+          if (item.shared_time) {
+            const perUnit = baseHours / qty;
+            const existingClients = serviceClientSets.get(serviceId)?.size || 0;
+            const existingUnits = serviceUnits.get(serviceId) || 0;
+
+            let addedUnits = addedUnitsMap.get(serviceId) || 0;
+            const clientIncrement = clientAddedForService.has(serviceId) ? 0 : 1;
+
+            for (let i = 0; i < qty; i++) {
+              const unitsCount = existingUnits + addedUnits + 1; // incluir esta unidad
+              const sharingFactor = Math.max(1, Math.min(3, existingClients + clientIncrement, 5, unitsCount));
+              newEffective += perUnit / sharingFactor;
+              addedUnits++;
+            }
+
+            addedUnitsMap.set(serviceId, addedUnits);
+            clientAddedForService.add(serviceId);
+          } else {
+            newEffective += baseHours;
+          }
+        });
+
+        effectiveHoursOverride = newEffective;
+        console.log(`Carga activa: ${currentWorkload}h, Horas efectivas nueva orden (compartido con tope): ${effectiveHoursOverride}h`);
+      }
     } catch (error) {
-      console.error('Error calculating active workload:', error);
-      // Continuar con workload 0 si hay error
+      console.error('Error calculando carga y horas compartidas con tope:', error);
     }
   }
-  
-  // Usar la función original con la carga calculada
+
   return calculateAdvancedDeliveryDate({
     ...baseParams,
-    currentWorkload
+    currentWorkload,
+    effectiveHoursOverride
   });
 }
