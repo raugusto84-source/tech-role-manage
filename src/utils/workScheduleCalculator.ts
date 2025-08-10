@@ -30,7 +30,6 @@ interface DeliveryCalculationParams {
 
 export function calculateSharedTimeHours(items: OrderItem[]): number {
   let totalHours = 0;
-  let sharedHours = 0;
 
   // Agrupar items por shared_time
   const sharedItems = items.filter(item => item.shared_time);
@@ -41,30 +40,50 @@ export function calculateSharedTimeHours(items: OrderItem[]): number {
     totalHours += item.estimated_hours || 0;
   });
 
-  // Para items con tiempo compartido, calcular por FSR
-  const sharedItemsByFSR = new Map<string, OrderItem[]>();
+  // Para items con tiempo compartido, aplicar lógica de límite de 3 combinaciones
+  const sharedItemsByService = new Map<string, OrderItem[]>();
   
   sharedItems.forEach(item => {
-    const fsrKey = item.service_type_id || 'unknown';
-    if (!sharedItemsByFSR.has(fsrKey)) {
-      sharedItemsByFSR.set(fsrKey, []);
+    const serviceKey = item.service_type_id || 'unknown';
+    if (!sharedItemsByService.has(serviceKey)) {
+      sharedItemsByService.set(serviceKey, []);
     }
-    sharedItemsByFSR.get(fsrKey)!.push(item);
+    sharedItemsByService.get(serviceKey)!.push(item);
   });
 
-  // Para cada FSR, el tiempo es compartido entre todos los artículos
-  sharedItemsByFSR.forEach((fsrItems) => {
-    if (fsrItems.length > 0) {
-      // El tiempo total de un FSR con tiempo compartido es el tiempo del item con más horas
-      // independientemente de la cantidad
-      const maxHours = Math.max(...fsrItems.map(item => 
-        (item.estimated_hours || 0) / (item.quantity || 1) // Tiempo por unidad
-      ));
-      sharedHours += maxHours;
+  // Para cada tipo de servicio con tiempo compartido
+  sharedItemsByService.forEach((serviceItems) => {
+    if (serviceItems.length > 0) {
+      // Calcular tiempo base por unidad del servicio
+      const baseTimePerUnit = serviceItems[0].estimated_hours / (serviceItems[0].quantity || 1);
+      
+      // Calcular cantidad total de artículos de este servicio
+      const totalQuantity = serviceItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+      
+      // Aplicar límite de 3 combinaciones: máximo beneficio hasta 3 artículos
+      const effectiveQuantity = Math.min(totalQuantity, 3);
+      
+      // El tiempo compartido se calcula usando solo el tiempo de la primera unidad
+      // más incrementos menores para artículos adicionales (hasta 3)
+      let sharedServiceHours = baseTimePerUnit; // Tiempo base
+      
+      if (effectiveQuantity > 1) {
+        // Agregar tiempo adicional: 20% del tiempo base por cada artículo adicional
+        const additionalTime = (effectiveQuantity - 1) * (baseTimePerUnit * 0.2);
+        sharedServiceHours += additionalTime;
+      }
+      
+      // Si hay más de 3 artículos, los restantes se calculan con tiempo completo
+      if (totalQuantity > 3) {
+        const remainingQuantity = totalQuantity - 3;
+        sharedServiceHours += remainingQuantity * baseTimePerUnit;
+      }
+      
+      totalHours += sharedServiceHours;
     }
   });
 
-  return totalHours + sharedHours;
+  return totalHours;
 }
 
 export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams): { 

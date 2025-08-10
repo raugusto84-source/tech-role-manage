@@ -269,14 +269,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   };
 
   const calculateTotalHours = () => {
-    // Calcular horas considerando tiempo compartido
-    const sharedItems = orderItems.filter(item => item.shared_time);
-    const individualItems = orderItems.filter(item => !item.shared_time);
-    
-    const sharedHours = sharedItems.length > 0 ? Math.max(...sharedItems.map(item => item.estimated_hours)) : 0;
-    const individualHours = individualItems.reduce((sum, item) => sum + item.estimated_hours, 0);
-    
-    return sharedHours + individualHours;
+    // Usar la función mejorada de cálculo de tiempo compartido
+    return calculateSharedTimeHours(orderItems);
   };
 
   const recalculateDeliveryAndSuggestSupport = () => {

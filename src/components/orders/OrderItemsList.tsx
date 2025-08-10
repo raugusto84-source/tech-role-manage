@@ -104,14 +104,62 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
   };
 
   const getTotalHours = () => {
-    // Calcular horas considerando el tiempo compartido
+    // Calcular horas usando la lógica de tiempo compartido con límite de 3 combinaciones
+    let totalHours = 0;
+    
+    // Agrupar items por shared_time
     const sharedItems = items.filter(item => item.shared_time);
     const individualItems = items.filter(item => !item.shared_time);
+
+    // Para items individuales, sumar normalmente
+    individualItems.forEach(item => {
+      totalHours += item.estimated_hours || 0;
+    });
+
+    // Para items con tiempo compartido, aplicar lógica de límite de 3 combinaciones
+    const sharedItemsByService = new Map<string, typeof items>();
     
-    const sharedHours = sharedItems.length > 0 ? Math.max(...sharedItems.map(item => item.estimated_hours)) : 0;
-    const individualHours = individualItems.reduce((sum, item) => sum + item.estimated_hours, 0);
-    
-    return sharedHours + individualHours;
+    sharedItems.forEach(item => {
+      const serviceKey = item.service_type_id || 'unknown';
+      if (!sharedItemsByService.has(serviceKey)) {
+        sharedItemsByService.set(serviceKey, []);
+      }
+      sharedItemsByService.get(serviceKey)!.push(item);
+    });
+
+    // Para cada tipo de servicio con tiempo compartido
+    sharedItemsByService.forEach((serviceItems) => {
+      if (serviceItems.length > 0) {
+        // Calcular tiempo base por unidad del servicio
+        const baseTimePerUnit = serviceItems[0].estimated_hours / (serviceItems[0].quantity || 1);
+        
+        // Calcular cantidad total de artículos de este servicio
+        const totalQuantity = serviceItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        
+        // Aplicar límite de 3 combinaciones: máximo beneficio hasta 3 artículos
+        const effectiveQuantity = Math.min(totalQuantity, 3);
+        
+        // El tiempo compartido se calcula usando solo el tiempo de la primera unidad
+        // más incrementos menores para artículos adicionales (hasta 3)
+        let sharedServiceHours = baseTimePerUnit; // Tiempo base
+        
+        if (effectiveQuantity > 1) {
+          // Agregar tiempo adicional: 20% del tiempo base por cada artículo adicional
+          const additionalTime = (effectiveQuantity - 1) * (baseTimePerUnit * 0.2);
+          sharedServiceHours += additionalTime;
+        }
+        
+        // Si hay más de 3 artículos, los restantes se calculan con tiempo completo
+        if (totalQuantity > 3) {
+          const remainingQuantity = totalQuantity - 3;
+          sharedServiceHours += remainingQuantity * baseTimePerUnit;
+        }
+        
+        totalHours += sharedServiceHours;
+      }
+    });
+
+    return totalHours;
   };
 
   const getTotalItems = () => {
