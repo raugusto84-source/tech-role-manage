@@ -40,10 +40,12 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
 
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
+        // Calcular tiempo base por unidad (tiempo original dividido por cantidad original)
+        const baseTimePerUnit = item.estimated_hours / item.quantity;
         const subtotal = newQuantity * item.unit_price;
         const vatAmount = subtotal * (item.vat_rate / 100);
         const total = subtotal + vatAmount;
-        const totalEstimatedHours = newQuantity * item.estimated_hours;
+        const totalEstimatedHours = newQuantity * baseTimePerUnit;
         
         return { 
           ...item, 
