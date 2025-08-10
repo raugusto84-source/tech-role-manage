@@ -163,32 +163,14 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   let remainingHoursToday = 0;
   let hoursWorkedToday = 0;
   
-  // Verificar si la orden se crea dentro del horario laboral
-  const isWorkingDay = workingDays.includes(currentDate.getDay());
-  const isWithinWorkHours = creationTime >= workStartTime && creationTime <= workEndTime;
-  
-  if (isWithinWorkHours && isWorkingDay) {
-    // Calcular horas restantes del día actual sin considerar descansos
-    const remainingMinutesToday = workEndTime - creationTime;
-    remainingHoursToday = Math.max(0, remainingMinutesToday / 60);
-    
-    // Si hay técnico de apoyo, calcular sus horas disponibles también
-    if (supportTechnicianSchedule) {
-      const supportRemainingHours = Math.max(0, remainingMinutesToday / 60);
-      remainingHoursToday += supportRemainingHours;
-    }
-    
-    startFromNextDay = false;
-  } else {
-    // Si está fuera del horario laboral o no es día laboral, empezar al día siguiente
-    startFromNextDay = true;
-  }
+  // Siempre programar para el siguiente día laboral, sin considerar la hora actual
+  startFromNextDay = true;
+  remainingHoursToday = 0; // No usar horas del día actual
 
-  if (startFromNextDay) {
+  // Avanzar al siguiente día laboral
+  currentDate.setDate(currentDate.getDate() + 1);
+  while (!workingDays.includes(currentDate.getDay())) {
     currentDate.setDate(currentDate.getDate() + 1);
-    while (!workingDays.includes(currentDate.getDay())) {
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
   }
 
   // Calcular día por día considerando tiempo muerto
