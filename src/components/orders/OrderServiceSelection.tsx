@@ -38,7 +38,7 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   useEffect(() => {
     loadData();
@@ -96,7 +96,7 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
     const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    const matchesCategory = !selectedCategory || service.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
@@ -184,7 +184,7 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
               <SelectValue placeholder="Todas las categorías" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas las categorías</SelectItem>
+              <SelectItem value="all">Todas las categorías</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.name}>
                   <span className="flex items-center gap-2">
