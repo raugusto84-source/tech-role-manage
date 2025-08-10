@@ -421,3 +421,65 @@ export function suggestSupportTechnician(
     reason: 'No se requiere técnico de apoyo para este trabajo'
   };
 }
+
+/**
+ * Calcula la carga de trabajo adicional considerando tiempo compartido de órdenes activas
+ */
+export async function calculateTechnicianActiveWorkload(
+  technicianId: string,
+  newOrderItems: OrderItem[]
+): Promise<number> {
+  try {
+    // Obtener órdenes activas del técnico
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data: activeOrders, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        order_items!inner(
+          estimated_hours,
+          service_type_id,
+          quantity,
+          service_types!inner(shared_time)
+        )
+      `)
+      .eq('assigned_technician', technicianId)
+      .in('status', ['pendiente', 'en_proceso', 'en_camino']);
+
+    if (error) {
+      console.error('Error fetching active orders:', error);
+      return 0;
+    }
+
+    // Convertir a formato OrderItem para calcular tiempo compartido
+    const activeOrderItems: OrderItem[] = [];
+    
+    activeOrders?.forEach(order => {
+      order.order_items?.forEach((item: any) => {
+        activeOrderItems.push({
+          id: item.id || `${order.id}-${item.service_type_id}`,
+          estimated_hours: item.estimated_hours || 0,
+          shared_time: item.service_types?.shared_time || false,
+          status: 'en_proceso',
+          service_type_id: item.service_type_id,
+          quantity: item.quantity || 1
+        });
+      });
+    });
+
+    // Combinar items activos con items de la nueva orden
+    const allItems = [...activeOrderItems, ...newOrderItems];
+    
+    // Calcular tiempo total considerando tiempo compartido
+    const totalSharedTime = calculateSharedTimeHours(allItems);
+    const activeWorkloadTime = calculateSharedTimeHours(activeOrderItems);
+    
+    // La carga adicional es la diferencia entre el tiempo total y el tiempo actual activo
+    return Math.max(0, totalSharedTime - activeWorkloadTime);
+    
+  } catch (error) {
+    console.error('Error calculating technician workload:', error);
+    return 0;
+  }
+}
