@@ -298,6 +298,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                             />
                           </div>
                           <Button
+                            type="button"
                             variant="outline"
                             size="sm"
                             onClick={() => handleServiceAdd(service)}
@@ -397,6 +398,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                           />
                         </div>
                         <Button
+                          type="button"
                           variant="outline"
                           size="sm"
                           onClick={() => handleServiceAdd(service)}
