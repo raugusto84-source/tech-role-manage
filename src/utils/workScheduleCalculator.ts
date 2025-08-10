@@ -424,6 +424,7 @@ export function suggestSupportTechnician(
 
 /**
  * Calcula la carga de trabajo adicional considerando tiempo compartido de órdenes activas
+ * Esta función es síncrona y se ejecuta en el contexto de cálculo de entrega
  */
 export async function calculateTechnicianActiveWorkload(
   technicianId: string,
@@ -468,6 +469,11 @@ export async function calculateTechnicianActiveWorkload(
       });
     });
 
+    // Si no hay órdenes activas, no hay carga adicional
+    if (activeOrderItems.length === 0) {
+      return 0;
+    }
+
     // Combinar items activos con items de la nueva orden
     const allItems = [...activeOrderItems, ...newOrderItems];
     
@@ -482,4 +488,35 @@ export async function calculateTechnicianActiveWorkload(
     console.error('Error calculating technician workload:', error);
     return 0;
   }
+}
+
+/**
+ * Función mejorada para calcular fecha de entrega que incluye carga activa automáticamente
+ */
+export async function calculateAdvancedDeliveryDateWithWorkload(params: DeliveryCalculationParams & { technicianId?: string }): Promise<{ 
+  deliveryDate: Date; 
+  deliveryTime: string; 
+  breakdown: string;
+  effectiveHours: number;
+}> {
+  const { technicianId, ...baseParams } = params;
+  
+  // Si hay técnico asignado, calcular su carga activa
+  let currentWorkload = baseParams.currentWorkload || 0;
+  
+  if (technicianId) {
+    try {
+      const activeWorkload = await calculateTechnicianActiveWorkload(technicianId, baseParams.orderItems);
+      currentWorkload = activeWorkload;
+    } catch (error) {
+      console.error('Error calculating active workload:', error);
+      // Continuar con workload 0 si hay error
+    }
+  }
+  
+  // Usar la función original con la carga calculada
+  return calculateAdvancedDeliveryDate({
+    ...baseParams,
+    currentWorkload
+  });
 }
