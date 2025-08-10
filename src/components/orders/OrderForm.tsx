@@ -664,9 +664,23 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 {orderItems.length > 0 && (
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p>Calculado automáticamente basado en {calculateTotalHours()} horas totales estimadas</p>
-                    {formData.support_technician && (
+                    {formData.support_technician && formData.support_technician !== 'none' && (
                       <p className="text-green-600">Con técnico de apoyo: tiempo reducido</p>
                     )}
+                    {(() => {
+                      const totalHours = calculateTotalHours();
+                      if (totalHours > 0) {
+                        const primarySchedule = {
+                          work_days: [1, 2, 3, 4, 5],
+                          start_time: '08:00',
+                          end_time: '17:00',
+                          break_duration_minutes: 60
+                        };
+                        const { deliveryTime } = calculateDeliveryDate(totalHours, primarySchedule);
+                        return <p className="text-blue-600 font-medium">Hora estimada de entrega: {deliveryTime}</p>;
+                      }
+                      return null;
+                    })()}
                   </div>
                 )}
               </div>

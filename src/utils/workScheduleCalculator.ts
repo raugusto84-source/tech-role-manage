@@ -16,7 +16,7 @@ export function calculateDeliveryDate(
   primaryTechnicianSchedule: WorkSchedule,
   supportTechnicianSchedule?: WorkSchedule,
   startDate: Date = new Date()
-): { deliveryDate: Date; breakdown: string } {
+): { deliveryDate: Date; deliveryTime: string; breakdown: string } {
   
   const getWorkingHoursPerDay = (schedule: WorkSchedule): number => {
     const startTime = new Date(`1970-01-01T${schedule.start_time}`);
@@ -38,6 +38,7 @@ export function calculateDeliveryDate(
   if (totalHoursPerDay <= 0) {
     return {
       deliveryDate: new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 días por defecto
+      deliveryTime: primaryTechnicianSchedule.end_time,
       breakdown: 'No se pudo calcular debido a horarios inválidos'
     };
   }
@@ -66,12 +67,19 @@ export function calculateDeliveryDate(
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
+  // Calcular hora estimada de entrega
+  const remainingHoursOnLastDay = totalHours % totalHoursPerDay;
+  const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
+  const endTime = new Date(startTime.getTime() + (remainingHoursOnLastDay || totalHoursPerDay) * 60 * 60 * 1000);
+  const deliveryTime = endTime.toTimeString().slice(0, 5);
+
   const breakdown = supportTechnicianSchedule 
     ? `${totalHours}h totales / ${totalHoursPerDay}h por día (${primaryHoursPerDay}h técnico principal + ${supportHoursPerDay}h técnico apoyo) = ${daysAdded} días laborales`
     : `${totalHours}h totales / ${primaryHoursPerDay}h por día = ${daysAdded} días laborales`;
 
   return {
     deliveryDate: currentDate,
+    deliveryTime,
     breakdown
   };
 }
