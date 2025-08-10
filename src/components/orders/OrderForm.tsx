@@ -738,8 +738,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                            supportSchedule = technicianSchedules[formData.support_technician] || primarySchedule;
                          }
                          
-                         // Obtener carga de trabajo actual del técnico
-                         const currentWorkload = technicianWorkloads[formData.assigned_technician]?.total_hours || 0;
+                         // Para órdenes nuevas, no considerar carga de trabajo previa
+                         const currentWorkload = 0; // Siempre 0 para órdenes nuevas
                          
                          const { deliveryDate, deliveryTime, effectiveHours, breakdown } = calculateAdvancedDeliveryDate({
                             orderItems: orderItems.map(item => ({
