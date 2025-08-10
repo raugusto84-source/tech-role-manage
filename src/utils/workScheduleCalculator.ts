@@ -146,31 +146,46 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   let remainingHours = adjustedHours;
   let daysAdded = 0;
 
-  // Avanzar al siguiente día laboral si empezamos en fin de semana
-  while (!workingDays.includes(currentDate.getDay())) {
-    currentDate.setDate(currentDate.getDate() + 1);
-  }
-
   // Calcular tiempo de creación y horarios de trabajo en minutos
   const creationTime = creationDate.getHours() * 60 + creationDate.getMinutes();
   const workStartTime = parseInt(primaryTechnicianSchedule.start_time.split(':')[0]) * 60 + 
                        parseInt(primaryTechnicianSchedule.start_time.split(':')[1]);
   const workEndTime = parseInt(primaryTechnicianSchedule.end_time.split(':')[0]) * 60 + 
                      parseInt(primaryTechnicianSchedule.end_time.split(':')[1]);
-  const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
 
   let startFromNextDay = false;
   let remainingHoursToday = 0;
   let hoursWorkedToday = 0;
   
-  // Siempre programar para el siguiente día laboral, sin considerar la hora actual
-  startFromNextDay = true;
-  remainingHoursToday = 0; // No usar horas del día actual
+  // CAMBIO CLAVE: Verificar si podemos trabajar hoy
+  const today = currentDate.getDay();
+  const isWorkingDay = workingDays.includes(today);
+  
+  if (isWorkingDay && creationTime < workEndTime) {
+    // Si es día laboral y aún hay tiempo disponible, calcular horas restantes hoy
+    const availableMinutesToday = workEndTime - Math.max(creationTime, workStartTime);
+    remainingHoursToday = Math.max(0, availableMinutesToday / 60);
+    
+    // Si tenemos suficiente tiempo hoy para completar el trabajo, no avanzar al siguiente día
+    if (remainingHoursToday >= remainingHours) {
+      startFromNextDay = false;
+    } else {
+      // Si no alcanza el tiempo de hoy, usar lo que queda y continuar mañana
+      startFromNextDay = true;
+      remainingHours -= remainingHoursToday;
+    }
+  } else {
+    // No es día laboral o ya se acabó el horario, empezar mañana
+    startFromNextDay = true;
+    remainingHoursToday = 0;
+  }
 
-  // Avanzar al siguiente día laboral
-  currentDate.setDate(currentDate.getDate() + 1);
-  while (!workingDays.includes(currentDate.getDay())) {
+  // Si necesitamos empezar desde el siguiente día, avanzar al siguiente día laboral
+  if (startFromNextDay) {
     currentDate.setDate(currentDate.getDate() + 1);
+    while (!workingDays.includes(currentDate.getDay())) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
   }
 
   // Calcular día por día considerando tiempo muerto
@@ -209,18 +224,36 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   let deliveryTime = primaryTechnicianSchedule.end_time;
   
   // Para cualquier trabajo que se complete en un día
-  if (daysAdded === 1) {
+  if (daysAdded === 1 || (!startFromNextDay && remainingHours <= 0)) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     
-    // Horario corrido: solo sumar las horas efectivas sin descansos
-    const totalMinutes = effectiveHours * 60;
-    const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
-    
-    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      hour12: true 
-    });
+    // Si estamos trabajando hoy, empezar desde la hora actual o de inicio
+    if (!startFromNextDay) {
+      const currentTimeMinutes = Math.max(creationTime, workStartTime);
+      const currentHour = Math.floor(currentTimeMinutes / 60);
+      const currentMinute = currentTimeMinutes % 60;
+      const startTime = new Date(`1970-01-01T${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`);
+      
+      // Horario corrido: solo sumar las horas efectivas sin descansos
+      const totalMinutes = effectiveHours * 60;
+      const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
+      
+      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      });
+    } else {
+      // Horario corrido: solo sumar las horas efectivas sin descansos
+      const totalMinutes = effectiveHours * 60;
+      const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
+      
+      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      });
+    }
   } else if (hoursWorkedToday > 0) {
     // Para trabajos de múltiples días, usar las horas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
@@ -243,10 +276,6 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     });
   }
 
-  // Calcular días no laborales para el breakdown
-  const totalDays = Math.ceil((currentDate.getTime() - creationDate.getTime()) / (24 * 60 * 60 * 1000));
-  const deadDays = totalDays - daysAdded;
-  
   const breakdown = ''; // Texto detallado removido por solicitud del usuario
 
   return {
@@ -474,15 +503,10 @@ export async function calculateTechnicianActiveWorkload(
       return 0;
     }
 
-    // Combinar items activos con items de la nueva orden
-    const allItems = [...activeOrderItems, ...newOrderItems];
-    
-    // Calcular tiempo total considerando tiempo compartido
-    const totalSharedTime = calculateSharedTimeHours(allItems);
+    // Calcular solo el tiempo de las órdenes activas (sin la nueva orden)
     const activeWorkloadTime = calculateSharedTimeHours(activeOrderItems);
     
-    // La carga adicional es la diferencia entre el tiempo total y el tiempo actual activo
-    return Math.max(0, totalSharedTime - activeWorkloadTime);
+    return Math.max(0, activeWorkloadTime);
     
   } catch (error) {
     console.error('Error calculating technician workload:', error);
@@ -508,6 +532,7 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
     try {
       const activeWorkload = await calculateTechnicianActiveWorkload(technicianId, baseParams.orderItems);
       currentWorkload = activeWorkload;
+      console.log(`Carga activa del técnico ${technicianId}: ${activeWorkload} horas`);
     } catch (error) {
       console.error('Error calculating active workload:', error);
       // Continuar con workload 0 si hay error
