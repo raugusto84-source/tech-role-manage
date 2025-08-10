@@ -29,11 +29,11 @@ interface ServiceCategory {
 }
 
 interface OrderServiceSelectionProps {
-  onServiceSelect: (service: ServiceType) => void;
-  selectedServiceId?: string;
+  onServiceAdd: (service: ServiceType, quantity?: number) => void;
+  selectedServiceIds: string[];
 }
 
-export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: OrderServiceSelectionProps) {
+export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: OrderServiceSelectionProps) {
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -218,11 +218,10 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
                   <Card 
                     key={service.id} 
                     className={`cursor-pointer transition-all hover:shadow-md ${
-                      selectedServiceId === service.id 
-                        ? 'ring-2 ring-primary border-primary' 
+                      selectedServiceIds.includes(service.id)
+                        ? 'ring-1 ring-primary/50 border-primary/50' 
                         : 'hover:border-primary/50'
                     }`}
-                    onClick={() => onServiceSelect(service)}
                   >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start">
@@ -232,9 +231,9 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
                             <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'}>
                               {service.item_type}
                             </Badge>
-                            {selectedServiceId === service.id && (
-                              <Badge variant="outline" className="text-primary border-primary">
-                                Seleccionado
+                            {selectedServiceIds.includes(service.id) && (
+                              <Badge variant="outline" className="text-green-600 border-green-600">
+                                Agregado
                               </Badge>
                             )}
                           </div>
@@ -274,15 +273,12 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
                         </div>
                         
                         <Button
-                          variant={selectedServiceId === service.id ? "default" : "outline"}
+                          variant="outline"
                           size="sm"
                           className="ml-4"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onServiceSelect(service);
-                          }}
+                          onClick={() => onServiceAdd(service, 1)}
                         >
-                          {selectedServiceId === service.id ? 'Seleccionado' : 'Seleccionar'}
+                          Agregar
                         </Button>
                       </div>
                     </CardContent>
@@ -309,11 +305,10 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
                 <Card 
                   key={service.id} 
                   className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedServiceId === service.id 
-                      ? 'ring-2 ring-primary border-primary' 
+                    selectedServiceIds.includes(service.id)
+                      ? 'ring-1 ring-primary/50 border-primary/50' 
                       : 'hover:border-primary/50'
                   }`}
-                  onClick={() => onServiceSelect(service)}
                 >
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start">
@@ -323,9 +318,9 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
                           <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'}>
                             {service.item_type}
                           </Badge>
-                          {selectedServiceId === service.id && (
-                            <Badge variant="outline" className="text-primary border-primary">
-                              Seleccionado
+                          {selectedServiceIds.includes(service.id) && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              Agregado
                             </Badge>
                           )}
                         </div>
@@ -365,15 +360,12 @@ export function OrderServiceSelection({ onServiceSelect, selectedServiceId }: Or
                       </div>
                       
                       <Button
-                        variant={selectedServiceId === service.id ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
                         className="ml-4"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onServiceSelect(service);
-                        }}
+                        onClick={() => onServiceAdd(service, 1)}
                       >
-                        {selectedServiceId === service.id ? 'Seleccionado' : 'Seleccionar'}
+                        Agregar
                       </Button>
                     </div>
                   </CardContent>

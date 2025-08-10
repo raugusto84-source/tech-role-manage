@@ -12,6 +12,8 @@ import { ArrowLeft, Save, Plus } from 'lucide-react';
 import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
+import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
+import { calculateDeliveryDate, suggestSupportTechnician, calculateTechnicianWorkload } from '@/utils/workScheduleCalculator';
 
 interface ServiceType {
   id: string;
@@ -52,23 +54,26 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [showClientForm, setShowClientForm] = useState(false);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [technicianWorkloads, setTechnicianWorkloads] = useState<any>({});
   
   const [formData, setFormData] = useState({
     client_id: '',
-    service_type: '',
     failure_description: '',
     delivery_date: '',
-    estimated_cost: '',
-    average_service_time: '',
-    assigned_technician: ''
+    assigned_technician: '',
+    support_technician: '' // Nuevo campo para técnico de apoyo
   });
   
   // Estados para el sistema de sugerencias de técnicos
   const [showTechnicianSuggestions, setShowTechnicianSuggestions] = useState(false);
+  const [showSupportSuggestion, setShowSupportSuggestion] = useState(false);
   const [suggestionReason, setSuggestionReason] = useState('');
+  const [supportSuggestion, setSupportSuggestion] = useState<any>(null);
 
   useEffect(() => {
     loadServiceTypes();
+    loadCurrentOrders(); // Para calcular cargas de trabajo
     
     if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
       // Para staff: cargar lista completa de clientes y técnicos
@@ -108,6 +113,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       setTechnicians(data || []);
     } catch (error) {
       console.error('Error loading technicians:', error);
+    }
+  };
+
+  const loadCurrentOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('assigned_technician, average_service_time, status')
+        .neq('status', 'finalizada');
+
+      if (error) throw error;
+
+      const workloads = calculateTechnicianWorkload(data || []);
+      setTechnicianWorkloads(workloads);
+    } catch (error) {
+      console.error('Error loading current orders:', error);
     }
   };
 
@@ -183,51 +204,99 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  const handleServiceSelect = (service: ServiceType) => {
-    setFormData(prev => ({
-      ...prev,
-      service_type: service.id,
-      estimated_cost: service.base_price?.toString() || '',
-      average_service_time: service.estimated_hours?.toString() || ''
-    }));
+  const handleServiceAdd = (service: ServiceType, quantity: number = 1) => {
+    // Verificar si el servicio ya existe
+    const existingItemIndex = orderItems.findIndex(item => item.service_type_id === service.id);
     
-    // Calcular fecha de entrega estimada basada en horas estimadas
-    if (service.estimated_hours) {
-      const deliveryDate = calculateBusinessDays(service.estimated_hours);
-      setFormData(prev => ({
-        ...prev,
-        delivery_date: deliveryDate
-      }));
+    if (existingItemIndex >= 0) {
+      // Si ya existe, aumentar cantidad
+      const updatedItems = [...orderItems];
+      const existingItem = updatedItems[existingItemIndex];
+      const newQuantity = existingItem.quantity + quantity;
+      const subtotal = newQuantity * existingItem.unit_price;
+      const vatAmount = subtotal * (existingItem.vat_rate / 100);
+      const total = subtotal + vatAmount;
+      const totalEstimatedHours = newQuantity * (service.estimated_hours || 0);
+      
+      updatedItems[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity,
+        subtotal,
+        vat_amount: vatAmount,
+        total,
+        estimated_hours: totalEstimatedHours
+      };
+      
+      setOrderItems(updatedItems);
+      toast({
+        title: "Cantidad actualizada",
+        description: `Se aumentó la cantidad de ${service.name} a ${newQuantity}`,
+      });
+    } else {
+      // Agregar nuevo item
+      const subtotal = quantity * (service.base_price || 0);
+      const vatRate = service.vat_rate || 16;
+      const vatAmount = subtotal * (vatRate / 100);
+      const total = subtotal + vatAmount;
+      const estimatedHours = quantity * (service.estimated_hours || 0);
+      
+      const newItem: OrderItem = {
+        id: `item-${Date.now()}-${Math.random()}`,
+        service_type_id: service.id,
+        name: service.name,
+        description: service.description || '',
+        quantity,
+        unit_price: service.base_price || 0,
+        estimated_hours: estimatedHours,
+        subtotal,
+        vat_rate: vatRate,
+        vat_amount: vatAmount,
+        total,
+        item_type: service.item_type
+      };
+      
+      setOrderItems([...orderItems, newItem]);
+      toast({
+        title: "Servicio agregado",
+        description: `${service.name} ha sido agregado a la orden`,
+      });
     }
     
-    // Mostrar sugerencias de técnicos automáticamente para staff
-    if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
-      setShowTechnicianSuggestions(true);
-    }
-    
-    // **PARA CLIENTES**: Asignar técnico automáticamente sin mostrar interfaz
-    if (profile?.role === 'cliente') {
-      autoAssignTechnicianForClient(service.id);
-    }
+    // Recalcular fecha de entrega y sugerir apoyo
+    recalculateDeliveryAndSuggestSupport();
   };
 
-  const calculateBusinessDays = (estimatedHours: number): string => {
-    const businessDays = Math.ceil(estimatedHours / 8); // 8 horas por día laboral
-    const now = new Date();
-    let deliveryDate = new Date(now);
-    let addedDays = 0;
+  const recalculateDeliveryAndSuggestSupport = () => {
+    const totalHours = orderItems.reduce((sum, item) => sum + item.estimated_hours, 0);
     
-    // Agregar días laborables (excluyendo fines de semana)
-    while (addedDays < businessDays) {
-      deliveryDate.setDate(deliveryDate.getDate() + 1);
+    if (totalHours > 0 && formData.assigned_technician) {
+      // Simular horario estándar (se puede obtener de la base de datos)
+      const standardSchedule = {
+        work_days: [1, 2, 3, 4, 5], // Lunes a viernes
+        start_time: '08:00',
+        end_time: '17:00',
+        break_duration_minutes: 60
+      };
       
-      // Si no es fin de semana (0 = domingo, 6 = sábado)
-      if (deliveryDate.getDay() !== 0 && deliveryDate.getDay() !== 6) {
-        addedDays++;
+      const { deliveryDate } = calculateDeliveryDate(totalHours, standardSchedule);
+      setFormData(prev => ({
+        ...prev,
+        delivery_date: deliveryDate.toISOString().split('T')[0]
+      }));
+      
+      // Sugerir técnico de apoyo si es necesario
+      const supportSugg = suggestSupportTechnician(
+        formData.assigned_technician,
+        totalHours,
+        technicians,
+        technicianWorkloads
+      );
+      
+      if (supportSugg.suggested) {
+        setSupportSuggestion(supportSugg);
+        setShowSupportSuggestion(true);
       }
     }
-    
-    return deliveryDate.toISOString().split('T')[0];
   };
 
   /**
@@ -250,12 +319,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
    * - Los clientes no ven la interfaz de selección, pero obtienen asignación óptima
    * - Proporciona transparencia sobre la asignación realizada
    */
-  const autoAssignTechnicianForClient = async (serviceTypeId: string) => {
+  const autoAssignTechnicianForClient = async () => {
+    if (orderItems.length === 0) return;
     try {
-      // Consultar sugerencias del sistema
+      // Usar el primer servicio para la sugerencia (se puede mejorar)
+      const firstService = orderItems[0];
       const { data: suggestions, error } = await supabase
         .rpc('suggest_optimal_technician', {
-          p_service_type_id: serviceTypeId,
+          p_service_type_id: firstService.service_type_id,
           p_delivery_date: formData.delivery_date || null
         });
 
@@ -314,6 +385,16 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     setLoading(true);
 
     try {
+      // Validar que tenemos items en la orden
+      if (orderItems.length === 0) {
+        toast({
+          title: "Error",
+          description: "Debe agregar al menos un artículo a la orden",
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Validar que tenemos client_id
       if (!formData.client_id) {
         toast({
@@ -324,50 +405,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      // Primero calcular los precios del servicio con IVA e impuestos
-      const { data: pricingData, error: pricingError } = await supabase
-        .rpc('calculate_order_item_pricing', {
-          p_service_type_id: formData.service_type,
-          p_quantity: 1
-        });
-
-      if (pricingError) {
-        console.error('Error calculating pricing:', pricingError);
-        toast({
-          title: "Error",
-          description: "No se pudo calcular el precio del servicio",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const pricing = pricingData[0];
+      // Calcular totales de todos los items
+      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
+      const totalHours = orderItems.reduce((sum, item) => sum + item.estimated_hours, 0);
       
-      // Obtener información del servicio
-      const { data: serviceData, error: serviceError } = await supabase
-        .from('service_types')
-        .select('name, description')
-        .eq('id', formData.service_type)
-        .single();
-
-      if (serviceError) {
-        console.error('Error loading service:', serviceError);
-        toast({
-          title: "Error",
-          description: "No se pudo cargar la información del servicio",
-          variant: "destructive"
-        });
-        return;
-      }
-
       // Crear la orden principal
       const orderData = {
         client_id: formData.client_id,
-        service_type: formData.service_type,
+        service_type: orderItems[0].service_type_id, // Usar el primer servicio como tipo principal
         failure_description: formData.failure_description,
         delivery_date: formData.delivery_date,
-        estimated_cost: pricing.total_amount, // Usar el precio calculado con IVA
-        average_service_time: formData.average_service_time ? parseFloat(formData.average_service_time) : null,
+        estimated_cost: totalAmount,
+        average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
         created_by: user?.id,
@@ -382,37 +431,37 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       if (orderError) throw orderError;
 
-      // Crear el item de la orden con precios fijos calculados
-      const orderItemData = {
+      // Crear los items de la orden
+      const orderItemsData = orderItems.map(item => ({
         order_id: orderResult.id,
-        service_type_id: formData.service_type,
-        service_name: serviceData.name,
-        service_description: serviceData.description,
-        quantity: 1,
-        unit_cost_price: pricing.unit_cost_price,
-        unit_base_price: pricing.unit_base_price,
-        profit_margin_rate: pricing.profit_margin_rate,
-        subtotal: pricing.subtotal,
-        vat_rate: pricing.vat_rate,
-        vat_amount: pricing.vat_amount,
-        total_amount: pricing.total_amount,
-        item_type: pricing.item_type
-      };
+        service_type_id: item.service_type_id,
+        service_name: item.name,
+        service_description: item.description,
+        quantity: item.quantity,
+        unit_cost_price: item.unit_price,
+        unit_base_price: item.unit_price,
+        profit_margin_rate: 0,
+        subtotal: item.subtotal,
+        vat_rate: item.vat_rate,
+        vat_amount: item.vat_amount,
+        total_amount: item.total,
+        item_type: item.item_type
+      }));
 
-      const { error: itemError } = await supabase
+      const { error: itemsError } = await supabase
         .from('order_items')
-        .insert(orderItemData);
+        .insert(orderItemsData);
 
-      if (itemError) {
-        console.error('Error creating order item:', itemError);
-        // Si falla crear el item, eliminar la orden
+      if (itemsError) {
+        console.error('Error creating order items:', itemsError);
+        // Si falla crear los items, eliminar la orden
         await supabase.from('orders').delete().eq('id', orderResult.id);
-        throw itemError;
+        throw itemsError;
       }
 
       toast({
         title: "Orden creada",
-        description: `Orden creada exitosamente con precio final de $${pricing.total_amount} (incluye IVA)`,
+        description: `Orden creada exitosamente con ${orderItems.length} artículo(s) por un total de ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalAmount)}`,
       });
 
       onSuccess();
@@ -498,14 +547,20 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               )}
 
-              {/* Selección de Servicio por Categoría */}
-              <div className="space-y-2">
-                <Label>Tipo de Servicio *</Label>
+              {/* Selección de Servicios por Categoría */}
+              <div className="space-y-4">
+                <Label>Servicios y Productos *</Label>
                 <OrderServiceSelection 
-                  onServiceSelect={handleServiceSelect}
-                  selectedServiceId={formData.service_type}
+                  onServiceAdd={handleServiceAdd}
+                  selectedServiceIds={orderItems.map(item => item.service_type_id)}
                 />
               </div>
+
+              {/* Lista de artículos seleccionados */}
+              <OrderItemsList 
+                items={orderItems}
+                onItemsChange={setOrderItems}
+              />
 
               <div className="space-y-2">
                 <Label htmlFor="failure_description">Descripción del Problema *</Label>
@@ -533,39 +588,31 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="estimated_cost">Costo Estimado</Label>
+                  <Label htmlFor="delivery_date">Fecha de Entrega Estimada</Label>
                   <Input
-                    id="estimated_cost"
-                    type="number"
-                    step="0.01"
-                    value={formData.estimated_cost}
-                    onChange={(e) => setFormData(prev => ({ ...prev, estimated_cost: e.target.value }))}
-                    placeholder="0.00"
+                    id="delivery_date"
+                    type="date"
+                    value={formData.delivery_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))}
+                    min={new Date().toISOString().split('T')[0]}
                   />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="average_service_time">Tiempo Estimado (horas)</Label>
-                  <Input
-                    id="average_service_time"
-                    type="number"
-                    step="0.5"
-                    value={formData.average_service_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, average_service_time: e.target.value }))}
-                    placeholder="2.5"
-                  />
+                  {orderItems.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Calculado automáticamente basado en {orderItems.reduce((sum, item) => sum + item.estimated_hours, 0)} horas totales
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Sistema de Sugerencias de Técnicos */}
-              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && showTechnicianSuggestions && formData.service_type && (
-                <TechnicianSuggestion
-                  serviceTypeId={formData.service_type}
-                  onTechnicianSelect={handleTechnicianSuggestionSelect}
-                  selectedTechnicianId={formData.assigned_technician}
-                  deliveryDate={formData.delivery_date}
-                  className="mb-4"
-                />
+              {/* Sugerencias de Técnicos para Staff */}
+              {showTechnicianSuggestions && orderItems.length > 0 && (profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+                <div className="mt-4">
+                  <TechnicianSuggestion
+                    serviceTypeId={orderItems[0].service_type_id}
+                    deliveryDate={formData.delivery_date}
+                    onTechnicianSelect={handleTechnicianSuggestionSelect}
+                  />
+                </div>
               )}
 
               {/* Mostrar técnico asignado para CLIENTES */}
@@ -603,61 +650,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               )}
 
-              {/* Asignación Manual de Técnico (solo para admins y vendedores) */}
-              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="assigned_technician">Técnico Asignado</Label>
-                    {formData.service_type && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowTechnicianSuggestions(!showTechnicianSuggestions)}
-                      >
-                        {showTechnicianSuggestions ? 'Ocultar sugerencias' : 'Ver sugerencias automáticas'}
-                      </Button>
-                    )}
-                  </div>
-                  
-                  <Select value={formData.assigned_technician} onValueChange={(value) => {
-                    setFormData(prev => ({ ...prev, assigned_technician: value }));
-                    setSuggestionReason(''); // Limpiar razón al seleccionar manualmente
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona un técnico (opcional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Sin asignar</SelectItem>
-                      {technicians.map((tech) => (
-                        <SelectItem key={tech.user_id} value={tech.user_id}>
-                          {tech.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  {/* Mostrar razón de la sugerencia si se seleccionó mediante sugerencias */}
-                  {suggestionReason && formData.assigned_technician && (
-                    <div className="text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded p-3">
-                      <strong>Razón de la sugerencia:</strong> {suggestionReason}
+              <div className="flex gap-4 pt-4">
+                <Button type="submit" disabled={loading || orderItems.length === 0} className="flex-1">
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Creando Orden...
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Save className="h-4 w-4" />
+                      Crear Orden de Servicio
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* Botones */}
-              <div className="flex gap-4 pt-4">
-                <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-                  Cancelar
                 </Button>
-                <Button type="submit" disabled={loading} className="flex-1">
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Crear Orden
+                <Button type="button" variant="outline" onClick={onCancel}>
+                  Cancelar
                 </Button>
               </div>
             </form>
