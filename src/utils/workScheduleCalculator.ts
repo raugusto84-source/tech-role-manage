@@ -228,19 +228,37 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     }
   }
 
-  // Calcular hora estimada de entrega basada en las horas trabajadas el día final
+  // Calcular hora estimada de entrega basada en las horas trabajadas
   let deliveryTime = primaryTechnicianSchedule.end_time;
   
-  if (hoursWorkedToday > 0) {
-    // Calcular la hora de entrega basada en las horas trabajadas el día final
+  // Si el trabajo se completa en el mismo día de creación
+  if (daysAdded === 1 && !startFromNextDay) {
+    // Calcular desde la hora de creación + horas efectivas
+    const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
+    const creationTimeDate = new Date(`1970-01-01T${String(Math.floor(creationTime / 60)).padStart(2, '0')}:${String(creationTime % 60).padStart(2, '0')}`);
+    
+    // Usar la hora más tardía entre el inicio del horario laboral y la hora de creación
+    const effectiveStartTime = creationTimeDate.getTime() > startTime.getTime() ? creationTimeDate : startTime;
+    const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
+    
+    // Agregar las horas efectivas más el tiempo de descanso si es necesario
+    const workMinutesWithBreaks = effectiveHours * 60 + (effectiveHours > 4 ? breakMinutes : 0);
+    const endTime = new Date(effectiveStartTime.getTime() + workMinutesWithBreaks * 60 * 1000);
+    
+    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+  } else if (hoursWorkedToday > 0) {
+    // Para trabajos que toman múltiples días, usar las horas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
     
-    // Agregar las horas trabajadas considerando los descansos
+    // Agregar las horas trabajadas el último día
     const workMinutesWithBreaks = hoursWorkedToday * 60 + (hoursWorkedToday > 4 ? breakMinutes : 0);
     const endTime = new Date(startTime.getTime() + workMinutesWithBreaks * 60 * 1000);
     
-    // Formatear la hora con AM/PM
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
       hour: 'numeric', 
       minute: '2-digit', 
