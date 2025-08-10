@@ -225,7 +225,7 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                            <SelectTrigger className="h-8 mt-1">
                              <SelectValue />
                            </SelectTrigger>
-                           <SelectContent>
+                           <SelectContent className="bg-background border z-50">
                              <SelectItem value="pendiente">Pendiente</SelectItem>
                              <SelectItem value="en_proceso">En Proceso</SelectItem>
                              <SelectItem value="completado">Completado</SelectItem>

@@ -292,7 +292,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       };
       
       // Calcular reducción por técnicos de apoyo (0.5% por técnico)
-      const supportTechnicians = formData.support_technician ? 1 : 0;
+      const supportTechnicians = formData.support_technician && formData.support_technician !== "none" ? 1 : 0;
       const reductionFactor = 1 - (supportTechnicians * 0.005); // 0.5% de reducción
       const adjustedHours = totalHours * reductionFactor;
       
@@ -545,7 +545,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Selecciona un cliente" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-background border z-50">
                         {clients.map((client) => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.client_number} - {client.name}
@@ -603,7 +603,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar técnico" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-background border z-50">
                           {technicians.map((technician) => (
                             <SelectItem key={technician.user_id} value={technician.user_id}>
                               {technician.full_name}
@@ -619,8 +619,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar técnico de apoyo" />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">Sin técnico de apoyo</SelectItem>
+                        <SelectContent className="bg-background border z-50">
+                          <SelectItem value="none">Sin técnico de apoyo</SelectItem>
                           {technicians.filter(t => t.user_id !== formData.assigned_technician).map((technician) => (
                             <SelectItem key={technician.user_id} value={technician.user_id}>
                               {technician.full_name}
@@ -628,7 +628,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                           ))}
                         </SelectContent>
                       </Select>
-                      {formData.support_technician && (
+                      {formData.support_technician && formData.support_technician !== "none" && (
                         <p className="text-xs text-green-600">
                           Tiempo estimado reducido en 0.5% con técnico de apoyo
                         </p>

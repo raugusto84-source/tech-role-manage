@@ -196,7 +196,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
             <SelectTrigger>
               <SelectValue placeholder="Todas las categorías" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-background border z-50">
               <SelectItem value="all">Todas las categorías</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.name}>
