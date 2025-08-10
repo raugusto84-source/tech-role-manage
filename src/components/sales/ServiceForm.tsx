@@ -448,17 +448,20 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   control={form.control}
                   name="shared_time"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-blue-50/50 border-blue-200">
                       <div className="space-y-0.5">
-                        <FormLabel className="text-base">Tiempo Compartido</FormLabel>
-                        <FormDescription>
-                          Múltiples artículos comparten el mismo tiempo de ejecución
+                        <FormLabel className="text-base font-semibold text-blue-900">Tiempo Compartido</FormLabel>
+                        <FormDescription className="text-blue-700">
+                          ✓ Se aplica automáticamente al agregar a órdenes<br/>
+                          ✓ Múltiples artículos optimizan el tiempo total de servicio<br/>
+                          ✓ Configurable individualmente en cada orden si es necesario
                         </FormDescription>
                       </div>
                       <FormControl>
                         <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          className="data-[state=checked]:bg-blue-600"
                         />
                       </FormControl>
                     </FormItem>

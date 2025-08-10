@@ -201,10 +201,10 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                      <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
                        {item.item_type}
                      </Badge>
-                     {item.shared_time && (
-                       <Badge variant="outline" className="text-blue-600 border-blue-200">
-                         <Share2 className="h-3 w-3 mr-1" />
-                         Tiempo Compartido
+                      {item.shared_time && (
+                        <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                          <Share2 className="h-3 w-3 mr-1" />
+                          Tiempo Compartido
                        </Badge>
                      )}
                      {item.status && (
@@ -284,14 +284,15 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                    
                    <div className="flex justify-between items-center mt-3">
                      <div className="flex items-center space-x-2">
-                       <Switch
-                         checked={item.shared_time}
-                         onCheckedChange={() => toggleSharedTime(item.id)}
-                         id={`shared-time-${item.id}`}
-                       />
-                       <Label htmlFor={`shared-time-${item.id}`} className="text-xs text-muted-foreground">
-                         Tiempo compartido con otros servicios
-                       </Label>
+                        <Switch
+                          checked={item.shared_time}
+                          onCheckedChange={() => toggleSharedTime(item.id)}
+                          id={`shared-time-${item.id}`}
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                        <Label htmlFor={`shared-time-${item.id}`} className="text-sm text-blue-700 font-medium">
+                          Tiempo Compartido (configurable por artículo)
+                        </Label>
                      </div>
                    </div>
                   
