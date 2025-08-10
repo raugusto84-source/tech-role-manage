@@ -61,6 +61,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [showClientForm, setShowClientForm] = useState(false);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
   const [technicianWorkloads, setTechnicianWorkloads] = useState<any>({});
+  const [technicianSchedules, setTechnicianSchedules] = useState<Record<string, any>>({});
   
   const [formData, setFormData] = useState({
     client_id: '',
@@ -79,6 +80,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   useEffect(() => {
     loadServiceTypes();
     loadCurrentOrders(); // Para calcular cargas de trabajo
+    loadTechnicianSchedules(); // Cargar horarios de técnicos
     
     if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
       // Para staff: cargar lista completa de clientes y técnicos
@@ -134,6 +136,32 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       setTechnicianWorkloads(workloads);
     } catch (error) {
       console.error('Error loading current orders:', error);
+    }
+  };
+
+  const loadTechnicianSchedules = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('work_schedules')
+        .select('employee_id, work_days, start_time, end_time, break_duration_minutes, is_active')
+        .eq('is_active', true);
+
+      if (error) throw error;
+
+      // Convertir array a objeto indexado por employee_id
+      const schedulesMap: Record<string, any> = {};
+      (data || []).forEach(schedule => {
+        schedulesMap[schedule.employee_id] = {
+          work_days: schedule.work_days,
+          start_time: schedule.start_time,
+          end_time: schedule.end_time,
+          break_duration_minutes: schedule.break_duration_minutes || 0
+        };
+      });
+      
+      setTechnicianSchedules(schedulesMap);
+    } catch (error) {
+      console.error('Error loading technician schedules:', error);
     }
   };
 
@@ -693,18 +721,21 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     )}
                      {(() => {
                        try {
-                         // Usar horarios estándar para el cálculo de hora estimada
-                         const primarySchedule = {
+                         // Obtener el horario real del técnico asignado desde la base de datos
+                         const technicianSchedule = technicianSchedules[formData.assigned_technician];
+                         
+                         // Si no hay horario específico, usar valores por defecto
+                         const primarySchedule = technicianSchedule || {
                            work_days: [1, 2, 3, 4, 5],
                            start_time: '08:00',
-                           end_time: '17:00',
+                           end_time: '16:00',
                            break_duration_minutes: 60
                          };
                          
                          let supportSchedule = undefined;
                          if (formData.support_technician && formData.support_technician !== 'none') {
-                           // Si hay técnico de apoyo, usar el mismo horario estándar
-                           supportSchedule = primarySchedule;
+                           // Si hay técnico de apoyo, obtener su horario también
+                           supportSchedule = technicianSchedules[formData.support_technician] || primarySchedule;
                          }
                          
                          // Obtener carga de trabajo actual del técnico
