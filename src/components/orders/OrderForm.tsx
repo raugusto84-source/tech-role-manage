@@ -13,7 +13,7 @@ import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
-import { calculateDeliveryDate, suggestSupportTechnician, calculateTechnicianWorkload } from '@/utils/workScheduleCalculator';
+import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload } from '@/utils/workScheduleCalculator';
 
 interface ServiceType {
   id: string;
@@ -668,8 +668,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                       <p className="text-green-600">Con técnico de apoyo: tiempo reducido</p>
                     )}
                      {(() => {
-                       const totalHours = calculateTotalHours();
-                       if (totalHours > 0) {
+                       if (orderItems.length > 0) {
                          // Usar horarios estándar para el cálculo de hora estimada
                          const primarySchedule = {
                            work_days: [1, 2, 3, 4, 5],
@@ -684,8 +683,29 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                            supportSchedule = primarySchedule;
                          }
                          
-                         const { deliveryTime } = calculateDeliveryDate(totalHours, primarySchedule, supportSchedule);
-                         return <p className="text-blue-600 font-medium">Hora estimada de entrega: {deliveryTime}</p>;
+                         // Obtener carga de trabajo actual del técnico (simulada por ahora)
+                         const currentWorkload = technicianWorkloads[formData.assigned_technician]?.total_hours || 0;
+                         
+                         const { deliveryTime, effectiveHours, breakdown } = calculateAdvancedDeliveryDate({
+                           orderItems: orderItems.map(item => ({
+                             id: item.id,
+                             estimated_hours: item.estimated_hours || 0,
+                             shared_time: item.shared_time || false,
+                             status: 'pendiente'
+                           })),
+                           primaryTechnicianSchedule: primarySchedule,
+                           supportTechnicianSchedule: supportSchedule,
+                           creationDate: new Date(),
+                           currentWorkload
+                         });
+                         
+                         return (
+                           <div className="space-y-1">
+                             <p className="text-blue-600 font-medium">Hora estimada de entrega: {deliveryTime}</p>
+                             <p className="text-xs text-muted-foreground">{breakdown}</p>
+                             <p className="text-xs text-green-600">Horas efectivas considerando tiempo compartido: {effectiveHours}h</p>
+                           </div>
+                         );
                        }
                        return null;
                      })()}

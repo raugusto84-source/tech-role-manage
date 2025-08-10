@@ -11,6 +11,169 @@ interface TechnicianWorkload {
   total_hours: number;
 }
 
+interface OrderItem {
+  id: string;
+  estimated_hours: number;
+  shared_time: boolean;
+  status: 'pendiente' | 'en_proceso' | 'completado';
+}
+
+interface DeliveryCalculationParams {
+  orderItems: OrderItem[];
+  primaryTechnicianSchedule: WorkSchedule;
+  supportTechnicianSchedule?: WorkSchedule;
+  creationDate: Date;
+  currentWorkload?: number;
+}
+
+export function calculateSharedTimeHours(items: OrderItem[]): number {
+  let totalHours = 0;
+  let sharedHours = 0;
+
+  items.forEach(item => {
+    if (item.shared_time) {
+      // Para items con tiempo compartido, solo tomamos el tiempo del item con más horas
+      sharedHours = Math.max(sharedHours, item.estimated_hours || 0);
+    } else {
+      // Items sin tiempo compartido se suman normalmente
+      totalHours += item.estimated_hours || 0;
+    }
+  });
+
+  return totalHours + sharedHours;
+}
+
+export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams): { 
+  deliveryDate: Date; 
+  deliveryTime: string; 
+  breakdown: string;
+  effectiveHours: number;
+} {
+  const { 
+    orderItems, 
+    primaryTechnicianSchedule, 
+    supportTechnicianSchedule, 
+    creationDate,
+    currentWorkload = 0
+  } = params;
+
+  const effectiveHours = calculateSharedTimeHours(orderItems);
+  
+  if (effectiveHours <= 0) {
+    return {
+      deliveryDate: new Date(creationDate.getTime() + 24 * 60 * 60 * 1000),
+      deliveryTime: primaryTechnicianSchedule.end_time,
+      breakdown: 'No hay horas de trabajo estimadas',
+      effectiveHours: 0
+    };
+  }
+
+  const getWorkingHoursPerDay = (schedule: WorkSchedule): number => {
+    const startTime = new Date(`1970-01-01T${schedule.start_time}`);
+    const endTime = new Date(`1970-01-01T${schedule.end_time}`);
+    const workingMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
+    const breakMinutes = schedule.break_duration_minutes || 0;
+    return Math.max(0, (workingMinutes - breakMinutes) / 60);
+  };
+
+  const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
+  let supportHoursPerDay = 0;
+  
+  if (supportTechnicianSchedule) {
+    supportHoursPerDay = getWorkingHoursPerDay(supportTechnicianSchedule);
+  }
+
+  const totalHoursPerDay = primaryHoursPerDay + supportHoursPerDay;
+
+  if (totalHoursPerDay <= 0) {
+    return {
+      deliveryDate: new Date(creationDate.getTime() + 7 * 24 * 60 * 60 * 1000),
+      deliveryTime: primaryTechnicianSchedule.end_time,
+      breakdown: 'No se pudo calcular debido a horarios inválidos',
+      effectiveHours
+    };
+  }
+
+  // Considerar la carga de trabajo actual del técnico
+  let adjustedHours = effectiveHours;
+  if (currentWorkload > 0) {
+    // Si el técnico tiene carga previa, esta orden se procesará después
+    adjustedHours += currentWorkload;
+  }
+
+  const workingDays = primaryTechnicianSchedule.work_days;
+  let currentDate = new Date(creationDate);
+  let remainingHours = adjustedHours;
+  let daysAdded = 0;
+
+  // Avanzar al siguiente día laboral si empezamos en fin de semana
+  while (!workingDays.includes(currentDate.getDay())) {
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Si la orden se crea después del horario laboral, empezar al día siguiente
+  const creationTime = creationDate.getHours() * 60 + creationDate.getMinutes();
+  const workStartTime = parseInt(primaryTechnicianSchedule.start_time.split(':')[0]) * 60 + 
+                       parseInt(primaryTechnicianSchedule.start_time.split(':')[1]);
+  const workEndTime = parseInt(primaryTechnicianSchedule.end_time.split(':')[0]) * 60 + 
+                     parseInt(primaryTechnicianSchedule.end_time.split(':')[1]);
+
+  let startFromNextDay = false;
+  if (creationTime > workEndTime || creationTime < workStartTime) {
+    startFromNextDay = true;
+  }
+
+  if (startFromNextDay) {
+    currentDate.setDate(currentDate.getDate() + 1);
+    while (!workingDays.includes(currentDate.getDay())) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  }
+
+  while (remainingHours > 0) {
+    const dayOfWeek = currentDate.getDay();
+    
+    if (workingDays.includes(dayOfWeek)) {
+      let availableHoursToday = totalHoursPerDay;
+      
+      // En el primer día de trabajo, considerar las horas restantes del día
+      if (daysAdded === 0 && !startFromNextDay) {
+        const remainingMinutesToday = workEndTime - Math.max(creationTime, workStartTime);
+        availableHoursToday = Math.max(0, remainingMinutesToday / 60);
+        availableHoursToday = Math.min(availableHoursToday, totalHoursPerDay);
+      }
+      
+      const hoursToSubtract = Math.min(remainingHours, availableHoursToday);
+      remainingHours -= hoursToSubtract;
+      daysAdded++;
+      
+      if (remainingHours <= 0) break;
+    }
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  // Calcular hora estimada de entrega
+  const finalDayHours = adjustedHours % totalHoursPerDay;
+  const hoursOnFinalDay = finalDayHours || (adjustedHours > 0 ? totalHoursPerDay : 0);
+  
+  const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
+  const endTime = new Date(startTime.getTime() + hoursOnFinalDay * 60 * 60 * 1000);
+  const deliveryTime = endTime.toTimeString().slice(0, 5);
+
+  const breakdown = supportTechnicianSchedule 
+    ? `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${totalHoursPerDay}h por día (${primaryHoursPerDay}h técnico principal + ${supportHoursPerDay}h técnico apoyo) = ${daysAdded} días laborales`
+    : `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${primaryHoursPerDay}h por día = ${daysAdded} días laborales`;
+
+  return {
+    deliveryDate: currentDate,
+    deliveryTime,
+    breakdown,
+    effectiveHours
+  };
+}
+
+// Función legacy para mantener compatibilidad
 export function calculateDeliveryDate(
   totalHours: number,
   primaryTechnicianSchedule: WorkSchedule,

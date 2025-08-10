@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
-import { calculateDeliveryDate } from '@/utils/workScheduleCalculator';
+import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 
 interface OrderDetailsProps {
   order: {
@@ -397,7 +397,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                   <p className="text-foreground font-medium text-lg text-orange-600">
                     {formatDate(order.delivery_date)}
                   </p>
-                  {order.average_service_time && (
+                  {order.average_service_time && order.created_at && (
                     <p className="text-sm text-blue-600 font-medium flex items-center">
                       <Clock className="h-4 w-4 mr-1" />
                       Hora estimada: {(() => {
@@ -407,11 +407,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                           end_time: '17:00',
                           break_duration_minutes: 60
                         };
-                        const { deliveryTime } = calculateDeliveryDate(
-                          order.average_service_time, 
-                          primarySchedule
-                        );
-                        return deliveryTime;
+                        
+                        // Simular items de orden para el cálculo
+                        const mockOrderItems = [{
+                          id: 'mock',
+                          estimated_hours: order.average_service_time,
+                          shared_time: false,
+                          status: 'pendiente' as const
+                        }];
+                        
+                        const { deliveryTime, breakdown } = calculateAdvancedDeliveryDate({
+                          orderItems: mockOrderItems,
+                          primaryTechnicianSchedule: primarySchedule,
+                          creationDate: new Date(order.created_at)
+                        });
+                        return `${deliveryTime} (${breakdown})`;
                       })()}
                     </p>
                   )}
