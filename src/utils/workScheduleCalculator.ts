@@ -198,11 +198,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   // Calcular día por día considerando tiempo muerto
   let accumulatedHours = 0;
-  console.log(`Iniciando cálculo: ${remainingHours} horas restantes, fecha actual: ${currentDate.toDateString()}`);
   
   while (remainingHours > 0) {
     const dayOfWeek = currentDate.getDay();
-    console.log(`Día ${currentDate.toDateString()}, día de semana: ${dayOfWeek}, es laboral: ${workingDays.includes(dayOfWeek)}`);
     
     if (workingDays.includes(dayOfWeek)) {
       let availableHoursToday = totalHoursPerDay;
@@ -210,9 +208,6 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       // En el primer día de trabajo, usar las horas restantes calculadas anteriormente
       if (daysAdded === 0 && !startFromNextDay) {
         availableHoursToday = remainingHoursToday;
-        console.log(`Primer día: usando ${availableHoursToday} horas restantes`);
-      } else {
-        console.log(`Día completo: ${availableHoursToday} horas disponibles`);
       }
       
       const hoursToSubtract = Math.min(remainingHours, availableHoursToday);
@@ -220,11 +215,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       accumulatedHours += hoursToSubtract;
       daysAdded++;
       
-      console.log(`Trabajadas: ${hoursToSubtract}h, quedan: ${remainingHours}h, días laborales: ${daysAdded}`);
-      
       if (remainingHours <= 0) {
         hoursWorkedToday = hoursToSubtract;
-        console.log(`Terminado en ${currentDate.toDateString()} con ${hoursWorkedToday}h el último día`);
         break;
       }
       
@@ -232,7 +224,6 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       currentDate.setDate(currentDate.getDate() + 1);
     } else {
       // Día no laboral = tiempo muerto, solo avanzar la fecha
-      console.log(`Día no laboral, avanzando fecha`);
       currentDate.setDate(currentDate.getDate() + 1);
     }
   }
