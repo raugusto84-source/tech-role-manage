@@ -154,20 +154,29 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
                        parseInt(primaryTechnicianSchedule.start_time.split(':')[1]);
   const workEndTime = parseInt(primaryTechnicianSchedule.end_time.split(':')[0]) * 60 + 
                      parseInt(primaryTechnicianSchedule.end_time.split(':')[1]);
+  const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
 
   let startFromNextDay = false;
   let remainingHoursToday = 0;
+  let hoursWorkedToday = 0;
   
   // Verificar si la orden se crea dentro del horario laboral
   if (creationTime >= workStartTime && creationTime <= workEndTime && workingDays.includes(currentDate.getDay())) {
-    // Calcular horas restantes del día actual
+    // Calcular horas restantes del día actual considerando el descanso
     const remainingMinutesToday = workEndTime - creationTime;
-    remainingHoursToday = Math.max(0, (remainingMinutesToday - (primaryTechnicianSchedule.break_duration_minutes || 0)) / 60);
     
-    // Si hay técnico de apoyo, sumar sus horas también
+    // Calcular si el descanso ya pasó o está por venir
+    const totalWorkMinutes = workEndTime - workStartTime;
+    const elapsedMinutes = creationTime - workStartTime;
+    const remainingBreakTime = Math.max(0, breakMinutes - Math.max(0, elapsedMinutes * (breakMinutes / totalWorkMinutes)));
+    
+    remainingHoursToday = Math.max(0, (remainingMinutesToday - remainingBreakTime) / 60);
+    
+    // Si hay técnico de apoyo, calcular sus horas disponibles también
     if (supportTechnicianSchedule) {
-      const supportRemainingMinutes = workEndTime - creationTime;
-      const supportRemainingHours = Math.max(0, (supportRemainingMinutes - (supportTechnicianSchedule.break_duration_minutes || 0)) / 60);
+      const supportBreakMinutes = supportTechnicianSchedule.break_duration_minutes || 0;
+      const supportRemainingBreak = Math.max(0, supportBreakMinutes - Math.max(0, elapsedMinutes * (supportBreakMinutes / totalWorkMinutes)));
+      const supportRemainingHours = Math.max(0, (remainingMinutesToday - supportRemainingBreak) / 60);
       remainingHoursToday += supportRemainingHours;
     }
     
@@ -184,6 +193,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     }
   }
 
+  // Calcular día por día considerando tiempo muerto
+  let accumulatedHours = 0;
   while (remainingHours > 0) {
     const dayOfWeek = currentDate.getDay();
     
@@ -197,25 +208,41 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       
       const hoursToSubtract = Math.min(remainingHours, availableHoursToday);
       remainingHours -= hoursToSubtract;
+      accumulatedHours += hoursToSubtract;
       daysAdded++;
       
-      if (remainingHours <= 0) break;
+      if (remainingHours <= 0) {
+        hoursWorkedToday = hoursToSubtract;
+        break;
+      }
+    } else {
+      // Día no laboral = tiempo muerto
     }
     
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Calcular hora estimada de entrega
-  const finalDayHours = adjustedHours % totalHoursPerDay;
-  const hoursOnFinalDay = finalDayHours || (adjustedHours > 0 ? totalHoursPerDay : 0);
+  // Calcular hora estimada de entrega basada en las horas trabajadas el día final
+  let deliveryTime = primaryTechnicianSchedule.end_time;
   
-  const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-  const endTime = new Date(startTime.getTime() + hoursOnFinalDay * 60 * 60 * 1000);
-  const deliveryTime = endTime.toTimeString().slice(0, 5);
+  if (hoursWorkedToday > 0) {
+    // Calcular la hora de entrega basada en las horas trabajadas el día final
+    const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
+    const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
+    
+    // Agregar las horas trabajadas considerando los descansos
+    const workMinutesWithBreaks = hoursWorkedToday * 60 + (hoursWorkedToday > 4 ? breakMinutes : 0);
+    const endTime = new Date(startTime.getTime() + workMinutesWithBreaks * 60 * 1000);
+    deliveryTime = endTime.toTimeString().slice(0, 5);
+  }
 
+  // Calcular días no laborales para el breakdown
+  const totalDays = Math.ceil((currentDate.getTime() - creationDate.getTime()) / (24 * 60 * 60 * 1000));
+  const deadDays = totalDays - daysAdded;
+  
   const breakdown = supportTechnicianSchedule 
-    ? `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${totalHoursPerDay}h por día (${primaryHoursPerDay}h técnico principal + ${supportHoursPerDay}h técnico apoyo) = ${daysAdded} días laborales`
-    : `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${primaryHoursPerDay}h por día = ${daysAdded} días laborales`;
+    ? `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${totalHoursPerDay}h por día (${primaryHoursPerDay}h técnico principal + ${supportHoursPerDay}h técnico apoyo) = ${daysAdded} días laborales${deadDays > 0 ? ` + ${deadDays} días no laborales` : ''}`
+    : `${effectiveHours}h efectivas (${adjustedHours}h con carga previa) / ${primaryHoursPerDay}h por día = ${daysAdded} días laborales${deadDays > 0 ? ` + ${deadDays} días no laborales` : ''}`;
 
   return {
     deliveryDate: currentDate,
