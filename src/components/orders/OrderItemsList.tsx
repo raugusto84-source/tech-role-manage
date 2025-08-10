@@ -130,9 +130,18 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
 
     // Para cada tipo de servicio con tiempo compartido
     sharedItemsByService.forEach((serviceItems) => {
-      serviceItems.forEach((item, index) => {
-        const baseTime = item.estimated_hours || 0;
-        
+      // Expandir los items por cantidad para aplicar correctamente los porcentajes
+      const expandedItems: { baseTime: number; itemId: string }[] = [];
+      
+      serviceItems.forEach(item => {
+        const baseTimePerUnit = item.estimated_hours / item.quantity;
+        for (let i = 0; i < item.quantity; i++) {
+          expandedItems.push({ baseTime: baseTimePerUnit, itemId: item.id });
+        }
+      });
+
+      // Aplicar porcentajes a cada unidad expandida
+      expandedItems.forEach((expandedItem, index) => {
         // Calcular porcentaje según posición: 1ro=100%, 2do=20%, 3ro=20%, 4to=100%, etc.
         let percentage = 1.0; // 100% por defecto
         const position = (index % 3) + 1; // Ciclo de 3: posición 1, 2, 3, luego vuelve a 1
@@ -141,7 +150,7 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
           percentage = 0.2; // 20%
         }
         
-        totalHours += baseTime * percentage;
+        totalHours += expandedItem.baseTime * percentage;
       });
     });
 
