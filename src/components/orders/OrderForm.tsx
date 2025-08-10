@@ -667,20 +667,28 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     {formData.support_technician && formData.support_technician !== 'none' && (
                       <p className="text-green-600">Con técnico de apoyo: tiempo reducido</p>
                     )}
-                    {(() => {
-                      const totalHours = calculateTotalHours();
-                      if (totalHours > 0) {
-                        const primarySchedule = {
-                          work_days: [1, 2, 3, 4, 5],
-                          start_time: '08:00',
-                          end_time: '17:00',
-                          break_duration_minutes: 60
-                        };
-                        const { deliveryTime } = calculateDeliveryDate(totalHours, primarySchedule);
-                        return <p className="text-blue-600 font-medium">Hora estimada de entrega: {deliveryTime}</p>;
-                      }
-                      return null;
-                    })()}
+                     {(() => {
+                       const totalHours = calculateTotalHours();
+                       if (totalHours > 0) {
+                         // Usar horarios estándar para el cálculo de hora estimada
+                         const primarySchedule = {
+                           work_days: [1, 2, 3, 4, 5],
+                           start_time: '08:00',
+                           end_time: '17:00',
+                           break_duration_minutes: 60
+                         };
+                         
+                         let supportSchedule = undefined;
+                         if (formData.support_technician && formData.support_technician !== 'none') {
+                           // Si hay técnico de apoyo, usar el mismo horario estándar
+                           supportSchedule = primarySchedule;
+                         }
+                         
+                         const { deliveryTime } = calculateDeliveryDate(totalHours, primarySchedule, supportSchedule);
+                         return <p className="text-blue-600 font-medium">Hora estimada de entrega: {deliveryTime}</p>;
+                       }
+                       return null;
+                     })()}
                   </div>
                 )}
               </div>
