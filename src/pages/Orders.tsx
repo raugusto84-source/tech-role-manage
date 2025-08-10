@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Filter, User } from 'lucide-react';
+import { Plus, Search, Filter, User, Clock, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { OrderForm } from '@/components/orders/OrderForm';
@@ -12,6 +12,7 @@ import { OrderCard } from '@/components/orders/OrderCard';
 import { OrderDetails } from '@/components/orders/OrderDetails';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -215,6 +216,46 @@ export default function Orders() {
     return new Date(dateString).toLocaleDateString('es-ES');
   };
 
+  // Función para calcular fecha y hora de entrega
+  const calculateOrderDeliveryInfo = (order: Order) => {
+    try {
+      const primarySchedule = {
+        work_days: [1, 2, 3, 4, 5],
+        start_time: '08:00',
+        end_time: '16:00',
+        break_duration_minutes: 0
+      };
+      
+      // Crear items de orden simulados para el cálculo
+      const mockOrderItems = [{
+        id: 'mock',
+        estimated_hours: order.average_service_time || 1,
+        shared_time: false,
+        status: 'pendiente' as const,
+        service_type_id: order.service_type,
+        quantity: 1
+      }];
+      
+      const { deliveryDate, deliveryTime } = calculateAdvancedDeliveryDate({
+        orderItems: mockOrderItems,
+        primaryTechnicianSchedule: primarySchedule,
+        creationDate: new Date(order.created_at),
+        currentWorkload: 0
+      });
+      
+      return {
+        date: deliveryDate.toLocaleDateString('es-ES'),
+        time: deliveryTime
+      };
+    } catch (error) {
+      console.error('Error calculating delivery info:', error);
+      return {
+        date: formatDate(order.delivery_date),
+        time: 'No calculado'
+      };
+    }
+  };
+
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
   const canDeleteOrder = profile?.role === 'administrador';
 
@@ -383,8 +424,25 @@ export default function Orders() {
                               <span className="text-sm text-muted-foreground">{order.clients?.name}</span>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {order.service_types?.name} - {formatDate(order.delivery_date)}
-                              <span className="ml-2 font-medium text-primary">
+                              {order.service_types?.name}
+                            </div>
+                            {/* Fecha y hora de entrega calculada */}
+                            <div className="flex items-center gap-4 text-xs">
+                              <div className="flex items-center gap-1 text-blue-600 font-medium">
+                                <Calendar className="h-3 w-3" />
+                                <span>{(() => {
+                                  const deliveryInfo = calculateOrderDeliveryInfo(order);
+                                  return `${deliveryInfo.date}`;
+                                })()}</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-green-600 font-medium">
+                                <Clock className="h-3 w-3" />
+                                <span>{(() => {
+                                  const deliveryInfo = calculateOrderDeliveryInfo(order);
+                                  return deliveryInfo.time;
+                                })()}</span>
+                              </div>
+                              <span className="text-primary font-medium">
                                 ({getTimeRemaining(order.delivery_date)})
                               </span>
                             </div>
