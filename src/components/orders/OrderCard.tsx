@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, User, Wrench, DollarSign, Clock, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { calculateDeliveryDate } from '@/utils/workScheduleCalculator';
 
 interface OrderCardProps {
   order: {
@@ -99,7 +100,26 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         
         <div className="flex items-center text-sm text-muted-foreground">
           <Calendar className="h-4 w-4 mr-2 text-primary" />
-          <span>Entrega: {formatDate(order.delivery_date)}</span>
+          <div className="flex flex-col">
+            <span>Entrega: {formatDate(order.delivery_date)}</span>
+            {order.average_service_time && (
+              <span className="text-xs text-blue-600 font-medium">
+                Hora estimada: {(() => {
+                  const primarySchedule = {
+                    work_days: [1, 2, 3, 4, 5],
+                    start_time: '08:00',
+                    end_time: '17:00',
+                    break_duration_minutes: 60
+                  };
+                  const { deliveryTime } = calculateDeliveryDate(
+                    order.average_service_time, 
+                    primarySchedule
+                  );
+                  return deliveryTime;
+                })()}
+              </span>
+            )}
+          </div>
         </div>
         
         {order.clients?.client_number && (

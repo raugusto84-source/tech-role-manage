@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
+import { calculateDeliveryDate } from '@/utils/workScheduleCalculator';
 
 interface OrderDetailsProps {
   order: {
@@ -388,7 +389,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
 
                 {/* Fecha de Entrega */}
-                <div>
+                <div className="space-y-2">
                   <Label className="text-sm font-medium text-muted-foreground flex items-center">
                     <Calendar className="h-4 w-4 mr-1" />
                     Fecha de Entrega Estimada
@@ -396,6 +397,24 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                   <p className="text-foreground font-medium text-lg text-orange-600">
                     {formatDate(order.delivery_date)}
                   </p>
+                  {order.average_service_time && (
+                    <p className="text-sm text-blue-600 font-medium flex items-center">
+                      <Clock className="h-4 w-4 mr-1" />
+                      Hora estimada: {(() => {
+                        const primarySchedule = {
+                          work_days: [1, 2, 3, 4, 5],
+                          start_time: '08:00',
+                          end_time: '17:00',
+                          break_duration_minutes: 60
+                        };
+                        const { deliveryTime } = calculateDeliveryDate(
+                          order.average_service_time, 
+                          primarySchedule
+                        );
+                        return deliveryTime;
+                      })()}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
