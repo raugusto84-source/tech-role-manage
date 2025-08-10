@@ -109,8 +109,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     const startTime = new Date(`1970-01-01T${schedule.start_time}`);
     const endTime = new Date(`1970-01-01T${schedule.end_time}`);
     const workingMinutes = (endTime.getTime() - startTime.getTime()) / 60000;
-    const breakMinutes = schedule.break_duration_minutes || 0;
-    return Math.max(0, (workingMinutes - breakMinutes) / 60);
+    // Horario corrido: no restar tiempo de descanso
+    return Math.max(0, workingMinutes / 60);
   };
 
   const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
@@ -168,21 +168,13 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   const isWithinWorkHours = creationTime >= workStartTime && creationTime <= workEndTime;
   
   if (isWithinWorkHours && isWorkingDay) {
-    // Calcular horas restantes del día actual de manera simple
+    // Calcular horas restantes del día actual sin considerar descansos
     const remainingMinutesToday = workEndTime - creationTime;
-    
-    // Simplificar: solo restar el tiempo de descanso proporcionalmente
-    const totalWorkMinutes = workEndTime - workStartTime;
-    const workProgress = (creationTime - workStartTime) / totalWorkMinutes;
-    const remainingBreakMinutes = workProgress < 0.5 ? breakMinutes : 0; // Si ya pasó la mitad del día, no hay más descanso
-    
-    remainingHoursToday = Math.max(0, (remainingMinutesToday - remainingBreakMinutes) / 60);
+    remainingHoursToday = Math.max(0, remainingMinutesToday / 60);
     
     // Si hay técnico de apoyo, calcular sus horas disponibles también
     if (supportTechnicianSchedule) {
-      const supportBreakMinutes = supportTechnicianSchedule.break_duration_minutes || 0;
-      const supportRemainingBreak = workProgress < 0.5 ? supportBreakMinutes : 0;
-      const supportRemainingHours = Math.max(0, (remainingMinutesToday - supportRemainingBreak) / 60);
+      const supportRemainingHours = Math.max(0, remainingMinutesToday / 60);
       remainingHoursToday += supportRemainingHours;
     }
     
@@ -231,18 +223,15 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     }
   }
 
-  // Calcular hora estimada de entrega basada en las horas trabajadas
+  // Calcular hora estimada de entrega (horario corrido sin descansos)
   let deliveryTime = primaryTechnicianSchedule.end_time;
   
-  // Simplificar: para cualquier trabajo que se complete en un día
+  // Para cualquier trabajo que se complete en un día
   if (daysAdded === 1) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-    const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
     
-    // Solo agregar descanso si el trabajo es mayor a 4 horas
-    const needsBreak = effectiveHours > 4;
-    const totalMinutes = effectiveHours * 60 + (needsBreak ? breakMinutes : 0);
-    
+    // Horario corrido: solo sumar las horas efectivas sin descansos
+    const totalMinutes = effectiveHours * 60;
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
@@ -253,9 +242,7 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   } else if (hoursWorkedToday > 0) {
     // Para trabajos de múltiples días, usar las horas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-    const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
-    const needsBreak = hoursWorkedToday > 4;
-    const totalMinutes = hoursWorkedToday * 60 + (needsBreak ? breakMinutes : 0);
+    const totalMinutes = hoursWorkedToday * 60;
     
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
