@@ -234,19 +234,30 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   // Calcular hora estimada de entrega basada en las horas trabajadas
   let deliveryTime = primaryTechnicianSchedule.end_time;
   
-  // Si el trabajo se completa en el mismo día de creación (sin saltar a día siguiente)
-  if (daysAdded === 1 && !startFromNextDay) {
-    // Calcular desde la hora de creación + horas efectivas
+  // Simplificar: para cualquier trabajo que se complete en un día
+  if (daysAdded === 1) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-    const creationTimeDate = new Date(`1970-01-01T${String(Math.floor(creationTime / 60)).padStart(2, '0')}:${String(creationTime % 60).padStart(2, '0')}`);
-    
-    // Usar la hora más tardía entre el inicio del horario laboral y la hora de creación
-    const effectiveStartTime = creationTimeDate.getTime() > startTime.getTime() ? creationTimeDate : startTime;
     const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
     
-    // Agregar las horas efectivas más el tiempo de descanso si es necesario
-    const workMinutesWithBreaks = effectiveHours * 60 + (effectiveHours > 4 ? breakMinutes : 0);
-    const endTime = new Date(effectiveStartTime.getTime() + workMinutesWithBreaks * 60 * 1000);
+    // Solo agregar descanso si el trabajo es mayor a 4 horas
+    const needsBreak = effectiveHours > 4;
+    const totalMinutes = effectiveHours * 60 + (needsBreak ? breakMinutes : 0);
+    
+    const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
+    
+    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
+  } else if (hoursWorkedToday > 0) {
+    // Para trabajos de múltiples días, usar las horas del último día
+    const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
+    const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
+    const needsBreak = hoursWorkedToday > 4;
+    const totalMinutes = hoursWorkedToday * 60 + (needsBreak ? breakMinutes : 0);
+    
+    const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
       hour: 'numeric', 
@@ -254,40 +265,13 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       hour12: true 
     });
   } else {
-    // Para trabajos que empiezan en un día diferente o toman múltiples días
-    const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-    const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
-    
-    // Si el trabajo se completa en un solo día (después de saltar al siguiente día laboral)
-    if (daysAdded === 1 && startFromNextDay) {
-      // Calcular desde el inicio del horario laboral + horas efectivas
-      const workMinutesWithBreaks = effectiveHours * 60 + (effectiveHours > 4 ? breakMinutes : 0);
-      const endTime = new Date(startTime.getTime() + workMinutesWithBreaks * 60 * 1000);
-      
-      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    } else if (hoursWorkedToday > 0) {
-      // Para trabajos de múltiples días, usar las horas del último día
-      const workMinutesWithBreaks = hoursWorkedToday * 60 + (hoursWorkedToday > 4 ? breakMinutes : 0);
-      const endTime = new Date(startTime.getTime() + workMinutesWithBreaks * 60 * 1000);
-      
-      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    } else {
-      // Formatear la hora de fin con AM/PM como respaldo
-      const endTime = new Date(`1970-01-01T${primaryTechnicianSchedule.end_time}`);
-      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    }
+    // Formatear la hora de fin con AM/PM como respaldo
+    const endTime = new Date(`1970-01-01T${primaryTechnicianSchedule.end_time}`);
+    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
   }
 
   // Calcular días no laborales para el breakdown
