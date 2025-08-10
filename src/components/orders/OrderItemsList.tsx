@@ -104,7 +104,6 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
   };
 
   const getTotalHours = () => {
-    // Usar la lógica simplificada de tiempo compartido
     let totalHours = 0;
     
     // Agrupar items por shared_time
