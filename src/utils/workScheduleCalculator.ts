@@ -15,7 +15,7 @@ interface OrderItem {
   id: string;
   estimated_hours: number;
   shared_time: boolean;
-  status: 'pendiente' | 'en_proceso' | 'completado';
+  status?: 'pendiente' | 'en_proceso' | 'completado'; // Make status optional to match OrderItemsList
   service_type_id?: string;
   quantity?: number;
 }

@@ -690,7 +690,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                               id: item.id,
                               estimated_hours: item.estimated_hours || 0,
                               shared_time: item.shared_time || false,
-                              status: (item.status || 'pendiente') as 'pendiente' | 'en_proceso' | 'completado',
+                              status: item.status || 'pendiente',
                               service_type_id: item.service_type_id,
                               quantity: item.quantity
                             })),
