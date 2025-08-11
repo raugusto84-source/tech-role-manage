@@ -1889,6 +1889,72 @@ export default function Finance() {
         </TabsContent>
 
         <TabsContent value="withdrawals">
+          {/* Sección de Pendientes de Retirar */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                Pendientes de Retirar ({fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available').length || 0})
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Facturas de compras pagadas desde cuenta no fiscal que requieren retiro desde cuenta fiscal
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Monto a Retirar</TableHead>
+                      <TableHead>Estado</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available').map((withdrawal) => (
+                      <TableRow key={withdrawal.id}>
+                        <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
+                          {withdrawal.description}
+                        </TableCell>
+                        <TableCell className="font-medium text-orange-600">
+                          ${Number(withdrawal.amount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700">
+                            Pendiente
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            onClick={() => withdrawFiscalAmount(withdrawal.id)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Retirar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(!fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available').length) && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="text-4xl">✅</div>
+                            <div className="font-medium">No hay facturas pendientes de retiro</div>
+                            <div className="text-sm">Todas las compras con factura han sido retiradas de la cuenta fiscal</div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
