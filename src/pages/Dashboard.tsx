@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { AuthDebug } from '@/components/AuthDebug';
+import { ClientPanelButton } from '@/components/client/ClientPanelButton';
 
 /**
  * Dashboard principal personalizado por rol
@@ -132,6 +133,11 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Acceso directo al panel del cliente */}
+        <div className="mt-8">
+          <ClientPanelButton />
         </div>
         
         {/* Componente de debug temporal */}

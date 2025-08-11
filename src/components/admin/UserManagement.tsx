@@ -362,13 +362,17 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Teléfono (Opcional)</Label>
+                <Label htmlFor="phone">Teléfono/WhatsApp *</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="+1234567890"
+                  required
                 />
+                <p className="text-sm text-muted-foreground">
+                  Requerido para notificaciones de WhatsApp
+                </p>
               </div>
                 <div>
                 <Label htmlFor="role">Rol</Label>
@@ -411,7 +415,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                 </Button>
                 <Button 
                   onClick={editingUser ? handleUpdateUser : handleCreateUser}
-                  disabled={!formData.email || !formData.full_name || (!editingUser && !formData.password)}
+                  disabled={!formData.email || !formData.full_name || !formData.phone || (!editingUser && !formData.password)}
                 >
                   {editingUser ? 'Actualizar' : 'Crear'}
                 </Button>
