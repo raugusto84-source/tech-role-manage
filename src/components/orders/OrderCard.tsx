@@ -66,10 +66,6 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         order.status === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
-      } ${
-        order.unread_messages_count && order.unread_messages_count > 0
-          ? 'ring-2 ring-blue-500/50 shadow-blue-200/50 animate-pulse' 
-          : ''
       }`}
       onClick={onClick}
     >
@@ -81,10 +77,10 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             </CardTitle>
             {order.unread_messages_count && order.unread_messages_count > 0 && (
               <div className="relative">
-                <MessageCircle className="h-5 w-5 text-blue-600 animate-bounce" />
+                <MessageCircle className="h-5 w-5 text-blue-600" />
                 <Badge 
                   variant="destructive" 
-                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white animate-pulse"
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
                 >
                   {order.unread_messages_count}
                 </Badge>
