@@ -435,6 +435,54 @@ export default function Finance() {
     }
   };
 
+  const processWithdrawal = async () => {
+    try {
+      const amount = Number(feAmount);
+      if (!feDesc || !amount || !feAccount) throw new Error("Completa todos los campos requeridos");
+      
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Create expense for the withdrawal
+      const { error } = await supabase.from("expenses").insert({
+        amount,
+        description: `[Retiro] ${feDesc}`,
+        category: 'retiro',
+        account_type: feAccount as any,
+        payment_method: feMethod || null,
+        expense_date: today,
+      } as any);
+      
+      if (error) throw error;
+      
+      // Log the withdrawal operation
+      await logFinancialOperation(
+        'create',
+        'expenses',
+        '', // Will be filled by the system
+        { description: `[Retiro] ${feDesc}`, amount, account_type: feAccount },
+        `Retiro manual - ${feDesc}`,
+        amount,
+        feAccount as any,
+        today
+      );
+      
+      toast({ 
+        title: "Retiro procesado exitosamente", 
+        description: `Se retiró $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} de la cuenta ${feAccount === 'fiscal' ? 'fiscal' : 'no fiscal'}` 
+      });
+      
+      // Clear form
+      setFeDesc(""); 
+      setFeAmount(""); 
+      setFeMethod(""); 
+      setFeAccount("fiscal");
+      
+      expensesQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible procesar el retiro", variant: "destructive" });
+    }
+  };
   const addPayroll = async () => {
     try {
       const baseSalary = Number(pBaseSalary);
@@ -760,8 +808,8 @@ export default function Finance() {
         <TabsList>
           <TabsTrigger value="incomes">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
-          <TabsTrigger value="gastos">Gastos fijos y nóminas</TabsTrigger>
-          <TabsTrigger value="fiscal-withdrawal">Retiro Gastos Fiscales</TabsTrigger>
+          <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
+          <TabsTrigger value="recurring">Gastos Recurrentes</TabsTrigger>
           <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
           <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
@@ -1075,16 +1123,128 @@ export default function Finance() {
           </div>
         </TabsContent>
 
-        <TabsContent value="gastos">
+        <TabsContent value="withdrawals">
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Gastos fijos recurrentes</CardTitle>
+                <CardTitle>Nuevo Retiro Manual</CardTitle>
+                <p className="text-sm text-muted-foreground">Retira dinero de cuentas fiscales o no fiscales por diferentes conceptos</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">Concepto</label>
+                  <Input value={feDesc} onChange={e => setFeDesc(e.target.value)} placeholder="Ej. Pago a proveedor, Gastos personales, etc." />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Monto</label>
+                  <Input type="number" inputMode="decimal" value={feAmount} onChange={e => setFeAmount(e.target.value)} placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Tipo de Cuenta</label>
+                  <Select value={feAccount} onValueChange={(v) => setFeAccount(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona tipo de cuenta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fiscal">Fiscal</SelectItem>
+                      <SelectItem value="no_fiscal">No Fiscal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Método de retiro</label>
+                  <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, Cheque, etc." />
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={processWithdrawal} disabled={!feDesc || !feAmount || !feAccount}>
+                    💰 Procesar Retiro
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Este retiro se registrará como un egreso en la cuenta seleccionada con la fecha actual.
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Historial de Retiros Recientes</CardTitle>
+                <p className="text-sm text-muted-foreground">Últimos retiros realizados en los últimos 30 días</p>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>Cuenta</TableHead>
+                        <TableHead>Método</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expensesQuery.isLoading && (
+                        <TableRow><TableCell colSpan={5}>Cargando retiros...</TableCell></TableRow>
+                      )}
+                      {!expensesQuery.isLoading && 
+                        (expensesQuery.data ?? [])
+                          .filter((expense: any) => {
+                            const expenseDate = new Date(expense.expense_date);
+                            const thirtyDaysAgo = new Date();
+                            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                            return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
+                          })
+                          .slice(0, 10)
+                          .map((expense: any) => (
+                            <TableRow key={expense.id}>
+                              <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
+                              <TableCell className="max-w-48 truncate">{expense.description}</TableCell>
+                              <TableCell className="font-medium text-red-600">
+                                -${Number(expense.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                  expense.account_type === 'fiscal' 
+                                    ? 'bg-blue-100 text-blue-800' 
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {expense.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{expense.payment_method || 'N/A'}</TableCell>
+                            </TableRow>
+                          ))
+                      }
+                      {!expensesQuery.isLoading && 
+                        (expensesQuery.data ?? [])
+                          .filter((expense: any) => {
+                            const expenseDate = new Date(expense.expense_date);
+                            const thirtyDaysAgo = new Date();
+                            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                            return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
+                          }).length === 0 && (
+                        <TableRow><TableCell colSpan={5}>No hay retiros recientes.</TableCell></TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="recurring">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Gastos Fijos Recurrentes</CardTitle>
+                <p className="text-sm text-muted-foreground">Configura gastos que se ejecutan automáticamente cada período</p>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
                   <label className="text-sm text-muted-foreground">Descripción</label>
-                  <Input value={feDesc} onChange={e => setFeDesc(e.target.value)} placeholder="Ej. Renta, Luz, Internet" />
+                  <Input value={feDesc} onChange={e => setFeDesc(e.target.value)} placeholder="Ej. Renta, Luz, Internet, Seguro" />
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Monto</label>
@@ -1098,7 +1258,7 @@ export default function Finance() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="fiscal">Fiscal</SelectItem>
-                      <SelectItem value="no_fiscal">No fiscal</SelectItem>
+                      <SelectItem value="no_fiscal">No Fiscal</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1107,13 +1267,15 @@ export default function Finance() {
                   <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
                 <div className="flex items-center gap-3 pt-2">
-                  <Button onClick={addFixedExpense}>Agregar gasto fijo</Button>
-                  <Button variant="secondary" onClick={runFixedNow}>Ejecutar ahora</Button>
+                  <Button onClick={addFixedExpense}>📅 Programar Gasto</Button>
+                  <Button variant="secondary" onClick={runFixedNow}>▶️ Ejecutar Ahora</Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Se programa mensual; puedes ejecutarlo manualmente o configurarlo con cron.</p>
+                <p className="text-xs text-muted-foreground">
+                  Los gastos se programan mensualmente. Puedes ejecutarlos manualmente o configurar automatización.
+                </p>
 
                 <div className="pt-4">
-                  <div className="text-sm font-medium mb-2">Programados</div>
+                  <div className="text-sm font-medium mb-2">Gastos Programados</div>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -1122,7 +1284,7 @@ export default function Finance() {
                           <TableHead>Monto</TableHead>
                           <TableHead>Cuenta</TableHead>
                           <TableHead>Próxima ejecución</TableHead>
-                          <TableHead>Activo</TableHead>
+                          <TableHead>Estado</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1134,13 +1296,29 @@ export default function Finance() {
                           <TableRow key={fx.id}>
                             <TableCell>{fx.description}</TableCell>
                             <TableCell>{Number(fx.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
-                            <TableCell>{fx.account_type}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                fx.account_type === 'fiscal' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {fx.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                              </span>
+                            </TableCell>
                             <TableCell>{fx.next_run_date}</TableCell>
-                            <TableCell>{fx.active ? 'Sí' : 'No'}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                fx.active 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {fx.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </TableCell>
                              <TableCell>
                                <div className="flex items-center gap-2">
                                  <Button size="sm" variant="outline" onClick={() => toggleFixedActive(fx)}>
-                                   {fx.active ? 'Desactivar' : 'Activar'}
+                                   {fx.active ? '⏸️' : '▶️'}
                                  </Button>
                                  {isAdmin && (
                                    <AlertDialog>
@@ -1151,7 +1329,7 @@ export default function Finance() {
                                      </AlertDialogTrigger>
                                      <AlertDialogContent>
                                        <AlertDialogHeader>
-                                         <AlertDialogTitle>¿Eliminar gasto fijo?</AlertDialogTitle>
+                                         <AlertDialogTitle>¿Eliminar gasto recurrente?</AlertDialogTitle>
                                          <AlertDialogDescription>
                                            Esta acción no se puede revertir. El gasto fijo será eliminado permanentemente del sistema.
                                          </AlertDialogDescription>
@@ -1181,7 +1359,8 @@ export default function Finance() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Nóminas</CardTitle>
+                <CardTitle>Nóminas Recurrentes</CardTitle>
+                <p className="text-sm text-muted-foreground">Gestiona pagos de empleados de forma automática</p>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
@@ -1229,7 +1408,7 @@ export default function Finance() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="fiscal">Fiscal</SelectItem>
-                        <SelectItem value="no_fiscal">No fiscal</SelectItem>
+                        <SelectItem value="no_fiscal">No Fiscal</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1282,13 +1461,17 @@ export default function Finance() {
                   <label htmlFor="rec-pay" className="text-sm">Programar como recurrente</label>
                 </div>
                 <div className="flex items-center gap-3 pt-2">
-                  <Button onClick={pRecurring ? addRecurringPayroll : addPayroll}>{pRecurring ? 'Programar nómina' : 'Registrar nómina'}</Button>
-                  <Button variant="secondary" onClick={runRecurringNow}>Ejecutar recurrentes ahora</Button>
+                  <Button onClick={pRecurring ? addRecurringPayroll : addPayroll}>
+                    {pRecurring ? '📅 Programar Nómina' : '💰 Registrar Nómina'}
+                  </Button>
+                  <Button variant="secondary" onClick={runRecurringNow}>▶️ Ejecutar Recurrentes</Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Si marcas recurrente, se programará mensual y podrás ejecutarlo manualmente o con cron.</p>
+                <p className="text-xs text-muted-foreground">
+                  Si marcas recurrente, se programará para ejecución automática según la frecuencia seleccionada.
+                </p>
 
                 <div className="pt-4">
-                  <div className="text-sm font-medium mb-2">Nóminas programadas</div>
+                  <div className="text-sm font-medium mb-2">Nóminas Programadas</div>
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
@@ -1297,7 +1480,7 @@ export default function Finance() {
                           <TableHead>Neto</TableHead>
                           <TableHead>Cuenta</TableHead>
                           <TableHead>Próxima ejecución</TableHead>
-                          <TableHead>Activo</TableHead>
+                          <TableHead>Estado</TableHead>
                           <TableHead>Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1309,13 +1492,29 @@ export default function Finance() {
                           <TableRow key={rp.id}>
                             <TableCell>{rp.employee_name}</TableCell>
                             <TableCell>{Number(rp.net_salary).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
-                            <TableCell>{rp.account_type}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                rp.account_type === 'fiscal' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {rp.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                              </span>
+                            </TableCell>
                             <TableCell>{rp.next_run_date}</TableCell>
-                            <TableCell>{rp.active ? 'Sí' : 'No'}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                rp.active 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-red-100 text-red-800'
+                              }`}>
+                                {rp.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </TableCell>
                              <TableCell>
                                <div className="flex items-center gap-2">
                                  <Button size="sm" variant="outline" onClick={() => toggleRecurringPayrollActive(rp)}>
-                                   {rp.active ? 'Desactivar' : 'Activar'}
+                                   {rp.active ? '⏸️' : '▶️'}
                                  </Button>
                                  {isAdmin && (
                                    <AlertDialog>
@@ -1356,86 +1555,6 @@ export default function Finance() {
           </div>
         </TabsContent>
 
-        <TabsContent value="fiscal-withdrawal">
-          <Card>
-            <CardHeader>
-              <CardTitle>Retiro de Gastos Fiscales</CardTitle>
-              <p className="text-sm text-muted-foreground">Retiros disponibles de ingresos fiscales vinculados a órdenes</p>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Orden</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead>Monto Disponible</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Fecha Creación</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {fiscalWithdrawalsQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7}>Cargando retiros fiscales...</TableCell></TableRow>
-                    )}
-                    {!fiscalWithdrawalsQuery.isLoading && (fiscalWithdrawalsQuery.data ?? []).map((withdrawal: any) => (
-                      <TableRow 
-                        key={withdrawal.id}
-                        className={withdrawal.withdrawal_status === 'withdrawn' ? 'bg-red-50' : 'bg-green-50'}
-                      >
-                        <TableCell>
-                          {withdrawal.orders?.order_number || 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          {withdrawal.orders?.clients?.name || 'N/A'}
-                        </TableCell>
-                        <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
-                          {withdrawal.description}
-                        </TableCell>
-                        <TableCell>
-                          {Number(withdrawal.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                            withdrawal.withdrawal_status === 'withdrawn' 
-                              ? 'bg-red-100 text-red-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {withdrawal.withdrawal_status === 'withdrawn' ? 'Retirado' : 'Disponible'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(withdrawal.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          {withdrawal.withdrawal_status === 'available' && isAdmin && (
-                            <Button
-                              size="sm"
-                              onClick={() => withdrawFiscalAmount(withdrawal.id)}
-                              className="bg-orange-600 hover:bg-orange-700 text-white"
-                            >
-                              Retirar
-                            </Button>
-                          )}
-                          {withdrawal.withdrawal_status === 'withdrawn' && withdrawal.withdrawn_at && (
-                            <span className="text-xs text-muted-foreground">
-                              Retirado: {new Date(withdrawal.withdrawn_at).toLocaleDateString()}
-                            </span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {!fiscalWithdrawalsQuery.isLoading && (fiscalWithdrawalsQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>No hay retiros fiscales disponibles.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="vat-management">
           <div className="grid gap-4 md:grid-cols-2">
