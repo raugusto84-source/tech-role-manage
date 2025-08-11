@@ -135,13 +135,17 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   };
 
   const getStatusText = (status: string) => {
+    console.log('Getting status text for:', status);
     switch (status) {
       case 'pendiente_aprobacion': return 'Pendiente de Aprobación';
       case 'solicitud': return 'Nueva';
       case 'enviada': return 'Enviada';
       case 'aceptada': return 'Aceptada';
       case 'rechazada': return 'Rechazada';
-      default: return status;
+      case 'seguimiento': return 'En Seguimiento';
+      default: 
+        console.log('Unknown status:', status);
+        return status;
     }
   };
 
