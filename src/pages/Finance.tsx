@@ -83,6 +83,33 @@ export default function Finance() {
     }
   });
 
+  const suppliersQuery = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("suppliers").select("*").eq("status", "active").order("supplier_name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const purchasesQuery = useQuery({
+    queryKey: ["purchases", startDate, endDate],
+    queryFn: async () => {
+      let q = supabase
+        .from("purchases")
+        .select(`
+          *,
+          supplier:suppliers(name)
+        `)
+        .order("purchase_date", { ascending: false });
+      if (startDate) q = q.gte("purchase_date", startDate);
+      if (endDate) q = q.lte("purchase_date", endDate);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const expensesQuery = useQuery({
     queryKey: ["expenses", startDate, endDate, accountType],
     queryFn: async () => {
@@ -176,19 +203,6 @@ export default function Finance() {
     }
   });
 
-  // Query para compras
-  const purchasesQuery = useQuery({
-    queryKey: ["purchases", startDate, endDate, accountType],
-    queryFn: async () => {
-      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,created_at").eq("category", "compra").order("expense_date", { ascending: false });
-      if (startDate) q = q.gte("expense_date", startDate);
-      if (endDate) q = q.lte("expense_date", endDate);
-      if (accountType !== "all") q = q.eq("account_type", accountType as any);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
-    }
-  });
 
   const financialHistoryQuery = useQuery({
     queryKey: ["financial_history", startDate, endDate],
@@ -334,9 +348,21 @@ export default function Finance() {
   const [purchaseSupplier, setPurchaseSupplier] = useState("");
   const [purchaseConcept, setPurchaseConcept] = useState("");
   const [purchaseAmount, setPurchaseAmount] = useState("");
-  const [purchaseAccount, setPurchaseAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
+  const [purchaseAccount, setPurchaseAccount] = useState<"fiscal" | "no_fiscal">("no_fiscal");
   const [purchaseMethod, setPurchaseMethod] = useState("");
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().substring(0,10));
+  const [purchaseHasInvoice, setPurchaseHasInvoice] = useState(false);
+  const [purchaseInvoiceNumber, setPurchaseInvoiceNumber] = useState("");
+  
+  // Estados para proveedores
+  const [supplierName, setSupplierName] = useState("");
+  const [supplierContact, setSupplierContact] = useState("");
+  const [supplierEmail, setSupplierEmail] = useState("");
+  const [supplierPhone, setSupplierPhone] = useState("");
+  const [supplierAddress, setSupplierAddress] = useState("");
+  const [supplierRFC, setSupplierRFC] = useState("");
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<any>(null);
 
   // Estados para IVA (ya no se usan para registrar, solo para mostrar cálculos)
   const [showVatCalculator, setShowVatCalculator] = useState(false);
@@ -448,49 +474,158 @@ export default function Finance() {
     }
   };
 
+  const addSupplier = async () => {
+    try {
+      if (!supplierName) throw new Error("El nombre del proveedor es obligatorio");
+      
+      const { data, error } = await supabase.from("suppliers").insert({
+        supplier_name: supplierName,
+        contact_person: supplierContact || null,
+        email: supplierEmail || null,
+        phone: supplierPhone || null,
+        address: supplierAddress || null,
+        tax_id: supplierRFC || null,
+        status: 'active'
+      }).select().single();
+      
+      if (error) throw error;
+
+      toast({ title: "Proveedor agregado" });
+      setSupplierName(""); setSupplierContact(""); setSupplierEmail(""); 
+      setSupplierPhone(""); setSupplierAddress(""); setSupplierRFC("");
+      setShowSupplierDialog(false);
+      suppliersQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible agregar el proveedor", variant: "destructive" });
+    }
+  };
+
+  const updateSupplier = async () => {
+    try {
+      if (!editingSupplier || !supplierName) throw new Error("Datos incompletos");
+      
+      const { error } = await supabase.from("suppliers").update({
+        supplier_name: supplierName,
+        contact_person: supplierContact || null,
+        email: supplierEmail || null,
+        phone: supplierPhone || null,
+        address: supplierAddress || null,
+        tax_id: supplierRFC || null,
+      }).eq("id", editingSupplier.id);
+      
+      if (error) throw error;
+
+      toast({ title: "Proveedor actualizado" });
+      setSupplierName(""); setSupplierContact(""); setSupplierEmail(""); 
+      setSupplierPhone(""); setSupplierAddress(""); setSupplierRFC("");
+      setEditingSupplier(null);
+      setShowSupplierDialog(false);
+      suppliersQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible actualizar el proveedor", variant: "destructive" });
+    }
+  };
+
+  const deleteSupplier = async (supplierId: string) => {
+    try {
+      const { error } = await supabase.from("suppliers").update({ status: 'inactive' }).eq("id", supplierId);
+      if (error) throw error;
+      toast({ title: "Proveedor eliminado" });
+      suppliersQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible eliminar el proveedor", variant: "destructive" });
+    }
+  };
+
   const addPurchase = async () => {
     try {
       const amount = Number(purchaseAmount);
       if (!purchaseSupplier || !purchaseConcept || !amount) throw new Error("Completa todos los campos obligatorios");
+      
+      // Validar que si no tiene factura, solo se puede pagar con cuenta no fiscal
+      if (!purchaseHasInvoice && purchaseAccount === 'fiscal') {
+        throw new Error("Sin factura solo se puede pagar desde cuenta no fiscal");
+      }
       
       // Calcular IVA si es cuenta fiscal
       const vatRate = purchaseAccount === "fiscal" ? 16 : 0;
       const vatAmount = purchaseAccount === "fiscal" ? amount * 0.16 : 0;
       const taxableAmount = purchaseAccount === "fiscal" ? amount - vatAmount : amount;
 
-      const { data, error } = await supabase.from("expenses").insert({
-        description: `[Compra] ${purchaseSupplier} - ${purchaseConcept}`,
-        amount,
-        account_type: purchaseAccount as any,
+      // Crear el gasto
+      const { data: expense, error: expenseError } = await supabase.from("expenses").insert({
+        amount: amount,
+        description: `Compra - ${purchaseConcept}`,
         category: "compra",
+        account_type: purchaseAccount as any,
         payment_method: purchaseMethod || null,
         expense_date: purchaseDate,
-        vat_rate: vatRate,
-        vat_amount: vatAmount,
-        taxable_amount: taxableAmount,
+        vat_rate: vatRate || null,
+        vat_amount: vatAmount || null,
+        taxable_amount: taxableAmount || null,
         status: "pagado"
-      } as any).select('*').single();
+      } as any).select().single();
       
-      if (error) throw error;
+      if (expenseError) throw expenseError;
+
+      // Buscar el proveedor seleccionado
+      const supplier = suppliersQuery.data?.find(s => s.id === purchaseSupplier);
+      
+      // Crear el registro de compra
+      const purchaseData = {
+        supplier_id: purchaseSupplier,
+        supplier_name: supplier?.supplier_name || 'Proveedor',
+        concept: purchaseConcept,
+        total_amount: amount,
+        has_invoice: purchaseHasInvoice,
+        invoice_number: purchaseHasInvoice ? purchaseInvoiceNumber : null,
+        account_type: purchaseAccount,
+        payment_method: purchaseMethod || null,
+        purchase_date: purchaseDate,
+        expense_id: expense.id,
+      };
+
+      const { data: purchase, error: purchaseError } = await supabase.from("purchases").insert(purchaseData).select().single();
+      if (purchaseError) throw purchaseError;
+
+      // Si tiene factura y se pagó de cuenta no fiscal, crear retiro fiscal disponible
+      if (purchaseHasInvoice && purchaseAccount === 'no_fiscal') {
+        // Create a dummy income first since income_id is required
+        const { data: dummyIncome } = await supabase.from("incomes").insert({
+          amount: 0,
+          description: `Referencia fiscal para retiro de compra: ${purchaseConcept}`,
+          category: "referencia",
+          account_type: "fiscal"
+        } as any).select().single();
+        
+        if (dummyIncome) {
+          const { error: withdrawalError } = await supabase.from("fiscal_withdrawals").insert({
+            amount: amount,
+            description: `Retiro disponible por compra con factura: ${purchaseConcept}`,
+            withdrawal_status: 'available',
+            income_id: dummyIncome.id
+          } as any);
+          if (withdrawalError) console.warn("Error creating fiscal withdrawal:", withdrawalError);
+        }
+      }
 
       // Log en historial financiero
       await logFinancialOperation(
         'create',
-        'expenses',
-        data.id,
-        data,
-        `Registro de compra: ${purchaseSupplier} - ${purchaseConcept}`,
+        'purchases',
+        purchase.id,
+        purchase,
+        `Compra registrada: ${supplier?.supplier_name || 'Proveedor'} - ${purchaseConcept}${purchaseHasInvoice ? ' (Con factura)' : ' (Sin factura)'}`,
         amount,
-        purchaseAccount as any,
+        purchaseAccount,
         purchaseDate
       );
 
-      toast({ title: "Compra registrada exitosamente" });
+      toast({ title: "Compra registrada" });
       setPurchaseSupplier(""); setPurchaseConcept(""); setPurchaseAmount(""); 
-      setPurchaseMethod(""); setPurchaseAccount("fiscal"); 
-      setPurchaseDate(new Date().toISOString().substring(0,10));
-      purchasesQuery.refetch();
+      setPurchaseMethod(""); setPurchaseHasInvoice(false); setPurchaseInvoiceNumber("");
       expensesQuery.refetch();
+      purchasesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible registrar la compra", variant: "destructive" });
@@ -1623,19 +1758,19 @@ export default function Finance() {
                   <div className="flex justify-between">
                     <span>Total de Compras:</span>
                     <span className="font-medium">
-                      ${(purchasesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2)}
+                      ${(purchasesQuery.data?.reduce((s, r) => s + (Number(r.total_amount) || 0), 0) ?? 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Cuenta Fiscal:</span>
                     <span>
-                      ${(purchasesQuery.data?.filter(r => r.account_type === 'fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2)}
+                      ${(purchasesQuery.data?.filter(r => r.account_type === 'fiscal').reduce((s, r) => s + (Number(r.total_amount) || 0), 0) ?? 0).toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Cuenta No Fiscal:</span>
                     <span>
-                      ${(purchasesQuery.data?.filter(r => r.account_type === 'no_fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2)}
+                      ${(purchasesQuery.data?.filter(r => r.account_type === 'no_fiscal').reduce((s, r) => s + (Number(r.total_amount) || 0), 0) ?? 0).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -1651,13 +1786,15 @@ export default function Finance() {
                 variant="outline"
                 size="sm"
                 onClick={() => exportCsv("compras", purchasesQuery.data?.map(r => ({
-                  numero: r.expense_number,
-                  fecha: r.expense_date,
-                  proveedor: r.description?.split(' - ')[0]?.replace('[Compra] ', '') || '',
-                  concepto: r.description?.split(' - ')[1] || '',
-                  monto: r.amount,
+                  numero: r.purchase_number,
+                  fecha: r.purchase_date,
+                  proveedor: r.supplier_name,
+                  concepto: r.concept,
+                  monto: r.total_amount,
                   cuenta: r.account_type,
-                  metodo: r.payment_method
+                  metodo: r.payment_method,
+                  factura: r.has_invoice ? 'Sí' : 'No',
+                  numero_factura: r.invoice_number || ''
                 })) ?? [])}
               >
                 Exportar CSV
@@ -1677,27 +1814,21 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchasesQuery.data?.map((purchase) => {
-                      const parts = purchase.description?.split(' - ') || [];
-                      const supplier = parts[0]?.replace('[Compra] ', '') || '';
-                      const concept = parts[1] || '';
-                      
-                      return (
-                        <TableRow key={purchase.id}>
-                          <TableCell>{purchase.expense_date}</TableCell>
-                          <TableCell>{supplier}</TableCell>
-                          <TableCell>{concept}</TableCell>
-                          <TableCell>${Number(purchase.amount).toFixed(2)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
-                              <div className={`w-2 h-2 rounded-full ${purchase.account_type === 'fiscal' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                              {purchase.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
-                            </div>
-                          </TableCell>
-                          <TableCell>{purchase.payment_method || '-'}</TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {purchasesQuery.data?.map((purchase) => (
+                      <TableRow key={purchase.id}>
+                        <TableCell>{purchase.purchase_date}</TableCell>
+                        <TableCell>{purchase.supplier_name}</TableCell>
+                        <TableCell>{purchase.concept}</TableCell>
+                        <TableCell>${Number(purchase.total_amount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${purchase.account_type === 'fiscal' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                            {purchase.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{purchase.payment_method || '-'}</TableCell>
+                      </TableRow>
+                    ))}
                     {(!purchasesQuery.data || purchasesQuery.data.length === 0) && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground">
