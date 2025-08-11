@@ -63,17 +63,26 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
           msg => msg.sender_id !== user.id && msg.read_at === null
         );
         
+        console.log('Unread messages found:', unreadMessages.length);
+        
         if (unreadMessages.length > 0) {
           const messageIds = unreadMessages.map(msg => msg.id);
           
+          console.log('Marking messages as read:', messageIds);
+          
           // Marcar mensajes como leídos
-          await supabase
+          const { error } = await supabase
             .from("order_chat_messages")
             .update({ read_at: new Date().toISOString() })
             .in("id", messageIds);
           
-          // Notificar al componente padre que se leyeron mensajes
-          onMessagesRead?.();
+          if (error) {
+            console.error('Error marking messages as read:', error);
+          } else {
+            console.log('Messages marked as read successfully');
+            // Notificar al componente padre que se leyeron mensajes
+            onMessagesRead?.();
+          }
         }
       }
       

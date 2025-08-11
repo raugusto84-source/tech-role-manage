@@ -64,8 +64,13 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
+    console.log('Messages read callback triggered');
     setCurrentUnreadCount(0);
-    // No llamar onUpdate() para evitar bucles infinitos
+    // Esperar un momento y luego actualizar la lista de órdenes
+    setTimeout(() => {
+      console.log('Calling onUpdate after messages read');
+      onUpdate();
+    }, 1000);
   };
   useEffect(() => {
     loadOrderItems();

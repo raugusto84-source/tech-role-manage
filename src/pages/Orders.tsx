@@ -182,8 +182,11 @@ export default function Orders() {
         },
         (payload) => {
           console.log('Chat messages changed:', payload);
-          // Solo actualizar contadores de mensajes, no recargar todo
-          updateUnreadCounts();
+          // Esperar un momento para que la base de datos se actualice completamente
+          setTimeout(() => {
+            console.log('Triggering unread count update after chat change');
+            updateUnreadCounts();
+          }, 500);
         }
       )
       .subscribe();
@@ -198,24 +201,35 @@ export default function Orders() {
   const updateUnreadCounts = async () => {
     if (!user?.id || orders.length === 0) return;
     
+    console.log('Updating unread counts for', orders.length, 'orders');
+    
     try {
       const updatedOrders = await Promise.all(
         orders.map(async (order) => {
-          const { count } = await supabase
+          const { count, error } = await supabase
             .from('order_chat_messages')
             .select('*', { count: 'exact', head: true })
             .eq('order_id', order.id)
             .neq('sender_id', user.id)
             .is('read_at', null);
             
+          if (error) {
+            console.error('Error counting unread messages for order', order.id, error);
+            return order;
+          }
+          
+          const newCount = count || 0;
+          console.log(`Order ${order.order_number}: unread count ${order.unread_messages_count} -> ${newCount}`);
+          
           return {
             ...order,
-            unread_messages_count: count || 0
+            unread_messages_count: newCount
           };
         })
       );
       
       setOrders(updatedOrders);
+      console.log('Unread counts updated successfully');
     } catch (error) {
       console.error('Error updating unread counts:', error);
     }
