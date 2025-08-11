@@ -84,6 +84,29 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
       const totalPaid = (totalPayments || []).reduce((sum, payment) => sum + Number(payment.payment_amount), 0);
       const isCompletelyPaid = totalPaid >= collection.estimated_cost;
 
+      // Log the collection operation
+      try {
+        await supabase.rpc('log_financial_operation', {
+          p_operation_type: 'create',
+          p_table_name: 'incomes',
+          p_record_id: incomeData?.id,
+          p_record_data: {
+            ...incomeData,
+            collection_info: {
+              order_number: collection.order_number,
+              client_name: collection.client_name,
+              is_completely_paid: isCompletelyPaid
+            }
+          },
+          p_operation_description: `Cobro de orden ${collection.order_number} - ${collection.client_name}`,
+          p_amount: finalAmount,
+          p_account_type: accountType,
+          p_operation_date: new Date().toISOString().split('T')[0]
+        });
+      } catch (error) {
+        console.error('Error logging collection operation:', error);
+      }
+
       toast({
         title: "Cobro registrado",
         description: `Se registró el pago por $${finalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN${

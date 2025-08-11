@@ -159,6 +159,34 @@ export default function Finance() {
       return data ?? [];
     }
   });
+
+  const financialHistoryQuery = useQuery({
+    queryKey: ["financial_history", startDate, endDate],
+    queryFn: async () => {
+      let q = supabase
+        .from("financial_history")
+        .select(`
+          id,
+          operation_type,
+          table_name,
+          operation_description,
+          amount,
+          account_type,
+          operation_date,
+          created_at,
+          performed_by,
+          profiles:performed_by(full_name)
+        `)
+        .order("created_at", { ascending: false });
+      
+      if (startDate) q = q.gte("operation_date", startDate);
+      if (endDate) q = q.lte("operation_date", endDate);
+      
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
   
   const fixedExpensesQuery = useQuery({
     queryKey: ["fixed_expenses"],
@@ -232,6 +260,33 @@ export default function Finance() {
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
 
+  // Función para registrar en historial financiero
+  const logFinancialOperation = async (
+    operationType: string,
+    tableName: string,
+    recordId: string,
+    recordData: any,
+    description: string,
+    amount: number,
+    accountType?: string,
+    operationDate?: string
+  ) => {
+    try {
+      await supabase.rpc('log_financial_operation', {
+        p_operation_type: operationType,
+        p_table_name: tableName,
+        p_record_id: recordId,
+        p_record_data: recordData,
+        p_operation_description: description,
+        p_amount: amount,
+        p_account_type: accountType,
+        p_operation_date: operationDate || new Date().toISOString().split('T')[0]
+      });
+    } catch (error) {
+      console.error('Error logging financial operation:', error);
+    }
+  };
+
   const addFixedExpense = async () => {
     try {
       const amount = Number(feAmount);
@@ -255,10 +310,28 @@ export default function Finance() {
   const deleteFixedExpense = async (id: string) => {
     if (!isAdmin) return;
     try {
+      // Get record data before deletion for history
+      const { data: recordData } = await supabase.from("fixed_expenses").select("*").eq("id", id).single();
+      
       const { error } = await supabase.from("fixed_expenses").delete().eq("id", id);
       if (error) throw error;
+
+      // Log deletion
+      if (recordData) {
+        await logFinancialOperation(
+          'delete',
+          'fixed_expenses',
+          id,
+          recordData,
+          `Eliminación de gasto fijo: ${recordData.description}`,
+          recordData.amount,
+          recordData.account_type
+        );
+      }
+
       toast({ title: "Gasto fijo eliminado" });
       fixedExpensesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
     }
@@ -267,10 +340,28 @@ export default function Finance() {
   const deleteRecurringPayroll = async (id: string) => {
     if (!isAdmin) return;
     try {
+      // Get record data before deletion for history
+      const { data: recordData } = await supabase.from("recurring_payrolls").select("*").eq("id", id).single();
+      
       const { error } = await supabase.from("recurring_payrolls").delete().eq("id", id);
       if (error) throw error;
+
+      // Log deletion
+      if (recordData) {
+        await logFinancialOperation(
+          'delete',
+          'recurring_payrolls',
+          id,
+          recordData,
+          `Eliminación de nómina recurrente: ${recordData.employee_name}`,
+          recordData.net_salary,
+          recordData.account_type
+        );
+      }
+
       toast({ title: "Nómina recurrente eliminada" });
       recurringPayrollsQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
     }
@@ -279,10 +370,29 @@ export default function Finance() {
   const deleteIncome = async (id: string) => {
     if (!isAdmin) return;
     try {
+      // Get record data before deletion for history
+      const { data: recordData } = await supabase.from("incomes").select("*").eq("id", id).single();
+      
       const { error } = await supabase.from("incomes").delete().eq("id", id);
       if (error) throw error;
+
+      // Log deletion
+      if (recordData) {
+        await logFinancialOperation(
+          'delete',
+          'incomes',
+          id,
+          recordData,
+          `Eliminación de ingreso: ${recordData.description}`,
+          recordData.amount,
+          recordData.account_type,
+          recordData.income_date
+        );
+      }
+
       toast({ title: "Ingreso eliminado" });
       incomesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
     }
@@ -291,10 +401,29 @@ export default function Finance() {
   const deleteExpense = async (id: string) => {
     if (!isAdmin) return;
     try {
+      // Get record data before deletion for history
+      const { data: recordData } = await supabase.from("expenses").select("*").eq("id", id).single();
+      
       const { error } = await supabase.from("expenses").delete().eq("id", id);
       if (error) throw error;
+
+      // Log deletion
+      if (recordData) {
+        await logFinancialOperation(
+          'delete',
+          'expenses',
+          id,
+          recordData,
+          `Eliminación de egreso: ${recordData.description}`,
+          recordData.amount,
+          recordData.account_type,
+          recordData.expense_date
+        );
+      }
+
       toast({ title: "Egreso eliminado" });
       expensesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
     }
@@ -422,6 +551,18 @@ export default function Finance() {
       } as any);
       if (insErr) throw insErr;
       
+      // Log the reversal operation
+      await logFinancialOperation(
+        'reverse',
+        'expenses',
+        row.id,
+        row,
+        `Reverso de egreso ${row.expense_number || ''} - ${row.description || ''}`.trim(),
+        row.amount,
+        row.account_type,
+        row.expense_date
+      );
+
       // Delete the original expense
       const { error: delErr } = await supabase.from('expenses').delete().eq('id', row.id);
       if (delErr) throw delErr;
@@ -429,6 +570,7 @@ export default function Finance() {
       toast({ title: 'Egreso revertido' });
       incomesQuery.refetch();
       expensesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
     }
@@ -469,6 +611,18 @@ export default function Finance() {
       } as any);
       if (insErr) throw insErr;
       
+      // Log the reversal operation
+      await logFinancialOperation(
+        'reverse',
+        'incomes',
+        row.id,
+        row,
+        `Reverso de ingreso ${row.income_number || ''} - ${row.description || ''}`.trim(),
+        row.amount,
+        row.account_type,
+        row.income_date
+      );
+
       // Delete the original income
       const { error: delErr } = await supabase.from('incomes').delete().eq('id', row.id);
       if (delErr) throw delErr;
@@ -484,6 +638,7 @@ export default function Finance() {
       incomesQuery.refetch();
       expensesQuery.refetch();
       collectionsQuery.refetch(); // Refresh pending collections
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
     }
@@ -629,6 +784,7 @@ export default function Finance() {
           <TabsTrigger value="fiscal-withdrawal">Retiro Gastos Fiscales</TabsTrigger>
           <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
           <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
+          <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="incomes">
@@ -1532,6 +1688,111 @@ export default function Finance() {
                             <div className="text-4xl">💰</div>
                             <div className="font-medium">No hay cobranzas pendientes</div>
                             <div className="text-sm">Todas las órdenes terminadas han sido cobradas</div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Historial de Movimientos ({financialHistoryQuery.data?.length || 0})</CardTitle>
+              <Button 
+                size="sm" 
+                onClick={() => exportCsv(`historial_financiero_${startDate}_${endDate}`, financialHistoryQuery.data as any)}
+                disabled={!financialHistoryQuery.data?.length}
+              >
+                Exportar CSV
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Tabla</TableHead>
+                      <TableHead>Descripción</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Cuenta</TableHead>
+                      <TableHead>Usuario</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {financialHistoryQuery.isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8">
+                          Cargando historial...
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {financialHistoryQuery.data?.map((h: any) => (
+                      <TableRow key={h.id}>
+                        <TableCell>{h.operation_date}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            h.operation_type === 'create' ? 'bg-green-100 text-green-800' :
+                            h.operation_type === 'delete' ? 'bg-red-100 text-red-800' :
+                            h.operation_type === 'reverse' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {h.operation_type === 'create' ? 'Crear' :
+                             h.operation_type === 'delete' ? 'Eliminar' :
+                             h.operation_type === 'reverse' ? 'Revertir' :
+                             h.operation_type}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            h.table_name === 'incomes' ? 'bg-blue-100 text-blue-800' :
+                            h.table_name === 'expenses' ? 'bg-orange-100 text-orange-800' :
+                            h.table_name === 'fixed_expenses' ? 'bg-purple-100 text-purple-800' :
+                            h.table_name === 'recurring_payrolls' ? 'bg-pink-100 text-pink-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {h.table_name === 'incomes' ? 'Ingresos' :
+                             h.table_name === 'expenses' ? 'Egresos' :
+                             h.table_name === 'fixed_expenses' ? 'Gastos Fijos' :
+                             h.table_name === 'recurring_payrolls' ? 'Nóminas' :
+                             h.table_name}
+                          </span>
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate" title={h.operation_description}>
+                          {h.operation_description}
+                        </TableCell>
+                        <TableCell className="font-mono">
+                          {Number(h.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            h.account_type === 'fiscal' ? 'bg-green-100 text-green-800' :
+                            h.account_type === 'no_fiscal' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {h.account_type === 'fiscal' ? 'Fiscal' :
+                             h.account_type === 'no_fiscal' ? 'No Fiscal' :
+                             h.account_type || 'N/A'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {h.profiles?.full_name || 'Sistema'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {!financialHistoryQuery.isLoading && (!financialHistoryQuery.data || financialHistoryQuery.data.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="text-4xl">📋</div>
+                            <div className="font-medium">No hay movimientos en el historial</div>
+                            <div className="text-sm">Los movimientos aparecerán aquí conforme se vayan realizando</div>
                           </div>
                         </TableCell>
                       </TableRow>
