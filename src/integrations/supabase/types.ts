@@ -2463,38 +2463,47 @@ export type Database = {
       }
       sales_skills: {
         Row: {
+          certifications: string[] | null
           created_at: string
           created_by: string | null
           id: string
+          notes: string | null
+          sales_product_id: string
           salesperson_id: string
-          service_type_id: string | null
           skill_level: number
           updated_at: string
+          years_experience: number | null
         }
         Insert: {
+          certifications?: string[] | null
           created_at?: string
           created_by?: string | null
           id?: string
+          notes?: string | null
+          sales_product_id: string
           salesperson_id: string
-          service_type_id?: string | null
           skill_level?: number
           updated_at?: string
+          years_experience?: number | null
         }
         Update: {
+          certifications?: string[] | null
           created_at?: string
           created_by?: string | null
           id?: string
+          notes?: string | null
+          sales_product_id?: string
           salesperson_id?: string
-          service_type_id?: string | null
           skill_level?: number
           updated_at?: string
+          years_experience?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "sales_skills_service_type_id_fkey"
-            columns: ["service_type_id"]
+            foreignKeyName: "sales_skills_sales_product_id_fkey"
+            columns: ["sales_product_id"]
             isOneToOne: false
-            referencedRelation: "service_types"
+            referencedRelation: "sales_products"
             referencedColumns: ["id"]
           },
         ]
