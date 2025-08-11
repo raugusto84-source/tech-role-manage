@@ -199,6 +199,10 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   // Calcular día por día considerando tiempo muerto
   let accumulatedHours = 0;
   
+  console.log(`=== STARTING DAY CALCULATION ===`);
+  console.log(`Remaining hours to schedule: ${remainingHours}`);
+  console.log(`Days added so far: ${daysAdded}`);
+  
   while (remainingHours > 0) {
     const dayOfWeek = currentDate.getDay();
     
@@ -291,6 +295,11 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     breakdown = `Tiempo estimado: ${effectiveHours}h`;
   }
 
+  console.log(`=== DELIVERY CALCULATION COMPLETE ===`);
+  console.log(`Final delivery date: ${currentDate.toDateString()}`);
+  console.log(`Final delivery time: ${deliveryTime}`);
+  console.log(`Breakdown: ${breakdown}`);
+  
   return {
     deliveryDate: currentDate,
     deliveryTime,
