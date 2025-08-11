@@ -199,7 +199,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       
       if (data && data.status !== orderStatus) {
         setOrderStatus(data.status);
-        // No llamar onUpdate() para evitar bucles infinitos
+        // Llamar onUpdate solo cuando el estado cambie para refrescar la lista principal
+        onUpdate();
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -418,7 +419,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 canEdit={canUpdateStatus}
                 onItemUpdate={() => {
                   loadOrderItems();
-                  updateOrderStatus(); // Llamar inmediatamente sin setTimeout
+                  // Verificar estado con un pequeño delay para dar tiempo al trigger
+                  setTimeout(() => {
+                    updateOrderStatus();
+                  }, 2000);
                 }}
               />
             )}
