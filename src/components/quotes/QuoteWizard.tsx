@@ -508,56 +508,42 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                 </Card>
               </div>
 
-              {/* Artículos */}
+              {/* Artículos y Servicios - Desglose detallado */}
               <div>
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <Package className="h-4 w-4" />
                   Artículos y Servicios
                 </h4>
-                  <div className="space-y-2">
-                    {quoteItems.map((item) => (
-                      <Card key={item.id} className="bg-muted/50">
-                        <CardContent className="pt-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">{item.name}</p>
-                                {item.is_custom && (
-                                  <Badge variant="secondary" className="text-xs">Personalizado</Badge>
-                                )}
-                              </div>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                <div className="space-y-3">
+                  {quoteItems.map((item) => (
+                    <Card key={item.id} className="bg-muted/50">
+                      <CardContent className="pt-4">
+                        {/* Header del artículo */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h5 className="font-medium">{item.name}</h5>
+                              {item.is_custom && (
+                                <Badge variant="secondary" className="text-xs">Personalizado</Badge>
                               )}
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm">{item.quantity} x {formatCurrency(item.unit_price)}</p>
-                              <p className="font-medium">{formatCurrency(item.total)}</p>
-                            </div>
+                            {item.description && (
+                              <p className="text-sm text-muted-foreground">{item.description}</p>
+                            )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                </div>
-                
-                {/* Resumen de totales detallado */}
-                <div className="mt-4 space-y-4">
-                  {/* Desglose de cada artículo con impuestos */}
-                  <div className="space-y-2">
-                    {quoteItems.map((item) => (
-                      <div key={`${item.id}-taxes`} className="p-3 bg-muted/30 rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <span className="font-medium text-sm">{item.name}</span>
-                          <span className="text-sm">{item.quantity} x {formatCurrency(item.unit_price)}</span>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                          </div>
                         </div>
-                        
-                        <div className="space-y-1 text-xs">
+
+                        {/* Desglose de precios */}
+                        <div className="space-y-1 text-sm bg-background/50 p-3 rounded">
                           <div className="flex justify-between">
                             <span>Subtotal:</span>
                             <span>{formatCurrency(item.subtotal)}</span>
                           </div>
                           
-                          {/* Mostrar impuestos individuales */}
+                          {/* Mostrar impuestos */}
                           {item.taxes && item.taxes.length > 0 ? (
                             item.taxes.map((tax, index) => (
                               <div key={index} className="flex justify-between">
@@ -570,7 +556,6 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                               </div>
                             ))
                           ) : (
-                            /* Mostrar impuestos legacy si no hay taxes array */
                             <>
                               {item.vat_amount > 0 && (
                                 <div className="flex justify-between text-green-600">
@@ -587,48 +572,49 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                             </>
                           )}
                           
-                          <div className="flex justify-between font-medium border-t pt-1">
+                          <Separator className="my-2" />
+                          <div className="flex justify-between font-medium">
                             <span>Total artículo:</span>
-                            <span>{formatCurrency(item.total)}</span>
+                            <span className="text-primary">{formatCurrency(item.total)}</span>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
 
-                  {/* Totales generales */}
-                  <div className="p-4 bg-primary/10 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal General:</span>
-                      <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
-                    </div>
-                    
-                    <div className="flex justify-between text-green-600">
-                      <span>Total IVAs:</span>
-                      <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
-                        if (item.taxes && item.taxes.length > 0) {
-                          return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                        }
-                        return sum + item.vat_amount;
-                      }, 0))}</span>
-                    </div>
-                    
-                    <div className="flex justify-between text-red-600">
-                      <span>Total Retenciones:</span>
-                      <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
-                        if (item.taxes && item.taxes.length > 0) {
-                          return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                        }
-                        return sum + item.withholding_amount;
-                      }, 0))}</span>
-                    </div>
-                    
-                    <Separator className="my-2" />
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-medium">Total Final:</span>
-                      <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
-                    </div>
+                {/* Totales generales */}
+                <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal General:</span>
+                    <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-green-600">
+                    <span>Total IVAs:</span>
+                    <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
+                      if (item.taxes && item.taxes.length > 0) {
+                        return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
+                      }
+                      return sum + item.vat_amount;
+                    }, 0))}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-red-600">
+                    <span>Total Retenciones:</span>
+                    <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
+                      if (item.taxes && item.taxes.length > 0) {
+                        return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
+                      }
+                      return sum + item.withholding_amount;
+                    }, 0))}</span>
+                  </div>
+                  
+                  <Separator className="my-2" />
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium">Total Final:</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
                   </div>
                 </div>
               </div>
