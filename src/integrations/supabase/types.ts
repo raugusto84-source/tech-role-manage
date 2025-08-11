@@ -546,6 +546,7 @@ export type Database = {
           name: string
           phone: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           address: string
@@ -557,6 +558,7 @@ export type Database = {
           name: string
           phone?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           address?: string
@@ -568,6 +570,7 @@ export type Database = {
           name?: string
           phone?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -1901,6 +1904,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
           created_at?: string
@@ -1911,6 +1915,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
           created_at?: string
@@ -1921,6 +1926,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
@@ -3531,6 +3537,48 @@ export type Database = {
           },
         ]
       }
+      whatsapp_notifications: {
+        Row: {
+          client_email: string
+          client_whatsapp: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message_content: string
+          message_type: string
+          related_id: string
+          related_type: string
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          client_email: string
+          client_whatsapp: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_content: string
+          message_type: string
+          related_id: string
+          related_type: string
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          client_email?: string
+          client_whatsapp?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_content?: string
+          message_type?: string
+          related_id?: string
+          related_type?: string
+          sent_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       work_schedules: {
         Row: {
           break_duration_minutes: number
@@ -3769,6 +3817,16 @@ export type Database = {
       get_user_role_safe: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      send_whatsapp_notification: {
+        Args: {
+          p_client_email: string
+          p_message_type: string
+          p_related_id: string
+          p_related_type: string
+          p_message_content: string
+        }
+        Returns: undefined
       }
       suggest_optimal_technician: {
         Args: { p_service_type_id: string; p_delivery_date?: string }

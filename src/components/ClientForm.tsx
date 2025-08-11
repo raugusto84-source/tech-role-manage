@@ -23,6 +23,7 @@ export function ClientForm({ onSuccess, onCancel }: ClientFormProps) {
     name: '',
     email: '',
     phone: '',
+    whatsapp: '',
     address: ''
   });
 
@@ -104,6 +105,20 @@ export function ClientForm({ onSuccess, onCancel }: ClientFormProps) {
               value={formData.phone}
               onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="whatsapp">WhatsApp *</Label>
+            <Input
+              id="whatsapp"
+              value={formData.whatsapp}
+              onChange={(e) => setFormData(prev => ({ ...prev, whatsapp: e.target.value }))}
+              placeholder="+1234567890"
+              required
+            />
+            <p className="text-sm text-muted-foreground">
+              Para recibir notificaciones automáticas del estado de sus servicios
+            </p>
           </div>
 
           <div className="space-y-2">
