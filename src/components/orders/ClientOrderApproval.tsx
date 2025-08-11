@@ -40,6 +40,7 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
   const [approvalNotes, setApprovalNotes] = useState("");
   const [showSignature, setShowSignature] = useState(false);
   const [signatureData, setSignatureData] = useState<string>("");
+  const [hasStartedApproval, setHasStartedApproval] = useState(false);
   const signatureRef = useRef<SignatureCanvas>(null);
   const { toast } = useToast();
 
@@ -69,6 +70,11 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
   };
 
   const handleApproval = async () => {
+    if (hasStartedApproval || approving) {
+      console.log("Approval already in progress, ignoring");
+      return;
+    }
+
     if (!signatureData) {
       toast({
         title: "Firma requerida",
@@ -79,7 +85,9 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
       return;
     }
 
+    setHasStartedApproval(true);
     setApproving(true);
+    
     try {
       const { error } = await supabase
         .from("orders")
@@ -106,6 +114,7 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         description: "No se pudo aprobar la orden. Intenta nuevamente.",
         variant: "destructive"
       });
+      setHasStartedApproval(false); // Reset on error
     } finally {
       setApproving(false);
     }
@@ -264,11 +273,11 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
                 {/* Botón de aprobación */}
                 <Button 
                   onClick={handleApproval}
-                  disabled={approving || !signatureData}
+                  disabled={approving || !signatureData || hasStartedApproval}
                   className="w-full"
                   size="lg"
                 >
-                  {approving ? "Aprobando..." : "✓ Firmar y Aprobar Orden"}
+                  {approving ? "Aprobando..." : hasStartedApproval ? "Procesando..." : "✓ Firmar y Aprobar Orden"}
                 </Button>
               </div>
             </div>
