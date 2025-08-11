@@ -135,6 +135,27 @@ export default function Orders() {
 
   useEffect(() => {
     loadOrders();
+    
+    // Suscribirse a cambios en tiempo real en todas las órdenes
+    const channel = supabase
+      .channel('orders-changes')
+      .on('postgres_changes', 
+        { 
+          event: '*', // Escuchar INSERT, UPDATE, DELETE
+          schema: 'public', 
+          table: 'orders'
+        },
+        (payload) => {
+          console.log('Orders table changed:', payload);
+          // Recargar órdenes cuando haya cambios
+          loadOrders();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [profile?.role, profile?.email, user?.id]);
 
   // Abrir formulario automáticamente si viene con ?new=1 (flujo rápido desde Panel Cliente)
