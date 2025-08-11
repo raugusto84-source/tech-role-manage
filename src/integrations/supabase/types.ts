@@ -1078,6 +1078,7 @@ export type Database = {
           service_description: string | null
           service_name: string
           service_type_id: string
+          status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total_amount: number
           unit_base_price: number
@@ -1096,6 +1097,7 @@ export type Database = {
           service_description?: string | null
           service_name: string
           service_type_id: string
+          status?: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total_amount: number
           unit_base_price: number
@@ -1114,6 +1116,7 @@ export type Database = {
           service_description?: string | null
           service_name?: string
           service_type_id?: string
+          status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total_amount?: number
           unit_base_price?: number

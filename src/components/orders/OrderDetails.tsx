@@ -12,6 +12,7 @@ import { ArrowLeft, Edit, Save, Camera, User, Calendar, DollarSign, Clock, Wrenc
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
+import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 
@@ -59,9 +60,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [surveyData, setSurveyData] = useState<any>(null);
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
 
   useEffect(() => {
     loadOrderNotes();
+    loadOrderItems();
     checkSurveyStatus();
     loadAssignedTechnician();
   }, [order.id]);
@@ -75,6 +78,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         .maybeSingle();
       
       setAssignedTechnician(data);
+    }
+  };
+
+  const loadOrderItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('order_id', order.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (error) {
+      console.error('Error loading order items:', error);
     }
   };
 
@@ -428,6 +446,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Lista detallada de servicios individuales */}
+            {orderItems.length > 0 && (
+              <OrderServicesList 
+                orderItems={orderItems} 
+                canEdit={canUpdateStatus}
+                onItemUpdate={loadOrderItems}
+              />
+            )}
 
             {/* Evidencia Fotográfica */}
             {order.evidence_photos && order.evidence_photos.length > 0 && (
