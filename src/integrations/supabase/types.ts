@@ -3831,6 +3831,7 @@ export type Database = {
         | "seguimiento"
         | "aceptada"
         | "rechazada"
+        | "pendiente_aprobacion"
       reminder_type:
         | "placas"
         | "refrendo"
@@ -4033,6 +4034,7 @@ export const Constants = {
         "seguimiento",
         "aceptada",
         "rechazada",
+        "pendiente_aprobacion",
       ],
       reminder_type: [
         "placas",

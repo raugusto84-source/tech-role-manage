@@ -183,6 +183,9 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     try {
       setLoading(true);
 
+      // Determinar el estado inicial basado en el rol del usuario
+      const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'solicitud';
+      
       const quoteData = {
         client_name: selectedClient.name,
         client_email: selectedClient.email,
@@ -192,6 +195,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
         sale_type: quoteDetails.sale_type,
+        status: initialStatus,
         created_by: (profile as any).user_id || undefined,
         assigned_to: (profile as any).user_id || undefined,
       };
@@ -268,9 +272,13 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         }
       }
 
+      const successMessage = profile?.role === 'cliente' 
+        ? "La cotización ha sido enviada y está pendiente de aprobación por nuestro equipo"
+        : "La cotización ha sido creada exitosamente";
+        
       toast({
         title: "Cotización creada",
-        description: "La cotización ha sido creada exitosamente",
+        description: successMessage,
       });
 
       onSuccess();

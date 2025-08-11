@@ -10,7 +10,7 @@ interface Quote {
   client_email: string;
   service_description: string;
   estimated_amount: number;
-  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento';
+  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion';
   request_date: string;
   created_at: string;
   salesperson_name?: string;
@@ -48,6 +48,7 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
 
   const getStatusText = (status: string) => {
     switch (status) {
+      case 'pendiente_aprobacion': return 'Pendiente';
       case 'solicitud': return 'Nueva';
       case 'enviada': return 'Enviada';
       case 'aceptada': return 'Aceptada';

@@ -19,7 +19,7 @@ interface Quote {
   client_email: string;
   service_description: string;
   estimated_amount: number;
-  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento';
+  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion';
   request_date: string;
   created_by?: string;
   assigned_to?: string;
@@ -132,6 +132,7 @@ export default function Quotes() {
 
   // Separar cotizaciones por estado
   const quotesByStatus = {
+    pendiente_aprobacion: filteredQuotes.filter(q => q.status === 'pendiente_aprobacion'),
     solicitud: filteredQuotes.filter(q => q.status === 'solicitud'),
     enviada: filteredQuotes.filter(q => q.status === 'enviada'),
     aceptada: filteredQuotes.filter(q => q.status === 'aceptada'),
@@ -141,6 +142,13 @@ export default function Quotes() {
   // Obtener información del estado
   const getStatusInfo = (status: string) => {
     switch (status) {
+      case 'pendiente_aprobacion': 
+        return { 
+          label: 'Pendientes de Aprobación', 
+          color: 'bg-orange-100 text-orange-800 border-orange-200',
+          bgColor: 'bg-orange-50',
+          icon: '⏳'
+        };
       case 'solicitud': 
         return { 
           label: 'Nuevas', 
