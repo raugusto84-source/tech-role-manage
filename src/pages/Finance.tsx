@@ -56,9 +56,18 @@ export default function Finance() {
   }, []);
 
   // Filtros compartidos
-  const [startDate, setStartDate] = useState<string>(new Date(new Date().getFullYear(), 0, 1).toISOString().substring(0,10));
-  const [endDate, setEndDate] = useState<string>(new Date().toISOString().substring(0,10));
+  const [startDate, setStartDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0,10));
+  const [endDate, setEndDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0,10));
   const [accountType, setAccountType] = useState<string>("all"); // all | fiscal | no_fiscal
+
+  // Función para establecer mes actual rápidamente
+  const setCurrentMonth = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().substring(0,10);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().substring(0,10);
+    setStartDate(firstDay);
+    setEndDate(lastDay);
+  };
 
   // Queries
   const incomesQuery = useQuery({
@@ -843,57 +852,70 @@ export default function Finance() {
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
       </header>
 
-      <section className="mb-6 grid gap-3 md:grid-cols-3">
-        <div>
-          <label className="text-sm text-muted-foreground">Desde</label>
-          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-        </div>
-        <div>
-          <label className="text-sm text-muted-foreground">Hasta</label>
-          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+      <section className="mb-6">
+        <div className="grid gap-3 md:grid-cols-3 mb-4">
+          <div>
+            <label className="text-sm text-muted-foreground">Desde</label>
+            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground">Hasta</label>
+            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+          <div className="flex items-end">
+            <Button onClick={setCurrentMonth} variant="outline" className="w-full">
+              Mes Actual
+            </Button>
+          </div>
         </div>
       </section>
 
       <section className="mb-6 grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Cuenta Fiscal</CardTitle>
+        <Card className="border-l-4 border-l-orange-500">
+          <CardHeader className="bg-orange-50/50 dark:bg-orange-950/20">
+            <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
+              <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+              Cuenta Fiscal
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Ingresos</div>
-                <div className="font-semibold">{totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">{totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Egresos</div>
-                <div className="font-semibold">{totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">{totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Balance</div>
-                <div className="font-semibold">{(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">{(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Cuenta No Fiscal</CardTitle>
+        <Card className="border-l-4 border-l-blue-500">
+          <CardHeader className="bg-blue-50/50 dark:bg-blue-950/20">
+            <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+              Cuenta No Fiscal
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Ingresos</div>
-                <div className="font-semibold">{totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-blue-700 dark:text-blue-300">{totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Egresos</div>
-                <div className="font-semibold">{totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-blue-700 dark:text-blue-300">{totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Balance</div>
-                <div className="font-semibold">{(totINF - totENF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-blue-700 dark:text-blue-300">{(totINF - totENF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
             </div>
           </CardContent>
@@ -913,9 +935,12 @@ export default function Finance() {
 
         <TabsContent value="incomes">
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 dark:bg-orange-950/20">
+                <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -990,9 +1015,12 @@ export default function Finance() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`ingresos_no_fiscal_${startDate}_${endDate}`, incomesNoFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -1063,9 +1091,12 @@ export default function Finance() {
 
         <TabsContent value="expenses">
           <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 dark:bg-orange-950/20">
+                <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -1140,9 +1171,12 @@ export default function Finance() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`egresos_no_fiscal_${startDate}_${endDate}`, expensesNoFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
