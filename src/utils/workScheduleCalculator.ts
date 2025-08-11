@@ -115,10 +115,10 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
   
-  // Si hay técnico de apoyo, aplicar reducción del 50% en el tiempo total
+  // Si hay técnico de apoyo, aplicar reducción del 20% en el tiempo total
   let effectiveWorkingHours = effectiveHours;
   if (supportTechnicianSchedule) {
-    effectiveWorkingHours = effectiveHours * 0.5; // Reducción del 50%
+    effectiveWorkingHours = effectiveHours * 0.8; // Reducción del 20%
   }
 
   const totalHoursPerDay = primaryHoursPerDay;
