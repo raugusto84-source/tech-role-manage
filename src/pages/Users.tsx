@@ -4,9 +4,10 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import { SkillsManager } from '@/components/technicians/SkillsManager';
 import { SalesKnowledgePanel } from '@/components/admin/SalesKnowledgePanel';
 import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
+import { UserRanking } from '@/components/admin/UserRanking';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users as UsersIcon, Wrench, Store, Clock } from 'lucide-react';
+import { Users as UsersIcon, Wrench, Store, Clock, Trophy } from 'lucide-react';
 
 /**
  * Página principal de administración de usuarios
@@ -48,10 +49,14 @@ export default function Users() {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UsersIcon className="h-4 w-4" />
               Usuarios
+            </TabsTrigger>
+            <TabsTrigger value="ranking" className="flex items-center gap-2">
+              <Trophy className="h-4 w-4" />
+              Rankings
             </TabsTrigger>
             <TabsTrigger value="technician-skills" className="flex items-center gap-2">
               <Wrench className="h-4 w-4" />
@@ -78,6 +83,22 @@ export default function Users() {
               </CardHeader>
               <CardContent>
                 <UserManagement onUserSelect={handleUserSelect} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Panel de rankings */}
+          <TabsContent value="ranking" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Rankings de Usuarios</CardTitle>
+                <CardDescription>
+                  Visualiza el desempeño de técnicos y vendedores basado en las calificaciones de las encuestas de satisfacción.
+                  Los rankings se calculan en base a las evaluaciones de clientes.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UserRanking />
               </CardContent>
             </Card>
           </TabsContent>
