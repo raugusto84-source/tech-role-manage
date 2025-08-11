@@ -218,6 +218,18 @@ export default function Finance() {
       return data ?? [];
     }
   });
+
+  const fixedIncomesQuery = useQuery({
+    queryKey: ["fixed_incomes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fixed_incomes")
+        .select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month")
+        .order("next_run_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
   
   const incomesTotal = useMemo(() => (incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [incomesQuery.data]);
   const expensesTotal = useMemo(() => (expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [expensesQuery.data]);
@@ -235,7 +247,15 @@ export default function Finance() {
       .reduce((total: number, pr: any) => total + (Number(pr.net_salary) || 0), 0);
   }, [recurringPayrollsQuery.data]);
 
+  // Cálculos para ingresos fijos mensuales
+  const monthlyFixedIncomes = useMemo(() => {
+    return (fixedIncomesQuery.data ?? [])
+      .filter((fi: any) => fi.active)
+      .reduce((total: number, fi: any) => total + (Number(fi.amount) || 0), 0);
+  }, [fixedIncomesQuery.data]);
+
   const totalMonthlyFixedCosts = monthlyFixedExpenses + monthlyRecurringPayrolls;
+  const netMonthlyFixedFlow = monthlyFixedIncomes - totalMonthlyFixedCosts;
 
   // Desglose por cuenta
   const incomesData = incomesQuery.data ?? [];
@@ -271,6 +291,13 @@ export default function Finance() {
   const [pCutoffWeekday, setPCutoffWeekday] = useState<number>(5);
   const [pDefaultBonus, setPDefaultBonus] = useState("");
   const [pDayOfMonth, setPDayOfMonth] = useState<number>(1);
+
+  // Estados para ingresos fijos
+  const [fiDesc, setFiDesc] = useState("");
+  const [fiAmount, setFiAmount] = useState("");
+  const [fiAccount, setFiAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
+  const [fiMethod, setFiMethod] = useState("");
+  const [fiDayOfMonth, setFiDayOfMonth] = useState<number>(1);
 
   // Estados para IVA (ya no se usan para registrar, solo para mostrar cálculos)
   const [showVatCalculator, setShowVatCalculator] = useState(false);
@@ -331,6 +358,27 @@ export default function Finance() {
     }
   };
 
+  const addFixedIncome = async () => {
+    try {
+      const amount = Number(fiAmount);
+      if (!fiDesc || !amount) throw new Error("Completa descripción y monto válido");
+      const { error } = await supabase.from("fixed_incomes").insert({
+        description: fiDesc,
+        amount,
+        account_type: fiAccount as any,
+        payment_method: fiMethod || null,
+        frequency: 'monthly',
+        day_of_month: fiDayOfMonth,
+      } as any);
+      if (error) throw error;
+      toast({ title: "Ingreso fijo programado" });
+      setFiDesc(""); setFiAmount(""); setFiMethod(""); setFiAccount("fiscal"); setFiDayOfMonth(1);
+      fixedIncomesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+    }
+  };
+
   const deleteFixedExpense = async (id: string) => {
     if (!isAdmin) return;
     try {
@@ -385,6 +433,36 @@ export default function Finance() {
 
       toast({ title: "Nómina recurrente eliminada" });
       recurringPayrollsQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+    }
+  };
+
+  const deleteFixedIncome = async (id: string) => {
+    if (!isAdmin) return;
+    try {
+      // Get record data before deletion for history
+      const { data: recordData } = await supabase.from("fixed_incomes").select("*").eq("id", id).single();
+      
+      const { error } = await supabase.from("fixed_incomes").delete().eq("id", id);
+      if (error) throw error;
+
+      // Log deletion
+      if (recordData) {
+        await logFinancialOperation(
+          'delete',
+          'fixed_incomes',
+          id,
+          recordData,
+          `Eliminación de ingreso fijo: ${recordData.description}`,
+          recordData.amount,
+          recordData.account_type
+        );
+      }
+
+      toast({ title: "Ingreso fijo eliminado" });
+      fixedIncomesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
@@ -1256,11 +1334,21 @@ export default function Finance() {
           {/* Summary Section */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Resumen de Gastos Fijos Mensuales</CardTitle>
-              <p className="text-sm text-muted-foreground">Total proyectado de gastos recurrentes por mes</p>
+              <CardTitle>Comparativa Mensual: Ingresos vs Gastos Fijos</CardTitle>
+              <p className="text-sm text-muted-foreground">Análisis de flujo de efectivo fijo mensual proyectado</p>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                  <div className="text-sm text-green-600 font-medium">Ingresos Fijos</div>
+                  <div className="text-2xl font-bold text-green-700">
+                    {monthlyFixedIncomes.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  </div>
+                  <div className="text-xs text-green-500 mt-1">
+                    {(fixedIncomesQuery.data ?? []).filter((fi: any) => fi.active).length} conceptos activos
+                  </div>
+                </div>
+
                 <div className="p-4 rounded-lg bg-red-50 border border-red-200">
                   <div className="text-sm text-red-600 font-medium">Gastos Fijos</div>
                   <div className="text-2xl font-bold text-red-700">
@@ -1281,20 +1369,22 @@ export default function Finance() {
                   </div>
                 </div>
                 
-                <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
-                  <div className="text-sm text-gray-600 font-medium">Total Mensual</div>
-                  <div className="text-2xl font-bold text-gray-800">
-                    {totalMonthlyFixedCosts.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                <div className={`p-4 rounded-lg border ${netMonthlyFixedFlow >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
+                  <div className={`text-sm font-medium ${netMonthlyFixedFlow >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                    Flujo Neto Mensual
                   </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Proyección mensual total
+                  <div className={`text-2xl font-bold ${netMonthlyFixedFlow >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                    {netMonthlyFixedFlow.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  </div>
+                  <div className={`text-xs mt-1 ${netMonthlyFixedFlow >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    {netMonthlyFixedFlow >= 0 ? 'Superávit proyectado' : 'Déficit proyectado'}
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader>
                 <CardTitle>Gastos Fijos Recurrentes</CardTitle>
@@ -1642,6 +1732,129 @@ export default function Finance() {
                         ))}
                         {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).length === 0 && (
                           <TableRow><TableCell colSpan={6}>Sin nóminas programadas.</TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Ingresos Fijos Recurrentes</CardTitle>
+                <p className="text-sm text-muted-foreground">Configura ingresos que se ejecutan automáticamente cada período</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">Descripción</label>
+                  <Input value={fiDesc} onChange={e => setFiDesc(e.target.value)} placeholder="Ej. Renta recibida, Dividendos, Intereses" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Monto</label>
+                  <Input type="number" inputMode="decimal" value={fiAmount} onChange={e => setFiAmount(e.target.value)} placeholder="0.00" />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Cuenta</label>
+                  <Select value={fiAccount} onValueChange={(v) => setFiAccount(v as any)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona cuenta" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fiscal">Fiscal</SelectItem>
+                      <SelectItem value="no_fiscal">No Fiscal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Método de cobro</label>
+                  <Input value={fiMethod} onChange={e => setFiMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Día del mes para ejecutar</label>
+                  <Select value={fiDayOfMonth.toString()} onValueChange={(v) => setFiDayOfMonth(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Día del mes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>
+                          Día {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={addFixedIncome}>📅 Programar Ingreso</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Los ingresos se programan mensualmente para un mejor control del flujo de efectivo.
+                </p>
+
+                <div className="pt-4">
+                  <div className="text-sm font-medium mb-2">Ingresos Programados</div>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Descripción</TableHead>
+                          <TableHead>Monto</TableHead>
+                          <TableHead>Cuenta</TableHead>
+                          <TableHead>Día del mes</TableHead>
+                          <TableHead>Próx. Ejecut.</TableHead>
+                          <TableHead>Estado</TableHead>
+                          <TableHead>Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(fixedIncomesQuery.data ?? []).map((fi: any) => (
+                          <TableRow key={fi.id}>
+                            <TableCell className="font-medium">{fi.description}</TableCell>
+                            <TableCell>{Number(fi.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${fi.account_type === 'fiscal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                                {fi.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                              </span>
+                            </TableCell>
+                            <TableCell>Día {fi.day_of_month}</TableCell>
+                            <TableCell>{new Date(fi.next_run_date).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <span className={`px-2 py-1 rounded-full text-xs ${fi.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {fi.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {isAdmin && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Eliminar ingreso recurrente?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Esta acción no se puede revertir. El ingreso fijo será eliminado permanentemente del sistema.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteFixedIncome(fi.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                          Eliminar
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!fixedIncomesQuery.isLoading && (fixedIncomesQuery.data ?? []).length === 0 && (
+                          <TableRow><TableCell colSpan={7}>Sin ingresos fijos programados.</TableCell></TableRow>
                         )}
                       </TableBody>
                     </Table>
