@@ -13,7 +13,7 @@ interface OrderItem {
   quantity: number;
   unit_base_price: number;
   total_amount: number;
-  status: 'pendiente' | 'en_proceso' | 'en_camino' | 'finalizada' | 'cancelada';
+  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
 }
 
 interface OrderServicesListProps {
@@ -32,11 +32,6 @@ const statusConfig = {
     label: 'En Proceso',
     icon: Wrench,
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
-  },
-  en_camino: {
-    label: 'En Camino',
-    icon: Truck,
-    color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400'
   },
   finalizada: {
     label: 'Finalizada',
@@ -62,7 +57,7 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
     try {
       const { error } = await supabase
         .from('order_items')
-        .update({ status: newStatus as 'pendiente' | 'en_proceso' | 'en_camino' | 'finalizada' | 'cancelada' })
+        .update({ status: newStatus as 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' })
         .eq('id', itemId);
 
       if (error) throw error;
