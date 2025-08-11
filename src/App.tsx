@@ -17,6 +17,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import Finance from "./pages/Finance";
 import Users from "./pages/Users";
 import Surveys from "./pages/Surveys";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['administrador']}>
                   <Surveys />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/settings" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador']}>
+                  <Settings />
                 </ProtectedRoute>
               }
             />
