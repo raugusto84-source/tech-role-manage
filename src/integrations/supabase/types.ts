@@ -2077,6 +2077,85 @@ export type Database = {
         }
         Relationships: []
       }
+      purchases: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          concept: string
+          created_at: string
+          created_by: string | null
+          expense_id: string | null
+          fiscal_withdrawal_id: string | null
+          has_invoice: boolean
+          id: string
+          invoice_number: string | null
+          payment_method: string | null
+          purchase_date: string
+          purchase_number: string
+          supplier_id: string | null
+          supplier_name: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          concept: string
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          fiscal_withdrawal_id?: string | null
+          has_invoice?: boolean
+          id?: string
+          invoice_number?: string | null
+          payment_method?: string | null
+          purchase_date?: string
+          purchase_number?: string
+          supplier_id?: string | null
+          supplier_name: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          concept?: string
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string | null
+          fiscal_withdrawal_id?: string | null
+          has_invoice?: boolean
+          id?: string
+          invoice_number?: string | null
+          payment_method?: string | null
+          purchase_date?: string
+          purchase_number?: string
+          supplier_id?: string | null
+          supplier_name?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_fiscal_withdrawal_id_fkey"
+            columns: ["fiscal_withdrawal_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_withdrawals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_follow_ups: {
         Row: {
           completed: boolean
@@ -3844,6 +3923,10 @@ export type Database = {
         Returns: string
       }
       generate_policy_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_purchase_number: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
