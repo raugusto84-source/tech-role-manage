@@ -140,6 +140,7 @@ export default function Finance() {
   const fiscalWithdrawalsQuery = useQuery({
     queryKey: ["fiscal_withdrawals"],
     queryFn: async () => {
+      console.log('Fetching fiscal withdrawals...');
       const { data, error } = await supabase
         .from("fiscal_withdrawals")
         .select(`
@@ -153,7 +154,14 @@ export default function Finance() {
           orders(order_number, client_id, clients(name))
         `)
         .order("created_at", { ascending: false });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Error fetching fiscal withdrawals:', error);
+        throw error;
+      }
+      
+      console.log('Fiscal withdrawals fetched:', data);
+      console.log('Available withdrawals:', data?.filter(fw => fw.withdrawal_status === 'available'));
       return data ?? [];
     }
   });
