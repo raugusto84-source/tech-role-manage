@@ -237,8 +237,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   if (daysAdded === 1) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     
-    // Usar las horas ajustadas (incluyendo carga previa) para el cálculo del tiempo
-    const totalMinutes = adjustedHours * 60;
+    // Usar las horas efectivas (con reducción de técnicos de apoyo) para el cálculo del tiempo
+    const totalMinutes = effectiveWorkingHours * 60;
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
@@ -247,9 +247,12 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       hour12: true 
     });
   } else if (hoursWorkedToday > 0) {
-    // Para trabajos de múltiples días, usar las horas del último día
+    // Para trabajos de múltiples días, usar las horas efectivas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-    const totalMinutes = hoursWorkedToday * 60;
+    // Calcular proporción de reducción para el último día
+    const reductionFactor = effectiveWorkingHours / effectiveHours;
+    const adjustedLastDayHours = hoursWorkedToday * reductionFactor;
+    const totalMinutes = adjustedLastDayHours * 60;
     
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
