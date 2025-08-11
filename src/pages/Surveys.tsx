@@ -13,10 +13,10 @@ interface OrderSatisfactionSurvey {
   id: string;
   order_id: string;
   client_id: string;
-  technician_rating: number;
-  sales_rating: number;
-  overall_rating: number;
-  comments?: string;
+  service_quality: number;
+  service_time: number;
+  would_recommend: number;
+  general_comments?: string;
   created_at: string;
   orders?: {
     order_number: string;
@@ -27,9 +27,6 @@ interface OrderSatisfactionSurvey {
     };
   };
   technician_profile?: {
-    full_name: string;
-  };
-  sales_profile?: {
     full_name: string;
   };
 }
@@ -61,9 +58,9 @@ export default function Surveys() {
           id,
           order_id,
           client_id,
-          technician_knowledge,
-          sales_knowledge,
-          overall_recommendation,
+          service_quality,
+          service_time,
+          would_recommend,
           general_comments,
           created_at,
           orders!inner(
@@ -80,7 +77,6 @@ export default function Surveys() {
       const surveyData = await Promise.all(
         (surveys || []).map(async (survey) => {
           let techProfile = null;
-          let salesProfile = null;
           
           if (survey.orders?.assigned_technician) {
             const { data: tech } = await supabase
@@ -91,27 +87,17 @@ export default function Surveys() {
             techProfile = tech;
           }
           
-          // Get sales person - for now we'll use a default or first admin/vendedor
-          const { data: sales } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('role', 'vendedor')
-            .limit(1)
-            .single();
-          salesProfile = sales;
-          
           return {
             id: survey.id,
             order_id: survey.order_id,
             client_id: survey.client_id,
-            technician_rating: survey.technician_knowledge || 0,
-            sales_rating: survey.sales_knowledge || 0,
-            overall_rating: survey.overall_recommendation || 0,
-            comments: survey.general_comments,
+            service_quality: survey.service_quality || 0,
+            service_time: survey.service_time || 0,
+            would_recommend: survey.would_recommend || 0,
+            general_comments: survey.general_comments,
             created_at: survey.created_at,
             orders: survey.orders,
-            technician_profile: techProfile,
-            sales_profile: salesProfile
+            technician_profile: techProfile
           };
         })
       );
@@ -162,7 +148,7 @@ export default function Surveys() {
   const technicianAverages = filteredSurveys.reduce((acc, survey) => {
     const techName = survey.technician_profile?.full_name || 'Sin asignar';
     if (!acc[techName]) {
-      acc[techName] = { surveys: [], avgTech: 0, avgSales: 0, avgGeneral: 0, count: 0 };
+      acc[techName] = { surveys: [], avgQuality: 0, avgTime: 0, avgRecommend: 0, count: 0 };
     }
     acc[techName].surveys.push(survey);
     acc[techName].count++;
@@ -172,16 +158,16 @@ export default function Surveys() {
   // Calculate actual averages
   Object.keys(technicianAverages).forEach(techName => {
     const surveys = technicianAverages[techName].surveys;
-    const techAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
-      sum + s.technician_rating, 0) / surveys.length;
-    const salesAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
-      sum + s.sales_rating, 0) / surveys.length;
-    const generalAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
-      sum + s.overall_rating, 0) / surveys.length;
+    const qualityAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
+      sum + s.service_quality, 0) / surveys.length;
+    const timeAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
+      sum + s.service_time, 0) / surveys.length;
+    const recommendAvg = surveys.reduce((sum: number, s: OrderSatisfactionSurvey) => 
+      sum + s.would_recommend, 0) / surveys.length;
     
-    technicianAverages[techName].avgTech = techAvg;
-    technicianAverages[techName].avgSales = salesAvg;
-    technicianAverages[techName].avgGeneral = generalAvg;
+    technicianAverages[techName].avgQuality = qualityAvg;
+    technicianAverages[techName].avgTime = timeAvg;
+    technicianAverages[techName].avgRecommend = recommendAvg;
   });
 
   if (profile?.role !== 'administrador') {
@@ -213,16 +199,16 @@ export default function Surveys() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Técnico:</span>
-                    <span className="font-medium">{data.avgTech.toFixed(1)}</span>
+                    <span>Calidad:</span>
+                    <span className="font-medium">{data.avgQuality.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>Ventas:</span>
-                    <span className="font-medium">{data.avgSales.toFixed(1)}</span>
+                    <span>Tiempo:</span>
+                    <span className="font-medium">{data.avgTime.toFixed(1)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span>General:</span>
-                    <span className="font-medium">{data.avgGeneral.toFixed(1)}</span>
+                    <span>Recomendación:</span>
+                    <span className="font-medium">{data.avgRecommend.toFixed(1)}</span>
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {data.count} encuesta{data.count !== 1 ? 's' : ''}
@@ -287,12 +273,12 @@ export default function Surveys() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Promedio Técnico</CardTitle>
+              <CardTitle>Promedio Calidad</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {filteredSurveys.length > 0 
-                  ? (filteredSurveys.reduce((sum, s) => sum + s.technician_rating, 0) / filteredSurveys.length).toFixed(1)
+                  ? (filteredSurveys.reduce((sum, s) => sum + s.service_quality, 0) / filteredSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
@@ -301,12 +287,12 @@ export default function Surveys() {
           
           <Card>
             <CardHeader>
-              <CardTitle>Promedio Ventas</CardTitle>
+              <CardTitle>Promedio Tiempo</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {filteredSurveys.length > 0 
-                  ? (filteredSurveys.reduce((sum, s) => sum + s.sales_rating, 0) / filteredSurveys.length).toFixed(1)
+                  ? (filteredSurveys.reduce((sum, s) => sum + s.service_time, 0) / filteredSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
@@ -315,12 +301,12 @@ export default function Surveys() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Promedio General</CardTitle>
+              <CardTitle>Promedio Recomendación</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
                 {filteredSurveys.length > 0 
-                  ? (filteredSurveys.reduce((sum, s) => sum + s.overall_rating, 0) / filteredSurveys.length).toFixed(1)
+                  ? (filteredSurveys.reduce((sum, s) => sum + s.would_recommend, 0) / filteredSurveys.length).toFixed(1)
                   : '0'
                 }
               </div>
@@ -367,42 +353,42 @@ export default function Surveys() {
                           )}
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Evaluación General SYSLAG</p>
-                          {renderStarRating(survey.overall_rating || 0)}
+                          <p className="text-sm text-muted-foreground">Promedio General</p>
+                          {renderStarRating(Math.round((survey.service_quality + survey.service_time + survey.would_recommend) / 3))}
                         </div>
                       </div>
 
                       {/* Simplified Survey Questions */}
                       <div className="space-y-6">
-                        {/* Question 1: Technician Evaluation */}
+                        {/* Question 1: Service Quality */}
                         <div className="p-4 border rounded-lg bg-blue-50/50">
                           <h4 className="font-medium mb-2 text-blue-700">
-                            1. ¿Cómo evalúas al Técnico "{survey.technician_profile?.full_name || 'Sin asignar'}"?
+                            1. ¿Cómo califica la calidad del servicio recibido?
                           </h4>
-                          {renderStarRating(survey.technician_rating || 0)}
+                          {renderStarRating(survey.service_quality || 0)}
                         </div>
 
-                        {/* Question 2: Sales/Customer Service Evaluation */}
+                        {/* Question 2: Service Time */}
                         <div className="p-4 border rounded-lg bg-green-50/50">
                           <h4 className="font-medium mb-2 text-green-700">
-                            2. ¿Cómo evalúas la Atención a Clientes "{survey.sales_profile?.full_name || 'Departamento de Ventas'}"?
+                            2. ¿Cómo califica la puntualidad del servicio?
                           </h4>
-                          {renderStarRating(survey.sales_rating || 0)}
+                          {renderStarRating(survey.service_time || 0)}
                         </div>
 
-                        {/* Question 3: Overall SYSLAG Evaluation */}
+                        {/* Question 3: Would Recommend */}
                         <div className="p-4 border rounded-lg bg-purple-50/50">
                           <h4 className="font-medium mb-2 text-purple-700">
-                            3. En general, ¿cómo evalúas a SYSLAG?
+                            3. ¿Recomendaría nuestros servicios a otros?
                           </h4>
-                          {renderStarRating(survey.overall_rating || 0)}
+                          {renderStarRating(survey.would_recommend || 0)}
                         </div>
                       </div>
 
                       {/* Comments */}
-                      {survey.comments && (
+                      {survey.general_comments && (
                         <div className="p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm"><strong>Comentarios:</strong> "{survey.comments}"</p>
+                          <p className="text-sm"><strong>Comentarios:</strong> "{survey.general_comments}"</p>
                         </div>
                       )}
 

@@ -15,6 +15,8 @@ import { OrderChat } from '@/components/orders/OrderChat';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { ClientOrderApproval } from './ClientOrderApproval';
+import { DeliverySignature } from './DeliverySignature';
+import { SimpleSatisfactionSurvey } from './SimpleSatisfactionSurvey';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 
 interface OrderDetailsProps {
@@ -28,7 +30,7 @@ interface OrderDetailsProps {
     delivery_date: string;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion';
+    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega';
     assigned_technician?: string;
     assignment_reason?: string;
     evidence_photos?: string[];
@@ -61,6 +63,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [currentUnreadCount, setCurrentUnreadCount] = useState(0);
+  const [deliveryPhase, setDeliveryPhase] = useState<'signature' | 'survey' | 'completed'>('signature');
+  const [hasDeliverySignature, setHasDeliverySignature] = useState(false);
+  const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -75,6 +80,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   useEffect(() => {
     loadOrderItems();
     loadAssignedTechnician();
+    checkDeliveryStatus();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -151,6 +157,39 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
+  const checkDeliveryStatus = async () => {
+    if (orderStatus === 'pendiente_entrega' && profile?.role === 'cliente') {
+      try {
+        // Check if delivery signature exists
+        const { data: signature } = await supabase
+          .from('delivery_signatures')
+          .select('id')
+          .eq('order_id', order.id)
+          .maybeSingle();
+
+        // Check if survey exists
+        const { data: survey } = await supabase
+          .from('order_satisfaction_surveys')
+          .select('id')
+          .eq('order_id', order.id)
+          .maybeSingle();
+
+        setHasDeliverySignature(!!signature);
+        setHasCompletedSurvey(!!survey);
+
+        if (!signature) {
+          setDeliveryPhase('signature');
+        } else if (!survey) {
+          setDeliveryPhase('survey');
+        } else {
+          setDeliveryPhase('completed');
+        }
+      } catch (error) {
+        console.error('Error checking delivery status:', error);
+      }
+    }
+  };
+
   const loadOrderNotes = async () => {
     try {
       const { data, error } = await supabase
@@ -196,6 +235,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       case 'pendiente': return 'bg-info/10 text-info border-info/20';
       case 'en_proceso': return 'bg-info/10 text-info border-info/20';
       case 'en_camino': return 'bg-info/10 text-info border-info/20';
+      case 'pendiente_entrega': return 'bg-orange/10 text-orange border-orange/20';
       case 'finalizada': return 'bg-success/10 text-success border-success/20';
       case 'cancelada': return 'bg-destructive/10 text-destructive border-destructive/20';
       default: return 'bg-muted/10 text-muted-foreground border-muted/20';
@@ -226,6 +266,38 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
     return <ClientOrderApproval order={order} onApprovalChange={() => setOrderStatus(order.status)} />;
+  }
+
+  // Si es cliente y la orden está pendiente de entrega, mostrar el flujo de entrega
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
+    if (deliveryPhase === 'signature' && !hasDeliverySignature) {
+      return (
+        <DeliverySignature
+          orderId={order.id}
+          clientName={order.clients?.name || ''}
+          onSignatureComplete={() => {
+            setHasDeliverySignature(true);
+            setDeliveryPhase('survey');
+            checkDeliveryStatus();
+          }}
+        />
+      );
+    }
+
+    if (deliveryPhase === 'survey' && !hasCompletedSurvey) {
+      return (
+        <SimpleSatisfactionSurvey
+          orderId={order.id}
+          clientId={user?.id || ''}
+          onComplete={() => {
+            setHasCompletedSurvey(true);
+            setDeliveryPhase('completed');
+            setOrderStatus('finalizada');
+            onUpdate();
+          }}
+        />
+      );
+    }
   }
 
   // Si se debe mostrar la encuesta, mostrarla en lugar del detalle

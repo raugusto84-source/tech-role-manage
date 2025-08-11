@@ -34,7 +34,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion';
+  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -294,6 +294,7 @@ export default function Orders() {
     pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
     en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
     en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
+    pendiente_entrega: filteredOrders.filter(order => order.status === 'pendiente_entrega'),
     finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
     cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
   };
@@ -304,6 +305,7 @@ export default function Orders() {
       case 'pendiente': return 'bg-info/10 text-info border-info/20';
       case 'en_camino': return 'bg-info/10 text-info border-info/20';
       case 'en_proceso': return 'bg-info/10 text-info border-info/20';
+      case 'pendiente_entrega': return 'bg-orange/10 text-orange border-orange/20';
       case 'finalizada': return 'bg-success/10 text-success border-success/20';
       case 'cancelada': return 'bg-destructive/10 text-destructive border-destructive/20';
       default: return 'bg-muted/10 text-muted-foreground border-border';
@@ -316,6 +318,7 @@ export default function Orders() {
       case 'pendiente': return 'Pendientes';
       case 'en_camino': return 'En Camino';
       case 'en_proceso': return 'En Proceso';
+      case 'pendiente_entrega': return 'Pendientes de Entrega';
       case 'finalizada': return 'Finalizadas';
       case 'cancelada': return 'Canceladas';
       default: return status;
@@ -442,6 +445,7 @@ export default function Orders() {
                     <SelectItem value="pendiente">Pendiente</SelectItem>
                     <SelectItem value="en_camino">En Camino</SelectItem>
                     <SelectItem value="en_proceso">En Proceso</SelectItem>
+                    <SelectItem value="pendiente_entrega">Pendiente de Entrega</SelectItem>
                     <SelectItem value="finalizada">Finalizada</SelectItem>
                     <SelectItem value="cancelada">Cancelada</SelectItem>
                   </SelectContent>
