@@ -65,6 +65,23 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadOrderItems();
     loadAssignedTechnician();
     updateOrderStatus();
+    
+    // Suscribirse a cambios en tiempo real en la orden
+    const channel = supabase
+      .channel('order-changes')
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` },
+        (payload) => {
+          if (payload.new.status !== orderStatus) {
+            setOrderStatus(payload.new.status);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [order.id]);
 
   // Verificar estado de encuesta cuando cambia el estado de la orden
@@ -199,8 +216,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       
       if (data && data.status !== orderStatus) {
         setOrderStatus(data.status);
-        // Llamar onUpdate solo cuando el estado cambie para refrescar la lista principal
-        onUpdate();
+        // NO llamar onUpdate() para evitar bucles infinitos
       }
     } catch (error) {
       console.error('Error updating order status:', error);
@@ -419,10 +435,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 canEdit={canUpdateStatus}
                 onItemUpdate={() => {
                   loadOrderItems();
-                  // Verificar estado con un pequeño delay para dar tiempo al trigger
-                  setTimeout(() => {
-                    updateOrderStatus();
-                  }, 2000);
+                  // El estado se actualizará automáticamente vía suscripción en tiempo real
                 }}
               />
             )}
