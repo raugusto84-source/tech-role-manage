@@ -572,8 +572,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
-        created_by: user?.id,
-        status: 'pendiente' as const
+        created_by: user?.id
+        // Estado por defecto será 'pendiente_aprobacion' desde la base de datos
       };
 
       const { data: orderResult, error: orderError } = await supabase
