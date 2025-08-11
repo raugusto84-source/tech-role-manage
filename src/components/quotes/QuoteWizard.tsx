@@ -183,6 +183,9 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     try {
       setLoading(true);
 
+      console.log('Creating quote with items:', quoteItems);
+      console.log('Total items count:', quoteItems.length);
+
       // Determinar el estado inicial basado en el rol del usuario
       const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'solicitud';
       
@@ -200,6 +203,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         assigned_to: (profile as any).user_id || undefined,
       };
 
+      console.log('Quote data:', quoteData);
+
       const { data: quoteResult, error: quoteError } = await supabase
         .from('quotes')
         .insert(quoteData as any)
@@ -207,6 +212,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         .single();
 
       if (quoteError) {
+        console.error('Quote creation error:', quoteError);
         toast({
           title: "Error",
           description: `Error al crear la cotización: ${quoteError.message}`,
@@ -215,8 +221,12 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         return;
       }
 
+      console.log('Quote created successfully:', quoteResult);
+
       // Insert quote items
       if (quoteItems.length > 0 && quoteResult) {
+        console.log('Preparing to insert quote items. Count:', quoteItems.length);
+        
         const itemsData = quoteItems.map(item => ({
           quote_id: quoteResult.id,
           service_type_id: item.service_type_id || null,
@@ -234,6 +244,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           is_custom: item.is_custom
         }));
 
+        console.log('Items data to insert:', itemsData);
+
         const { data: savedItems, error: itemsError } = await supabase
           .from('quote_items')
           .insert(itemsData)
@@ -241,32 +253,41 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
         if (itemsError) {
           console.error('Error creating quote items:', itemsError);
-          // Continue anyway as quote was created successfully
-        } else if (savedItems && quoteItems.some(item => item.taxes && item.taxes.length > 0)) {
-          // Save individual taxes for items that have them
-          const taxesData: any[] = [];
-          
-          quoteItems.forEach((item, index) => {
-            if (item.taxes && item.taxes.length > 0 && savedItems[index]) {
-              item.taxes.forEach(tax => {
-                taxesData.push({
-                  quote_item_id: savedItems[index].id,
-                  tax_type: tax.tax_type,
-                  tax_name: tax.tax_name,
-                  tax_rate: tax.tax_rate,
-                  tax_amount: tax.tax_amount
-                });
-              });
-            }
+          toast({
+            title: "Advertencia",
+            description: "La cotización se creó pero hubo un error al guardar los artículos",
+            variant: "destructive",
           });
+          // Continue anyway as quote was created successfully
+        } else {
+          console.log('Quote items inserted successfully:', savedItems);
+          
+          if (savedItems && quoteItems.some(item => item.taxes && item.taxes.length > 0)) {
+            // Save individual taxes for items that have them
+            const taxesData: any[] = [];
+            
+            quoteItems.forEach((item, index) => {
+              if (item.taxes && item.taxes.length > 0 && savedItems[index]) {
+                item.taxes.forEach(tax => {
+                  taxesData.push({
+                    quote_item_id: savedItems[index].id,
+                    tax_type: tax.tax_type,
+                    tax_name: tax.tax_name,
+                    tax_rate: tax.tax_rate,
+                    tax_amount: tax.tax_amount
+                  });
+                });
+              }
+            });
 
-          if (taxesData.length > 0) {
-            const { error: taxesError } = await supabase
-              .from('quote_item_taxes')
-              .insert(taxesData);
+            if (taxesData.length > 0) {
+              const { error: taxesError } = await supabase
+                .from('quote_item_taxes')
+                .insert(taxesData);
 
-            if (taxesError) {
-              console.error('Error creating quote item taxes:', taxesError);
+              if (taxesError) {
+                console.error('Error creating quote item taxes:', taxesError);
+              }
             }
           }
         }
