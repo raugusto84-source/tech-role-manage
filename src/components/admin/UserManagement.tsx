@@ -112,35 +112,47 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
 
   /**
    * Maneja la creación de un nuevo usuario
-   * Crea tanto el usuario de autenticación como el perfil
+   * Usa Edge Function para crear usuarios de forma segura
    */
   const handleCreateUser = async () => {
     try {
       setLoading(true);
 
-      // Crear usuario en auth.users
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: formData.email,
-        password: formData.password,
-        user_metadata: {
+      // Crear usuario usando Edge Function
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const response = await fetch('https://exunjybsermnxvrvyxnj.supabase.co/functions/v1/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
           full_name: formData.full_name,
+          phone: formData.phone,
           role: formData.role
-        }
+        })
       });
 
-      if (authError) throw authError;
+      const result = await response.json();
 
-      // El perfil se crea automáticamente por el trigger handle_new_user
-      // Esperamos un momento y recargamos
-      setTimeout(() => {
-        loadUsers();
-        resetForm();
-        setIsDialogOpen(false);
-        toast({
-          title: 'Usuario creado',
-          description: `Usuario ${formData.full_name} creado exitosamente`
-        });
-      }, 1000);
+      if (!result.success) {
+        throw new Error(result.error || 'Error al crear usuario');
+      }
+
+      // Recargar usuarios y mostrar éxito
+      loadUsers();
+      resetForm();
+      setIsDialogOpen(false);
+      toast({
+        title: 'Usuario creado',
+        description: `Usuario ${formData.full_name} creado exitosamente`
+      });
 
     } catch (error: any) {
       console.error('Error creating user:', error);
