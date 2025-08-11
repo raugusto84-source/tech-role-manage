@@ -486,31 +486,23 @@ export async function calculateTechnicianActiveWorkload(
       return 0;
     }
 
-    // Calcular todas las horas de órdenes activas secuencialmente
-    // Ya no hay tiempo compartido - cada orden se programa después de la anterior
+    // Calcular el tiempo total secuencial - cada orden reserva su tiempo completo
     let totalActiveHours = 0;
 
     activeOrders?.forEach(order => {
-      order.order_items?.forEach((item: any) => {
-        const hrs = item.estimated_hours || 0;
-        const qty = item.quantity || 1;
-        const isShared = item.service_types?.shared_time || false;
-        
-        if (isShared) {
-          // Para servicios con shared_time, aplicar la lógica de tiempo compartido solo dentro de la misma orden
-          totalActiveHours += calculateSharedTimeHours([{
-            id: item.service_type_id || '',
-            estimated_hours: hrs,
-            quantity: qty,
-            shared_time: true,
-            status: 'pendiente',
-            service_type_id: item.service_type_id || ''
-          }]);
-        } else {
-          // Para servicios normales, sumar todas las horas
-          totalActiveHours += hrs * qty;
-        }
-      });
+      // Calcular horas efectivas por orden (con tiempo compartido dentro de la orden)
+      const orderItems = order.order_items?.map((item: any) => ({
+        id: item.service_type_id || '',
+        estimated_hours: item.estimated_hours || 0,
+        quantity: item.quantity || 1,
+        shared_time: item.service_types?.shared_time || false,
+        status: 'pendiente' as const,
+        service_type_id: item.service_type_id || ''
+      })) || [];
+
+      // Cada orden reserva su tiempo completo calculado con shared_time interno
+      const orderEffectiveHours = calculateSharedTimeHours(orderItems);
+      totalActiveHours += orderEffectiveHours;
     });
     
     return Math.max(0, totalActiveHours);
