@@ -75,7 +75,9 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           </CardTitle>
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(order.status)}>
-              {order.status.replace('_', ' ').toUpperCase()}
+              {order.status === 'pendiente_aprobacion' 
+                ? 'PENDIENTE APROBACIÓN' 
+                : order.status.replace('_', ' ').toUpperCase()}
             </Badge>
             {canDelete && (
               <Button

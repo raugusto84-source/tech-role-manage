@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, AlertCircle, FileText, Calendar, User } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, Calendar, User, PenTool, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import SignatureCanvas from "react-signature-canvas";
 
 interface ClientOrderApprovalProps {
   order: {
@@ -37,9 +38,47 @@ interface ClientOrderApprovalProps {
 export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderApprovalProps) {
   const [approving, setApproving] = useState(false);
   const [approvalNotes, setApprovalNotes] = useState("");
+  const [showSignature, setShowSignature] = useState(false);
+  const [signatureData, setSignatureData] = useState<string>("");
+  const signatureRef = useRef<SignatureCanvas>(null);
   const { toast } = useToast();
 
+  const handleSignatureConfirm = () => {
+    if (signatureRef.current?.isEmpty()) {
+      toast({
+        title: "Firma requerida",
+        description: "Por favor, firma en el área designada para continuar.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const signatureDataURL = signatureRef.current?.toDataURL();
+    setSignatureData(signatureDataURL || "");
+    setShowSignature(false);
+    
+    toast({
+      title: "Firma capturada",
+      description: "Firma registrada correctamente. Ahora puedes aprobar la orden.",
+      variant: "default"
+    });
+  };
+
+  const clearSignature = () => {
+    signatureRef.current?.clear();
+  };
+
   const handleApproval = async () => {
+    if (!signatureData) {
+      toast({
+        title: "Firma requerida",
+        description: "Debes firmar antes de aprobar la orden.",
+        variant: "destructive"
+      });
+      setShowSignature(true);
+      return;
+    }
+
     setApproving(true);
     try {
       const { error } = await supabase
@@ -47,6 +86,7 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         .update({
           client_approval: true,
           client_approval_notes: approvalNotes || "Orden aprobada sin comentarios adicionales",
+          initial_signature_url: signatureData
         })
         .eq("id", order.id);
 
@@ -142,16 +182,66 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
 
           {/* Estado de aprobación */}
           {isPendingApproval && (
-            <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
-              <h4 className="font-medium text-warning mb-2">
-                ⚠️ Esta orden requiere tu aprobación
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-6">
+              <h4 className="font-bold text-warning mb-3 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                ⚠️ Esta orden requiere tu firma y aprobación
               </h4>
-              <p className="text-sm text-muted-foreground mb-4">
-                Por favor revisa los detalles del servicio y confirma que estás de acuerdo con proceder. 
-                Una vez aprobada, nuestros técnicos comenzarán a trabajar en tu solicitud.
-              </p>
+              <div className="bg-white rounded-lg p-4 mb-4 border">
+                <p className="text-sm text-muted-foreground mb-2">
+                  <strong>Importante:</strong> Al firmar y aprobar esta orden, confirmas que:
+                </p>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1 mb-3">
+                  <li>Has revisado y aceptas los servicios descritos</li>
+                  <li>Autorizas el costo estimado mostrado</li>
+                  <li>Permites que nuestros técnicos inicien el trabajo</li>
+                  <li>Entiendes que el trabajo comenzará una vez aprobado</li>
+                </ul>
+              </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {/* Área de firma */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <PenTool className="h-4 w-4" />
+                      Firma digital requerida
+                    </label>
+                    {signatureData && (
+                      <div className="flex items-center gap-2 text-success text-sm">
+                        <CheckCircle className="h-4 w-4" />
+                        Firma capturada
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!signatureData ? (
+                    <Button 
+                      onClick={() => setShowSignature(true)}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      <PenTool className="h-4 w-4 mr-2" />
+                      Hacer clic para firmar
+                    </Button>
+                  ) : (
+                    <div className="border rounded-lg p-3 bg-success/5 border-success/20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-success">✓ Firma registrada correctamente</span>
+                        <Button 
+                          onClick={() => setShowSignature(true)}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Cambiar firma
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Comentarios adicionales */}
                 <div>
                   <label className="text-sm font-medium">Comentarios adicionales (opcional)</label>
                   <Textarea
@@ -163,13 +253,14 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
                   />
                 </div>
                 
+                {/* Botón de aprobación */}
                 <Button 
                   onClick={handleApproval}
-                  disabled={approving}
+                  disabled={approving || !signatureData}
                   className="w-full"
                   size="lg"
                 >
-                  {approving ? "Aprobando..." : "✓ Aprobar Orden"}
+                  {approving ? "Aprobando..." : "✓ Firmar y Aprobar Orden"}
                 </Button>
               </div>
             </div>
@@ -194,6 +285,62 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
           )}
         </CardContent>
       </Card>
+
+      {/* Modal de firma digital */}
+      {showSignature && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PenTool className="h-5 w-5" />
+                Firma Digital
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Firma en el área blanca de abajo para aprobar la orden
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-2 bg-white">
+                <SignatureCanvas
+                  ref={signatureRef}
+                  canvasProps={{
+                    width: 400,
+                    height: 200,
+                    className: 'signature-canvas w-full'
+                  }}
+                  backgroundColor="white"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={clearSignature}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Limpiar
+                </Button>
+                <Button 
+                  onClick={handleSignatureConfirm}
+                  className="flex-1"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Confirmar Firma
+                </Button>
+              </div>
+              
+              <Button 
+                onClick={() => setShowSignature(false)}
+                variant="ghost"
+                className="w-full"
+              >
+                Cancelar
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

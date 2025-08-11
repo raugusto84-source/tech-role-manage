@@ -294,10 +294,17 @@ export default function ClientDashboard() {
               <p className="text-muted-foreground">Aún no tienes órdenes</p>
             ) : (
               orders.map((o) => (
-                <div key={o.id} className="flex items-start justify-between rounded-lg border p-3">
+                <div key={o.id} className={`flex items-start justify-between rounded-lg border p-3 ${
+                  o.status === 'pendiente_aprobacion' ? 'bg-warning/5 border-warning/20' : ''
+                }`}>
                   <div>
                     <p className="font-medium">{o.order_number}</p>
                     <p className="text-sm text-muted-foreground line-clamp-2">{o.failure_description || "Sin descripción"}</p>
+                    {o.status === 'pendiente_aprobacion' && (
+                      <p className="text-xs text-warning font-medium mt-1">
+                        ⚠️ Requiere tu firma y aprobación
+                      </p>
+                    )}
                     {o.technician_profile && (
                       <div className="text-xs text-primary font-medium mt-1">
                         Técnico: {o.technician_profile.full_name}
