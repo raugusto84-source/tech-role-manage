@@ -3789,6 +3789,7 @@ export type Database = {
         | "finalizada"
         | "cancelada"
         | "en_camino"
+        | "pendiente_aprobacion"
       quote_status:
         | "solicitud"
         | "enviada"
@@ -3988,6 +3989,7 @@ export const Constants = {
         "finalizada",
         "cancelada",
         "en_camino",
+        "pendiente_aprobacion",
       ],
       quote_status: [
         "solicitud",
