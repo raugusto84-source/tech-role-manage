@@ -585,8 +585,6 @@ export default function Finance() {
   const handleRevertIncome = async (row: any) => {
     if (!isAdmin) return;
     try {
-      const today = new Date().toISOString().substring(0,10);
-      
       // First, check if this income is related to any order payments and remove them
       // This will make the orders appear back in pending collections
       const { data: relatedPayments, error: paymentsQueryError } = await supabase
@@ -606,18 +604,7 @@ export default function Finance() {
         if (deletePaymentsError) throw deletePaymentsError;
       }
       
-      // Create expense to counteract the income
-      const { error: insErr } = await supabase.from('expenses').insert({
-        amount: row.amount,
-        description: `Reverso ingreso ${row.income_number ?? ''} - ${row.description ?? ''}`.trim(),
-        category: 'reverso',
-        account_type: row.account_type,
-        payment_method: row.payment_method ?? null,
-        expense_date: today,
-      } as any);
-      if (insErr) throw insErr;
-      
-      // Log the reversal operation
+      // Log the reversal operation before deleting
       await logFinancialOperation(
         'reverse',
         'incomes',
@@ -629,7 +616,7 @@ export default function Finance() {
         row.income_date
       );
 
-      // Delete the original income
+      // Delete the original income (no expense counterpart needed)
       const { error: delErr } = await supabase.from('incomes').delete().eq('id', row.id);
       if (delErr) throw delErr;
       
