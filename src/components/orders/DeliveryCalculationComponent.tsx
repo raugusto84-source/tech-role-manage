@@ -40,9 +40,14 @@ export function DeliveryCalculationDisplay({
   const primarySchedule = technicianSchedules[technicianId] || defaultSchedule;
 
   // Obtener el horario del técnico de apoyo si existe
-  const supportSchedule = supportTechnicianId 
+  console.log('Support technician ID:', supportTechnicianId);
+  console.log('Available schedules:', Object.keys(technicianSchedules));
+  
+  const supportSchedule = supportTechnicianId && supportTechnicianId !== 'none'
     ? technicianSchedules[supportTechnicianId] || defaultSchedule
     : undefined;
+    
+  console.log('Support schedule:', supportSchedule ? 'FOUND' : 'NOT FOUND');
 
   // Usar el hook para calcular la carga de trabajo y fecha de entrega
   const { workload, deliveryCalculation, loading, error } = useWorkloadCalculation({

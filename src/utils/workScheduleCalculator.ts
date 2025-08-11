@@ -117,8 +117,12 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   
   // Si hay técnico de apoyo, aplicar reducción del 30% en el tiempo total
   let effectiveWorkingHours = effectiveHours;
+  console.log('Support technician schedule:', supportTechnicianSchedule ? 'EXISTS' : 'NONE');
+  console.log('Original hours:', effectiveHours);
+  
   if (supportTechnicianSchedule) {
     effectiveWorkingHours = effectiveHours * 0.7; // Reducción del 30%
+    console.log('Support technician detected! Reduced hours:', effectiveWorkingHours);
   }
 
   const totalHoursPerDay = primaryHoursPerDay;
