@@ -258,25 +258,61 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         return;
       }
 
-      // Crear la orden
+      // Crear la orden primero
       const orderData = {
         client_id: clientData.id,
         service_type: serviceTypes[0].id,
         failure_description: quote.service_description,
-        estimated_cost: quote.estimated_amount,
-        delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 días después
+        estimated_cost: total, // Usar el total calculado de los items
+        delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         created_by: profile?.user_id,
-        status: 'pendiente',
+        status: 'pendiente_aprobacion', // Requiere aprobación del cliente primero
+        client_approval: null
       };
 
-      const { error: orderError } = await supabase
+      const { data: orderResult, error: orderError } = await supabase
         .from('orders')
-        .insert(orderData as any);
+        .insert(orderData as any)
+        .select('id')
+        .single();
 
       if (orderError) {
         toast({
           title: "Error",
           description: `Error al crear orden: ${orderError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Crear los items de la orden basados en los items de la cotización
+      const orderItems = quoteItems.map(item => ({
+        order_id: orderResult.id,
+        service_type_id: item.service_type_id || null,
+        service_name: item.name,
+        service_description: item.description || '',
+        quantity: item.quantity,
+        unit_cost_price: item.unit_price,
+        unit_base_price: item.unit_price,
+        profit_margin_rate: 0,
+        subtotal: item.subtotal,
+        vat_rate: item.vat_rate,
+        vat_amount: item.vat_amount,
+        total_amount: item.total,
+        item_type: item.is_custom ? 'articulo' : 'servicio',
+        status: 'pendiente' as const
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        // Si fallan los items, eliminar la orden creada
+        await supabase.from('orders').delete().eq('id', orderResult.id);
+        toast({
+          title: "Error",
+          description: `Error al crear items de la orden: ${itemsError.message}`,
           variant: "destructive",
         });
         return;
@@ -292,8 +328,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         .eq('id', quote.id);
 
       toast({
-        title: "Orden creada",
-        description: "La cotización ha sido convertida a orden de trabajo exitosamente",
+        title: "Orden creada exitosamente",
+        description: `Se ha creado la orden con todos los servicios y costos de la cotización. Total: ${formatCurrency(total)}`,
       });
 
       onQuoteUpdated();
