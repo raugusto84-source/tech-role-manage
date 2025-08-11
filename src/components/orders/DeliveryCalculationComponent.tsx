@@ -112,7 +112,7 @@ export function DeliveryCalculationDisplay({
       
       {supportTechnicianId && (
         <p className="text-purple-600 font-medium">
-          ⚡ Tiempo reducido 20% con técnico de apoyo
+          ⚡ Tiempo reducido 30% con técnico de apoyo
         </p>
       )}
       
