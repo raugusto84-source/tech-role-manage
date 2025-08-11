@@ -99,16 +99,23 @@ export default function Finance() {
     }
   });
 
-  // Query para gastos fiscales pendientes de retiro
-  const fiscalExpensesQuery = useQuery({
-    queryKey: ["fiscal_expenses_pending"],
+  // Query para retiros fiscales vinculados a órdenes
+  const fiscalWithdrawalsQuery = useQuery({
+    queryKey: ["fiscal_withdrawals"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("expenses")
-        .select("id,expense_number,description,amount,expense_date,withdrawal_status,account_type")
-        .eq("account_type", "fiscal")
-        .eq("withdrawal_status", "pendiente")
-        .order("expense_date", { ascending: false });
+        .from("fiscal_withdrawals")
+        .select(`
+          id,
+          amount,
+          description,
+          withdrawal_status,
+          created_at,
+          withdrawn_at,
+          order_id,
+          orders(order_number, client_id, clients(name))
+        `)
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     }
@@ -253,8 +260,7 @@ export default function Finance() {
   const [tempAmount, setTempAmount] = useState("");
   const [tempVatRate, setTempVatRate] = useState("16");
   
-  // Estados para gastos fiscales seleccionados
-  const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
+  // Estados removidos - ya no se necesitan gastos fiscales seleccionados
   
   // Estados para el diálogo de cobro
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
@@ -653,36 +659,23 @@ export default function Finance() {
     return amount + calculateVat(amount, rate);
   };
 
-  // Funciones para retiro de gastos fiscales
-  const handleExpenseSelection = (expenseId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedExpenses(prev => [...prev, expenseId]);
-    } else {
-      setSelectedExpenses(prev => prev.filter(id => id !== expenseId));
-    }
-  };
+  // Funciones para retiro de gastos fiscales - removidas
 
-  const withdrawSelectedExpenses = async () => {
-    if (selectedExpenses.length === 0) {
-      toast({ title: "Error", description: "Selecciona al menos un gasto", variant: "destructive" });
-      return;
-    }
+  const withdrawFiscalAmount = async (withdrawalId: string) => {
     try {
       const { error } = await supabase
-        .from("expenses")
+        .from("fiscal_withdrawals")
         .update({
-          withdrawal_status: "retirado",
+          withdrawal_status: "withdrawn",
           withdrawn_at: new Date().toISOString(),
           withdrawn_by: profile?.user_id
         })
-        .in("id", selectedExpenses);
+        .eq("id", withdrawalId);
       if (error) throw error;
-      toast({ title: `${selectedExpenses.length} gastos marcados como retirados` });
-      setSelectedExpenses([]);
-      fiscalExpensesQuery.refetch();
-      expensesQuery.refetch();
+      toast({ title: "Retiro realizado exitosamente" });
+      fiscalWithdrawalsQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible retirar", variant: "destructive" });
+      toast({ title: "Error", description: e?.message || "No fue posible realizar el retiro", variant: "destructive" });
     }
   };
 
@@ -1380,87 +1373,75 @@ export default function Finance() {
           <Card>
             <CardHeader>
               <CardTitle>Retiro de Gastos Fiscales</CardTitle>
-              <p className="text-sm text-muted-foreground">Gastos fiscales pendientes de retiro de la cuenta</p>
+              <p className="text-sm text-muted-foreground">Retiros disponibles de ingresos fiscales vinculados a órdenes</p>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3 mb-4">
-                <Button 
-                  onClick={withdrawSelectedExpenses} 
-                  disabled={selectedExpenses.length === 0}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  Retirar Seleccionados ({selectedExpenses.length})
-                </Button>
-                <Button variant="outline" onClick={() => setSelectedExpenses([])}>
-                  Limpiar Selección
-                </Button>
-              </div>
-              
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Seleccionar</TableHead>
-                      <TableHead>#</TableHead>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Orden</TableHead>
+                      <TableHead>Cliente</TableHead>
                       <TableHead>Descripción</TableHead>
-                      <TableHead>Monto</TableHead>
+                      <TableHead>Monto Disponible</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead>Fecha Creación</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fiscalExpensesQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
+                    {fiscalWithdrawalsQuery.isLoading && (
+                      <TableRow><TableCell colSpan={7}>Cargando retiros fiscales...</TableCell></TableRow>
                     )}
-                    {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
-                      <TableRow key={expense.id}>
+                    {!fiscalWithdrawalsQuery.isLoading && (fiscalWithdrawalsQuery.data ?? []).map((withdrawal: any) => (
+                      <TableRow 
+                        key={withdrawal.id}
+                        className={withdrawal.withdrawal_status === 'withdrawn' ? 'bg-red-50' : 'bg-green-50'}
+                      >
                         <TableCell>
-                          <Checkbox 
-                            checked={selectedExpenses.includes(expense.id)}
-                            onCheckedChange={(checked) => handleExpenseSelection(expense.id, !!checked)}
-                          />
+                          {withdrawal.orders?.order_number || 'N/A'}
                         </TableCell>
-                        <TableCell>{expense.expense_number}</TableCell>
-                        <TableCell>{expense.expense_date}</TableCell>
-                        <TableCell className="max-w-[300px] truncate" title={expense.description}>
-                          {expense.description}
-                        </TableCell>
-                        <TableCell>{Number(expense.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-warning text-warning-foreground">
-                            Pendiente
+                          {withdrawal.orders?.clients?.name || 'N/A'}
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
+                          {withdrawal.description}
+                        </TableCell>
+                        <TableCell>
+                          {Number(withdrawal.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                            withdrawal.withdrawal_status === 'withdrawn' 
+                              ? 'bg-red-100 text-red-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {withdrawal.withdrawal_status === 'withdrawn' ? 'Retirado' : 'Disponible'}
                           </span>
                         </TableCell>
                         <TableCell>
-                          {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Eliminar egreso?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta acción no se puede revertir. El egreso será eliminado permanentemente.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteExpense(expense.id)}>
-                                    Eliminar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                          {new Date(withdrawal.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          {withdrawal.withdrawal_status === 'available' && isAdmin && (
+                            <Button
+                              size="sm"
+                              onClick={() => withdrawFiscalAmount(withdrawal.id)}
+                              className="bg-orange-600 hover:bg-orange-700 text-white"
+                            >
+                              Retirar
+                            </Button>
+                          )}
+                          {withdrawal.withdrawal_status === 'withdrawn' && withdrawal.withdrawn_at && (
+                            <span className="text-xs text-muted-foreground">
+                              Retirado: {new Date(withdrawal.withdrawn_at).toLocaleDateString()}
+                            </span>
                           )}
                         </TableCell>
                       </TableRow>
                     ))}
-                    {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>No hay gastos fiscales pendientes de retiro.</TableCell></TableRow>
+                    {!fiscalWithdrawalsQuery.isLoading && (fiscalWithdrawalsQuery.data ?? []).length === 0 && (
+                      <TableRow><TableCell colSpan={7}>No hay retiros fiscales disponibles.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
