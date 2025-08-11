@@ -562,7 +562,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
       
-      // Crear la orden principal
+      // Crear la orden principal - explicitly set correct status
       const orderData = {
         client_id: formData.client_id,
         service_type: orderItems[0].service_type_id,
@@ -572,9 +572,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
-        created_by: user?.id
-        // Estado por defecto será 'pendiente_aprobacion' desde la base de datos
+        created_by: user?.id,
+        status: 'pendiente_aprobacion' as const // Explicitly set the correct enum value
       };
+
+      console.log('Creating order with data:', orderData);
 
       const { data: orderResult, error: orderError } = await supabase
         .from('orders')
