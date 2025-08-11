@@ -52,21 +52,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [status, setStatus] = useState(order.status);
-  const [notes, setNotes] = useState('');
   const [orderNotes, setOrderNotes] = useState<any[]>([]);
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
   const [surveyData, setSurveyData] = useState<any>(null);
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [orderStatus, setOrderStatus] = useState(order.status);
 
   useEffect(() => {
     loadOrderNotes();
     loadOrderItems();
     checkSurveyStatus();
     loadAssignedTechnician();
+    updateOrderStatus();
   }, [order.id]);
 
   const loadAssignedTechnician = async () => {
@@ -97,7 +96,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   };
 
   const checkSurveyStatus = async () => {
-    if (profile?.role === 'cliente' && order.status === 'finalizada') {
+    if (profile?.role === 'cliente' && orderStatus === 'finalizada') {
       const { data } = await supabase
         .from('order_satisfaction_surveys')
         .select('*')
@@ -169,10 +168,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                           (profile?.role === 'tecnico' && order.assigned_technician === user?.id);
 
   const isClient = profile?.role === 'cliente';
-  const canSeeSurvey = isClient && order.status === 'finalizada' && !surveyCompleted;
+  const canSeeSurvey = isClient && orderStatus === 'finalizada' && !surveyCompleted;
   
   // Check if service was completed before estimated time
-  const isEarlyCompletion = order.status === 'finalizada' && 
+  const isEarlyCompletion = orderStatus === 'finalizada' && 
     order.average_service_time && 
     order.delivery_date && 
     order.created_at && (() => {
@@ -182,40 +181,23 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return actualDurationHours < order.average_service_time;
     })();
 
-  const handleSave = async () => {
-    setLoading(true);
+  const updateOrderStatus = async () => {
     try {
-      const updateData: any = {};
+      const { data, error } = await supabase
+        .from('orders')
+        .select('status')
+        .eq('id', order.id)
+        .single();
+
+      if (error) throw error;
       
-      if (status !== order.status) {
-        updateData.status = status;
-      }
-
-      if (Object.keys(updateData).length > 0) {
-        const { error } = await supabase
-          .from('orders')
-          .update(updateData)
-          .eq('id', order.id);
-
-        if (error) throw error;
-
-        toast({
-          title: "Orden actualizada",
-          description: "Los cambios se han guardado exitosamente",
-        });
-
+      if (data && data.status !== orderStatus) {
+        setOrderStatus(data.status);
+        // Recargar los datos si el estado cambió
         onUpdate();
-        setIsEditing(false);
       }
     } catch (error) {
-      console.error('Error updating order:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron guardar los cambios",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      console.error('Error updating order status:', error);
     }
   };
 
@@ -251,8 +233,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           </div>
           
           <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(order.status)} variant="outline">
-              {order.status.replace('_', ' ').toUpperCase()}
+            <Badge className={getStatusColor(orderStatus)} variant="outline">
+              {orderStatus.replace('_', ' ').toUpperCase()}
             </Badge>
             
             {canSeeSurvey && (
@@ -273,29 +255,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               </div>
             )}
             
-            {canEdit && (
-              <Button 
-                variant={isEditing ? "default" : "outline"} 
-                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-                disabled={loading}
-              >
-                {isEditing ? (
-                  <>
-                    {loading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    ) : (
-                      <Save className="h-4 w-4 mr-2" />
-                    )}
-                    Guardar
-                  </>
-                ) : (
-                  <>
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
-                  </>
-                )}
-              </Button>
-            )}
           </div>
         </div>
 
@@ -452,7 +411,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               <OrderServicesList 
                 orderItems={orderItems} 
                 canEdit={canUpdateStatus}
-                onItemUpdate={loadOrderItems}
+                onItemUpdate={() => {
+                  loadOrderItems();
+                  setTimeout(updateOrderStatus, 1000); // Verificar estado después de un segundo
+                }}
               />
             )}
 
@@ -493,29 +455,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {isEditing && canUpdateStatus ? (
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Estado</Label>
-                    <Select value={status} onValueChange={(value) => setStatus(value as typeof status)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
-                        <SelectItem value="en_proceso">En Proceso</SelectItem>
-                        <SelectItem value="finalizada">Finalizada</SelectItem>
-                        <SelectItem value="cancelada">Cancelada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div>
-                    <Label className="text-sm font-medium text-muted-foreground">Estado Actual</Label>
-                    <Badge className={getStatusColor(order.status)} variant="outline">
-                      {order.status.replace('_', ' ').toUpperCase()}
-                    </Badge>
-                  </div>
-                )}
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Estado Actual</Label>
+                  <Badge className={getStatusColor(orderStatus)} variant="outline">
+                    {orderStatus.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                </div>
 
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Fecha Creada</Label>
@@ -578,26 +523,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               </CardHeader>
               <CardContent>
                 {/* Se deshabilita cuando la orden NO está activa (finalizada/cancelada) */}
-                <OrderChat orderId={order.id} disabled={!['pendiente','en_proceso'].includes(order.status)} />
+                <OrderChat orderId={order.id} disabled={!['pendiente','en_proceso'].includes(orderStatus)} />
               </CardContent>
             </Card>
 
-            {/* Notas (si está editando) */}
-            {isEditing && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Notas Adicionales</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Agregar notas sobre la orden..."
-                    rows={4}
-                  />
-                </CardContent>
-              </Card>
-            )}
 
             {/* Comentarios de la orden */}
             {orderNotes.length > 0 && (
