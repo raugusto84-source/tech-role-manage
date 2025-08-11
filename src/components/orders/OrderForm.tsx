@@ -19,7 +19,7 @@ import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
 import { DeliveryCalculationComponent } from '@/components/orders/DeliveryCalculationComponent';
-import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, calculateAdvancedDeliveryDateWithWorkload } from '@/utils/workScheduleCalculator';
+import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, calculateAdvancedDeliveryDateWithWorkload, registerTechnicianWorkload } from '@/utils/workScheduleCalculator';
 
 interface ServiceType {
   id: string;
@@ -527,6 +527,21 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         // Si falla crear los items, eliminar la orden
         await supabase.from('orders').delete().eq('id', orderResult.id);
         throw itemsError;
+      }
+      
+      // Registrar workload del técnico
+      if (formData.assigned_technician && orderResult) {
+        await registerTechnicianWorkload(
+          formData.assigned_technician,
+          orderResult.id,
+          orderItems.map(item => ({
+            id: item.id,
+            estimated_hours: item.estimated_hours || 0,
+            shared_time: item.shared_time || false,
+            service_type_id: item.service_type_id,
+            quantity: item.quantity || 1
+          }))
+        );
       }
 
       toast({

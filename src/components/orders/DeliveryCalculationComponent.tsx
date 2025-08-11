@@ -25,6 +25,8 @@ export function DeliveryCalculationComponent({
     time: string;
     hours: number;
     breakdown: string;
+    canUseSharedTime?: boolean;
+    sharedServicesCount?: number;
   } | null>(null);
   
   const [isCalculating, setIsCalculating] = useState(false);
@@ -57,7 +59,7 @@ export function DeliveryCalculationComponent({
         }
 
         // Calcular fecha de entrega con carga activa del técnico
-        const { deliveryDate, deliveryTime, effectiveHours, breakdown } = await calculateAdvancedDeliveryDateWithWorkload({
+        const { deliveryDate, deliveryTime, effectiveHours, breakdown, canUseSharedTime, sharedServicesCount } = await calculateAdvancedDeliveryDateWithWorkload({
           orderItems: orderItems.map(item => ({
             id: item.id,
             estimated_hours: item.estimated_hours || 0,
@@ -82,7 +84,9 @@ export function DeliveryCalculationComponent({
           formattedDate: deliveryDate.toLocaleDateString('es-ES'),
           time: deliveryTime,
           hours: effectiveHours,
-          breakdown: breakdown || `${effectiveHours}h efectivas`
+          breakdown: breakdown || `${effectiveHours}h efectivas`,
+          canUseSharedTime,
+          sharedServicesCount
         });
 
       } catch (error) {
@@ -124,6 +128,16 @@ export function DeliveryCalculationComponent({
       {formData.assigned_technician && (
         <p className="text-xs text-muted-foreground">
           ✅ Incluye órdenes activas del técnico
+        </p>
+      )}
+      {deliveryInfo.canUseSharedTime === false && (
+        <p className="text-xs text-amber-600">
+          ⚠️ Límite de servicios compartidos alcanzado ({deliveryInfo.sharedServicesCount}/3)
+        </p>
+      )}
+      {deliveryInfo.canUseSharedTime === true && deliveryInfo.sharedServicesCount !== undefined && (
+        <p className="text-xs text-green-600">
+          🔄 Servicios compartidos: {deliveryInfo.sharedServicesCount}/3
         </p>
       )}
     </div>

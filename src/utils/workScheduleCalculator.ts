@@ -522,6 +522,81 @@ export async function calculateTechnicianActiveWorkload(
 }
 
 /**
+ * Verificar si un técnico puede tomar más servicios compartidos (máximo 3)
+ */
+export async function canTechnicianTakeSharedServices(technicianId: string): Promise<{
+  canTake: boolean;
+  activeSharedServices: number;
+  reason?: string;
+}> {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const { data: activeSharedServices, error } = await supabase
+      .from('technician_workload')
+      .select('id')
+      .eq('technician_id', technicianId)
+      .eq('status', 'active')
+      .eq('is_shared_service', true);
+
+    if (error) {
+      console.error('Error checking shared services:', error);
+      return { canTake: true, activeSharedServices: 0 };
+    }
+
+    const count = activeSharedServices?.length || 0;
+    
+    if (count >= 3) {
+      return {
+        canTake: false,
+        activeSharedServices: count,
+        reason: `El técnico ya tiene ${count} servicios compartidos activos (máximo 3)`
+      };
+    }
+
+    return {
+      canTake: true,
+      activeSharedServices: count
+    };
+  } catch (error) {
+    console.error('Error checking technician shared services capacity:', error);
+    return { canTake: true, activeSharedServices: 0 };
+  }
+}
+
+/**
+ * Registrar workload del técnico al crear una orden
+ */
+export async function registerTechnicianWorkload(
+  technicianId: string,
+  orderId: string,
+  orderItems: OrderItem[]
+): Promise<void> {
+  try {
+    const { supabase } = await import('@/integrations/supabase/client');
+    
+    const workloadEntries = orderItems.map(item => ({
+      technician_id: technicianId,
+      order_id: orderId,
+      service_type_id: item.service_type_id || '',
+      is_shared_service: item.shared_time || false,
+      estimated_hours: item.estimated_hours || 0,
+      status: 'active'
+    }));
+
+    const { error } = await supabase
+      .from('technician_workload')
+      .insert(workloadEntries);
+
+    if (error) {
+      console.error('Error registering technician workload:', error);
+    }
+  } catch (error) {
+    console.error('Error in registerTechnicianWorkload:', error);
+  }
+}
+
+/**
  * Función para calcular fecha de entrega considerando órdenes secuenciales
  * Cada nueva orden se programa después de las órdenes existentes
  */
@@ -530,13 +605,37 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
   deliveryTime: string; 
   breakdown: string;
   effectiveHours: number;
+  canUseSharedTime?: boolean;
+  sharedServicesCount?: number;
 }> {
   const { technicianId, ...baseParams } = params;
   
   let currentWorkload = baseParams.currentWorkload || 0;
+  let canUseSharedTime = true;
+  let sharedServicesCount = 0;
   
-  // Calcular las horas efectivas de la nueva orden (aplicando tiempo compartido solo dentro de esta orden)
-  let effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
+  // Verificar si el técnico puede usar tiempo compartido
+  if (technicianId) {
+    const sharedCheck = await canTechnicianTakeSharedServices(technicianId);
+    canUseSharedTime = sharedCheck.canTake;
+    sharedServicesCount = sharedCheck.activeSharedServices;
+    
+    // Si no puede usar tiempo compartido, recalcular sin shared_time
+    if (!canUseSharedTime) {
+      console.log(`Técnico ${technicianId} ha alcanzado el límite de servicios compartidos (${sharedServicesCount}/3)`);
+    }
+  }
+  
+  // Calcular las horas efectivas considerando si puede usar tiempo compartido
+  let effectiveHoursOverride: number;
+  if (canUseSharedTime) {
+    effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
+  } else {
+    // Sin tiempo compartido: sumar todas las horas normalmente
+    effectiveHoursOverride = baseParams.orderItems.reduce((total, item) => {
+      return total + ((item.estimated_hours || 0) * (item.quantity || 1));
+    }, 0);
+  }
   
   if (technicianId) {
     try {
@@ -549,9 +648,15 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
     }
   }
 
-  return calculateAdvancedDeliveryDate({
+  const result = calculateAdvancedDeliveryDate({
     ...baseParams,
     currentWorkload,
     effectiveHoursOverride
   });
+
+  return {
+    ...result,
+    canUseSharedTime,
+    sharedServicesCount
+  };
 }
