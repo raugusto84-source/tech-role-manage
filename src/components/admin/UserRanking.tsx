@@ -263,7 +263,7 @@ export function UserRanking({
     return Array.from({ length: 5 }, (_, i) => (
       <Star 
         key={i} 
-        className={`h-4 w-4 ${i < Math.round(rating) ? 'text-warning fill-warning' : 'text-muted-foreground'}`} 
+        className={`h-4 w-4 ${i < Math.round(rating) ? 'text-green-500 fill-green-500' : 'text-muted-foreground'}`} 
       />
     ));
   };
