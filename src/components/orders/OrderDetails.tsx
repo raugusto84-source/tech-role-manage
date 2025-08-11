@@ -63,10 +63,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   useEffect(() => {
     loadOrderNotes();
     loadOrderItems();
-    checkSurveyStatus();
     loadAssignedTechnician();
     updateOrderStatus();
   }, [order.id]);
+
+  // Verificar estado de encuesta cuando cambia el estado de la orden
+  useEffect(() => {
+    checkSurveyStatus();
+  }, [orderStatus, profile?.role, user?.id]);
 
   const loadAssignedTechnician = async () => {
     if (order.assigned_technician) {
@@ -107,8 +111,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       setSurveyCompleted(!!data);
       setSurveyData(data);
       
-      // NO mostrar automáticamente la encuesta, solo marcar si existe
-      setShowSurvey(false);
+      // Mostrar automáticamente la encuesta si no existe y la orden está finalizada
+      if (!data && orderStatus === 'finalizada') {
+        setShowSurvey(true);
+      }
     }
   };
 
