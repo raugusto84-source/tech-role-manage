@@ -86,8 +86,8 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 
       toast({
         title: "Cobro registrado",
-        description: `Se registró el pago por ${finalAmount.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}${
-          isCompletelyPaid ? '. La orden está completamente pagada.' : `. Saldo pendiente: ${(collection.estimated_cost - totalPaid).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}`
+        description: `Se registró el pago por $${finalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN${
+          isCompletelyPaid ? '. La orden está completamente pagada.' : `. Saldo pendiente: $${(collection.estimated_cost - totalPaid).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`
         }`
       });
 
@@ -137,16 +137,16 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-muted-foreground">Total de la orden:</span>
-                      <div className="font-medium">{collection.estimated_cost.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                      <div className="font-medium">$${collection.estimated_cost.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Ya pagado:</span>
-                      <div className="font-medium text-green-600">{collection.total_paid.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                      <div className="font-medium text-green-600">$${collection.total_paid.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t">
                     <span className="text-muted-foreground">Saldo pendiente:</span>
-                    <div className="font-bold text-red-600 text-lg">{(collection.remaining_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                    <div className="font-bold text-red-600 text-lg">$${(collection.remaining_balance || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                   </div>
                 </div>
               )}
@@ -154,7 +154,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
               {(!collection?.total_paid || collection.total_paid === 0) && (
                 <div className="bg-green-50 p-3 rounded-lg text-sm">
                   <span className="text-muted-foreground">Total a cobrar:</span>
-                  <div className="font-bold text-green-600 text-lg">{collection?.estimated_cost.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                  <div className="font-bold text-green-600 text-lg">$${collection?.estimated_cost.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                 </div>
               )}
             </div>
