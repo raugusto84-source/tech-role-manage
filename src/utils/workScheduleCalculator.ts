@@ -238,8 +238,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams 
       const currentMinute = currentTimeMinutes % 60;
       const startTime = new Date(`1970-01-01T${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`);
       
-      // Horario corrido: solo sumar las horas efectivas sin descansos
-      const totalMinutes = effectiveHours * 60;
+      // Horario corrido: sumar la carga previa + horas efectivas de esta orden
+      const totalMinutes = adjustedHours * 60;
       const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
       
       deliveryTime = endTime.toLocaleTimeString('es-CO', { 
@@ -248,8 +248,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams 
         hour12: true 
       });
     } else {
-      // Horario corrido: solo sumar las horas efectivas sin descansos
-      const totalMinutes = effectiveHours * 60;
+      // Para trabajo que empieza mañana: desde hora de inicio + toda la carga
+      const totalMinutes = adjustedHours * 60;
       const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
       
       deliveryTime = endTime.toLocaleTimeString('es-CO', { 
