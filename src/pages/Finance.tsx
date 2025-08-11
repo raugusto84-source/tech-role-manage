@@ -650,19 +650,24 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {incomesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
-                      )}
-                      {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => (
-                        <TableRow key={r.id}>
-                          <TableCell>{r.income_number}</TableCell>
-                          <TableCell>{r.income_date}</TableCell>
-                          <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
-                          <TableCell>{r.category}</TableCell>
-                          <TableCell>{r.payment_method}</TableCell>
-                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                        </TableRow>
-                      ))}
+                       {incomesQuery.isLoading && (
+                         <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
+                       )}
+                       {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => (
+                         <TableRow key={r.id}>
+                           <TableCell>{r.income_number}</TableCell>
+                           <TableCell>{r.income_date}</TableCell>
+                           <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                           <TableCell>{r.category}</TableCell>
+                           <TableCell>{r.payment_method}</TableCell>
+                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                           <TableCell>
+                             {isAdmin && (
+                               <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                             )}
+                           </TableCell>
+                         </TableRow>
+                       ))}
                     </TableBody>
                   </Table>
                 </div>

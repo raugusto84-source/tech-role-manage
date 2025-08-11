@@ -40,7 +40,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
       const finalAmount = Number(amount);
       const finalDescription = description || `Cobro orden ${collection.order_number} - ${collection.client_name}`;
 
-      // First, create the income record
+      // First, create the income record (income_number will be auto-generated)
       const { data: incomeData, error: incomeError } = await supabase
         .from("incomes")
         .insert([{
