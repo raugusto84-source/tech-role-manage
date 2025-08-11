@@ -80,9 +80,7 @@ export function calculateSharedTimeHours(items: OrderItem[]): number {
   return totalHours;
 }
 
-export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams & { 
-  effectiveHoursOverride?: number
-}): { 
+export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams): { 
   deliveryDate: Date; 
   deliveryTime: string; 
   breakdown: string;
@@ -96,9 +94,7 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams 
     currentWorkload = 0
   } = params;
 
-  const effectiveHours = typeof params.effectiveHoursOverride === 'number'
-    ? params.effectiveHoursOverride
-    : calculateSharedTimeHours(orderItems);
+  const effectiveHours = calculateSharedTimeHours(orderItems);
   
   if (effectiveHours <= 0) {
     return {
@@ -150,46 +146,31 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams 
   let remainingHours = adjustedHours;
   let daysAdded = 0;
 
+  // Avanzar al siguiente día laboral si empezamos en fin de semana
+  while (!workingDays.includes(currentDate.getDay())) {
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
   // Calcular tiempo de creación y horarios de trabajo en minutos
   const creationTime = creationDate.getHours() * 60 + creationDate.getMinutes();
   const workStartTime = parseInt(primaryTechnicianSchedule.start_time.split(':')[0]) * 60 + 
                        parseInt(primaryTechnicianSchedule.start_time.split(':')[1]);
   const workEndTime = parseInt(primaryTechnicianSchedule.end_time.split(':')[0]) * 60 + 
                      parseInt(primaryTechnicianSchedule.end_time.split(':')[1]);
+  const breakMinutes = primaryTechnicianSchedule.break_duration_minutes || 0;
 
   let startFromNextDay = false;
   let remainingHoursToday = 0;
   let hoursWorkedToday = 0;
   
-  // CAMBIO CLAVE: Verificar si podemos trabajar hoy
-  const today = currentDate.getDay();
-  const isWorkingDay = workingDays.includes(today);
-  
-  if (isWorkingDay && creationTime < workEndTime) {
-    // Si es día laboral y aún hay tiempo disponible, calcular horas restantes hoy
-    const availableMinutesToday = workEndTime - Math.max(creationTime, workStartTime);
-    remainingHoursToday = Math.max(0, availableMinutesToday / 60);
-    
-    // Si tenemos suficiente tiempo hoy para completar el trabajo, no avanzar al siguiente día
-    if (remainingHoursToday >= remainingHours) {
-      startFromNextDay = false;
-    } else {
-      // Si no alcanza el tiempo de hoy, usar lo que queda y continuar mañana
-      startFromNextDay = true;
-      remainingHours -= remainingHoursToday;
-    }
-  } else {
-    // No es día laboral o ya se acabó el horario, empezar mañana
-    startFromNextDay = true;
-    remainingHoursToday = 0;
-  }
+  // Siempre programar para el siguiente día laboral, sin considerar la hora actual
+  startFromNextDay = true;
+  remainingHoursToday = 0; // No usar horas del día actual
 
-  // Si necesitamos empezar desde el siguiente día, avanzar al siguiente día laboral
-  if (startFromNextDay) {
+  // Avanzar al siguiente día laboral
+  currentDate.setDate(currentDate.getDate() + 1);
+  while (!workingDays.includes(currentDate.getDay())) {
     currentDate.setDate(currentDate.getDate() + 1);
-    while (!workingDays.includes(currentDate.getDay())) {
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
   }
 
   // Calcular día por día considerando tiempo muerto
@@ -228,36 +209,18 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams 
   let deliveryTime = primaryTechnicianSchedule.end_time;
   
   // Para cualquier trabajo que se complete en un día
-  if (daysAdded === 1 || (!startFromNextDay && remainingHours <= 0)) {
+  if (daysAdded === 1) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     
-    // Si estamos trabajando hoy, empezar desde la hora actual o de inicio
-    if (!startFromNextDay) {
-      const currentTimeMinutes = Math.max(creationTime, workStartTime);
-      const currentHour = Math.floor(currentTimeMinutes / 60);
-      const currentMinute = currentTimeMinutes % 60;
-      const startTime = new Date(`1970-01-01T${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`);
-      
-      // Horario corrido: sumar la carga previa + horas efectivas de esta orden
-      const totalMinutes = adjustedHours * 60;
-      const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
-      
-      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    } else {
-      // Para trabajo que empieza mañana: desde hora de inicio + toda la carga
-      const totalMinutes = adjustedHours * 60;
-      const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
-      
-      deliveryTime = endTime.toLocaleTimeString('es-CO', { 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-      });
-    }
+    // Horario corrido: solo sumar las horas efectivas sin descansos
+    const totalMinutes = effectiveHours * 60;
+    const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
+    
+    deliveryTime = endTime.toLocaleTimeString('es-CO', { 
+      hour: 'numeric', 
+      minute: '2-digit', 
+      hour12: true 
+    });
   } else if (hoursWorkedToday > 0) {
     // Para trabajos de múltiples días, usar las horas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
@@ -280,6 +243,10 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams 
     });
   }
 
+  // Calcular días no laborales para el breakdown
+  const totalDays = Math.ceil((currentDate.getTime() - creationDate.getTime()) / (24 * 60 * 60 * 1000));
+  const deadDays = totalDays - daysAdded;
+  
   const breakdown = ''; // Texto detallado removido por solicitud del usuario
 
   return {
@@ -453,207 +420,4 @@ export function suggestSupportTechnician(
     suggested: false,
     reason: 'No se requiere técnico de apoyo para este trabajo'
   };
-}
-
-/**
- * Calcula la carga de trabajo secuencial del técnico (sin tiempo compartido entre órdenes)
- * Cada nueva orden se programa después de las órdenes existentes
- */
-export async function calculateTechnicianActiveWorkload(
-  technicianId: string,
-  newOrderItems: OrderItem[]
-): Promise<number> {
-  try {
-    // Obtener órdenes activas del técnico
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    const { data: activeOrders, error } = await supabase
-      .from('orders')
-      .select(`
-        id,
-        order_items(
-          quantity,
-          service_type_id,
-          service_types(
-            estimated_hours,
-            shared_time
-          )
-        )
-      `)
-      .eq('assigned_technician', technicianId)
-      .in('status', ['pendiente', 'en_proceso', 'en_camino']);
-
-    if (error) {
-      console.error('Error fetching active orders:', error);
-      return 0;
-    }
-
-    // Calcular el tiempo total secuencial - cada orden reserva su tiempo completo
-    let totalActiveHours = 0;
-
-    activeOrders?.forEach(order => {
-      if (!order.order_items || order.order_items.length === 0) return;
-      
-      // Calcular horas efectivas por orden (con tiempo compartido dentro de la orden)
-      const orderItems = order.order_items.map((item: any) => ({
-        id: item.service_type_id || '',
-        estimated_hours: item.service_types?.estimated_hours || 0,
-        quantity: item.quantity || 1,
-        shared_time: item.service_types?.shared_time || false,
-        status: 'pendiente' as const,
-        service_type_id: item.service_type_id || ''
-      }));
-
-      // Cada orden reserva su tiempo completo calculado con shared_time interno
-      const orderEffectiveHours = calculateSharedTimeHours(orderItems);
-      totalActiveHours += orderEffectiveHours;
-      
-      console.log(`Orden ${order.id}: ${orderEffectiveHours}h efectivas (items: ${orderItems.length})`);
-    });
-    
-    console.log(`Total carga activa del técnico: ${totalActiveHours}h`);
-    return Math.max(0, totalActiveHours);
-    
-  } catch (error) {
-    console.error('Error calculating technician workload:', error);
-    return 0;
-  }
-}
-
-/**
- * Verificar si un técnico puede tomar más servicios compartidos (máximo 3)
- */
-export async function canTechnicianTakeSharedServices(technicianId: string): Promise<{
-  canTake: boolean;
-  activeSharedServices: number;
-  reason?: string;
-}> {
-  try {
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    const { data: activeSharedServices, error } = await supabase
-      .from('technician_workload')
-      .select('id')
-      .eq('technician_id', technicianId)
-      .eq('status', 'active')
-      .eq('is_shared_service', true);
-
-    if (error) {
-      console.error('Error checking shared services:', error);
-      return { canTake: true, activeSharedServices: 0 };
-    }
-
-    const count = activeSharedServices?.length || 0;
-    
-    if (count >= 3) {
-      return {
-        canTake: false,
-        activeSharedServices: count,
-        reason: `El técnico ya tiene ${count} servicios compartidos activos (máximo 3)`
-      };
-    }
-
-    return {
-      canTake: true,
-      activeSharedServices: count
-    };
-  } catch (error) {
-    console.error('Error checking technician shared services capacity:', error);
-    return { canTake: true, activeSharedServices: 0 };
-  }
-}
-
-/**
- * Registrar workload del técnico al crear una orden
- */
-export async function registerTechnicianWorkload(
-  technicianId: string,
-  orderId: string,
-  orderItems: OrderItem[]
-): Promise<void> {
-  try {
-    const { supabase } = await import('@/integrations/supabase/client');
-    
-    // Obtener información de los service_types para las horas estimadas
-    const serviceTypeIds = orderItems.map(item => item.service_type_id).filter(Boolean);
-    
-    if (serviceTypeIds.length === 0) {
-      console.log('No hay service_type_ids para registrar workload');
-      return;
-    }
-    
-    const { data: serviceTypes, error: serviceError } = await supabase
-      .from('service_types')
-      .select('id, estimated_hours, shared_time')
-      .in('id', serviceTypeIds);
-    
-    if (serviceError) {
-      console.error('Error fetching service types for workload:', serviceError);
-      return;
-    }
-    
-    // Crear un mapa de service_types para fácil acceso
-    const serviceTypeMap = new Map(serviceTypes?.map(st => [st.id, st]) || []);
-    
-    const workloadEntries = orderItems.map(item => {
-      const serviceType = serviceTypeMap.get(item.service_type_id);
-      return {
-        technician_id: technicianId,
-        order_id: orderId,
-        service_type_id: item.service_type_id || '',
-        is_shared_service: serviceType?.shared_time || false,
-        estimated_hours: serviceType?.estimated_hours || 0,
-        status: 'active'
-      };
-    });
-
-    const { error } = await supabase
-      .from('technician_workload')
-      .insert(workloadEntries);
-
-    if (error) {
-      console.error('Error registering technician workload:', error);
-    } else {
-      console.log(`Registrado workload para técnico ${technicianId}: ${workloadEntries.length} entradas`);
-    }
-  } catch (error) {
-    console.error('Error in registerTechnicianWorkload:', error);
-  }
-}
-
-/**
- * Función para calcular fecha de entrega considerando órdenes secuenciales
- * Cada nueva orden se programa después de las órdenes existentes
- */
-export async function calculateAdvancedDeliveryDateWithWorkload(params: DeliveryCalculationParams & { technicianId?: string }): Promise<{ 
-  deliveryDate: Date; 
-  deliveryTime: string; 
-  breakdown: string;
-  effectiveHours: number;
-}> {
-  const { technicianId, ...baseParams } = params;
-  
-  let currentWorkload = baseParams.currentWorkload || 0;
-  
-  // Calcular las horas efectivas de la nueva orden (con tiempo compartido interno)
-  const effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
-  
-  if (technicianId) {
-    try {
-      // Obtener la carga de trabajo total secuencial del técnico
-      currentWorkload = await calculateTechnicianActiveWorkload(technicianId, baseParams.orderItems);
-      
-      console.log(`Carga activa secuencial: ${currentWorkload}h, Horas efectivas nueva orden: ${effectiveHoursOverride}h`);
-    } catch (error) {
-      console.error('Error calculando carga secuencial:', error);
-    }
-  }
-
-  const result = calculateAdvancedDeliveryDate({
-    ...baseParams,
-    currentWorkload,
-    effectiveHoursOverride
-  });
-
-  return result;
 }

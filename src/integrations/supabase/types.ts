@@ -2985,64 +2985,6 @@ export type Database = {
           },
         ]
       }
-      technician_workload: {
-        Row: {
-          created_at: string
-          estimated_hours: number
-          id: string
-          is_shared_service: boolean
-          order_id: string
-          service_type_id: string
-          status: string
-          technician_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          estimated_hours?: number
-          id?: string
-          is_shared_service?: boolean
-          order_id: string
-          service_type_id: string
-          status?: string
-          technician_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          estimated_hours?: number
-          id?: string
-          is_shared_service?: boolean
-          order_id?: string
-          service_type_id?: string
-          status?: string
-          technician_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_technician_workload_order"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_technician_workload_order"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_technician_workload_order"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       user_achievements: {
         Row: {
           achievement_id: string

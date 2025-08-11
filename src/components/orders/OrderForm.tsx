@@ -18,8 +18,7 @@ import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
-import { DeliveryCalculationComponent } from '@/components/orders/DeliveryCalculationComponent';
-import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, calculateAdvancedDeliveryDateWithWorkload, registerTechnicianWorkload } from '@/utils/workScheduleCalculator';
+import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload } from '@/utils/workScheduleCalculator';
 
 interface ServiceType {
   id: string;
@@ -67,7 +66,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [formData, setFormData] = useState({
     client_id: '',
     failure_description: '',
-    delivery_date: format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Default to tomorrow (local)
+    delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow
     assigned_technician: '',
     support_technician: 'none' // Initialize with 'none' instead of empty string
   });
@@ -465,16 +464,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      // Validar técnico asignado
-      if (!formData.assigned_technician || formData.assigned_technician === 'unassigned' || formData.assigned_technician === 'none') {
-        toast({
-          title: "Asigne un técnico",
-          description: "Debes seleccionar un técnico para crear la orden",
-          variant: "destructive"
-        });
-        return;
-      }
-
       // Calcular totales de todos los items
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
@@ -484,13 +473,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         client_id: formData.client_id,
         service_type: orderItems[0].service_type_id, // Usar el primer servicio como tipo principal
         failure_description: formData.failure_description,
-        delivery_date: formData.delivery_date || format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'yyyy-MM-dd'), // Default to tomorrow if empty (local)
+        delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow if empty
         estimated_cost: totalAmount,
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
         created_by: user?.id,
-        status: 'en_proceso' as const
+        status: 'pendiente' as const
       };
 
       const { data: orderResult, error: orderError } = await supabase
@@ -527,21 +516,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         // Si falla crear los items, eliminar la orden
         await supabase.from('orders').delete().eq('id', orderResult.id);
         throw itemsError;
-      }
-      
-      // Registrar workload del técnico
-      if (formData.assigned_technician && orderResult) {
-        await registerTechnicianWorkload(
-          formData.assigned_technician,
-          orderResult.id,
-          orderItems.map(item => ({
-            id: item.id,
-            estimated_hours: item.estimated_hours || 0,
-            shared_time: item.shared_time || false,
-            service_type_id: item.service_type_id,
-            quantity: item.quantity || 1
-          }))
-        );
       }
 
       toast({
@@ -718,18 +692,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.delivery_date ? format(new Date(`${formData.delivery_date}T00:00:00`), "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+                      {formData.delivery_date ? format(new Date(formData.delivery_date), "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={formData.delivery_date ? new Date(`${formData.delivery_date}T00:00:00`) : undefined}
+                      selected={formData.delivery_date ? new Date(formData.delivery_date) : undefined}
                       onSelect={(date) => {
                         if (date) {
                           setFormData(prev => ({ 
                             ...prev, 
-                            delivery_date: format(date, 'yyyy-MM-dd') 
+                            delivery_date: date.toISOString().split('T')[0] 
                           }));
                         }
                       }}
@@ -745,13 +719,67 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     {formData.support_technician && formData.support_technician !== 'none' && (
                       <p className="text-green-600">Con técnico de apoyo: tiempo reducido</p>
                     )}
-                    {/* Cálculo de fecha y hora de entrega */}
-                    <DeliveryCalculationComponent 
-                      orderItems={orderItems}
-                      formData={formData}
-                      technicianSchedules={technicianSchedules}
-                      onDateUpdate={(date) => setFormData(prev => ({ ...prev, delivery_date: date }))}
-                    />
+                     {(() => {
+                       try {
+                         // Obtener el horario real del técnico asignado desde la base de datos
+                         const technicianSchedule = technicianSchedules[formData.assigned_technician];
+                         
+                         // Si no hay horario específico, usar valores por defecto
+                         const primarySchedule = technicianSchedule || {
+                           work_days: [1, 2, 3, 4, 5],
+                           start_time: '08:00',
+                           end_time: '16:00',
+                           break_duration_minutes: 60
+                         };
+                         
+                         let supportSchedule = undefined;
+                         if (formData.support_technician && formData.support_technician !== 'none') {
+                           // Si hay técnico de apoyo, obtener su horario también
+                           supportSchedule = technicianSchedules[formData.support_technician] || primarySchedule;
+                         }
+                         
+                         // Para órdenes nuevas, no considerar carga de trabajo previa
+                         const currentWorkload = 0; // Siempre 0 para órdenes nuevas
+                         
+                         const { deliveryDate, deliveryTime, effectiveHours, breakdown } = calculateAdvancedDeliveryDate({
+                            orderItems: orderItems.map(item => ({
+                              id: item.id,
+                              estimated_hours: item.estimated_hours || 0,
+                              shared_time: item.shared_time || false,
+                              status: item.status || 'pendiente',
+                              service_type_id: item.service_type_id,
+                              quantity: item.quantity
+                            })),
+                           primaryTechnicianSchedule: primarySchedule,
+                           supportTechnicianSchedule: supportSchedule,
+                           creationDate: new Date(),
+                           currentWorkload
+                         });
+                         
+                         // Actualizar automáticamente la fecha si es diferente
+                         const calculatedDateString = deliveryDate.toISOString().split('T')[0];
+                         if (calculatedDateString !== formData.delivery_date) {
+                           setTimeout(() => {
+                             setFormData(prev => ({ 
+                               ...prev, 
+                               delivery_date: calculatedDateString 
+                             }));
+                           }, 100);
+                         }
+                         
+                         return (
+                           <div className="space-y-1">
+                             <p className="text-blue-600 font-medium">Hora estimada de entrega: {deliveryTime}</p>
+                             <p className="text-xs text-muted-foreground">{breakdown}</p>
+                             <p className="text-xs text-green-600">Horas efectivas considerando tiempo compartido: {effectiveHours}h</p>
+                             <p className="text-xs text-yellow-600">La fecha se actualiza automáticamente al cambiar servicios o técnicos</p>
+                           </div>
+                          );
+                        } catch (error) {
+                          return <p className="text-red-500 text-xs">Error calculando fecha de entrega</p>;
+                        }
+                        return null;
+                      })()}
                   </div>
                 )}
               </div>
