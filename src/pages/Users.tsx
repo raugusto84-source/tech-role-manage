@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { SkillsManager } from '@/components/technicians/SkillsManager';
-import { SalesKnowledgePanel } from '@/components/admin/SalesKnowledgePanel';
+
 import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
 import { UserRanking } from '@/components/admin/UserRanking';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +49,7 @@ export default function Users() {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UsersIcon className="h-4 w-4" />
               Usuarios
@@ -61,10 +61,6 @@ export default function Users() {
             <TabsTrigger value="technician-skills" className="flex items-center gap-2">
               <Wrench className="h-4 w-4" />
               Habilidades Técnicas
-            </TabsTrigger>
-            <TabsTrigger value="sales-skills" className="flex items-center gap-2">
-              <Store className="h-4 w-4" />
-              Conocimientos de Ventas
             </TabsTrigger>
             <TabsTrigger value="work-schedules" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
@@ -122,24 +118,6 @@ export default function Users() {
             </Card>
           </TabsContent>
 
-          {/* Panel de conocimientos de ventas */}
-          <TabsContent value="sales-skills" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Conocimientos de Ventas</CardTitle>
-                <CardDescription>
-                  Gestiona los conocimientos y especializaciones de los vendedores.
-                  Asigna productos, servicios y áreas de expertise.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SalesKnowledgePanel 
-                  selectedUserId={selectedUserId}
-                  selectedUserRole={selectedUserRole}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Panel de horarios de trabajo */}
           <TabsContent value="work-schedules" className="space-y-6">
