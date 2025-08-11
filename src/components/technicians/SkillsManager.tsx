@@ -26,6 +26,7 @@ interface TechnicianSkill {
   created_at: string;
   updated_at: string;
   service_types?: ServiceType;
+  completed_orders_count?: number;
 }
 
 interface User {
@@ -49,6 +50,7 @@ export function SkillsManager({ technicianId, readonly = false }: SkillsManagerP
   const [selectedUserId, setSelectedUserId] = useState<string>(technicianId || '');
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordersCount, setOrdersCount] = useState<Record<string, number>>({});
 
   const targetTechnicianId = selectedUserId || technicianId || user?.id;
   const canEdit = !readonly && (
@@ -84,8 +86,58 @@ export function SkillsManager({ technicianId, readonly = false }: SkillsManagerP
       
       setSkills(validSkills);
       setSelectedServices(validSkills.map(skill => skill.service_type_id));
+      
+      // Cargar conteo de órdenes completadas para cada servicio
+      await loadOrdersCount(validSkills);
     } catch (error) {
       console.error('Error loading technician skills:', error);
+    }
+  };
+
+  const loadOrdersCount = async (skillsList: TechnicianSkill[]) => {
+    if (!targetTechnicianId || skillsList.length === 0) return;
+    
+    try {
+      const counts: Record<string, number> = {};
+      
+      // Obtener conteo para cada tipo de servicio
+      for (const skill of skillsList) {
+        // Primero obtener los order_ids que contienen este servicio
+        const { data: orderIds, error: orderIdsError } = await supabase
+          .from('order_items')
+          .select('order_id')
+          .eq('service_type_id', skill.service_type_id);
+        
+        if (orderIdsError || !orderIds) {
+          counts[skill.service_type_id] = 0;
+          continue;
+        }
+        
+        const orderIdsList = orderIds.map(item => item.order_id);
+        
+        if (orderIdsList.length === 0) {
+          counts[skill.service_type_id] = 0;
+          continue;
+        }
+        
+        // Luego contar órdenes finalizadas del técnico
+        const { count, error } = await supabase
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('assigned_technician', targetTechnicianId)
+          .eq('status', 'finalizada')
+          .in('id', orderIdsList);
+        
+        if (!error) {
+          counts[skill.service_type_id] = count || 0;
+        } else {
+          counts[skill.service_type_id] = 0;
+        }
+      }
+      
+      setOrdersCount(counts);
+    } catch (error) {
+      console.error('Error loading orders count:', error);
     }
   };
 
@@ -312,7 +364,7 @@ export function SkillsManager({ technicianId, readonly = false }: SkillsManagerP
                               )}
                               
                               {isSelected && skill && (
-                                <div className="mt-3">
+                                <div className="mt-3 space-y-2">
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs text-muted-foreground">Nivel:</span>
                                     <div className="flex gap-1">
@@ -321,6 +373,12 @@ export function SkillsManager({ technicianId, readonly = false }: SkillsManagerP
                                     <span className="text-xs text-muted-foreground">
                                       {skill.skill_level}/5
                                     </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs text-muted-foreground">Órdenes completadas:</span>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {ordersCount[service.id] || 0} veces
+                                    </Badge>
                                   </div>
                                 </div>
                               )}
