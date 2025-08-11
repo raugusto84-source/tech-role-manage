@@ -51,7 +51,7 @@ export function useWorkloadCalculation({
   const lastCalculationKey = useRef<string>('');
 
   // Create a stable key for comparison
-  const calculationKey = `${technicianId}-${JSON.stringify(orderItems)}-${JSON.stringify(primarySchedule)}`;
+  const calculationKey = `${technicianId}-${JSON.stringify(orderItems)}-${JSON.stringify(primarySchedule)}-${JSON.stringify(supportTechnicians)}`;
 
   const calculateWorkload = useCallback(async () => {
     // Prevent duplicate calculations
@@ -102,6 +102,12 @@ export function useWorkloadCalculation({
       setWorkload(currentWorkload);
 
         // Calculate delivery date
+        console.log('=== CALLING calculateAdvancedDeliveryDate ===');
+        console.log('Order items:', orderItems);
+        console.log('Primary schedule:', primarySchedule);
+        console.log('Support technicians:', supportTechnicians);
+        console.log('Current workload:', currentWorkload);
+        
         const result = calculateAdvancedDeliveryDate({
           orderItems,
           primaryTechnicianSchedule: primarySchedule,
@@ -109,6 +115,9 @@ export function useWorkloadCalculation({
           creationDate: new Date(),
           currentWorkload
         });
+        
+        console.log('=== CALCULATION RESULT ===');
+        console.log('Result:', result);
 
       // Only update state if this calculation wasn't aborted
       if (!currentController.signal.aborted) {
