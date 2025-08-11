@@ -592,22 +592,34 @@ export default function Finance() {
 
       // Si tiene factura y se pagó de cuenta no fiscal, crear retiro fiscal disponible
       if (purchaseHasInvoice && purchaseAccount === 'no_fiscal') {
+        console.log('Creating fiscal withdrawal for invoiced purchase from non-fiscal account');
+        
         // Create a dummy income first since income_id is required
-        const { data: dummyIncome } = await supabase.from("incomes").insert({
+        const { data: dummyIncome, error: incomeError } = await supabase.from("incomes").insert({
           amount: 0,
           description: `Referencia fiscal para retiro de compra: ${purchaseConcept}`,
           category: "referencia",
           account_type: "fiscal"
         } as any).select().single();
         
+        if (incomeError) {
+          console.error('Error creating dummy income:', incomeError);
+        }
+        
         if (dummyIncome) {
-          const { error: withdrawalError } = await supabase.from("fiscal_withdrawals").insert({
+          console.log('Creating fiscal withdrawal with amount:', amount);
+          const { data: withdrawal, error: withdrawalError } = await supabase.from("fiscal_withdrawals").insert({
             amount: amount,
             description: `Retiro disponible por compra con factura: ${purchaseConcept}`,
             withdrawal_status: 'available',
             income_id: dummyIncome.id
-          } as any);
-          if (withdrawalError) console.warn("Error creating fiscal withdrawal:", withdrawalError);
+          } as any).select().single();
+          
+          if (withdrawalError) {
+            console.error("Error creating fiscal withdrawal:", withdrawalError);
+          } else {
+            console.log("Fiscal withdrawal created successfully:", withdrawal);
+          }
         }
       }
 
@@ -628,6 +640,7 @@ export default function Finance() {
       setPurchaseMethod(""); setPurchaseHasInvoice(false); setPurchaseInvoiceNumber("");
       expensesQuery.refetch();
       purchasesQuery.refetch();
+      fiscalWithdrawalsQuery.refetch(); // Refrescar retiros fiscales
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible registrar la compra", variant: "destructive" });
