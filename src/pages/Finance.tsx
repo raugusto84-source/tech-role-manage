@@ -1536,39 +1536,139 @@ export default function Finance() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Resumen IVA por Mes</CardTitle>
+                <CardTitle>Resumen Cuenta Fiscal</CardTitle>
+                <p className="text-sm text-muted-foreground">Totales de ingresos y egresos fiscales</p>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <div className="text-sm text-green-600 font-medium">Ingresos Fiscales</div>
+                      <div className="text-2xl font-bold text-green-700">
+                        {totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                      </div>
+                      <div className="text-xs text-green-600">{incomesFiscal.length} registros</div>
+                    </div>
+                    <div className="p-4 bg-red-50 rounded-lg">
+                      <div className="text-sm text-red-600 font-medium">Egresos Fiscales</div>
+                      <div className="text-2xl font-bold text-red-700">
+                        {totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                      </div>
+                      <div className="text-xs text-red-600">{expensesFiscal.length} registros</div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="text-sm text-blue-600 font-medium">Balance Fiscal</div>
+                    <div className={`text-2xl font-bold ${(totIF - totEF) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      {(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      {(totIF - totEF) >= 0 ? 'Utilidad' : 'Pérdida'}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Ingresos Fiscales ({incomesFiscal.length})</CardTitle>
+                <Button 
+                  size="sm" 
+                  onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}
+                  disabled={!incomesFiscal.length}
+                >
+                  Exportar CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto max-h-96">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Período</TableHead>
-                        <TableHead>IVA Cobrado</TableHead>
-                        <TableHead>IVA Pagado</TableHead>
-                        <TableHead>Balance</TableHead>
+                        <TableHead>#</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {vatSummaryQuery.isLoading && (
-                        <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>
-                      )}
-                      {!vatSummaryQuery.isLoading && (vatSummaryQuery.data ?? []).map((summary: any) => (
-                        <TableRow key={summary.period}>
-                          <TableCell>{new Date(summary.period).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}</TableCell>
-                          <TableCell className="text-green-600">
-                            {Number(summary.vat_collected || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                      {incomesFiscal.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-mono text-xs">{r.income_number}</TableCell>
+                          <TableCell>{r.income_date}</TableCell>
+                          <TableCell className="max-w-[200px] truncate" title={r.description}>
+                            {r.description}
                           </TableCell>
-                          <TableCell className="text-red-600">
-                            {Number(summary.vat_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                          <TableCell className="font-mono">
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
-                          <TableCell className={Number(summary.vat_balance || 0) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                            {Number(summary.vat_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                          <TableCell className="font-mono text-green-600">
+                            {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' }) : '-'}
                           </TableCell>
                         </TableRow>
                       ))}
-                      {!vatSummaryQuery.isLoading && (vatSummaryQuery.data ?? []).length === 0 && (
-                        <TableRow><TableCell colSpan={4}>No hay datos de IVA registrados.</TableCell></TableRow>
+                      {incomesFiscal.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No hay ingresos fiscales en el período seleccionado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Egresos Fiscales ({expensesFiscal.length})</CardTitle>
+                <Button 
+                  size="sm" 
+                  onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)}
+                  disabled={!expensesFiscal.length}
+                >
+                  Exportar CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto max-h-96">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expensesFiscal.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-mono text-xs">{r.expense_number}</TableCell>
+                          <TableCell>{r.expense_date}</TableCell>
+                          <TableCell className="max-w-[200px] truncate" title={r.description}>
+                            {r.description}
+                          </TableCell>
+                          <TableCell className="font-mono">
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                          </TableCell>
+                          <TableCell className="font-mono text-red-600">
+                            {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' }) : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {expensesFiscal.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            No hay egresos fiscales en el período seleccionado
+                          </TableCell>
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
