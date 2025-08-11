@@ -363,6 +363,10 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
   const { supabase } = await import('../integrations/supabase/client');
   
   try {
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+    
     // Get all active orders for this technician with service type details
     const { data: orders, error } = await supabase
       .from('orders')
@@ -379,11 +383,14 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
         )
       `)
       .eq('assigned_technician', technicianId)
-      .in('status', ['pendiente', 'en_proceso', 'en_camino']);
+      .in('status', ['pendiente', 'en_proceso', 'en_camino'])
+      .abortSignal(controller.signal);
+
+    clearTimeout(timeoutId);
 
     if (error) {
       console.error('Error getting technician workload:', error);
-      return 0;
+      return 0; // Return 0 instead of throwing to prevent blocking
     }
 
     if (!orders || orders.length === 0) {
@@ -409,9 +416,14 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
     });
 
     return totalWorkload;
-  } catch (error) {
-    console.error('Failed to get technician workload:', error);
-    return 0;
+  } catch (error: any) {
+    // Handle abort errors gracefully
+    if (error.name === 'AbortError') {
+      console.warn('Workload calculation timed out for technician:', technicianId);
+    } else {
+      console.error('Failed to get technician workload:', error);
+    }
+    return 0; // Always return 0 to allow calculation to continue
   }
 }
 
