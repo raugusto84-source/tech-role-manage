@@ -593,31 +593,84 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                 <CardTitle>Acciones</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Actualizar estado */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Cambiar Estado</label>
-                  <div className="flex gap-2">
-                    <Select value={newStatus} onValueChange={(value: any) => setNewStatus(value)}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
-                  <SelectItem value="solicitud">Nueva</SelectItem>
-                  <SelectItem value="enviada">Enviada</SelectItem>
-                  <SelectItem value="aceptada">Aceptada</SelectItem>
-                  <SelectItem value="rechazada">Rechazada</SelectItem>
-                </SelectContent>
-                    </Select>
+                {/* Botones de decisión */}
+                {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
+                  <div className="grid grid-cols-2 gap-3">
                     <Button 
-                      onClick={updateQuoteStatus}
-                      disabled={loading || newStatus === quote.status}
-                      size="sm"
+                      onClick={async () => {
+                        setNewStatus('aceptada');
+                         const updateData = { 
+                           status: 'aceptada' as const,
+                           final_decision_date: new Date().toISOString()
+                         };
+                        
+                        setLoading(true);
+                        const { error } = await supabase
+                          .from('quotes')
+                          .update(updateData)
+                          .eq('id', quote.id);
+                        
+                        if (error) {
+                          toast({
+                            title: "Error",
+                            description: `Error al aceptar cotización: ${error.message}`,
+                            variant: "destructive",
+                          });
+                        } else {
+                          toast({
+                            title: "Cotización Aceptada",
+                            description: "La cotización ha sido aceptada exitosamente",
+                          });
+                          onQuoteUpdated();
+                        }
+                        setLoading(false);
+                      }}
+                      disabled={loading}
+                      className="w-full"
+                      variant="default"
                     >
-                      Actualizar
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      {loading ? "Procesando..." : "Aceptar"}
+                    </Button>
+                    
+                    <Button 
+                      onClick={async () => {
+                        setNewStatus('rechazada');
+                         const updateData = { 
+                           status: 'rechazada' as const,
+                           final_decision_date: new Date().toISOString()
+                         };
+                        
+                        setLoading(true);
+                        const { error } = await supabase
+                          .from('quotes')
+                          .update(updateData)
+                          .eq('id', quote.id);
+                        
+                        if (error) {
+                          toast({
+                            title: "Error",
+                            description: `Error al rechazar cotización: ${error.message}`,
+                            variant: "destructive",
+                          });
+                        } else {
+                          toast({
+                            title: "Cotización Rechazada",
+                            description: "La cotización ha sido rechazada",
+                          });
+                          onQuoteUpdated();
+                        }
+                        setLoading(false);
+                      }}
+                      disabled={loading}
+                      className="w-full"
+                      variant="destructive"
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      {loading ? "Procesando..." : "Rechazar"}
                     </Button>
                   </div>
-                </div>
+                )}
 
                 <Separator />
 
