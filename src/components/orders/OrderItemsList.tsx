@@ -47,7 +47,7 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
         // almacenarse como "horas_por_unidad" en el item.
         const baseTimePerUnit = item.estimated_hours / item.quantity;
         const subtotal = newQuantity * item.unit_price;
-        const vatAmount = subtotal * (item.vat_rate / 100);
+        const vatAmount = subtotal * 0.16; // Fixed 16% VAT
         const total = subtotal + vatAmount;
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
         

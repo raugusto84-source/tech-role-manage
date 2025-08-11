@@ -243,7 +243,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
       description: customItem.description,
       quantity: customItem.quantity,
       unit_price: customItem.unit_price,
-      vat_rate: 16, // Default VAT rate
+      vat_rate: 16, // Fixed 16% VAT for all items
       withholding_rate: 0,
       withholding_type: '',
       is_custom: true

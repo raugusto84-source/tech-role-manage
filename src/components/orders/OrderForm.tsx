@@ -313,7 +313,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       const subtotal = newQuantity * existingItem.unit_price;
-      const vatAmount = subtotal * (existingItem.vat_rate / 100);
+      const vatAmount = subtotal * 0.16; // Fixed 16% VAT
       const total = subtotal + vatAmount;
       // Calcular horas por unidad basándose en el servicio original, no en las horas ya calculadas
       const hoursPerUnit = (service.estimated_hours || 0);
@@ -335,7 +335,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     } else {
       // Agregar nuevo item
       const subtotal = quantity * (service.base_price || 0);
-      const vatRate = service.vat_rate || 16;
+      const vatRate = 16; // Fixed 16% VAT for all orders
       const vatAmount = subtotal * (vatRate / 100);
       const total = subtotal + vatAmount;
       const estimatedHours = quantity * (service.estimated_hours || 0);
