@@ -114,13 +114,14 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   };
 
   const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
-  let supportHoursPerDay = 0;
   
+  // Si hay técnico de apoyo, aplicar reducción del 50% en el tiempo total
+  let effectiveWorkingHours = effectiveHours;
   if (supportTechnicianSchedule) {
-    supportHoursPerDay = getWorkingHoursPerDay(supportTechnicianSchedule);
+    effectiveWorkingHours = effectiveHours * 0.5; // Reducción del 50%
   }
 
-  const totalHoursPerDay = primaryHoursPerDay + supportHoursPerDay;
+  const totalHoursPerDay = primaryHoursPerDay;
 
   if (totalHoursPerDay <= 0) {
     return {
@@ -132,7 +133,7 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   }
 
   // Considerar la carga de trabajo actual del técnico
-  let adjustedHours = effectiveHours;
+  let adjustedHours = effectiveWorkingHours;
   if (currentWorkload > 0) {
     // Si el técnico tiene carga previa, esta orden se procesará después
     adjustedHours += currentWorkload;
