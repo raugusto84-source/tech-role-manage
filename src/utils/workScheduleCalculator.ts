@@ -472,10 +472,12 @@ export async function calculateTechnicianActiveWorkload(
       .select(`
         id,
         order_items(
-          estimated_hours,
-          service_type_id,
           quantity,
-          service_types(shared_time)
+          service_type_id,
+          service_types(
+            estimated_hours,
+            shared_time
+          )
         )
       `)
       .eq('assigned_technician', technicianId)
@@ -495,7 +497,7 @@ export async function calculateTechnicianActiveWorkload(
       // Calcular horas efectivas por orden (con tiempo compartido dentro de la orden)
       const orderItems = order.order_items.map((item: any) => ({
         id: item.service_type_id || '',
-        estimated_hours: item.estimated_hours || 0,
+        estimated_hours: item.service_types?.estimated_hours || 0,
         quantity: item.quantity || 1,
         shared_time: item.service_types?.shared_time || false,
         status: 'pendiente' as const,
@@ -506,7 +508,7 @@ export async function calculateTechnicianActiveWorkload(
       const orderEffectiveHours = calculateSharedTimeHours(orderItems);
       totalActiveHours += orderEffectiveHours;
       
-      console.log(`Orden ${order.id}: ${orderEffectiveHours}h efectivas`);
+      console.log(`Orden ${order.id}: ${orderEffectiveHours}h efectivas (items: ${orderItems.length})`);
     });
     
     console.log(`Total carga activa del técnico: ${totalActiveHours}h`);
