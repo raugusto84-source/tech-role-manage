@@ -44,6 +44,7 @@ export function useWorkloadCalculation({
     if (!technicianId || orderItems.length === 0) {
       setWorkload(0);
       setDeliveryCalculation(null);
+      setLoading(false);
       return;
     }
 
