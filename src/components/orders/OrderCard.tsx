@@ -75,7 +75,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             <CardTitle className="text-lg font-semibold text-foreground">
               {order.order_number}
             </CardTitle>
-            {order.unread_messages_count && order.unread_messages_count > 0 && (
+            {order.unread_messages_count != null && order.unread_messages_count > 0 && (
               <div className="relative">
                 <MessageCircle className="h-5 w-5 text-blue-600" />
                 <Badge 
