@@ -100,7 +100,7 @@ export default function Finance() {
         .from("purchases")
         .select(`
           *,
-          supplier:suppliers(name)
+          supplier:suppliers(supplier_name)
         `)
         .order("purchase_date", { ascending: false });
       if (startDate) q = q.gte("purchase_date", startDate);
@@ -149,9 +149,7 @@ export default function Finance() {
           description,
           withdrawal_status,
           created_at,
-          withdrawn_at,
-          order_id,
-          orders(order_number, client_id, clients(name))
+          withdrawn_at
         `)
         .order("created_at", { ascending: false });
       
