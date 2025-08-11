@@ -471,11 +471,11 @@ export async function calculateTechnicianActiveWorkload(
       .from('orders')
       .select(`
         id,
-        order_items!inner(
+        order_items(
           estimated_hours,
           service_type_id,
           quantity,
-          service_types!inner(shared_time)
+          service_types(shared_time)
         )
       `)
       .eq('assigned_technician', technicianId)
@@ -490,21 +490,26 @@ export async function calculateTechnicianActiveWorkload(
     let totalActiveHours = 0;
 
     activeOrders?.forEach(order => {
+      if (!order.order_items || order.order_items.length === 0) return;
+      
       // Calcular horas efectivas por orden (con tiempo compartido dentro de la orden)
-      const orderItems = order.order_items?.map((item: any) => ({
+      const orderItems = order.order_items.map((item: any) => ({
         id: item.service_type_id || '',
         estimated_hours: item.estimated_hours || 0,
         quantity: item.quantity || 1,
         shared_time: item.service_types?.shared_time || false,
         status: 'pendiente' as const,
         service_type_id: item.service_type_id || ''
-      })) || [];
+      }));
 
       // Cada orden reserva su tiempo completo calculado con shared_time interno
       const orderEffectiveHours = calculateSharedTimeHours(orderItems);
       totalActiveHours += orderEffectiveHours;
+      
+      console.log(`Orden ${order.id}: ${orderEffectiveHours}h efectivas`);
     });
     
+    console.log(`Total carga activa del técnico: ${totalActiveHours}h`);
     return Math.max(0, totalActiveHours);
     
   } catch (error) {
