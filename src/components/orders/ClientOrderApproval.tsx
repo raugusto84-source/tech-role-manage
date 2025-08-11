@@ -44,7 +44,7 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
   const signatureRef = useRef<SignatureCanvas>(null);
   const { toast } = useToast();
 
-  const handleSignatureConfirm = () => {
+  const handleSignatureConfirm = async () => {
     if (signatureRef.current?.isEmpty()) {
       toast({
         title: "Firma requerida",
@@ -54,15 +54,49 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
       return;
     }
 
+    if (hasStartedApproval || approving) {
+      console.log("Approval already in progress, ignoring");
+      return;
+    }
+
     const signatureDataURL = signatureRef.current?.toDataURL();
     setSignatureData(signatureDataURL || "");
     setShowSignature(false);
+    setHasStartedApproval(true);
+    setApproving(true);
     
-    toast({
-      title: "Firma capturada",
-      description: "Firma registrada correctamente. Ahora puedes aprobar la orden.",
-      variant: "default"
-    });
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          client_approval: true,
+          client_approval_notes: approvalNotes || "Orden aprobada sin comentarios adicionales",
+          initial_signature_url: signatureDataURL,
+          status: "pendiente",
+          client_approved_at: new Date().toISOString()
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Orden Aprobada",
+        description: "La orden ha sido aprobada y enviada a los técnicos.",
+        variant: "default"
+      });
+
+      onApprovalChange?.();
+    } catch (error) {
+      console.error("Error approving order:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar la orden. Intenta nuevamente.",
+        variant: "destructive"
+      });
+      setHasStartedApproval(false);
+    } finally {
+      setApproving(false);
+    }
   };
 
   const clearSignature = () => {
