@@ -350,18 +350,33 @@ export default function Finance() {
     try {
       const amount = Number(feAmount);
       if (!feDesc || !amount) throw new Error("Completa descripción y monto válido");
-      const { error } = await supabase.from("fixed_expenses").insert({
+      
+      const { data, error } = await supabase.from("fixed_expenses").insert({
         description: feDesc,
         amount,
         account_type: feAccount as any,
         payment_method: feMethod || null,
         frequency: 'monthly',
         day_of_month: feDayOfMonth,
-      } as any);
+      } as any).select('*').single();
+      
       if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'create',
+        'fixed_expenses',
+        data.id,
+        data,
+        `Creación de gasto fijo: ${feDesc}`,
+        amount,
+        feAccount as any
+      );
+
       toast({ title: "Gasto fijo programado" });
       setFeDesc(""); setFeAmount(""); setFeMethod(""); setFeAccount("fiscal"); setFeDayOfMonth(1);
       fixedExpensesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
     }
@@ -371,18 +386,33 @@ export default function Finance() {
     try {
       const amount = Number(fiAmount);
       if (!fiDesc || !amount) throw new Error("Completa descripción y monto válido");
-      const { error } = await supabase.from("fixed_incomes").insert({
+      
+      const { data, error } = await supabase.from("fixed_incomes").insert({
         description: fiDesc,
         amount,
         account_type: fiAccount as any,
         payment_method: fiMethod || null,
         frequency: 'monthly',
         day_of_month: fiDayOfMonth,
-      } as any);
+      } as any).select('*').single();
+      
       if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'create',
+        'fixed_incomes',
+        data.id,
+        data,
+        `Creación de ingreso fijo: ${fiDesc}`,
+        amount,
+        fiAccount as any
+      );
+      
       toast({ title: "Ingreso fijo programado" });
       setFiDesc(""); setFiAmount(""); setFiMethod(""); setFiAccount("fiscal"); setFiDayOfMonth(1);
       fixedIncomesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
     }
@@ -448,6 +478,7 @@ export default function Finance() {
     }
   };
 
+
   const deleteFixedIncome = async (id: string) => {
     if (!isAdmin) return;
     try {
@@ -475,6 +506,30 @@ export default function Finance() {
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+    }
+  };
+
+  const toggleFixedIncomeActive = async (row: any) => {
+    try {
+      const { error } = await supabase.from('fixed_incomes').update({ active: !row.active }).eq('id', row.id);
+      if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'update',
+        'fixed_incomes',
+        row.id,
+        { ...row, active: !row.active },
+        `${row.active ? 'Desactivación' : 'Activación'} de ingreso fijo: ${row.description}`,
+        row.amount,
+        row.account_type
+      );
+
+      toast({ title: row.active ? 'Ingreso fijo desactivado' : 'Ingreso fijo activado' });
+      fixedIncomesQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
     }
   };
 
@@ -630,8 +685,21 @@ export default function Finance() {
     try {
       const { error } = await supabase.from('fixed_expenses').update({ active: !row.active }).eq('id', row.id);
       if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'update',
+        'fixed_expenses',
+        row.id,
+        { ...row, active: !row.active },
+        `${row.active ? 'Desactivación' : 'Activación'} de gasto fijo: ${row.description}`,
+        row.amount,
+        row.account_type
+      );
+
       toast({ title: row.active ? 'Gasto fijo desactivado' : 'Gasto fijo activado' });
       fixedExpensesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
     }
@@ -654,18 +722,33 @@ export default function Finance() {
       const baseSalary = Number(pBaseSalary);
       const netSalary = Number(pNetSalary);
       if (!pEmployee || !netSalary || !baseSalary) throw new Error('Completa empleado y montos válidos');
-      const { error } = await supabase.from('recurring_payrolls').insert({
+      
+      const { data, error } = await supabase.from('recurring_payrolls').insert({
         employee_name: pEmployee,
         base_salary: baseSalary,
         net_salary: netSalary,
         account_type: pAccount as any,
         payment_method: pMethod || null,
         frequency: 'monthly',
-      } as any);
+      } as any).select('*').single();
+      
       if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'create',
+        'recurring_payrolls',
+        data.id,
+        data,
+        `Creación de nómina recurrente: ${pEmployee}`,
+        netSalary,
+        pAccount as any
+      );
+
       toast({ title: 'Nómina recurrente programada' });
       setPEmployee(''); setPBaseSalary(''); setPNetSalary(''); setPMethod(''); setPAccount('fiscal'); setPRecurring(false);
       recurringPayrollsQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible programar', variant: 'destructive' });
     }
@@ -675,8 +758,21 @@ export default function Finance() {
     try {
       const { error } = await supabase.from('recurring_payrolls').update({ active: !row.active }).eq('id', row.id);
       if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'update',
+        'recurring_payrolls',
+        row.id,
+        { ...row, active: !row.active },
+        `${row.active ? 'Desactivación' : 'Activación'} de nómina recurrente: ${row.employee_name}`,
+        row.net_salary,
+        row.account_type
+      );
+
       toast({ title: row.active ? 'Recurrente desactivado' : 'Recurrente activado' });
       recurringPayrollsQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
     }
@@ -1858,33 +1954,38 @@ export default function Finance() {
                                 {fi.active ? 'Activo' : 'Inactivo'}
                               </span>
                             </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {isAdmin && (
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Eliminar ingreso recurrente?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Esta acción no se puede revertir. El ingreso fijo será eliminado permanentemente del sistema.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteFixedIncome(fi.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                          Eliminar
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                )}
-                              </div>
-                            </TableCell>
+                             <TableCell>
+                               <div className="flex items-center gap-2">
+                                 {isAdmin && (
+                                   <>
+                                     <Button size="sm" variant="outline" onClick={() => toggleFixedIncomeActive(fi)}>
+                                       {fi.active ? 'Desactivar' : 'Activar'}
+                                     </Button>
+                                     <AlertDialog>
+                                       <AlertDialogTrigger asChild>
+                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                           <X className="h-4 w-4" />
+                                         </Button>
+                                       </AlertDialogTrigger>
+                                       <AlertDialogContent>
+                                         <AlertDialogHeader>
+                                           <AlertDialogTitle>¿Eliminar ingreso recurrente?</AlertDialogTitle>
+                                           <AlertDialogDescription>
+                                             Esta acción no se puede revertir. El ingreso fijo será eliminado permanentemente del sistema.
+                                           </AlertDialogDescription>
+                                         </AlertDialogHeader>
+                                         <AlertDialogFooter>
+                                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                           <AlertDialogAction onClick={() => deleteFixedIncome(fi.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                             Eliminar
+                                           </AlertDialogAction>
+                                         </AlertDialogFooter>
+                                       </AlertDialogContent>
+                                     </AlertDialog>
+                                   </>
+                                 )}
+                               </div>
+                             </TableCell>
                           </TableRow>
                         ))}
                         {!fixedIncomesQuery.isLoading && (fixedIncomesQuery.data ?? []).length === 0 && (
