@@ -86,6 +86,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   breakdown: string;
   effectiveHours: number;
 } {
+  console.log('=== DELIVERY CALCULATION START ===');
+  console.log('Params received:', params);
+  
   const { 
     orderItems, 
     primaryTechnicianSchedule, 
@@ -93,6 +96,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     creationDate,
     currentWorkload = 0
   } = params;
+
+  console.log('Support technician schedule in calculation:', supportTechnicianSchedule ? 'EXISTS' : 'NONE');
 
   const effectiveHours = calculateSharedTimeHours(orderItems);
   
