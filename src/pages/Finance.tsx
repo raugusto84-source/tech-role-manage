@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { CollectionDialog } from "@/components/finance/CollectionDialog";
+import { X } from "lucide-react";
 
 // Util simple para exportar CSV en cliente
 function exportCsv(filename: string, rows: Record<string, any>[]) {
@@ -247,6 +248,54 @@ export default function Finance() {
       fixedExpensesQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+    }
+  };
+
+  const deleteFixedExpense = async (id: string) => {
+    if (!isAdmin) return;
+    try {
+      const { error } = await supabase.from("fixed_expenses").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Gasto fijo eliminado" });
+      fixedExpensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+    }
+  };
+
+  const deleteRecurringPayroll = async (id: string) => {
+    if (!isAdmin) return;
+    try {
+      const { error } = await supabase.from("recurring_payrolls").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Nómina recurrente eliminada" });
+      recurringPayrollsQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+    }
+  };
+
+  const deleteIncome = async (id: string) => {
+    if (!isAdmin) return;
+    try {
+      const { error } = await supabase.from("incomes").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Ingreso eliminado" });
+      incomesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+    }
+  };
+
+  const deleteExpense = async (id: string) => {
+    if (!isAdmin) return;
+    try {
+      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      if (error) throw error;
+      toast({ title: "Egreso eliminado" });
+      expensesQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
     }
   };
 
@@ -622,11 +671,18 @@ export default function Finance() {
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                          <TableCell>
-                            {isAdmin && (
-                              <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
-                            )}
-                          </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {isAdmin && (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                    <Button size="icon" variant="ghost" onClick={() => deleteIncome(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -666,11 +722,18 @@ export default function Finance() {
                            <TableCell>{r.category}</TableCell>
                            <TableCell>{r.payment_method}</TableCell>
                            <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                           <TableCell>
-                             {isAdmin && (
-                               <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
-                             )}
-                           </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {isAdmin && (
+                                  <>
+                                    <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                    <Button size="icon" variant="ghost" onClick={() => deleteIncome(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+                            </TableCell>
                          </TableRow>
                        ))}
                     </TableBody>
@@ -722,11 +785,18 @@ export default function Finance() {
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                          <TableCell>
-                            {isAdmin && (
-                              <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
-                            )}
-                          </TableCell>
+                           <TableCell>
+                             <div className="flex items-center gap-2">
+                               {isAdmin && (
+                                 <>
+                                   <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
+                                   <Button size="icon" variant="ghost" onClick={() => deleteExpense(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                     <X className="h-4 w-4" />
+                                   </Button>
+                                 </>
+                               )}
+                             </div>
+                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -775,9 +845,16 @@ export default function Finance() {
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                           <TableCell>
-                            {isAdmin && (
-                              <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
-                            )}
+                             <div className="flex items-center gap-2">
+                               {isAdmin && (
+                                 <>
+                                   <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
+                                   <Button size="icon" variant="ghost" onClick={() => deleteExpense(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                     <X className="h-4 w-4" />
+                                   </Button>
+                                 </>
+                               )}
+                             </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -851,11 +928,18 @@ export default function Finance() {
                             <TableCell>{fx.account_type}</TableCell>
                             <TableCell>{fx.next_run_date}</TableCell>
                             <TableCell>{fx.active ? 'Sí' : 'No'}</TableCell>
-                            <TableCell>
-                              <Button size="sm" variant="outline" onClick={() => toggleFixedActive(fx)}>
-                                {fx.active ? 'Desactivar' : 'Activar'}
-                              </Button>
-                            </TableCell>
+                             <TableCell>
+                               <div className="flex items-center gap-2">
+                                 <Button size="sm" variant="outline" onClick={() => toggleFixedActive(fx)}>
+                                   {fx.active ? 'Desactivar' : 'Activar'}
+                                 </Button>
+                                 {isAdmin && (
+                                   <Button size="icon" variant="ghost" onClick={() => deleteFixedExpense(fx.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                     <X className="h-4 w-4" />
+                                   </Button>
+                                 )}
+                               </div>
+                             </TableCell>
                           </TableRow>
                         ))}
                         {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).length === 0 && (
@@ -1001,11 +1085,18 @@ export default function Finance() {
                             <TableCell>{rp.account_type}</TableCell>
                             <TableCell>{rp.next_run_date}</TableCell>
                             <TableCell>{rp.active ? 'Sí' : 'No'}</TableCell>
-                            <TableCell>
-                              <Button size="sm" variant="outline" onClick={() => toggleRecurringPayrollActive(rp)}>
-                                {rp.active ? 'Desactivar' : 'Activar'}
-                              </Button>
-                            </TableCell>
+                             <TableCell>
+                               <div className="flex items-center gap-2">
+                                 <Button size="sm" variant="outline" onClick={() => toggleRecurringPayrollActive(rp)}>
+                                   {rp.active ? 'Desactivar' : 'Activar'}
+                                 </Button>
+                                 {isAdmin && (
+                                   <Button size="icon" variant="ghost" onClick={() => deleteRecurringPayroll(rp.id)} className="h-8 w-8 text-destructive hover:text-destructive">
+                                     <X className="h-4 w-4" />
+                                   </Button>
+                                 )}
+                               </div>
+                             </TableCell>
                           </TableRow>
                         ))}
                         {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).length === 0 && (
