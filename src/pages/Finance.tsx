@@ -200,7 +200,7 @@ export default function Finance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("fixed_expenses")
-        .select("id,description,amount,account_type,payment_method,next_run_date,active")
+        .select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month")
         .order("next_run_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -212,7 +212,7 @@ export default function Finance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recurring_payrolls")
-        .select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active")
+        .select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active,day_of_month")
         .order("next_run_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -221,6 +221,21 @@ export default function Finance() {
   
   const incomesTotal = useMemo(() => (incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [incomesQuery.data]);
   const expensesTotal = useMemo(() => (expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [expensesQuery.data]);
+
+  // Cálculos para gastos fijos recurrentes mensuales
+  const monthlyFixedExpenses = useMemo(() => {
+    return (fixedExpensesQuery.data ?? [])
+      .filter((fx: any) => fx.active)
+      .reduce((total: number, fx: any) => total + (Number(fx.amount) || 0), 0);
+  }, [fixedExpensesQuery.data]);
+
+  const monthlyRecurringPayrolls = useMemo(() => {
+    return (recurringPayrollsQuery.data ?? [])
+      .filter((pr: any) => pr.active)
+      .reduce((total: number, pr: any) => total + (Number(pr.net_salary) || 0), 0);
+  }, [recurringPayrollsQuery.data]);
+
+  const totalMonthlyFixedCosts = monthlyFixedExpenses + monthlyRecurringPayrolls;
 
   // Desglose por cuenta
   const incomesData = incomesQuery.data ?? [];
@@ -239,6 +254,7 @@ export default function Finance() {
   const [feAmount, setFeAmount] = useState("");
   const [feAccount, setFeAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
   const [feMethod, setFeMethod] = useState("");
+  const [feDayOfMonth, setFeDayOfMonth] = useState<number>(1);
 
   const [pEmployee, setPEmployee] = useState("");
   const [pBaseSalary, setPBaseSalary] = useState("");
@@ -254,6 +270,7 @@ export default function Finance() {
   const [pFrequency, setPFrequency] = useState<"weekly" | "monthly">("weekly");
   const [pCutoffWeekday, setPCutoffWeekday] = useState<number>(5);
   const [pDefaultBonus, setPDefaultBonus] = useState("");
+  const [pDayOfMonth, setPDayOfMonth] = useState<number>(1);
 
   // Estados para IVA (ya no se usan para registrar, solo para mostrar cálculos)
   const [showVatCalculator, setShowVatCalculator] = useState(false);
@@ -303,10 +320,11 @@ export default function Finance() {
         account_type: feAccount as any,
         payment_method: feMethod || null,
         frequency: 'monthly',
+        day_of_month: feDayOfMonth,
       } as any);
       if (error) throw error;
       toast({ title: "Gasto fijo programado" });
-      setFeDesc(""); setFeAmount(""); setFeMethod(""); setFeAccount("fiscal");
+      setFeDesc(""); setFeAmount(""); setFeMethod(""); setFeAccount("fiscal"); setFeDayOfMonth(1);
       fixedExpensesQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
@@ -1235,6 +1253,47 @@ export default function Finance() {
         </TabsContent>
 
         <TabsContent value="recurring">
+          {/* Summary Section */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Resumen de Gastos Fijos Mensuales</CardTitle>
+              <p className="text-sm text-muted-foreground">Total proyectado de gastos recurrentes por mes</p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                  <div className="text-sm text-red-600 font-medium">Gastos Fijos</div>
+                  <div className="text-2xl font-bold text-red-700">
+                    {monthlyFixedExpenses.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  </div>
+                  <div className="text-xs text-red-500 mt-1">
+                    {(fixedExpensesQuery.data ?? []).filter((fx: any) => fx.active).length} conceptos activos
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
+                  <div className="text-sm text-orange-600 font-medium">Nóminas Recurrentes</div>
+                  <div className="text-2xl font-bold text-orange-700">
+                    {monthlyRecurringPayrolls.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  </div>
+                  <div className="text-xs text-orange-500 mt-1">
+                    {(recurringPayrollsQuery.data ?? []).filter((pr: any) => pr.active).length} empleados activos
+                  </div>
+                </div>
+                
+                <div className="p-4 rounded-lg bg-gray-50 border border-gray-200">
+                  <div className="text-sm text-gray-600 font-medium">Total Mensual</div>
+                  <div className="text-2xl font-bold text-gray-800">
+                    {totalMonthlyFixedCosts.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Proyección mensual total
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -1266,6 +1325,21 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Día del mes para ejecutar</label>
+                  <Select value={feDayOfMonth.toString()} onValueChange={(v) => setFeDayOfMonth(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Día del mes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                        <SelectItem key={day} value={day.toString()}>
+                          Día {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center gap-3 pt-2">
                   <Button onClick={addFixedExpense}>📅 Programar Gasto</Button>
                   <Button variant="secondary" onClick={runFixedNow}>▶️ Ejecutar Ahora</Button>
@@ -1283,6 +1357,7 @@ export default function Finance() {
                           <TableHead>Descripción</TableHead>
                           <TableHead>Monto</TableHead>
                           <TableHead>Cuenta</TableHead>
+                          <TableHead>Día del mes</TableHead>
                           <TableHead>Próxima ejecución</TableHead>
                           <TableHead>Estado</TableHead>
                           <TableHead>Acciones</TableHead>
@@ -1290,7 +1365,7 @@ export default function Finance() {
                       </TableHeader>
                       <TableBody>
                         {fixedExpensesQuery.isLoading && (
-                          <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
                         )}
                         {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).map((fx: any) => (
                           <TableRow key={fx.id}>
@@ -1303,6 +1378,11 @@ export default function Finance() {
                                   : 'bg-gray-100 text-gray-800'
                               }`}>
                                 {fx.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                Día {fx.day_of_month || 1}
                               </span>
                             </TableCell>
                             <TableCell>{fx.next_run_date}</TableCell>
@@ -1348,7 +1428,7 @@ export default function Finance() {
                           </TableRow>
                         ))}
                         {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).length === 0 && (
-                          <TableRow><TableCell colSpan={6}>Sin gastos fijos programados.</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={7}>Sin gastos fijos programados.</TableCell></TableRow>
                         )}
                       </TableBody>
                     </Table>
@@ -1418,43 +1498,60 @@ export default function Finance() {
                   <Input value={pMethod} onChange={e => setPMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
                 {pRecurring && (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm text-muted-foreground">Frecuencia</label>
-                      <Select value={pFrequency} onValueChange={(v) => setPFrequency(v as any)}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona frecuencia" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="weekly">Semanal</SelectItem>
-                          <SelectItem value="monthly">Mensual</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {pFrequency === 'weekly' && (
+                  <>
+                    <div className="grid gap-3 md:grid-cols-2">
                       <div>
-                        <label className="text-sm text-muted-foreground">Día de corte</label>
-                        <Select value={pCutoffWeekday.toString()} onValueChange={(v) => setPCutoffWeekday(Number(v))}>
+                        <label className="text-sm text-muted-foreground">Frecuencia</label>
+                        <Select value={pFrequency} onValueChange={(v) => setPFrequency(v as any)}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Día de corte" />
+                            <SelectValue placeholder="Selecciona frecuencia" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="1">Lunes</SelectItem>
-                            <SelectItem value="2">Martes</SelectItem>
-                            <SelectItem value="3">Miércoles</SelectItem>
-                            <SelectItem value="4">Jueves</SelectItem>
-                            <SelectItem value="5">Viernes</SelectItem>
-                            <SelectItem value="6">Sábado</SelectItem>
-                            <SelectItem value="0">Domingo</SelectItem>
+                            <SelectItem value="weekly">Semanal</SelectItem>
+                            <SelectItem value="monthly">Mensual</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
-                    <div>
-                      <label className="text-sm text-muted-foreground">Bono por defecto</label>
-                      <Input type="number" inputMode="decimal" value={pDefaultBonus} onChange={e => setPDefaultBonus(e.target.value)} placeholder="0.00" />
+                      {pFrequency === 'weekly' && (
+                        <div>
+                          <label className="text-sm text-muted-foreground">Día de corte</label>
+                          <Select value={pCutoffWeekday.toString()} onValueChange={(v) => setPCutoffWeekday(Number(v))}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Día de corte" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Lunes</SelectItem>
+                              <SelectItem value="2">Martes</SelectItem>
+                              <SelectItem value="3">Miércoles</SelectItem>
+                              <SelectItem value="4">Jueves</SelectItem>
+                              <SelectItem value="5">Viernes</SelectItem>
+                              <SelectItem value="6">Sábado</SelectItem>
+                              <SelectItem value="0">Domingo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-sm text-muted-foreground">Bono por defecto</label>
+                        <Input type="number" inputMode="decimal" value={pDefaultBonus} onChange={e => setPDefaultBonus(e.target.value)} placeholder="0.00" />
+                      </div>
                     </div>
-                  </div>
+                    <div>
+                      <label className="text-sm text-muted-foreground">Día del mes para ejecutar</label>
+                      <Select value={pDayOfMonth.toString()} onValueChange={(v) => setPDayOfMonth(Number(v))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Día del mes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                            <SelectItem key={day} value={day.toString()}>
+                              Día {day}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
                 <div className="flex items-center gap-2 pt-2">
                   <Checkbox id="rec-pay" checked={pRecurring} onCheckedChange={(v) => setPRecurring(!!v)} />

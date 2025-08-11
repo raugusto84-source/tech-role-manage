@@ -951,6 +951,7 @@ export type Database = {
           amount: number
           created_at: string
           created_by: string | null
+          day_of_month: number | null
           description: string
           frequency: string
           id: string
@@ -965,6 +966,7 @@ export type Database = {
           amount: number
           created_at?: string
           created_by?: string | null
+          day_of_month?: number | null
           description: string
           frequency?: string
           id?: string
@@ -979,6 +981,7 @@ export type Database = {
           amount?: number
           created_at?: string
           created_by?: string | null
+          day_of_month?: number | null
           description?: string
           frequency?: string
           id?: string
@@ -2269,6 +2272,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           cutoff_weekday: number
+          day_of_month: number | null
           default_bonus: number | null
           employee_name: string
           frequency: string
@@ -2286,6 +2290,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cutoff_weekday?: number
+          day_of_month?: number | null
           default_bonus?: number | null
           employee_name: string
           frequency?: string
@@ -2303,6 +2308,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           cutoff_weekday?: number
+          day_of_month?: number | null
           default_bonus?: number | null
           employee_name?: string
           frequency?: string
