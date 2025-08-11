@@ -574,14 +574,38 @@ export async function registerTechnicianWorkload(
   try {
     const { supabase } = await import('@/integrations/supabase/client');
     
-    const workloadEntries = orderItems.map(item => ({
-      technician_id: technicianId,
-      order_id: orderId,
-      service_type_id: item.service_type_id || '',
-      is_shared_service: item.shared_time || false,
-      estimated_hours: item.estimated_hours || 0,
-      status: 'active'
-    }));
+    // Obtener información de los service_types para las horas estimadas y shared_time
+    const serviceTypeIds = orderItems.map(item => item.service_type_id).filter(Boolean);
+    
+    if (serviceTypeIds.length === 0) {
+      console.log('No hay service_type_ids para registrar workload');
+      return;
+    }
+    
+    const { data: serviceTypes, error: serviceError } = await supabase
+      .from('service_types')
+      .select('id, estimated_hours, shared_time')
+      .in('id', serviceTypeIds);
+    
+    if (serviceError) {
+      console.error('Error fetching service types for workload:', serviceError);
+      return;
+    }
+    
+    // Crear un mapa de service_types para fácil acceso
+    const serviceTypeMap = new Map(serviceTypes?.map(st => [st.id, st]) || []);
+    
+    const workloadEntries = orderItems.map(item => {
+      const serviceType = serviceTypeMap.get(item.service_type_id);
+      return {
+        technician_id: technicianId,
+        order_id: orderId,
+        service_type_id: item.service_type_id || '',
+        is_shared_service: serviceType?.shared_time || false,
+        estimated_hours: serviceType?.estimated_hours || 0,
+        status: 'active'
+      };
+    });
 
     const { error } = await supabase
       .from('technician_workload')
@@ -589,6 +613,8 @@ export async function registerTechnicianWorkload(
 
     if (error) {
       console.error('Error registering technician workload:', error);
+    } else {
+      console.log(`Registrado workload para técnico ${technicianId}: ${workloadEntries.length} entradas`);
     }
   } catch (error) {
     console.error('Error in registerTechnicianWorkload:', error);
