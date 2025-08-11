@@ -94,7 +94,9 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         .update({
           client_approval: true,
           client_approval_notes: approvalNotes || "Orden aprobada sin comentarios adicionales",
-          initial_signature_url: signatureData
+          initial_signature_url: signatureData,
+          status: "pendiente",
+          client_approved_at: new Date().toISOString()
         })
         .eq("id", order.id);
 
