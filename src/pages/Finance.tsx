@@ -612,19 +612,21 @@ export default function Finance() {
         
         if (incomeError) {
           console.error('Error creating dummy income:', incomeError);
+          throw incomeError;
         }
         
         if (dummyIncome) {
           console.log('Creating fiscal withdrawal with amount:', amount);
           const { data: withdrawal, error: withdrawalError } = await supabase.from("fiscal_withdrawals").insert({
             amount: amount,
-            description: `Retiro disponible por compra con factura: ${purchaseConcept}`,
+            description: `Factura pendiente: ${purchaseConcept} - ${supplier?.supplier_name || 'Proveedor'}`,
             withdrawal_status: 'available',
             income_id: dummyIncome.id
           } as any).select().single();
           
           if (withdrawalError) {
             console.error("Error creating fiscal withdrawal:", withdrawalError);
+            throw withdrawalError;
           } else {
             console.log("Fiscal withdrawal created successfully:", withdrawal);
           }
