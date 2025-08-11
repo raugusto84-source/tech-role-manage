@@ -65,13 +65,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
     setCurrentUnreadCount(0);
-    // Actualizar el estado local para que la interfaz responda inmediatamente
-    onUpdate(); // Solo llamar onUpdate cuando sea necesario
+    // No llamar onUpdate() para evitar bucles infinitos
   };
   useEffect(() => {
     loadOrderItems();
     loadAssignedTechnician();
-    updateOrderStatus();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -219,28 +217,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return actualDurationHours < order.average_service_time;
     })();
 
-  const updateOrderStatus = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('status')
-        .eq('id', order.id)
-        .single();
-
-      if (error) throw error;
-      
-      if (data && data.status !== orderStatus) {
-        setOrderStatus(data.status);
-        // NO llamar onUpdate() para evitar bucles infinitos
-      }
-    } catch (error) {
-      console.error('Error updating order status:', error);
-    }
-  };
 
   // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
-    return <ClientOrderApproval order={order} onApprovalChange={updateOrderStatus} />;
+    return <ClientOrderApproval order={order} onApprovalChange={() => setOrderStatus(order.status)} />;
   }
 
   // Si se debe mostrar la encuesta, mostrarla en lugar del detalle
@@ -453,13 +433,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               <OrderServicesList 
                 orderItems={orderItems} 
                 canEdit={canUpdateStatus}
-                onItemUpdate={() => {
-                  loadOrderItems();
-                  // Verificar estado manualmente como fallback en caso de que realtime no funcione
-                  setTimeout(() => {
-                    updateOrderStatus();
-                  }, 3000);
-                }}
+                onItemUpdate={loadOrderItems}
               />
             )}
 
