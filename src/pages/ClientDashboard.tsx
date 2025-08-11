@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, RefreshCw, Gift, FileText, ClipboardList } from "lucide-react";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
+import { WhatsAppProfile } from '@/components/client/WhatsAppProfile';
 
 // Tipos locales para órdenes y cotizaciones (ligeros para no depender de types.ts)
 interface Order {
@@ -373,6 +374,12 @@ export default function ClientDashboard() {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      {/* WhatsApp Profile Section */}
+      <section className="mt-6">
+        <h2 className="text-xl font-semibold mb-4">Configuración de Notificaciones</h2>
+        <WhatsAppProfile />
       </section>
 
       {/* Dialog para nueva solicitud */}
