@@ -13,7 +13,7 @@ import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 interface Order {
   id: string;
   order_number: string;
-  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | "en_camino" | string;
+  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | "en_camino" | "pendiente_aprobacion" | string;
   created_at: string;
   delivery_date?: string;
   failure_description?: string;
@@ -201,18 +201,20 @@ export default function ClientDashboard() {
   // Utilidades UI
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
-      pendiente: "bg-warning/10 text-warning border-warning/20",
+      pendiente_aprobacion: "bg-warning/10 text-warning border-warning/20",
+      pendiente: "bg-info/10 text-info border-info/20",
       en_camino: "bg-info/10 text-info border-info/20",
       en_proceso: "bg-info/10 text-info border-info/20",
       finalizada: "bg-success/10 text-success border-success/20",
       cancelada: "bg-destructive/10 text-destructive border-destructive/20",
     };
-    return <Badge className={map[status] || "bg-muted text-foreground"}>{status.replace("_", " ")}</Badge>;
+    const statusText = status === "pendiente_aprobacion" ? "pendiente aprobación" : status.replace("_", " ");
+    return <Badge className={map[status] || "bg-muted text-foreground"}>{statusText}</Badge>;
   };
 
   const metrics = useMemo(() => ({
     totalOrders: orders.length,
-    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino").length,
+    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino" || o.status === "pendiente_aprobacion").length,
     quotesCount: quotes.length,
   }), [orders, quotes]);
 

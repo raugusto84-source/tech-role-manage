@@ -34,7 +34,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino';
+  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -203,6 +203,7 @@ export default function Orders() {
 
   // Group orders by status
   const groupedOrders = {
+    pendiente_aprobacion: filteredOrders.filter(order => order.status === 'pendiente_aprobacion'),
     pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
     en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
     en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
@@ -212,7 +213,8 @@ export default function Orders() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'bg-warning/10 text-warning border-warning/20';
+      case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
+      case 'pendiente': return 'bg-info/10 text-info border-info/20';
       case 'en_camino': return 'bg-info/10 text-info border-info/20';
       case 'en_proceso': return 'bg-info/10 text-info border-info/20';
       case 'finalizada': return 'bg-success/10 text-success border-success/20';
@@ -223,6 +225,7 @@ export default function Orders() {
 
   const getStatusTitle = (status: string) => {
     switch (status) {
+      case 'pendiente_aprobacion': return 'Pendientes de Aprobación';
       case 'pendiente': return 'Pendientes';
       case 'en_camino': return 'En Camino';
       case 'en_proceso': return 'En Proceso';
@@ -348,6 +351,7 @@ export default function Orders() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
                     <SelectItem value="en_camino">En Camino</SelectItem>
                     <SelectItem value="en_proceso">En Proceso</SelectItem>

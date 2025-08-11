@@ -14,6 +14,7 @@ import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
+import { ClientOrderApproval } from './ClientOrderApproval';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 
 interface OrderDetailsProps {
@@ -27,7 +28,7 @@ interface OrderDetailsProps {
     delivery_date: string;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino';
+    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion';
     assigned_technician?: string;
     assignment_reason?: string;
     evidence_photos?: string[];
@@ -182,11 +183,13 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'bg-yellow-100 text-yellow-800';
-      case 'en_proceso': return 'bg-blue-100 text-blue-800';
-      case 'finalizada': return 'bg-green-100 text-green-800';
-      case 'cancelada': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
+      case 'pendiente': return 'bg-info/10 text-info border-info/20';
+      case 'en_proceso': return 'bg-info/10 text-info border-info/20';
+      case 'en_camino': return 'bg-info/10 text-info border-info/20';
+      case 'finalizada': return 'bg-success/10 text-success border-success/20';
+      case 'cancelada': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
   };
 
@@ -228,6 +231,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       console.error('Error updating order status:', error);
     }
   };
+
+  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
+    return <ClientOrderApproval order={order} onApprovalChange={updateOrderStatus} />;
+  }
 
   // Si se debe mostrar la encuesta, mostrarla en lugar del detalle
   if (showSurvey && canSeeSurvey) {

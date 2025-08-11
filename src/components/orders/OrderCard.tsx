@@ -61,7 +61,11 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   return (
     <Card 
-      className="hover:shadow-lg transition-shadow cursor-pointer border-l-4 border-l-primary"
+      className={`hover:shadow-lg transition-shadow cursor-pointer border-l-4 ${
+        order.status === 'pendiente_aprobacion' 
+          ? 'border-l-warning bg-warning/5' 
+          : 'border-l-primary'
+      }`}
       onClick={onClick}
     >
       <CardHeader className="pb-3">
