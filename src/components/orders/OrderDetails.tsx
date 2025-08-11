@@ -70,8 +70,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     const channel = supabase
       .channel('order-changes')
       .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'orders', filter: `id=eq.${order.id}` },
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'orders', 
+          filter: `id=eq.${order.id}` 
+        },
         (payload) => {
+          console.log('Order status changed via realtime:', payload);
           if (payload.new.status !== orderStatus) {
             setOrderStatus(payload.new.status);
           }
@@ -435,7 +441,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 canEdit={canUpdateStatus}
                 onItemUpdate={() => {
                   loadOrderItems();
-                  // El estado se actualizará automáticamente vía suscripción en tiempo real
+                  // Verificar estado manualmente como fallback en caso de que realtime no funcione
+                  setTimeout(() => {
+                    updateOrderStatus();
+                  }, 3000);
                 }}
               />
             )}
