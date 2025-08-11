@@ -134,7 +134,7 @@ export function DeliveryCalculationDisplay({
             </p>
           ))}
           <p className="text-green-600 font-medium">
-            ✓ Tiempo aplicado secuencialmente por cada técnico
+            ✓ Hora de entrega reducida por técnicos de apoyo
           </p>
         </div>
       )}

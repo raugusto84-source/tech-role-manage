@@ -126,19 +126,22 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
   
-  // Apply each support technician's reduction sequentially
-  let effectiveWorkingHours = effectiveHours;
+  // Calculate reduction factor from support technicians
+  let reductionFactor = 1;
   console.log('Original hours:', effectiveHours);
   console.log('Support technicians count:', supportTechnicians.length);
   
   if (supportTechnicians.length > 0) {
     supportTechnicians.forEach((supportTech, index) => {
-      const previousHours = effectiveWorkingHours;
-      effectiveWorkingHours = effectiveWorkingHours * (1 - supportTech.reductionPercentage / 100);
-      console.log(`Technician ${index + 1} (${supportTech.reductionPercentage}%): ${previousHours}h -> ${effectiveWorkingHours}h`);
+      const previousFactor = reductionFactor;
+      reductionFactor = reductionFactor * (1 - supportTech.reductionPercentage / 100);
+      console.log(`Technician ${index + 1} (${supportTech.reductionPercentage}%): factor ${previousFactor} -> ${reductionFactor}`);
     });
-    console.log('Final reduced hours:', effectiveWorkingHours);
+    console.log('Final reduction factor:', reductionFactor);
   }
+  
+  // Keep original hours for scheduling, but apply reduction to delivery time
+  let effectiveWorkingHours = effectiveHours;
 
   const totalHoursPerDay = primaryHoursPerDay;
 
@@ -232,8 +235,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   if (daysAdded === 1) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     
-    // Usar las horas efectivas (con reducción de técnicos de apoyo) para el cálculo del tiempo
-    const totalMinutes = effectiveWorkingHours * 60;
+    // Aplicar factor de reducción de técnicos de apoyo a la hora de entrega
+    const reducedHours = effectiveWorkingHours * reductionFactor;
+    const totalMinutes = reducedHours * 60;
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
@@ -242,12 +246,10 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       hour12: true 
     });
   } else if (hoursWorkedToday > 0) {
-    // Para trabajos de múltiples días, usar las horas efectivas del último día
+    // Para trabajos de múltiples días, aplicar reducción a las horas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
-    // Calcular proporción de reducción para el último día
-    const reductionFactor = effectiveWorkingHours / effectiveHours;
-    const adjustedLastDayHours = hoursWorkedToday * reductionFactor;
-    const totalMinutes = adjustedLastDayHours * 60;
+    const reducedLastDayHours = hoursWorkedToday * reductionFactor;
+    const totalMinutes = reducedLastDayHours * 60;
     
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
