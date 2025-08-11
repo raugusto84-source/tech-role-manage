@@ -101,7 +101,7 @@ export function SkillsManager({
         .from('technician_skills')
         .select(`
           *,
-          service_types:service_type_id!inner (
+          service_types!fk_technician_skills_service_type (
             id,
             name,
             description,
