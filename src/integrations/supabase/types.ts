@@ -1482,6 +1482,59 @@ export type Database = {
           },
         ]
       }
+      order_support_technicians: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          reduction_percentage: number
+          technician_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          reduction_percentage?: number
+          technician_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          reduction_percentage?: number
+          technician_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_support_technicians_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_support_technicians_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_support_technicians_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_support_technicians_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           assigned_technician: string | null
@@ -2981,6 +3034,64 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technician_workload: {
+        Row: {
+          created_at: string
+          estimated_hours: number
+          id: string
+          is_shared_service: boolean
+          order_id: string
+          service_type_id: string
+          status: string
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_hours?: number
+          id?: string
+          is_shared_service?: boolean
+          order_id: string
+          service_type_id: string
+          status?: string
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estimated_hours?: number
+          id?: string
+          is_shared_service?: boolean
+          order_id?: string
+          service_type_id?: string
+          status?: string
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_technician_workload_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_technician_workload_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_technician_workload_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]

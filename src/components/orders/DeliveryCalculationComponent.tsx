@@ -12,11 +12,17 @@ interface OrderItem {
   status?: 'pendiente' | 'en_proceso' | 'completado';
 }
 
+interface SupportTechnicianData {
+  id: string;
+  technicianId: string;
+  reductionPercentage: number;
+}
+
 interface DeliveryCalculationDisplayProps {
   technicianId: string;
   orderItems: OrderItem[];
   technicianSchedules: Record<string, any>;
-  supportTechnicianId?: string;
+  supportTechnicians?: SupportTechnicianData[];
   onDateUpdate: (date: string) => void;
   currentDeliveryDate: string;
 }
@@ -25,7 +31,7 @@ export function DeliveryCalculationDisplay({
   technicianId,
   orderItems,
   technicianSchedules,
-  supportTechnicianId,
+  supportTechnicians = [],
   onDateUpdate,
   currentDeliveryDate
 }: DeliveryCalculationDisplayProps) {
@@ -39,22 +45,24 @@ export function DeliveryCalculationDisplay({
 
   const primarySchedule = technicianSchedules[technicianId] || defaultSchedule;
 
-  // Obtener el horario del técnico de apoyo si existe
-  console.log('Support technician ID:', supportTechnicianId);
+  // Procesar técnicos de apoyo para incluir sus horarios
+  console.log('Support technicians:', supportTechnicians);
   console.log('Available schedules:', Object.keys(technicianSchedules));
   
-  const supportSchedule = supportTechnicianId && supportTechnicianId !== 'none'
-    ? technicianSchedules[supportTechnicianId] || defaultSchedule
-    : undefined;
-    
-  console.log('Support schedule:', supportSchedule ? 'FOUND' : 'NOT FOUND');
+  const processedSupportTechnicians = supportTechnicians.map(supportTech => ({
+    id: supportTech.technicianId,
+    schedule: technicianSchedules[supportTech.technicianId] || defaultSchedule,
+    reductionPercentage: supportTech.reductionPercentage
+  }));
+  
+  console.log('Processed support technicians:', processedSupportTechnicians);
 
   // Usar el hook para calcular la carga de trabajo y fecha de entrega
   const { workload, deliveryCalculation, loading, error } = useWorkloadCalculation({
     technicianId,
     orderItems,
     primarySchedule,
-    supportSchedule
+    supportTechnicians: processedSupportTechnicians
   });
 
   // Actualizar la fecha cuando cambie el cálculo
@@ -115,10 +123,17 @@ export function DeliveryCalculationDisplay({
         </p>
       )}
       
-      {supportTechnicianId && (
-        <p className="text-purple-600 font-medium">
-          ⚡ Tiempo reducido 30% con técnico de apoyo
-        </p>
+      {supportTechnicians.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-purple-600 font-medium">
+            ⚡ {supportTechnicians.length} técnico(s) de apoyo activos
+          </p>
+          {supportTechnicians.map(tech => (
+            <p key={tech.id} className="text-xs text-purple-500">
+              • Reducción: {tech.reductionPercentage}%
+            </p>
+          ))}
+        </div>
       )}
       
       <p className="text-blue-500">

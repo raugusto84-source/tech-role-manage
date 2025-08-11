@@ -17,18 +17,24 @@ interface WorkSchedule {
   break_duration_minutes: number;
 }
 
+interface SupportTechnician {
+  id: string;
+  schedule: WorkSchedule;
+  reductionPercentage: number;
+}
+
 interface UseWorkloadCalculationProps {
   technicianId: string;
   orderItems: OrderItem[];
   primarySchedule: WorkSchedule;
-  supportSchedule?: WorkSchedule;
+  supportTechnicians?: SupportTechnician[];
 }
 
 export function useWorkloadCalculation({
   technicianId,
   orderItems,
   primarySchedule,
-  supportSchedule
+  supportTechnicians = []
 }: UseWorkloadCalculationProps) {
   const [workload, setWorkload] = useState(0);
   const [deliveryCalculation, setDeliveryCalculation] = useState<{
@@ -95,14 +101,14 @@ export function useWorkloadCalculation({
 
       setWorkload(currentWorkload);
 
-      // Calculate delivery date
-      const result = calculateAdvancedDeliveryDate({
-        orderItems,
-        primaryTechnicianSchedule: primarySchedule,
-        supportTechnicianSchedule: supportSchedule,
-        creationDate: new Date(),
-        currentWorkload
-      });
+        // Calculate delivery date
+        const result = calculateAdvancedDeliveryDate({
+          orderItems,
+          primaryTechnicianSchedule: primarySchedule,
+          supportTechnicians,
+          creationDate: new Date(),
+          currentWorkload
+        });
 
       // Only update state if this calculation wasn't aborted
       if (!currentController.signal.aborted) {
@@ -120,7 +126,7 @@ export function useWorkloadCalculation({
           const fallbackResult = calculateAdvancedDeliveryDate({
             orderItems,
             primaryTechnicianSchedule: primarySchedule,
-            supportTechnicianSchedule: supportSchedule,
+            supportTechnicians,
             creationDate: new Date(),
             currentWorkload: 0
           });
@@ -137,7 +143,7 @@ export function useWorkloadCalculation({
         setLoading(false);
       }
     }
-  }, [technicianId, calculationKey, orderItems, primarySchedule, supportSchedule]);
+  }, [technicianId, calculationKey, orderItems, primarySchedule, supportTechnicians]);
 
   useEffect(() => {
     // Debounce the calculation

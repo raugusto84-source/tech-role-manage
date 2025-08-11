@@ -21,6 +21,7 @@ import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
 import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, getTechnicianCurrentWorkload } from '@/utils/workScheduleCalculator';
 import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
+import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
 
 interface ServiceType {
   id: string;
@@ -53,6 +54,20 @@ interface OrderFormProps {
   onCancel: () => void;
 }
 
+interface OrderFormData {
+  client_id: string;
+  failure_description: string;
+  delivery_date: string;
+  assigned_technician: string;
+  estimated_cost: string;
+}
+
+interface SupportTechnicianEntry {
+  id: string;
+  technicianId: string;
+  reductionPercentage: number;
+}
+
 export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -65,14 +80,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [technicianWorkloads, setTechnicianWorkloads] = useState<any>({});
   const [technicianSchedules, setTechnicianSchedules] = useState<Record<string, any>>({});
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<OrderFormData>({
     client_id: '',
     failure_description: '',
-    delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow
+    delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     assigned_technician: '',
-    support_technician: 'none' // Initialize with 'none' instead of empty string
+    estimated_cost: ''
   });
-  
+  const [supportTechnicians, setSupportTechnicians] = useState<SupportTechnicianEntry[]>([]);
+
   // Estados para el sistema de sugerencias de técnicos
   const [showTechnicianSuggestions, setShowTechnicianSuggestions] = useState(false);
   const [showSupportSuggestion, setShowSupportSuggestion] = useState(false);
@@ -81,17 +97,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   useEffect(() => {
     loadServiceTypes();
-    loadCurrentOrders(); // Para calcular cargas de trabajo
-    loadTechnicianSchedules(); // Cargar horarios de técnicos
+    loadCurrentOrders();
+    loadTechnicianSchedules();
     
     if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
-      // Para staff: cargar lista completa de clientes y técnicos
       loadClients();
       loadTechnicians();
     } else if (profile?.role === 'cliente') {
-      // Para clientes: cargar su propio cliente automáticamente y técnicos para mostrar nombres
       loadCurrentClient();
-      loadTechnicians(); // Cargar técnicos para mostrar nombres en la asignación
+      loadTechnicians();
     }
   }, [profile?.role, profile?.email]);
 
@@ -345,9 +359,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         break_duration_minutes: 60
       };
       
-      // Calcular reducción por técnicos de apoyo (0.5% por técnico)
-      const supportTechnicians = formData.support_technician && formData.support_technician !== "none" ? 1 : 0;
-      const reductionFactor = 1 - (supportTechnicians * 0.005); // 0.5% de reducción
+      // Calcular reducción por técnicos de apoyo múltiples
+      const totalReduction = supportTechnicians.reduce((sum, tech) => sum + tech.reductionPercentage, 0);
+      const reductionFactor = 1 - (Math.min(totalReduction, 90) / 100); // Cap at 90%
       const adjustedHours = totalHours * reductionFactor;
       
       const { deliveryDate } = calculateDeliveryDate(adjustedHours, standardSchedule);
@@ -469,7 +483,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      // Validar que tenemos client_id
       if (!formData.client_id) {
         toast({
           title: "Error",
@@ -479,7 +492,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      // Validar que tenemos fecha de entrega
       if (!formData.delivery_date) {
         toast({
           title: "Error",
@@ -496,9 +508,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       // Crear la orden principal
       const orderData = {
         client_id: formData.client_id,
-        service_type: orderItems[0].service_type_id, // Usar el primer servicio como tipo principal
+        service_type: orderItems[0].service_type_id,
         failure_description: formData.failure_description,
-        delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Default to tomorrow if empty
+        delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         estimated_cost: totalAmount,
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
@@ -538,9 +550,26 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       if (itemsError) {
         console.error('Error creating order items:', itemsError);
-        // Si falla crear los items, eliminar la orden
         await supabase.from('orders').delete().eq('id', orderResult.id);
         throw itemsError;
+      }
+
+      // Crear registros de técnicos de apoyo
+      if (supportTechnicians.length > 0) {
+        const supportTechnicianData = supportTechnicians.map(tech => ({
+          order_id: orderResult.id,
+          technician_id: tech.technicianId,
+          reduction_percentage: tech.reductionPercentage
+        }));
+
+        const { error: supportError } = await supabase
+          .from('order_support_technicians')
+          .insert(supportTechnicianData);
+
+        if (supportError) {
+          console.error('Error creating support technician records:', supportError);
+          // Don't fail the entire order creation for this
+        }
       }
 
       // Registrar la carga de trabajo del técnico si está asignado
@@ -550,7 +579,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           console.log('Workload updated for technician:', formData.assigned_technician);
         } catch (workloadError) {
           console.warn('Could not update technician workload:', workloadError);
-          // No fallar la creación de la orden por esto
         }
       }
 
@@ -670,47 +698,23 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 onItemsChange={setOrderItems}
               />
 
-              {/* Asignación de Técnicos */}
+              {/* Asignación de Técnico Principal */}
               {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="assigned_technician">Técnico Principal</Label>
-                      <Select value={formData.assigned_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_technician: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar técnico" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          {technicians.map((technician) => (
-                            <SelectItem key={technician.user_id} value={technician.user_id}>
-                              {technician.full_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="support_technician">Técnico de Apoyo (Opcional)</Label>
-                      <Select value={formData.support_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, support_technician: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar técnico de apoyo" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          <SelectItem value="none">Sin técnico de apoyo</SelectItem>
-                          {technicians.filter(t => t.user_id !== formData.assigned_technician).map((technician) => (
-                            <SelectItem key={technician.user_id} value={technician.user_id}>
-                              {technician.full_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {formData.support_technician && formData.support_technician !== "none" && (
-                        <p className="text-xs text-green-600">
-                          Tiempo estimado reducido en 0.5% con técnico de apoyo
-                        </p>
-                      )}
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="assigned_technician">Técnico Principal</Label>
+                    <Select value={formData.assigned_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_technician: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar técnico" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border z-50">
+                        {technicians.map((technician) => (
+                          <SelectItem key={technician.user_id} value={technician.user_id}>
+                            {technician.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               )}
@@ -754,12 +758,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     technicianId={formData.assigned_technician}
                     orderItems={orderItems}
                     technicianSchedules={technicianSchedules}
-                    supportTechnicianId={formData.support_technician !== 'none' ? formData.support_technician : undefined}
+                    supportTechnicians={supportTechnicians}
                     onDateUpdate={(date) => setFormData(prev => ({ ...prev, delivery_date: date }))}
                     currentDeliveryDate={formData.delivery_date}
                   />
                 )}
               </div>
+
+              {/* Multiple Support Technician Selector */}
+              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && formData.assigned_technician && (
+                <MultipleSupportTechnicianSelector
+                  technicians={technicians}
+                  primaryTechnicianId={formData.assigned_technician}
+                  selectedSupportTechnicians={supportTechnicians}
+                  onSupportTechniciansChange={setSupportTechnicians}
+                />
+              )}
 
               {/* Sugerencias de Técnicos para Staff */}
               {showTechnicianSuggestions && orderItems.length > 0 && (profile?.role === 'administrador' || profile?.role === 'vendedor') && (

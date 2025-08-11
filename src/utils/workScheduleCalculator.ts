@@ -20,10 +20,16 @@ interface OrderItem {
   quantity?: number;
 }
 
+interface SupportTechnician {
+  id: string;
+  schedule: WorkSchedule;
+  reductionPercentage: number;
+}
+
 interface DeliveryCalculationParams {
   orderItems: OrderItem[];
   primaryTechnicianSchedule: WorkSchedule;
-  supportTechnicianSchedule?: WorkSchedule;
+  supportTechnicians?: SupportTechnician[];
   creationDate: Date;
   currentWorkload?: number;
 }
@@ -92,12 +98,12 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   const { 
     orderItems, 
     primaryTechnicianSchedule, 
-    supportTechnicianSchedule, 
+    supportTechnicians = [],
     creationDate,
     currentWorkload = 0
   } = params;
 
-  console.log('Support technician schedule in calculation:', supportTechnicianSchedule ? 'EXISTS' : 'NONE');
+  console.log('Support technicians in calculation:', supportTechnicians.length);
 
   const effectiveHours = calculateSharedTimeHours(orderItems);
   
@@ -120,14 +126,23 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
   
-  // Si hay técnico de apoyo, aplicar reducción del 30% en el tiempo total
-  let effectiveWorkingHours = effectiveHours;
-  console.log('Support technician schedule:', supportTechnicianSchedule ? 'EXISTS' : 'NONE');
-  console.log('Original hours:', effectiveHours);
+  // Calculate total reduction from all support technicians
+  let totalReductionPercentage = 0;
+  supportTechnicians.forEach(supportTech => {
+    totalReductionPercentage += supportTech.reductionPercentage;
+  });
   
-  if (supportTechnicianSchedule) {
-    effectiveWorkingHours = effectiveHours * 0.7; // Reducción del 30%
-    console.log('Support technician detected! Reduced hours:', effectiveWorkingHours);
+  // Cap total reduction at 90% to prevent unrealistic scenarios
+  totalReductionPercentage = Math.min(totalReductionPercentage, 90);
+  
+  let effectiveWorkingHours = effectiveHours;
+  console.log('Original hours:', effectiveHours);
+  console.log('Support technicians count:', supportTechnicians.length);
+  console.log('Total reduction percentage:', totalReductionPercentage);
+  
+  if (supportTechnicians.length > 0) {
+    effectiveWorkingHours = effectiveHours * (1 - totalReductionPercentage / 100);
+    console.log('Support technicians detected! Reduced hours:', effectiveWorkingHours);
   }
 
   const totalHoursPerDay = primaryHoursPerDay;
@@ -258,8 +273,9 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   const deadDays = totalDays - daysAdded;
   
   let breakdown = '';
-  if (supportTechnicianSchedule) {
-    breakdown = `Tiempo reducido en 30% por técnico de apoyo (de ${effectiveHours}h a ${effectiveWorkingHours.toFixed(1)}h)`;
+  if (supportTechnicians.length > 0) {
+    const totalReduction = Math.min(supportTechnicians.reduce((sum, tech) => sum + tech.reductionPercentage, 0), 90);
+    breakdown = `Tiempo reducido en ${totalReduction}% por ${supportTechnicians.length} técnico(s) de apoyo (de ${effectiveHours}h a ${effectiveWorkingHours.toFixed(1)}h)`;
   } else {
     breakdown = `Tiempo estimado: ${effectiveHours}h`;
   }
