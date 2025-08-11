@@ -66,6 +66,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [deliveryPhase, setDeliveryPhase] = useState<'signature' | 'survey' | 'completed'>('signature');
   const [hasDeliverySignature, setHasDeliverySignature] = useState(false);
   const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
+  const [deliveryStatusChecked, setDeliveryStatusChecked] = useState(false);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -80,7 +81,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   useEffect(() => {
     loadOrderItems();
     loadAssignedTechnician();
-    checkDeliveryStatus();
+    
+    // Solo verificar estado de entrega si es cliente y está pendiente de entrega
+    if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
+      checkDeliveryStatus();
+    }
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -104,12 +109,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [order.id]);
+  }, [order.id, profile?.role]); // Agregar profile?.role como dependencia
 
   // Verificar estado de encuesta cuando cambia el estado de la orden
   useEffect(() => {
     checkSurveyStatus();
   }, [orderStatus, profile?.role, user?.id]);
+
+  // Verificar estado de entrega cuando cambia el estado de la orden a pendiente_entrega
+  useEffect(() => {
+    if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
+      setDeliveryStatusChecked(false); // Reset para permitir nueva verificación
+      checkDeliveryStatus();
+    }
+  }, [orderStatus, profile?.role]);
 
   const loadAssignedTechnician = async () => {
     if (order.assigned_technician) {
@@ -158,8 +171,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   };
 
   const checkDeliveryStatus = async () => {
-    if (orderStatus === 'pendiente_entrega' && profile?.role === 'cliente') {
+    if (orderStatus === 'pendiente_entrega' && profile?.role === 'cliente' && !deliveryStatusChecked) {
       try {
+        console.log('Checking delivery status for order:', order.id);
+        setDeliveryStatusChecked(true);
+        
         // Check if delivery signature exists
         const { data: signature } = await supabase
           .from('delivery_signatures')
@@ -174,18 +190,28 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           .eq('order_id', order.id)
           .maybeSingle();
 
-        setHasDeliverySignature(!!signature);
-        setHasCompletedSurvey(!!survey);
+        console.log('Signature exists:', !!signature, 'Survey exists:', !!survey);
 
-        if (!signature) {
+        const signatureExists = !!signature;
+        const surveyExists = !!survey;
+
+        setHasDeliverySignature(signatureExists);
+        setHasCompletedSurvey(surveyExists);
+
+        // Determinar la fase actual
+        if (!signatureExists) {
+          console.log('Setting delivery phase to signature');
           setDeliveryPhase('signature');
-        } else if (!survey) {
+        } else if (!surveyExists) {
+          console.log('Setting delivery phase to survey');
           setDeliveryPhase('survey');
         } else {
+          console.log('Setting delivery phase to completed');
           setDeliveryPhase('completed');
         }
       } catch (error) {
         console.error('Error checking delivery status:', error);
+        setDeliveryStatusChecked(false); // Reset on error
       }
     }
   };
