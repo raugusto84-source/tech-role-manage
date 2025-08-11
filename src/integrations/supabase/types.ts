@@ -863,6 +863,48 @@ export type Database = {
           },
         ]
       }
+      financial_history: {
+        Row: {
+          account_type: string | null
+          amount: number
+          created_at: string
+          id: string
+          operation_date: string
+          operation_description: string
+          operation_type: string
+          performed_by: string | null
+          record_data: Json
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          account_type?: string | null
+          amount: number
+          created_at?: string
+          id?: string
+          operation_date?: string
+          operation_description: string
+          operation_type: string
+          performed_by?: string | null
+          record_data: Json
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          account_type?: string | null
+          amount?: number
+          created_at?: string
+          id?: string
+          operation_date?: string
+          operation_description?: string
+          operation_type?: string
+          performed_by?: string | null
+          record_data?: Json
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       fixed_expenses: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -3754,6 +3796,19 @@ export type Database = {
       }
       get_user_role_safe: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      log_financial_operation: {
+        Args: {
+          p_operation_type: string
+          p_table_name: string
+          p_record_id: string
+          p_record_data: Json
+          p_operation_description: string
+          p_amount: number
+          p_account_type?: string
+          p_operation_date?: string
+        }
         Returns: string
       }
       send_whatsapp_notification: {
