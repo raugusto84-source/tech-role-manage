@@ -92,7 +92,7 @@ export default function Finance() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pending_collections")
-        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance")
+        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat")
         .order("delivery_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1733,72 +1733,80 @@ export default function Finance() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Orden</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Entrega</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Pagado</TableHead>
-                      <TableHead>Saldo</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
+                     <TableRow>
+                       <TableHead>Orden</TableHead>
+                       <TableHead>Cliente</TableHead>
+                       <TableHead>Entrega</TableHead>
+                       <TableHead>Subtotal</TableHead>
+                       <TableHead>IVA</TableHead>
+                       <TableHead>Total</TableHead>
+                       <TableHead>Pagado</TableHead>
+                       <TableHead>Saldo</TableHead>
+                       <TableHead>Estado</TableHead>
+                       <TableHead>Acciones</TableHead>
+                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {collectionsQuery.isLoading && (
-                      <TableRow><TableCell colSpan={8}>Cargando cobranzas pendientes...</TableCell></TableRow>
-                    )}
-                    {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((order: any) => (
-                      <TableRow key={order.id} className="hover:bg-muted/50">
-                        <TableCell className="font-medium">{order.order_number}</TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{order.client_name}</div>
-                            <div className="text-xs text-muted-foreground">{order.client_email}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium">
-                          {Number(order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
-                        </TableCell>
-                        <TableCell className="text-green-600 font-medium">
-                          {Number(order.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
-                        </TableCell>
-                        <TableCell className="text-red-600 font-medium">
-                          {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                            <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={() => {
-                              setSelectedCollection(order);
-                              setCollectionDialogOpen(true);
-                            }}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Cobrar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="text-4xl">💰</div>
-                            <div className="font-medium">No hay cobranzas pendientes</div>
-                            <div className="text-sm">Todas las órdenes terminadas han sido cobradas</div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
+                     {collectionsQuery.isLoading && (
+                       <TableRow><TableCell colSpan={10}>Cargando cobranzas pendientes...</TableCell></TableRow>
+                     )}
+                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((order: any) => (
+                       <TableRow key={order.id} className="hover:bg-muted/50">
+                         <TableCell className="font-medium">{order.order_number}</TableCell>
+                         <TableCell>
+                           <div>
+                             <div className="font-medium">{order.client_name}</div>
+                             <div className="text-xs text-muted-foreground">{order.client_email}</div>
+                           </div>
+                         </TableCell>
+                         <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
+                         <TableCell className="font-medium">
+                           {Number(order.subtotal_without_vat || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                         </TableCell>
+                         <TableCell className="text-blue-600 font-medium">
+                           {Number(order.total_vat_amount || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                         </TableCell>
+                         <TableCell className="font-medium">
+                           {Number(order.total_with_vat || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                         </TableCell>
+                         <TableCell className="text-green-600 font-medium">
+                           {Number(order.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                         </TableCell>
+                         <TableCell className="text-red-600 font-medium">
+                           {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                         </TableCell>
+                         <TableCell>
+                           <div className="flex items-center gap-2">
+                             <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                             <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
+                           </div>
+                         </TableCell>
+                         <TableCell>
+                           <Button 
+                             size="sm" 
+                             variant="default"
+                             onClick={() => {
+                               setSelectedCollection(order);
+                               setCollectionDialogOpen(true);
+                             }}
+                             className="bg-green-600 hover:bg-green-700"
+                           >
+                             Cobrar
+                           </Button>
+                         </TableCell>
+                       </TableRow>
+                     ))}
+                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && (
+                       <TableRow>
+                         <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                           <div className="flex flex-col items-center gap-2">
+                             <div className="text-4xl">💰</div>
+                             <div className="font-medium">No hay cobranzas pendientes</div>
+                             <div className="text-sm">Todas las órdenes terminadas han sido cobradas</div>
+                           </div>
+                         </TableCell>
+                       </TableRow>
+                     )}
                   </TableBody>
                 </Table>
               </div>

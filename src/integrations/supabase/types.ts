@@ -3657,7 +3657,10 @@ export type Database = {
           id: string | null
           order_number: string | null
           remaining_balance: number | null
+          subtotal_without_vat: number | null
           total_paid: number | null
+          total_vat_amount: number | null
+          total_with_vat: number | null
           updated_at: string | null
         }
         Relationships: [
