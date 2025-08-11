@@ -574,7 +574,7 @@ export async function registerTechnicianWorkload(
   try {
     const { supabase } = await import('@/integrations/supabase/client');
     
-    // Obtener información de los service_types para las horas estimadas y shared_time
+    // Obtener información de los service_types para las horas estimadas
     const serviceTypeIds = orderItems.map(item => item.service_type_id).filter(Boolean);
     
     if (serviceTypeIds.length === 0) {
@@ -630,37 +630,13 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
   deliveryTime: string; 
   breakdown: string;
   effectiveHours: number;
-  canUseSharedTime?: boolean;
-  sharedServicesCount?: number;
 }> {
   const { technicianId, ...baseParams } = params;
   
   let currentWorkload = baseParams.currentWorkload || 0;
-  let canUseSharedTime = true;
-  let sharedServicesCount = 0;
   
-  // Verificar si el técnico puede usar tiempo compartido
-  if (technicianId) {
-    const sharedCheck = await canTechnicianTakeSharedServices(technicianId);
-    canUseSharedTime = sharedCheck.canTake;
-    sharedServicesCount = sharedCheck.activeSharedServices;
-    
-    // Si no puede usar tiempo compartido, recalcular sin shared_time
-    if (!canUseSharedTime) {
-      console.log(`Técnico ${technicianId} ha alcanzado el límite de servicios compartidos (${sharedServicesCount}/3)`);
-    }
-  }
-  
-  // Calcular las horas efectivas considerando si puede usar tiempo compartido
-  let effectiveHoursOverride: number;
-  if (canUseSharedTime) {
-    effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
-  } else {
-    // Sin tiempo compartido: sumar todas las horas normalmente
-    effectiveHoursOverride = baseParams.orderItems.reduce((total, item) => {
-      return total + ((item.estimated_hours || 0) * (item.quantity || 1));
-    }, 0);
-  }
+  // Calcular las horas efectivas de la nueva orden (con tiempo compartido interno)
+  const effectiveHoursOverride = calculateSharedTimeHours(baseParams.orderItems);
   
   if (technicianId) {
     try {
@@ -679,9 +655,5 @@ export async function calculateAdvancedDeliveryDateWithWorkload(params: Delivery
     effectiveHoursOverride
   });
 
-  return {
-    ...result,
-    canUseSharedTime,
-    sharedServicesCount
-  };
+  return result;
 }
