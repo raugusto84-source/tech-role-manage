@@ -12,8 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { CollectionDialog } from "@/components/finance/CollectionDialog";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Util simple para exportar CSV en cliente
 function exportCsv(filename: string, rows: Record<string, any>[]) {
@@ -548,9 +549,10 @@ export default function Finance() {
       }
       
       // Calcular IVA si es cuenta fiscal
+      // Si es fiscal, el monto incluye IVA, así que calculamos la base gravable
       const vatRate = purchaseAccount === "fiscal" ? 16 : 0;
-      const vatAmount = purchaseAccount === "fiscal" ? amount * 0.16 : 0;
-      const taxableAmount = purchaseAccount === "fiscal" ? amount - vatAmount : amount;
+      const taxableAmount = purchaseAccount === "fiscal" ? amount / 1.16 : amount;
+      const vatAmount = purchaseAccount === "fiscal" ? amount - taxableAmount : 0;
 
       // Crear el gasto
       const { data: expense, error: expenseError } = await supabase.from("expenses").insert({
@@ -1666,13 +1668,32 @@ export default function Finance() {
                 <CardTitle>Registrar Compra</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Proveedor*</label>
-                  <Input
-                    value={purchaseSupplier}
-                    onChange={(e) => setPurchaseSupplier(e.target.value)}
-                    placeholder="Nombre del proveedor"
-                  />
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium">Proveedor*</label>
+                    <Select value={purchaseSupplier} onValueChange={setPurchaseSupplier}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar proveedor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliersQuery.data?.map(supplier => (
+                          <SelectItem key={supplier.id} value={supplier.id}>
+                            {supplier.supplier_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowSupplierDialog(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Concepto*</label>
@@ -1693,8 +1714,32 @@ export default function Finance() {
                   />
                   {purchaseAccount === "fiscal" && purchaseAmount && (
                     <div className="mt-1 text-xs text-muted-foreground">
-                      IVA (16%): ${(Number(purchaseAmount) * 0.16).toFixed(2)} | 
-                      Base: ${(Number(purchaseAmount) - (Number(purchaseAmount) * 0.16)).toFixed(2)}
+                      Base: ${(Number(purchaseAmount) / 1.16).toFixed(2)} | 
+                      IVA (16%): ${(Number(purchaseAmount) - (Number(purchaseAmount) / 1.16)).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Nueva sección para factura */}
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="has-invoice"
+                      checked={purchaseHasInvoice} 
+                      onCheckedChange={(checked) => setPurchaseHasInvoice(checked === true)} 
+                    />
+                    <label htmlFor="has-invoice" className="text-sm font-medium">
+                      Esta compra tiene factura
+                    </label>
+                  </div>
+                  {purchaseHasInvoice && (
+                    <div>
+                      <label className="text-sm font-medium">Número de factura</label>
+                      <Input 
+                        value={purchaseInvoiceNumber} 
+                        onChange={e => setPurchaseInvoiceNumber(e.target.value)} 
+                        placeholder="Ingrese número de factura" 
+                      />
                     </div>
                   )}
                 </div>
@@ -1705,10 +1750,10 @@ export default function Finance() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fiscal">
+                      <SelectItem value="fiscal" disabled={!purchaseHasInvoice}>
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                          Fiscal
+                          Fiscal {!purchaseHasInvoice && "(Requiere factura)"}
                         </div>
                       </SelectItem>
                       <SelectItem value="no_fiscal">
@@ -3079,6 +3124,92 @@ export default function Finance() {
           toast({ title: "Cobro registrado exitosamente" });
         }}
       />
+
+      {/* Diálogo para gestión de proveedores */}
+      <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingSupplier ? 'Editar Proveedor' : 'Nuevo Proveedor'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingSupplier ? 'Modifica los datos del proveedor' : 'Agrega un nuevo proveedor al sistema'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div>
+              <label className="text-sm font-medium">Nombre del proveedor *</label>
+              <Input
+                value={supplierName}
+                onChange={(e) => setSupplierName(e.target.value)}
+                placeholder="Nombre completo del proveedor"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Persona de contacto</label>
+              <Input
+                value={supplierContact}
+                onChange={(e) => setSupplierContact(e.target.value)}
+                placeholder="Nombre del contacto"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Email</label>
+                <Input
+                  type="email"
+                  value={supplierEmail}
+                  onChange={(e) => setSupplierEmail(e.target.value)}
+                  placeholder="email@proveedor.com"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Teléfono</label>
+                <Input
+                  value={supplierPhone}
+                  onChange={(e) => setSupplierPhone(e.target.value)}
+                  placeholder="555-0123"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Dirección</label>
+              <Input
+                value={supplierAddress}
+                onChange={(e) => setSupplierAddress(e.target.value)}
+                placeholder="Dirección completa"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">RFC</label>
+              <Input
+                value={supplierRFC}
+                onChange={(e) => setSupplierRFC(e.target.value)}
+                placeholder="ABCD123456789"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowSupplierDialog(false);
+              setEditingSupplier(null);
+              setSupplierName(""); setSupplierContact(""); setSupplierEmail("");
+              setSupplierPhone(""); setSupplierAddress(""); setSupplierRFC("");
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={editingSupplier ? updateSupplier : addSupplier}>
+              {editingSupplier ? 'Actualizar' : 'Agregar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
