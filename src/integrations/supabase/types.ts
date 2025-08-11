@@ -1367,16 +1367,10 @@ export type Database = {
           general_comments: string | null
           id: string
           order_id: string
-          overall_recommendation: number | null
-          sales_attitude: number | null
-          sales_comments: string | null
-          sales_customer_service: number | null
-          sales_knowledge: number | null
-          technician_attitude: number | null
-          technician_comments: string | null
-          technician_customer_service: number | null
-          technician_knowledge: number | null
+          service_quality: number | null
+          service_time: number | null
           updated_at: string
+          would_recommend: number | null
         }
         Insert: {
           client_id: string
@@ -1384,16 +1378,10 @@ export type Database = {
           general_comments?: string | null
           id?: string
           order_id: string
-          overall_recommendation?: number | null
-          sales_attitude?: number | null
-          sales_comments?: string | null
-          sales_customer_service?: number | null
-          sales_knowledge?: number | null
-          technician_attitude?: number | null
-          technician_comments?: string | null
-          technician_customer_service?: number | null
-          technician_knowledge?: number | null
+          service_quality?: number | null
+          service_time?: number | null
           updated_at?: string
+          would_recommend?: number | null
         }
         Update: {
           client_id?: string
@@ -1401,16 +1389,10 @@ export type Database = {
           general_comments?: string | null
           id?: string
           order_id?: string
-          overall_recommendation?: number | null
-          sales_attitude?: number | null
-          sales_comments?: string | null
-          sales_customer_service?: number | null
-          sales_knowledge?: number | null
-          technician_attitude?: number | null
-          technician_comments?: string | null
-          technician_customer_service?: number | null
-          technician_knowledge?: number | null
+          service_quality?: number | null
+          service_time?: number | null
           updated_at?: string
+          would_recommend?: number | null
         }
         Relationships: [
           {
