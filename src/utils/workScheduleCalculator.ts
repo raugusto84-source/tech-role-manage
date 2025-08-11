@@ -236,8 +236,17 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     
     // Aplicar factor de reducción de técnicos de apoyo a la hora de entrega
+    const originalMinutes = effectiveWorkingHours * 60;
     const reducedHours = effectiveWorkingHours * reductionFactor;
     const totalMinutes = reducedHours * 60;
+    
+    console.log(`=== DELIVERY TIME CALCULATION ===`);
+    console.log(`Original hours: ${effectiveWorkingHours}`);
+    console.log(`Reduction factor: ${reductionFactor}`);
+    console.log(`Reduced hours: ${reducedHours}`);
+    console.log(`Original minutes: ${originalMinutes}`);
+    console.log(`Reduced minutes: ${totalMinutes}`);
+    
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
@@ -245,6 +254,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
       minute: '2-digit', 
       hour12: true 
     });
+    
+    console.log(`Final delivery time: ${deliveryTime}`);
   } else if (hoursWorkedToday > 0) {
     // Para trabajos de múltiples días, aplicar reducción a las horas del último día
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
