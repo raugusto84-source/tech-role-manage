@@ -86,11 +86,11 @@ export default function Finance() {
   });
 
   const collectionsQuery = useQuery({
-    queryKey: ["pending_collections_with_payments"],
+    queryKey: ["pending_collections"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("pending_collections_with_payments")
-        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,status,total_paid,remaining_balance")
+        .from("pending_collections")
+        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance")
         .order("delivery_date", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -457,6 +457,17 @@ export default function Finance() {
     } catch (e: any) {
       toast({ title: "Error al exportar", description: e?.message || "Intenta de nuevo", variant: "destructive" });
     }
+  };
+
+  const handleCollect = (order: any) => {
+    setSelectedCollection(order);
+    setCollectionDialogOpen(true);
+  };
+
+  const handleCollectionSuccess = () => {
+    collectionsQuery.refetch();
+    incomesQuery.refetch();
+    toast({ title: "Cobro registrado exitosamente" });
   };
 
   return (
@@ -1193,7 +1204,12 @@ export default function Finance() {
         <TabsContent value="collections">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Cobranzas pendientes ({collectionsQuery.data?.length ?? 0})</CardTitle>
+              <div>
+                <CardTitle>Cobranza Pendiente ({collectionsQuery.data?.length ?? 0})</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Órdenes terminadas pendientes de cobro
+                </p>
+              </div>
               <Button size="sm" onClick={() => onExport("collections")}>Exportar CSV</Button>
             </CardHeader>
             <CardContent>
@@ -1203,40 +1219,52 @@ export default function Finance() {
                     <TableRow>
                       <TableHead>Orden</TableHead>
                       <TableHead>Cliente</TableHead>
-                      <TableHead>Email</TableHead>
                       <TableHead>Entrega</TableHead>
-                      <TableHead>Estado</TableHead>
-                      <TableHead>Estimado</TableHead>
+                      <TableHead>Total</TableHead>
                       <TableHead>Pagado</TableHead>
                       <TableHead>Saldo</TableHead>
+                      <TableHead>Estado</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {collectionsQuery.isLoading && (
-                      <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8}>Cargando cobranzas pendientes...</TableCell></TableRow>
                     )}
-                    {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((r: any) => (
-                      <TableRow key={r.id}>
-                        <TableCell>{r.order_number}</TableCell>
-                        <TableCell>{r.client_name}</TableCell>
-                        <TableCell>{r.client_email}</TableCell>
-                        <TableCell>{r.delivery_date}</TableCell>
-                        <TableCell>{r.status}</TableCell>
-                        <TableCell>{Number(r.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                    {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((order: any) => (
+                      <TableRow key={order.id} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">{order.order_number}</TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{order.client_name}</div>
+                            <div className="text-xs text-muted-foreground">{order.client_email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
+                        <TableCell className="font-medium">
+                          {Number(order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                        </TableCell>
                         <TableCell className="text-green-600 font-medium">
-                          {Number(r.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(order.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
                         </TableCell>
                         <TableCell className="text-red-600 font-medium">
-                          {Number(r.remaining_balance || r.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                            <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Button 
                             size="sm" 
+                            variant="default"
                             onClick={() => {
-                              setSelectedCollection(r);
+                              setSelectedCollection(order);
                               setCollectionDialogOpen(true);
                             }}
+                            className="bg-green-600 hover:bg-green-700"
                           >
                             Cobrar
                           </Button>
@@ -1244,7 +1272,15 @@ export default function Finance() {
                       </TableRow>
                     ))}
                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={9}>Sin cobranzas pendientes.</TableCell></TableRow>
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="text-4xl">💰</div>
+                            <div className="font-medium">No hay cobranzas pendientes</div>
+                            <div className="text-sm">Todas las órdenes terminadas han sido cobradas</div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -1261,6 +1297,7 @@ export default function Finance() {
         onSuccess={() => {
           incomesQuery.refetch();
           collectionsQuery.refetch();
+          toast({ title: "Cobro registrado exitosamente" });
         }}
       />
     </AppLayout>

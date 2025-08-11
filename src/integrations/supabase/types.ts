@@ -620,13 +620,6 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "delivery_signatures_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
         ]
       }
       diagnostic_questions: {
@@ -1070,13 +1063,6 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_chat_messages_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
         ]
       }
       order_diagnostics: {
@@ -1114,13 +1100,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_diagnostics_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1199,13 +1178,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "order_items_service_type_id_fkey"
             columns: ["service_type_id"]
             isOneToOne: false
@@ -1259,13 +1231,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_notes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1415,13 +1380,6 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_satisfaction_surveys_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
         ]
       }
       order_signatures: {
@@ -1462,13 +1420,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_signatures_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1516,13 +1467,6 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_status_logs_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
         ]
       }
       order_support_technicians: {
@@ -1560,13 +1504,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_support_technicians_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
             referencedColumns: ["id"]
           },
           {
@@ -3152,13 +3089,6 @@ export type Database = {
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_technician_workload_order"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections_with_payments"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_achievements: {
@@ -3638,28 +3568,26 @@ export type Database = {
       pending_collections: {
         Row: {
           client_email: string | null
+          client_id: string | null
           client_name: string | null
-          delivery_date: string | null
-          estimated_cost: number | null
-          id: string | null
-          order_number: string | null
-          status: Database["public"]["Enums"]["order_status"] | null
-        }
-        Relationships: []
-      }
-      pending_collections_with_payments: {
-        Row: {
-          client_email: string | null
-          client_name: string | null
+          created_at: string | null
           delivery_date: string | null
           estimated_cost: number | null
           id: string | null
           order_number: string | null
           remaining_balance: number | null
-          status: Database["public"]["Enums"]["order_status"] | null
           total_paid: number | null
+          updated_at: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       technician_service_skills: {
         Row: {

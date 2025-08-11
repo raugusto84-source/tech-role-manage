@@ -120,19 +120,44 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Generar Cobro</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              💰
+            </div>
+            Registrar Cobro
+          </DialogTitle>
           <DialogDescription>
-            Registrar el cobro de la orden {collection?.order_number} como ingreso
-            {collection?.total_paid && collection.total_paid > 0 && (
-              <div className="mt-2 text-sm">
-                <span className="text-muted-foreground">Total pagado: </span>
-                <span className="font-medium">{collection.total_paid.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
-                <span className="text-muted-foreground"> | Saldo pendiente: </span>
-                <span className="font-medium text-red-600">{(collection.remaining_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
-              </div>
-            )}
+            <div className="space-y-2">
+              <div>Registrar el cobro de la orden <strong>{collection?.order_number}</strong> para el cliente <strong>{collection?.client_name}</strong></div>
+              
+              {collection?.total_paid && collection.total_paid > 0 && (
+                <div className="bg-blue-50 p-3 rounded-lg text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-muted-foreground">Total de la orden:</span>
+                      <div className="font-medium">{collection.estimated_cost.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Ya pagado:</span>
+                      <div className="font-medium text-green-600">{collection.total_paid.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                    </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t">
+                    <span className="text-muted-foreground">Saldo pendiente:</span>
+                    <div className="font-bold text-red-600 text-lg">{(collection.remaining_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                  </div>
+                </div>
+              )}
+              
+              {(!collection?.total_paid || collection.total_paid === 0) && (
+                <div className="bg-green-50 p-3 rounded-lg text-sm">
+                  <span className="text-muted-foreground">Total a cobrar:</span>
+                  <div className="font-bold text-green-600 text-lg">{collection?.estimated_cost.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                </div>
+              )}
+            </div>
           </DialogDescription>
         </DialogHeader>
 
@@ -151,16 +176,29 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="accountType">Tipo de Cuenta</Label>
+            <Label htmlFor="accountType">Tipo de Cuenta *</Label>
             <Select value={accountType} onValueChange={(value: "fiscal" | "no_fiscal") => setAccountType(value)}>
-              <SelectTrigger>
+              <SelectTrigger className="h-12">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="no_fiscal">No Fiscal</SelectItem>
-                <SelectItem value="fiscal">Fiscal</SelectItem>
+                <SelectItem value="no_fiscal">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">No Fiscal</span>
+                    <span className="text-xs text-muted-foreground">Cuenta personal/efectivo</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="fiscal">
+                  <div className="flex flex-col items-start">
+                    <span className="font-medium">Fiscal</span>
+                    <span className="text-xs text-muted-foreground">Cuenta empresarial con IVA</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Selecciona dónde se registrará este ingreso
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -190,11 +228,15 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading || !amount}>
+            <Button 
+              type="submit" 
+              disabled={loading || !amount}
+              className="bg-green-600 hover:bg-green-700"
+            >
               {loading ? "Registrando..." : "Registrar Cobro"}
             </Button>
           </DialogFooter>
