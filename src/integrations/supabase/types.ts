@@ -3033,6 +3033,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_technician_skills_service_type"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "technician_skills_service_type_id_fkey"
             columns: ["service_type_id"]
             isOneToOne: false
@@ -3556,6 +3563,39 @@ export type Database = {
           total_paid: number | null
         }
         Relationships: []
+      }
+      technician_service_skills: {
+        Row: {
+          certifications: string[] | null
+          created_at: string | null
+          id: string | null
+          notes: string | null
+          service_category: string | null
+          service_description: string | null
+          service_estimated_hours: number | null
+          service_name: string | null
+          service_type_id: string | null
+          skill_level: number | null
+          technician_id: string | null
+          updated_at: string | null
+          years_experience: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_technician_skills_service_type"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technician_skills_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vat_summary: {
         Row: {
