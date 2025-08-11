@@ -72,45 +72,14 @@ export function UserRanking({
     try {
       setLoading(true);
       
-      // Obtener datos de encuestas de técnicos
-      const technicianQuery = supabase
+      // Obtener encuestas con información de técnicos y vendedores
+      let surveysQuery = supabase
         .from('order_satisfaction_surveys')
         .select(`
-          technician_knowledge,
-          technician_customer_service,
-          technician_attitude,
-          overall_recommendation,
-          created_at,
-          order_id,
+          *,
           orders!inner (
             assigned_technician,
-            profiles!assigned_technician (
-              user_id,
-              full_name,
-              email,
-              role
-            )
-          )
-        `);
-
-      // Obtener datos de encuestas de ventas  
-      const salesQuery = supabase
-        .from('order_satisfaction_surveys')
-        .select(`
-          sales_knowledge,
-          sales_customer_service,
-          sales_attitude,
-          overall_recommendation,
-          created_at,
-          order_id,
-          orders!inner (
-            created_by,
-            profiles!created_by (
-              user_id,
-              full_name,
-              email,
-              role
-            )
+            created_by
           )
         `);
 
@@ -120,17 +89,23 @@ export function UserRanking({
         const startDate = new Date();
         startDate.setDate(startDate.getDate() - days);
         
-        technicianQuery.gte('created_at', startDate.toISOString());
-        salesQuery.gte('created_at', startDate.toISOString());
+        surveysQuery = surveysQuery.gte('created_at', startDate.toISOString());
       }
 
-      const [techResponse, salesResponse] = await Promise.all([
-        technicianQuery,
-        salesQuery
-      ]);
+      const surveysResponse = await surveysQuery;
+      if (surveysResponse.error) throw surveysResponse.error;
 
-      if (techResponse.error) throw techResponse.error;
-      if (salesResponse.error) throw salesResponse.error;
+      // Obtener información de perfiles
+      const profilesResponse = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, role')
+        .in('role', ['tecnico', 'vendedor', 'administrador']);
+
+      if (profilesResponse.error) throw profilesResponse.error;
+
+      const profilesMap = new Map(
+        profilesResponse.data?.map(profile => [profile.user_id, profile]) || []
+      );
 
       // Procesar datos de técnicos
       const technicianRatings = new Map<string, {
@@ -143,31 +118,6 @@ export function UserRanking({
         recommendations: number[];
       }>();
 
-      techResponse.data?.forEach((survey: any) => {
-        const tech = survey.orders?.profiles;
-        if (tech && tech.role === 'tecnico') {
-          const key = tech.user_id;
-          if (!technicianRatings.has(key)) {
-            technicianRatings.set(key, {
-              user_id: tech.user_id,
-              user_name: tech.full_name,
-              user_email: tech.email,
-              user_role: tech.role,
-              ratings: [],
-              total_surveys: 0,
-              recommendations: []
-            });
-          }
-          
-          const userRating = technicianRatings.get(key)!;
-          if (survey.technician_knowledge) userRating.ratings.push(survey.technician_knowledge);
-          if (survey.technician_customer_service) userRating.ratings.push(survey.technician_customer_service);
-          if (survey.technician_attitude) userRating.ratings.push(survey.technician_attitude);
-          if (survey.overall_recommendation) userRating.recommendations.push(survey.overall_recommendation);
-          userRating.total_surveys++;
-        }
-      });
-
       // Procesar datos de vendedores
       const salesRatings = new Map<string, {
         user_id: string;
@@ -179,28 +129,61 @@ export function UserRanking({
         recommendations: number[];
       }>();
 
-      salesResponse.data?.forEach((survey: any) => {
-        const sales = survey.orders?.profiles;
-        if (sales && sales.role === 'vendedor') {
-          const key = sales.user_id;
-          if (!salesRatings.has(key)) {
-            salesRatings.set(key, {
-              user_id: sales.user_id,
-              user_name: sales.full_name,
-              user_email: sales.email,
-              user_role: sales.role,
-              ratings: [],
-              total_surveys: 0,
-              recommendations: []
-            });
+      surveysResponse.data?.forEach((survey: any) => {
+        const order = survey.orders;
+        
+        // Procesar técnico asignado
+        if (order?.assigned_technician) {
+          const techProfile = profilesMap.get(order.assigned_technician);
+          if (techProfile && techProfile.role === 'tecnico') {
+            const key = techProfile.user_id;
+            
+            if (!technicianRatings.has(key)) {
+              technicianRatings.set(key, {
+                user_id: techProfile.user_id,
+                user_name: techProfile.full_name,
+                user_email: techProfile.email,
+                user_role: techProfile.role,
+                ratings: [],
+                total_surveys: 0,
+                recommendations: []
+              });
+            }
+            
+            const userRating = technicianRatings.get(key)!;
+            if (survey.technician_knowledge) userRating.ratings.push(survey.technician_knowledge);
+            if (survey.technician_customer_service) userRating.ratings.push(survey.technician_customer_service);
+            if (survey.technician_attitude) userRating.ratings.push(survey.technician_attitude);
+            if (survey.overall_recommendation) userRating.recommendations.push(survey.overall_recommendation);
+            userRating.total_surveys++;
           }
-          
-          const userRating = salesRatings.get(key)!;
-          if (survey.sales_knowledge) userRating.ratings.push(survey.sales_knowledge);
-          if (survey.sales_customer_service) userRating.ratings.push(survey.sales_customer_service);
-          if (survey.sales_attitude) userRating.ratings.push(survey.sales_attitude);
-          if (survey.overall_recommendation) userRating.recommendations.push(survey.overall_recommendation);
-          userRating.total_surveys++;
+        }
+
+        // Procesar vendedor (created_by)
+        if (order?.created_by) {
+          const salesProfile = profilesMap.get(order.created_by);
+          if (salesProfile && salesProfile.role === 'vendedor') {
+            const key = salesProfile.user_id;
+            
+            if (!salesRatings.has(key)) {
+              salesRatings.set(key, {
+                user_id: salesProfile.user_id,
+                user_name: salesProfile.full_name,
+                user_email: salesProfile.email,
+                user_role: salesProfile.role,
+                ratings: [],
+                total_surveys: 0,
+                recommendations: []
+              });
+            }
+            
+            const userRating = salesRatings.get(key)!;
+            if (survey.sales_knowledge) userRating.ratings.push(survey.sales_knowledge);
+            if (survey.sales_customer_service) userRating.ratings.push(survey.sales_customer_service);
+            if (survey.sales_attitude) userRating.ratings.push(survey.sales_attitude);
+            if (survey.overall_recommendation) userRating.recommendations.push(survey.overall_recommendation);
+            userRating.total_surveys++;
+          }
         }
       });
 
