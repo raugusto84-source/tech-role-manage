@@ -2043,11 +2043,19 @@ export default function Finance() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
-                Pendientes de Retirar ({fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length || 0})
+                Retiros Fiscales ({fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).length || 0})
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Facturas de compras pagadas desde cuenta no fiscal que requieren retiro desde cuenta fiscal
               </p>
+              <div className="flex gap-4 text-sm mt-2">
+                <span className="text-orange-600">
+                  Pendientes: {fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length || 0}
+                </span>
+                <span className="text-green-600">
+                  Retirados: {fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'withdrawn' && fw.amount > 0).length || 0}
+                </span>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -2062,7 +2070,7 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).map((withdrawal) => (
+                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).map((withdrawal) => (
                       <TableRow key={withdrawal.id}>
                         <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
@@ -2072,28 +2080,42 @@ export default function Finance() {
                           ${Number(withdrawal.amount).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700">
-                            Pendiente
-                          </span>
+                          {withdrawal.withdrawal_status === 'available' ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700">
+                              Pendiente
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                              Retirado
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            size="sm"
-                            onClick={() => withdrawFiscalAmount(withdrawal.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Retirar
-                          </Button>
+                          {withdrawal.withdrawal_status === 'available' ? (
+                            <Button
+                              size="sm"
+                              onClick={() => withdrawFiscalAmount(withdrawal.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Retirar
+                            </Button>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              {withdrawal.withdrawn_at && (
+                                <span>Retirado {new Date(withdrawal.withdrawn_at).toLocaleDateString()}</span>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
-                    {(!fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length) && (
+                    {(!fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).length) && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="text-4xl">✅</div>
-                            <div className="font-medium">No hay facturas pendientes de retiro</div>
-                            <div className="text-sm">Todas las compras con factura han sido retiradas de la cuenta fiscal</div>
+                            <div className="text-4xl">📋</div>
+                            <div className="font-medium">No hay retiros fiscales registrados</div>
+                            <div className="text-sm">Los retiros aparecerán aquí cuando se registren compras con factura</div>
                           </div>
                         </TableCell>
                       </TableRow>
