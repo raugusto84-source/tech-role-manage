@@ -546,6 +546,7 @@ export type Database = {
           name: string
           phone: string | null
           updated_at: string
+          user_id: string | null
           whatsapp: string | null
         }
         Insert: {
@@ -558,6 +559,7 @@ export type Database = {
           name: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
           whatsapp?: string | null
         }
         Update: {
@@ -570,6 +572,7 @@ export type Database = {
           name?: string
           phone?: string | null
           updated_at?: string
+          user_id?: string | null
           whatsapp?: string | null
         }
         Relationships: []

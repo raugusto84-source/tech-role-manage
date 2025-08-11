@@ -51,7 +51,6 @@ export default function ClientDashboard() {
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
-  const userEmail = profile?.email ?? null;
 
   // SEO básico por SPA
   useEffect(() => {
@@ -70,13 +69,13 @@ export default function ClientDashboard() {
     if (!canonical.parentElement) document.head.appendChild(canonical);
   }, []);
 
-  // Cargar cotizaciones del cliente (por email)
+  // Cargar cotizaciones del cliente (por email - mantenemos email para quotes)
   const loadQuotes = async () => {
-    if (!userEmail) return;
+    if (!profile?.email) return;
     const { data, error } = await supabase
       .from("quotes")
       .select("*")
-      .eq("client_email", userEmail)
+      .eq("client_email", profile.email)
       .order("created_at", { ascending: false })
       .limit(5);
     if (error) {
@@ -87,14 +86,15 @@ export default function ClientDashboard() {
     }
   };
 
-  // Cargar órdenes del cliente
+  // Cargar órdenes del cliente usando user_id en lugar de email
   const loadOrders = async () => {
-    if (!userEmail) return;
-    // Primero obtenemos el id del cliente para filtrar por client_id
+    if (!profile?.user_id) return;
+    
+    // Buscar cliente por user_id (nueva relación)
     const { data: client, error: clientErr } = await supabase
       .from("clients")
       .select("id")
-      .eq("email", userEmail)
+      .eq("user_id", profile.user_id)
       .maybeSingle();
 
     if (clientErr) {
@@ -157,17 +157,17 @@ export default function ClientDashboard() {
     return () => {
       mounted = false;
     };
-  }, [userEmail]);
+  }, [profile?.user_id, profile?.email]);
 
   // Suscripción en tiempo real SOLO para órdenes del cliente
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
-      if (!userEmail) return;
+      if (!profile?.user_id) return;
       const { data: client } = await supabase
         .from("clients")
         .select("id")
-        .eq("email", userEmail)
+        .eq("user_id", profile.user_id)
         .maybeSingle();
 
       if (!client) return;
@@ -196,7 +196,7 @@ export default function ClientDashboard() {
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, [userEmail]);
+  }, [profile?.user_id]);
 
   // Utilidades UI
   const statusBadge = (status: string) => {
