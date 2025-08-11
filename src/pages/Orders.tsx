@@ -39,6 +39,7 @@ interface Order {
   assignment_reason?: string;
   evidence_photos?: string[];
   created_at: string;
+  unread_messages_count?: number; // Nuevo campo para mensajes no leídos
   service_types?: {
     name: string;
     description?: string;
@@ -98,29 +99,43 @@ export default function Orders() {
 
       if (error) throw error;
 
-      // Get technician profiles separately for assigned orders
-      const ordersWithTechnicianNames = await Promise.all(
+      // Get technician profiles and unread messages count for each order
+      const ordersWithExtendedInfo = await Promise.all(
         (ordersData || []).map(async (order: any) => {
+          let techProfile = null;
+          let unreadCount = 0;
+
+          // Get technician profile if assigned
           if (order.assigned_technician) {
-            const { data: techProfile } = await supabase
+            const { data: techProfileData } = await supabase
               .from('profiles')
               .select('full_name')
               .eq('user_id', order.assigned_technician)
               .maybeSingle();
-            
-            return {
-              ...order,
-              technician_profile: techProfile
-            } as Order;
+            techProfile = techProfileData;
           }
+
+          // Count unread messages for current user
+          if (user?.id) {
+            const { count } = await supabase
+              .from('order_chat_messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('order_id', order.id)
+              .neq('sender_id', user.id) // Messages not sent by current user
+              .is('read_at', null); // Messages not yet read
+              
+            unreadCount = count || 0;
+          }
+          
           return {
             ...order,
-            technician_profile: null
+            technician_profile: techProfile,
+            unread_messages_count: unreadCount
           } as Order;
         })
       );
 
-      setOrders(ordersWithTechnicianNames);
+      setOrders(ordersWithExtendedInfo);
     } catch (error) {
       console.error('Error loading orders:', error);
       toast({
@@ -137,7 +152,7 @@ export default function Orders() {
     loadOrders();
     
     // Suscribirse a cambios en tiempo real en todas las órdenes
-    const channel = supabase
+    const ordersChannel = supabase
       .channel('orders-changes')
       .on('postgres_changes', 
         { 
@@ -153,8 +168,26 @@ export default function Orders() {
       )
       .subscribe();
 
+    // Suscribirse a cambios en tiempo real en los mensajes de chat
+    const chatChannel = supabase
+      .channel('chat-messages-changes')
+      .on('postgres_changes',
+        {
+          event: '*', // Escuchar INSERT, UPDATE
+          schema: 'public',
+          table: 'order_chat_messages'
+        },
+        (payload) => {
+          console.log('Chat messages changed:', payload);
+          // Recargar órdenes para actualizar contadores de mensajes no leídos
+          loadOrders();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(chatChannel);
     };
   }, [profile?.role, profile?.email, user?.id]);
 
@@ -395,63 +428,14 @@ export default function Orders() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {orders.map((order) => (
-                      <div 
+                      <OrderCard
                         key={order.id}
+                        order={order}
                         onClick={() => setSelectedOrder(order)}
-                        className="p-3 border border-border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-1 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{order.order_number}</span>
-                              <span className="text-muted-foreground text-xs">•</span>
-                              <span className="text-sm text-muted-foreground">{order.clients?.name}</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {order.service_types?.name} - {formatDate(order.delivery_date)}
-                              <span className="ml-2 font-medium text-primary">
-                                ({getTimeRemaining(order.delivery_date)})
-                              </span>
-                            </div>
-                            {order.technician_profile && (
-                              <div className="flex items-center gap-1 text-sm bg-primary/10 text-primary px-2 py-1 rounded-md w-fit">
-                                <User className="h-3 w-3" />
-                                <span className="font-medium">
-                                  Técnico: {order.technician_profile.full_name}
-                                </span>
-                              </div>
-                            )}
-                            {order.assignment_reason && (
-                              <div className="text-xs text-muted-foreground italic bg-muted/50 px-2 py-1 rounded">
-                                {order.assignment_reason}
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground line-clamp-1">
-                              {order.failure_description}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {order.estimated_cost && (
-                              <span className="text-sm font-medium">
-                                ${order.estimated_cost.toLocaleString()}
-                              </span>
-                            )}
-                            {canDeleteOrder && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOrderToDelete(order.id);
-                                }}
-                                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                              >
-                                ×
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                        canDelete={canDeleteOrder}
+                        getStatusColor={getStatusColor}
+                      />
                     ))}
                   </CardContent>
                 </Card>

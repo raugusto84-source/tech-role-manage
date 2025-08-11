@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, Wrench, DollarSign, Clock, Trash2 } from 'lucide-react';
+import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
@@ -20,6 +20,7 @@ interface OrderCardProps {
     status: string;
     assigned_technician?: string;
     created_at: string;
+    unread_messages_count?: number; // Nuevo campo para mensajes no leídos
     service_types?: {
       name: string;
       description?: string;
@@ -61,18 +62,35 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   return (
     <Card 
-      className={`hover:shadow-lg transition-shadow cursor-pointer border-l-4 ${
+      className={`hover:shadow-lg transition-all cursor-pointer border-l-4 ${
         order.status === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
+      } ${
+        order.unread_messages_count && order.unread_messages_count > 0
+          ? 'ring-2 ring-blue-500/50 shadow-blue-200/50 animate-pulse' 
+          : ''
       }`}
       onClick={onClick}
     >
       <CardHeader className="pb-3">
         <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold text-foreground">
-            {order.order_number}
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-lg font-semibold text-foreground">
+              {order.order_number}
+            </CardTitle>
+            {order.unread_messages_count && order.unread_messages_count > 0 && (
+              <div className="relative">
+                <MessageCircle className="h-5 w-5 text-blue-600 animate-bounce" />
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white animate-pulse"
+                >
+                  {order.unread_messages_count}
+                </Badge>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(order.status)}>
               {order.status === 'pendiente_aprobacion' 
