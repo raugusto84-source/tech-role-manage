@@ -69,13 +69,13 @@ export default function ClientDashboard() {
     if (!canonical.parentElement) document.head.appendChild(canonical);
   }, []);
 
-  // Cargar cotizaciones del cliente (por email - mantenemos email para quotes)
+  // Cargar cotizaciones del cliente usando user_id
   const loadQuotes = async () => {
-    if (!profile?.email) return;
+    if (!profile?.user_id) return;
     const { data, error } = await supabase
       .from("quotes")
       .select("*")
-      .eq("client_email", profile.email)
+      .eq("user_id", profile.user_id)
       .order("created_at", { ascending: false })
       .limit(5);
     if (error) {
@@ -157,7 +157,7 @@ export default function ClientDashboard() {
     return () => {
       mounted = false;
     };
-  }, [profile?.user_id, profile?.email]);
+  }, [profile?.user_id]);
 
   // Suscripción en tiempo real SOLO para órdenes del cliente
   useEffect(() => {
