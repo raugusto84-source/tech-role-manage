@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,12 +72,16 @@ interface CategoryServiceSelectionProps {
 }
 
 export function CategoryServiceSelection({ selectedItems, onItemsChange }: CategoryServiceSelectionProps) {
+  const { profile } = useAuth();
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [globalTaxes, setGlobalTaxes] = useState<TaxDefinition[]>([]);
   const [selectedTaxes, setSelectedTaxes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Determinar si el usuario es cliente para ocultar impuestos
+  const isClient = profile?.role === 'cliente';
   
   // Custom item form
   const [customItem, setCustomItem] = useState({
@@ -291,10 +296,10 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
   return (
     <div className="space-y-6">
       <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className={`grid w-full ${isClient ? 'grid-cols-3' : 'grid-cols-4'}`}>
           <TabsTrigger value="services">Servicios</TabsTrigger>
           <TabsTrigger value="products">Productos</TabsTrigger>
-          <TabsTrigger value="taxes">Impuestos Globales</TabsTrigger>
+          {!isClient && <TabsTrigger value="taxes">Impuestos Globales</TabsTrigger>}
           <TabsTrigger value="custom">Artículo Personalizado</TabsTrigger>
         </TabsList>
 
@@ -819,7 +824,8 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                     <p className="text-sm text-muted-foreground">
                       {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.total)}
                     </p>
-                    {item.taxes && item.taxes.length > 0 && (
+                    {/* Solo mostrar detalles de impuestos si no es cliente */}
+                    {!isClient && item.taxes && item.taxes.length > 0 && (
                       <div className="flex gap-1 mt-1">
                         {item.taxes.map((tax, index) => (
                           <Badge key={index} variant="outline" className="text-xs">
@@ -830,10 +836,13 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <TaxConfiguration 
-                      item={item}
-                      onItemChange={updateItem}
-                    />
+                    {/* Solo mostrar configuración de impuestos si no es cliente */}
+                    {!isClient && (
+                      <TaxConfiguration 
+                        item={item}
+                        onItemChange={updateItem}
+                      />
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"

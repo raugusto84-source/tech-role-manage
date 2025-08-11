@@ -453,29 +453,13 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
           {/* Paso 2: Artículos */}
           {currentStep === 'items' && (
-            <div>
-              {/* Debug: mostrar items actuales */}
-              <div className="mb-4 p-2 bg-gray-100 rounded text-sm">
-                <strong>Debug - Items actuales ({quoteItems.length}):</strong>
-                {quoteItems.length > 0 ? (
-                  <ul className="list-disc list-inside">
-                    {quoteItems.map((item, index) => (
-                      <li key={index}>{item.name} - {item.quantity} x ${item.unit_price}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p>No hay artículos agregados</p>
-                )}
-              </div>
-              
-              <CategoryServiceSelection 
-                selectedItems={quoteItems}
-                onItemsChange={(items) => {
-                  console.log('Items changed in QuoteWizard:', items);
-                  setQuoteItems(items);
-                }}
-              />
-            </div>
+            <CategoryServiceSelection 
+              selectedItems={quoteItems}
+              onItemsChange={(items) => {
+                console.log('Items changed in QuoteWizard:', items);
+                setQuoteItems(items);
+              }}
+            />
           )}
 
           {/* Paso 3: Detalles */}
@@ -493,19 +477,22 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
               </div>
 
               <div>
-                <Label htmlFor="marketing-channel">Canal de Marketing</Label>
+                <Label htmlFor="marketing-channel">¿Dónde supo de este servicio?</Label>
                 <Select 
                   value={quoteDetails.marketing_channel} 
                   onValueChange={(value: any) => setQuoteDetails({...quoteDetails, marketing_channel: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecciona una opción" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="web">Web</SelectItem>
-                    <SelectItem value="social">Redes Sociales</SelectItem>
-                    <SelectItem value="referral">Referido</SelectItem>
-                    <SelectItem value="direct">Directo</SelectItem>
+                    <SelectItem value="web">Página Web</SelectItem>
+                    <SelectItem value="social">Redes Sociales (Facebook, Instagram, etc.)</SelectItem>
+                    <SelectItem value="google">Google / Búsqueda en Internet</SelectItem>
+                    <SelectItem value="referral">Referido por alguien</SelectItem>
+                    <SelectItem value="direct">Contacto directo</SelectItem>
+                    <SelectItem value="advertising">Publicidad</SelectItem>
+                    <SelectItem value="other">Otro</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
