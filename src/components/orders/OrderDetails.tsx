@@ -291,7 +291,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
-    return <ClientOrderApproval order={order} onApprovalChange={() => setOrderStatus(order.status)} />;
+    return <ClientOrderApproval order={order} onApprovalChange={() => {
+      console.log('Order approved, navigating back to orders list');
+      onBack(); // Navegar de vuelta a la lista de órdenes
+      onUpdate(); // Actualizar la lista de órdenes
+    }} />;
   }
 
   // Si es cliente y la orden está pendiente de entrega, mostrar el flujo de entrega
