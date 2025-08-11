@@ -571,6 +571,58 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_signatures: {
+        Row: {
+          client_name: string
+          client_signature_data: string
+          created_at: string
+          delivery_date: string
+          id: string
+          observations: string | null
+          order_id: string
+        }
+        Insert: {
+          client_name: string
+          client_signature_data: string
+          created_at?: string
+          delivery_date?: string
+          id?: string
+          observations?: string | null
+          order_id: string
+        }
+        Update: {
+          client_name?: string
+          client_signature_data?: string
+          created_at?: string
+          delivery_date?: string
+          id?: string
+          observations?: string | null
+          order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_signatures_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_signatures_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_signatures_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections_with_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diagnostic_questions: {
         Row: {
           created_at: string
