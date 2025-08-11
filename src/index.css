@@ -53,6 +53,14 @@ All colors MUST be HSL.
     --sidebar-border: 220 13% 91%;
 
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Status colors */
+    --info: 214 95% 93%;
+    --info-foreground: 214 95% 15%;
+    --success: 143 85% 96%;
+    --success-foreground: 140 100% 27%;
+    --warning: 48 96% 89%;
+    --warning-foreground: 25 95% 53%;
   }
 
   .dark {
@@ -91,6 +99,14 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Status colors - dark mode */
+    --info: 214 95% 15%;
+    --info-foreground: 214 95% 93%;
+    --success: 140 100% 27%;
+    --success-foreground: 143 85% 96%;
+    --warning: 25 95% 53%;
+    --warning-foreground: 48 96% 89%;
   }
 }
 
