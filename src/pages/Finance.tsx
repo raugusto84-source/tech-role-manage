@@ -1237,6 +1237,35 @@ export default function Finance() {
 
   const withdrawFiscalAmount = async (withdrawalId: string) => {
     try {
+      // Get the withdrawal details first
+      const { data: withdrawal, error: fetchError } = await supabase
+        .from("fiscal_withdrawals")
+        .select("*")
+        .eq("id", withdrawalId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Skip if amount is 0 or null
+      if (!withdrawal.amount || withdrawal.amount === 0) {
+        toast({ title: "Error", description: "No se puede retirar un monto de $0", variant: "destructive" });
+        return;
+      }
+
+      // Create the fiscal expense record
+      const { error: expenseError } = await supabase.from("expenses").insert({
+        amount: withdrawal.amount,
+        description: `Retiro individual: ${withdrawal.description}`,
+        category: 'retiro_fiscal',
+        account_type: 'fiscal' as any,
+        payment_method: 'transferencia',
+        expense_date: new Date().toISOString().split('T')[0],
+        status: 'pagado'
+      } as any);
+
+      if (expenseError) throw expenseError;
+
+      // Update the withdrawal status
       const { error } = await supabase
         .from("fiscal_withdrawals")
         .update({
@@ -1245,9 +1274,13 @@ export default function Finance() {
           withdrawn_by: profile?.user_id
         })
         .eq("id", withdrawalId);
+      
       if (error) throw error;
-      toast({ title: "Retiro realizado exitosamente" });
+
+      toast({ title: "Retiro realizado exitosamente", description: `Se retiró $${withdrawal.amount.toLocaleString()} de la cuenta fiscal` });
       fiscalWithdrawalsQuery.refetch();
+      expensesQuery.refetch();
+      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible realizar el retiro", variant: "destructive" });
     }
@@ -1332,7 +1365,7 @@ export default function Finance() {
   };
 
   const selectAllWithdrawals = () => {
-    const availableWithdrawals = fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available') || [];
+    const availableWithdrawals = fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0) || [];
     if (selectedWithdrawals.length === availableWithdrawals.length) {
       setSelectedWithdrawals([]);
     } else {
@@ -2010,7 +2043,7 @@ export default function Finance() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
-                Pendientes de Retirar ({fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available').length || 0})
+                Pendientes de Retirar ({fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length || 0})
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 Facturas de compras pagadas desde cuenta no fiscal que requieren retiro desde cuenta fiscal
@@ -2029,7 +2062,7 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available').map((withdrawal) => (
+                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).map((withdrawal) => (
                       <TableRow key={withdrawal.id}>
                         <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
@@ -2054,7 +2087,7 @@ export default function Finance() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {(!fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available').length) && (
+                    {(!fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length) && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center gap-2">
