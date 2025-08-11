@@ -126,23 +126,18 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
 
   const primaryHoursPerDay = getWorkingHoursPerDay(primaryTechnicianSchedule);
   
-  // Calculate total reduction from all support technicians
-  let totalReductionPercentage = 0;
-  supportTechnicians.forEach(supportTech => {
-    totalReductionPercentage += supportTech.reductionPercentage;
-  });
-  
-  // Cap total reduction at 90% to prevent unrealistic scenarios
-  totalReductionPercentage = Math.min(totalReductionPercentage, 90);
-  
+  // Apply each support technician's reduction sequentially
   let effectiveWorkingHours = effectiveHours;
   console.log('Original hours:', effectiveHours);
   console.log('Support technicians count:', supportTechnicians.length);
-  console.log('Total reduction percentage:', totalReductionPercentage);
   
   if (supportTechnicians.length > 0) {
-    effectiveWorkingHours = effectiveHours * (1 - totalReductionPercentage / 100);
-    console.log('Support technicians detected! Reduced hours:', effectiveWorkingHours);
+    supportTechnicians.forEach((supportTech, index) => {
+      const previousHours = effectiveWorkingHours;
+      effectiveWorkingHours = effectiveWorkingHours * (1 - supportTech.reductionPercentage / 100);
+      console.log(`Technician ${index + 1} (${supportTech.reductionPercentage}%): ${previousHours}h -> ${effectiveWorkingHours}h`);
+    });
+    console.log('Final reduced hours:', effectiveWorkingHours);
   }
 
   const totalHoursPerDay = primaryHoursPerDay;

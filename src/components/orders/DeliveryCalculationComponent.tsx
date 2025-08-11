@@ -134,7 +134,7 @@ export function DeliveryCalculationDisplay({
             </p>
           ))}
           <p className="text-green-600 font-medium">
-            ✓ Tiempo reducido total: {Math.min(supportTechnicians.reduce((sum, tech) => sum + tech.reductionPercentage, 0), 90)}%
+            ✓ Tiempo aplicado secuencialmente por cada técnico
           </p>
         </div>
       )}
