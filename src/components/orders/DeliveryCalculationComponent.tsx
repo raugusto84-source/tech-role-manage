@@ -111,8 +111,8 @@ export function DeliveryCalculationDisplay({
       )}
       
       {supportTechnicianId && (
-        <p className="text-purple-600">
-          ✓ Con técnico de apoyo para optimizar tiempo
+        <p className="text-purple-600 font-medium">
+          ⚡ Tiempo reducido 20% con técnico de apoyo
         </p>
       )}
       

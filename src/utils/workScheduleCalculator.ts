@@ -248,13 +248,18 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   const totalDays = Math.ceil((currentDate.getTime() - creationDate.getTime()) / (24 * 60 * 60 * 1000));
   const deadDays = totalDays - daysAdded;
   
-  const breakdown = ''; // Texto detallado removido por solicitud del usuario
+  let breakdown = '';
+  if (supportTechnicianSchedule) {
+    breakdown = `Tiempo reducido en 20% por técnico de apoyo (de ${effectiveHours}h a ${effectiveWorkingHours.toFixed(1)}h)`;
+  } else {
+    breakdown = `Tiempo estimado: ${effectiveHours}h`;
+  }
 
   return {
     deliveryDate: currentDate,
     deliveryTime,
     breakdown,
-    effectiveHours
+    effectiveHours: effectiveWorkingHours // Return the adjusted hours
   };
 }
 
