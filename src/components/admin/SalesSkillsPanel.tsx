@@ -8,20 +8,36 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Store, TrendingUp, TrendingDown, CheckCircle, XCircle } from 'lucide-react';
 import { SkillLevelEditor } from './SkillLevelEditor';
 
-interface ServiceType {
+interface SalesProduct {
   id: string;
   name: string;
   description: string;
+  brand: string;
+  model: string | null;
+  category_id: string;
+  is_active: boolean;
+}
+
+interface SalesCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  is_active: boolean;
 }
 
 interface SalesSkill {
   id: string;
   salesperson_id: string;
-  service_type_id: string;
+  sales_product_id: string;
   skill_level: number;
+  years_experience?: number;
+  certifications?: string[];
+  notes?: string;
   created_at: string;
   updated_at: string;
-  service_type?: ServiceType;
+  created_by?: string;
+  sales_product?: SalesProduct;
 }
 
 interface Salesperson {
@@ -45,8 +61,9 @@ interface PerformanceStats {
 export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkillsPanelProps) {
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [skills, setSkills] = useState<SalesSkill[]>([]);
-  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [salesProducts, setSalesProducts] = useState<SalesProduct[]>([]);
+  const [salesCategories, setSalesCategories] = useState<SalesCategory[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [performanceStats, setPerformanceStats] = useState<Record<string, PerformanceStats>>({});
   const [selectedSalespersonId, setSelectedSalespersonId] = useState<string | null>(selectedUserId);
   const [loading, setLoading] = useState(false);
@@ -54,7 +71,8 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
   useEffect(() => {
     loadSalespeople();
-    loadServiceTypes();
+    loadSalesProducts();
+    loadSalesCategories();
   }, []);
 
   useEffect(() => {
@@ -64,10 +82,10 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
   }, [selectedUserId, selectedUserRole]);
 
   useEffect(() => {
-    if (selectedSalespersonId && serviceTypes.length > 0) {
+    if (selectedSalespersonId && salesProducts.length > 0) {
       loadSkillsForSalesperson(selectedSalespersonId);
     }
-  }, [selectedSalespersonId, serviceTypes]);
+  }, [selectedSalespersonId, salesProducts]);
 
   const loadSalespeople = async () => {
     try {
@@ -87,17 +105,33 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     }
   };
 
-  const loadServiceTypes = async () => {
+  const loadSalesProducts = async () => {
     try {
       const { data, error } = await supabase
-        .from('service_types')
-        .select('id, name, description')
+        .from('sales_products')
+        .select('id, name, description, brand, model, category_id, is_active')
+        .eq('is_active', true)
         .order('name');
 
       if (error) throw error;
-      setServiceTypes(data || []);
+      setSalesProducts(data || []);
     } catch (error) {
-      console.error('Error loading service types:', error);
+      console.error('Error loading sales products:', error);
+    }
+  };
+
+  const loadSalesCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sales_categories')
+        .select('id, name, description, icon, is_active')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setSalesCategories(data || []);
+    } catch (error) {
+      console.error('Error loading sales categories:', error);
     }
   };
 
@@ -110,21 +144,22 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
       if (error) throw error;
       const skillsData = data || [];
-      setSkills(skillsData);
-      setSelectedServices(skillsData.map((skill: any) => skill.service_type_id));
       
-      // Load performance stats for all services
-      const allServiceIds = serviceTypes.map(st => st.id);
-      await loadPerformanceStats(salespersonId, allServiceIds);
+      setSkills(skillsData as any);
+      setSelectedProducts((skillsData as any).map((skill: any) => skill.sales_product_id));
+      
+      // Load performance stats for all products
+      const allProductIds = salesProducts.map(sp => sp.id);
+      await loadPerformanceStats(salespersonId, allProductIds);
     } catch (error) {
       console.error('Error loading sales skills:', error);
       setSkills([]);
-      setSelectedServices([]);
+      setSelectedProducts([]);
     }
   };
 
-  const loadPerformanceStats = async (salespersonId: string, serviceTypeIds: string[]) => {
-    if (serviceTypeIds.length === 0) {
+  const loadPerformanceStats = async (salespersonId: string, productIds: string[]) => {
+    if (productIds.length === 0) {
       setPerformanceStats({});
       return;
     }
@@ -132,10 +167,10 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     try {
       const stats: Record<string, PerformanceStats> = {};
       
-      // For now, we'll just create empty stats since quotes table doesn't have service_type column
+      // For now, we'll just create empty stats since quotes don't have direct product relationships yet
       // This can be enhanced later when the relationship is properly established
-      for (const serviceTypeId of serviceTypeIds) {
-        stats[serviceTypeId] = {
+      for (const productId of productIds) {
+        stats[productId] = {
           successful_sales: 0,
           failed_sales: 0,
           total_sales: 0,
@@ -160,13 +195,13 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     return 1;
   };
 
-  const handleServiceToggle = async (serviceTypeId: string, isChecked: boolean) => {
+  const handleProductToggle = async (productId: string, isChecked: boolean) => {
     if (!selectedSalespersonId) return;
 
     try {
       if (isChecked) {
         // Calculate level based on historical performance
-        const stats = performanceStats[serviceTypeId] || {
+        const stats = performanceStats[productId] || {
           successful_sales: 0,
           failed_sales: 0,
           total_sales: 0,
@@ -179,20 +214,20 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
           .from('sales_skills')
           .insert({
             salesperson_id: selectedSalespersonId,
-            service_type_id: serviceTypeId,
+            sales_product_id: productId,
             skill_level: calculatedLevel
           });
 
         if (error) throw error;
         
         // Update local state without full reload
-        setSelectedServices(prev => [...prev, serviceTypeId]);
+        setSelectedProducts(prev => [...prev, productId]);
         
         // Add the new skill to local state
         const newSkill: SalesSkill = {
           id: crypto.randomUUID(),
           salesperson_id: selectedSalespersonId,
-          service_type_id: serviceTypeId,
+          sales_product_id: productId,
           skill_level: calculatedLevel,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -202,29 +237,31 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
         
         toast({
           title: 'Habilidad añadida',
-          description: `Servicio asignado con nivel ${calculatedLevel}`,
+          description: `Producto asignado con nivel ${calculatedLevel}`,
         });
       } else {
-        const { error } = await supabase
-          .from('sales_skills')
-          .delete()
-          .eq('salesperson_id', selectedSalespersonId)
-          .eq('service_type_id', serviceTypeId);
-
-        if (error) throw error;
+        // Delete the skill
+        try {
+          await supabase
+            .from('sales_skills')
+            .delete()
+            .match({ salesperson_id: selectedSalespersonId, sales_product_id: productId });
+        } catch (deleteError) {
+          console.error('Delete error:', deleteError);
+        }
         
         // Update local state without reload
-        setSelectedServices(prev => prev.filter(id => id !== serviceTypeId));
-        setSkills(prev => prev.filter(skill => skill.service_type_id !== serviceTypeId));
+        setSelectedProducts(prev => prev.filter(id => id !== productId));
+        setSkills(prev => prev.filter(skill => skill.sales_product_id !== productId));
         
         toast({
           title: 'Habilidad removida',
-          description: 'Servicio eliminado de las habilidades',
+          description: 'Producto eliminado de las habilidades',
         });
       }
       
     } catch (error: any) {
-      console.error('Error toggling service:', error);
+      console.error('Error toggling product:', error);
       toast({
         title: 'Error',
         description: error.message || 'No se pudo actualizar la habilidad',
@@ -295,8 +332,8 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     );
   };
 
-  const renderPerformanceStats = (serviceTypeId: string) => {
-    const stats = performanceStats[serviceTypeId];
+  const renderPerformanceStats = (productId: string) => {
+    const stats = performanceStats[productId];
     if (!stats || stats.total_sales === 0) {
       return (
         <div className="text-sm text-muted-foreground">
@@ -327,6 +364,17 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
     );
   };
 
+  const getIconForCategory = (iconName: string) => {
+    switch (iconName) {
+      case 'camera': return '📹';
+      case 'key': return '🔑';
+      case 'shield-alert': return '🚨';
+      case 'wifi': return '📡';
+      case 'lightbulb': return '💡';
+      default: return '📦';
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-6">Cargando...</div>;
   }
@@ -354,86 +402,101 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
 
       {/* Lista de conocimientos del vendedor seleccionado */}
       {selectedSalespersonId && (
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">
-            Conocimientos de Ventas - Servicios ({serviceTypes.length})
-          </h3>
+        <div className="space-y-6">
+          {/* Agrupar productos por categoría */}
+          {salesCategories.map((category) => {
+            const categoryProducts = salesProducts.filter(p => p.category_id === category.id);
+            if (categoryProducts.length === 0) return null;
+
+            return (
+              <div key={category.id} className="space-y-4">
+                <h3 className="text-lg font-medium flex items-center gap-2">
+                  <span className="text-2xl">{getIconForCategory(category.icon)}</span>
+                  {category.name} ({categoryProducts.length} productos)
+                </h3>
+                <p className="text-sm text-muted-foreground">{category.description}</p>
+                
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {categoryProducts.map((product) => {
+                    const isSelected = selectedProducts.includes(product.id);
+                    const skill = skills.find(s => s.sales_product_id === product.id);
+                    const stats = performanceStats[product.id];
+                    
+                    return (
+                      <Card key={product.id} className={`transition-all ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => handleProductToggle(product.id, checked as boolean)}
+                              className="mt-1"
+                            />
+                            <div className="flex-1">
+                              <CardTitle className="text-base">{product.name}</CardTitle>
+                              <p className="text-sm text-muted-foreground">
+                                {product.brand} {product.model && `- ${product.model}`}
+                              </p>
+                              {product.description && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {product.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        
+                        {isSelected && skill && (
+                          <CardContent className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-muted-foreground mb-1">Nivel actual:</p>
+                                {renderSkillLevel(skill.skill_level)}
+                              </div>
+                              <SkillLevelEditor
+                                currentLevel={skill.skill_level}
+                                serviceName={product.name}
+                                onSave={(data) => handleManualSkillUpdate(skill.id, data)}
+                              />
+                            </div>
+                            
+                            <div>
+                              <p className="text-sm text-muted-foreground mb-2">Rendimiento en ventas:</p>
+                              {renderPerformanceStats(product.id)}
+                            </div>
+                          </CardContent>
+                        )}
+                        
+                        {isSelected && stats && stats.total_sales > 0 && (
+                          <CardContent className="pt-0">
+                            <div className="flex items-center gap-2 text-xs">
+                              {stats.success_rate >= 70 ? (
+                                <TrendingUp className="h-3 w-3 text-green-600" />
+                              ) : (
+                                <TrendingDown className="h-3 w-3 text-red-600" />
+                              )}
+                              <span className="text-muted-foreground">
+                                Basado en {stats.total_sales} cotizaciones
+                              </span>
+                            </div>
+                          </CardContent>
+                        )}
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
           
-          {serviceTypes.length === 0 ? (
+          {salesCategories.length === 0 && (
             <Card>
               <CardContent className="text-center py-8">
                 <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">
-                  No hay tipos de servicios disponibles
+                  No hay categorías de productos disponibles
                 </p>
               </CardContent>
             </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {serviceTypes.map((serviceType) => {
-                const isSelected = selectedServices.includes(serviceType.id);
-                const skill = skills.find(s => s.service_type_id === serviceType.id);
-                const stats = performanceStats[serviceType.id];
-                
-                return (
-                  <Card key={serviceType.id} className={`transition-all ${isSelected ? 'border-primary bg-primary/5' : ''}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => handleServiceToggle(serviceType.id, checked as boolean)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1">
-                          <CardTitle className="text-base">{serviceType.name}</CardTitle>
-                          {serviceType.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {serviceType.description}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </CardHeader>
-                    
-                    {isSelected && skill && (
-                      <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Nivel actual:</p>
-                            {renderSkillLevel(skill.skill_level)}
-                          </div>
-                          <SkillLevelEditor
-                            currentLevel={skill.skill_level}
-                            serviceName={serviceType.name}
-                            onSave={(data) => handleManualSkillUpdate(skill.id, data)}
-                          />
-                        </div>
-                        
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-2">Rendimiento en ventas:</p>
-                          {renderPerformanceStats(serviceType.id)}
-                        </div>
-                      </CardContent>
-                    )}
-                    
-                    {isSelected && stats && stats.total_sales > 0 && (
-                      <CardContent className="pt-0">
-                        <div className="flex items-center gap-2 text-xs">
-                          {stats.success_rate >= 70 ? (
-                            <TrendingUp className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 text-red-600" />
-                          )}
-                          <span className="text-muted-foreground">
-                            Basado en {stats.total_sales} cotizaciones
-                          </span>
-                        </div>
-                      </CardContent>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
           )}
         </div>
       )}
@@ -448,10 +511,10 @@ export function SalesSkillsPanel({ selectedUserId, selectedUserRole }: SalesSkil
               Selecciona un vendedor para gestionar sus conocimientos y habilidades comerciales
             </p>
             <div className="text-sm text-muted-foreground">
-              <p>• Gestión de habilidades por tipo de servicio</p>
+              <p>• Gestión de habilidades por productos de venta</p>
               <p>• Niveles calculados automáticamente por rendimiento</p>
-              <p>• Estadísticas de éxito vs fallos en ventas</p>
-              <p>• Seguimiento de especialización comercial</p>
+              <p>• Estadísticas de éxito vs fallos en ventas por producto</p>
+              <p>• Seguimiento de especialización comercial por categoría</p>
             </div>
           </CardContent>
         </Card>
