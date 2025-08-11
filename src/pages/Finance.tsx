@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +62,12 @@ export default function Finance() {
   const [startDate, setStartDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0,10));
   const [endDate, setEndDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0,10));
   const [accountType, setAccountType] = useState<string>("all"); // all | fiscal | no_fiscal
+  
+  // Estado para retiros
+  const [selectedWithdrawals, setSelectedWithdrawals] = useState<string[]>([]);
+  const [showWithdrawalDialog, setShowWithdrawalDialog] = useState(false);
+  const [withdrawalConcept, setWithdrawalConcept] = useState('');
+  const [withdrawalDescription, setWithdrawalDescription] = useState('');
 
   // Función para establecer mes actual rápidamente
   const setCurrentMonth = () => {
@@ -1242,6 +1250,93 @@ export default function Finance() {
       fiscalWithdrawalsQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible realizar el retiro", variant: "destructive" });
+    }
+  };
+
+  const handleBulkWithdrawal = async () => {
+    if (selectedWithdrawals.length === 0) {
+      toast({ title: "Error", description: "Selecciona al menos un item para retirar", variant: "destructive" });
+      return;
+    }
+    
+    if (!withdrawalConcept.trim()) {
+      toast({ title: "Error", description: "El concepto es obligatorio", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Obtener los retiros seleccionados
+      const selectedItems = fiscalWithdrawalsQuery.data?.filter(fw => 
+        selectedWithdrawals.includes(fw.id) && fw.withdrawal_status === 'available'
+      ) || [];
+
+      if (selectedItems.length === 0) {
+        toast({ title: "Error", description: "No hay items válidos para retirar", variant: "destructive" });
+        return;
+      }
+
+      // Calcular el total a retirar
+      const totalAmount = selectedItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+
+      // Crear el egreso fiscal por el total
+      const { error: expenseError } = await supabase.from("expenses").insert({
+        amount: totalAmount,
+        description: `${withdrawalConcept}${withdrawalDescription ? ' - ' + withdrawalDescription : ''}`,
+        category: 'retiro_fiscal',
+        account_type: 'fiscal' as any,
+        payment_method: 'transferencia',
+        expense_date: new Date().toISOString().split('T')[0],
+        status: 'pagado'
+      } as any);
+
+      if (expenseError) throw expenseError;
+
+      // Marcar todos los retiros seleccionados como retirados
+      const { error: updateError } = await supabase
+        .from("fiscal_withdrawals")
+        .update({
+          withdrawal_status: "withdrawn",
+          withdrawn_by: (await supabase.auth.getUser()).data.user?.id,
+          withdrawn_at: new Date().toISOString()
+        })
+        .in('id', selectedWithdrawals);
+
+      if (updateError) throw updateError;
+
+      toast({ 
+        title: "Retiro realizado exitosamente", 
+        description: `Se retiraron ${selectedItems.length} items por un total de $${totalAmount.toLocaleString()}` 
+      });
+      
+      // Limpiar estado
+      setSelectedWithdrawals([]);
+      setWithdrawalConcept('');
+      setWithdrawalDescription('');
+      setShowWithdrawalDialog(false);
+      
+      // Refrescar datos
+      fiscalWithdrawalsQuery.refetch();
+      expensesQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible realizar el retiro", variant: "destructive" });
+    }
+  };
+
+  const toggleWithdrawalSelection = (withdrawalId: string) => {
+    setSelectedWithdrawals(prev => 
+      prev.includes(withdrawalId) 
+        ? prev.filter(id => id !== withdrawalId)
+        : [...prev, withdrawalId]
+    );
+  };
+
+  const selectAllWithdrawals = () => {
+    const availableWithdrawals = fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available') || [];
+    if (selectedWithdrawals.length === availableWithdrawals.length) {
+      setSelectedWithdrawals([]);
+    } else {
+      setSelectedWithdrawals(availableWithdrawals.map(fw => fw.id));
     }
   };
 
@@ -3293,6 +3388,58 @@ export default function Finance() {
             </Button>
             <Button onClick={editingSupplier ? updateSupplier : addSupplier}>
               {editingSupplier ? 'Actualizar' : 'Agregar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para retiro masivo */}
+      <Dialog open={showWithdrawalDialog} onOpenChange={setShowWithdrawalDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retirar Items Seleccionados</DialogTitle>
+            <DialogDescription>
+              Se crearán egresos fiscales por los {selectedWithdrawals.length} items seleccionados
+              {fiscalWithdrawalsQuery.data && (
+                <>
+                  {' '}por un total de ${fiscalWithdrawalsQuery.data
+                    .filter(fw => selectedWithdrawals.includes(fw.id))
+                    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+                    .toLocaleString()}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="withdrawal-concept">Concepto *</Label>
+              <Input
+                id="withdrawal-concept"
+                value={withdrawalConcept}
+                onChange={(e) => setWithdrawalConcept(e.target.value)}
+                placeholder="Ej: Retiro facturas periodo diciembre 2024"
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="withdrawal-description">Descripción adicional</Label>
+              <Textarea
+                id="withdrawal-description"
+                value={withdrawalDescription}
+                onChange={(e) => setWithdrawalDescription(e.target.value)}
+                placeholder="Información adicional sobre el retiro (opcional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowWithdrawalDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleBulkWithdrawal} className="bg-orange-600 hover:bg-orange-700">
+              Confirmar Retiro
             </Button>
           </DialogFooter>
         </DialogContent>
