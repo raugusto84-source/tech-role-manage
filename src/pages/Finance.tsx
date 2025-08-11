@@ -360,6 +360,8 @@ export default function Finance() {
     if (!isAdmin) return;
     try {
       const today = new Date().toISOString().substring(0,10);
+      
+      // Create a reversal income record (income_number will be auto-generated)
       const { error: insErr } = await supabase.from('incomes').insert({
         amount: row.amount,
         description: `Reverso egreso ${row.expense_number ?? ''} - ${row.description ?? ''}`.trim(),
@@ -369,8 +371,11 @@ export default function Finance() {
         payment_method: row.payment_method ?? null,
       } as any);
       if (insErr) throw insErr;
+      
+      // Delete the original expense
       const { error: delErr } = await supabase.from('expenses').delete().eq('id', row.id);
       if (delErr) throw delErr;
+      
       toast({ title: 'Egreso revertido' });
       incomesQuery.refetch();
       expensesQuery.refetch();
@@ -529,15 +534,15 @@ export default function Finance() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Ingresos</div>
-                <div className="font-semibold">{totIF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                <div className="font-semibold">{totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Egresos</div>
-                <div className="font-semibold">{totEF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                <div className="font-semibold">{totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Balance</div>
-                <div className="font-semibold">{(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                <div className="font-semibold">{(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
             </div>
           </CardContent>
@@ -551,15 +556,15 @@ export default function Finance() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Ingresos</div>
-                <div className="font-semibold">{totINF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                <div className="font-semibold">{totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Egresos</div>
-                <div className="font-semibold">{totENF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                <div className="font-semibold">{totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Balance</div>
-                <div className="font-semibold">{(totINF - totENF).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</div>
+                <div className="font-semibold">{(totINF - totENF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
               </div>
             </div>
           </CardContent>
@@ -580,7 +585,7 @@ export default function Finance() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <CardTitle>Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -607,12 +612,12 @@ export default function Finance() {
                         <TableRow key={r.id}>
                           <TableCell>{r.income_number}</TableCell>
                           <TableCell>{r.income_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                           <TableCell className="text-green-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} (${r.vat_rate}%)` : 'Sin IVA'}
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
@@ -632,7 +637,7 @@ export default function Finance() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <CardTitle>Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`ingresos_no_fiscal_${startDate}_${endDate}`, incomesNoFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -657,7 +662,7 @@ export default function Finance() {
                          <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
                            <TableCell>{r.income_date}</TableCell>
-                           <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                           <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                            <TableCell>{r.category}</TableCell>
                            <TableCell>{r.payment_method}</TableCell>
                            <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
@@ -680,7 +685,7 @@ export default function Finance() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <CardTitle>Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -696,26 +701,32 @@ export default function Finance() {
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={8}>Cargando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
                       )}
                       {!expensesQuery.isLoading && expensesFiscal.map((r: any) => (
                         <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                           <TableCell className="text-red-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} (${r.vat_rate}%)` : 'Sin IVA'}
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                          <TableCell>
+                            {isAdmin && (
+                              <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -726,7 +737,7 @@ export default function Finance() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</CardTitle>
+                <CardTitle>Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`egresos_no_fiscal_${startDate}_${endDate}`, expensesNoFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
               <CardContent>
@@ -742,26 +753,32 @@ export default function Finance() {
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
                         <TableHead>Descripción</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={8}>Cargando...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
                       )}
                       {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => (
                         <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                           <TableCell className="text-red-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} (${r.vat_rate}%)` : 'Sin IVA'}
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                          <TableCell>
+                            {isAdmin && (
+                              <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -830,7 +847,7 @@ export default function Finance() {
                         {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).map((fx: any) => (
                           <TableRow key={fx.id}>
                             <TableCell>{fx.description}</TableCell>
-                            <TableCell>{Number(fx.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                            <TableCell>{Number(fx.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                             <TableCell>{fx.account_type}</TableCell>
                             <TableCell>{fx.next_run_date}</TableCell>
                             <TableCell>{fx.active ? 'Sí' : 'No'}</TableCell>
@@ -980,7 +997,7 @@ export default function Finance() {
                         {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).map((rp: any) => (
                           <TableRow key={rp.id}>
                             <TableCell>{rp.employee_name}</TableCell>
-                            <TableCell>{Number(rp.net_salary).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                            <TableCell>{Number(rp.net_salary).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                             <TableCell>{rp.account_type}</TableCell>
                             <TableCell>{rp.next_run_date}</TableCell>
                             <TableCell>{rp.active ? 'Sí' : 'No'}</TableCell>
@@ -1052,7 +1069,7 @@ export default function Finance() {
                         <TableCell className="max-w-[300px] truncate" title={expense.description}>
                           {expense.description}
                         </TableCell>
-                        <TableCell>{Number(expense.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>{Number(expense.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                         <TableCell>
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-warning text-warning-foreground">
                             Pendiente
@@ -1112,15 +1129,15 @@ export default function Finance() {
                     <div className="text-sm space-y-2">
                       <div className="flex justify-between">
                         <span>Monto base:</span>
-                        <span>{Number(tempAmount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
+                        <span>{Number(tempAmount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
                       </div>
                       <div className="flex justify-between text-blue-600">
                         <span>IVA ({tempVatRate}%):</span>
-                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
+                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-lg border-t pt-2">
                         <span>Total:</span>
-                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</span>
+                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
                       </div>
                     </div>
                   </div>
@@ -1158,13 +1175,13 @@ export default function Finance() {
                         <TableRow key={summary.period}>
                           <TableCell>{new Date(summary.period).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' })}</TableCell>
                           <TableCell className="text-green-600">
-                            {Number(summary.vat_collected || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                            {Number(summary.vat_collected || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
                           <TableCell className="text-red-600">
-                            {Number(summary.vat_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                            {Number(summary.vat_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
                           <TableCell className={Number(summary.vat_balance || 0) >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                            {Number(summary.vat_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                            {Number(summary.vat_balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1218,13 +1235,13 @@ export default function Finance() {
                         <TableCell className="max-w-[200px] truncate" title={vat.description}>
                           {vat.description}
                         </TableCell>
-                        <TableCell>{Number(vat.taxable_amount || vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</TableCell>
+                        <TableCell>{Number(vat.taxable_amount || vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
                         <TableCell>{vat.vat_rate || 0}%</TableCell>
                         <TableCell className={vat.type === 'ingresos' ? 'text-green-600' : 'text-red-600'}>
-                          {Number(vat.vat_amount || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(vat.vat_amount || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {Number(vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1279,13 +1296,13 @@ export default function Finance() {
                         </TableCell>
                         <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">
-                          {Number(order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                         </TableCell>
                         <TableCell className="text-green-600 font-medium">
-                          {Number(order.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(order.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                         </TableCell>
                         <TableCell className="text-red-600 font-medium">
-                          {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}
+                          {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
