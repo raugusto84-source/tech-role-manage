@@ -60,9 +60,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [orderStatus, setOrderStatus] = useState(order.status);
+  const [currentUnreadCount, setCurrentUnreadCount] = useState(0);
 
+  // Función para actualizar el contador de mensajes no leídos localmente
+  const handleMessagesRead = () => {
+    setCurrentUnreadCount(0);
+    // Actualizar el estado local para que la interfaz responda inmediatamente
+    onUpdate(); // Solo llamar onUpdate cuando sea necesario
+  };
   useEffect(() => {
-    loadOrderNotes();
     loadOrderItems();
     loadAssignedTechnician();
     updateOrderStatus();
@@ -558,11 +564,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 <CardTitle className="flex items-center">
                   <MessageSquare className="h-5 w-5 mr-2 text-primary" />
                   Chat de la Orden
+                  {currentUnreadCount > 0 && (
+                    <Badge variant="destructive" className="ml-2">
+                      {currentUnreadCount} nuevo{currentUnreadCount > 1 ? 's' : ''}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {/* Se deshabilita cuando la orden NO está activa (finalizada/cancelada) */}
-                <OrderChat orderId={order.id} disabled={!['pendiente','en_proceso'].includes(orderStatus)} />
+                <OrderChat 
+                  orderId={order.id} 
+                  disabled={!['pendiente','en_proceso'].includes(orderStatus)}
+                  onMessagesRead={handleMessagesRead}
+                />
               </CardContent>
             </Card>
 

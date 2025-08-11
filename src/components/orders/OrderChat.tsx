@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 export interface OrderChatProps {
   orderId: string;
   disabled?: boolean;
+  onMessagesRead?: () => void; // Callback para notificar que se leyeron mensajes
 }
 
 interface ChatMessage {
@@ -31,7 +32,7 @@ interface ChatMessage {
   } | null;
 }
 
-export function OrderChat({ orderId, disabled }: OrderChatProps) {
+export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -41,7 +42,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
 
   const canSend = useMemo(() => !!user && !disabled && newMessage.trim().length > 0, [user, disabled, newMessage]);
 
-  // Cargar historial inicial y perfil del usuario actual
+  // Cargar historial inicial y marcar mensajes como leídos
   useEffect(() => {
     const load = async () => {
       const { data, error } = await supabase
@@ -55,6 +56,26 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
         return;
       }
       setMessages(data || []);
+      
+      // Marcar como leídos todos los mensajes que no son del usuario actual y no están leídos
+      if (user?.id && data) {
+        const unreadMessages = data.filter(
+          msg => msg.sender_id !== user.id && msg.read_at === null
+        );
+        
+        if (unreadMessages.length > 0) {
+          const messageIds = unreadMessages.map(msg => msg.id);
+          
+          // Marcar mensajes como leídos
+          await supabase
+            .from("order_chat_messages")
+            .update({ read_at: new Date().toISOString() })
+            .in("id", messageIds);
+          
+          // Notificar al componente padre que se leyeron mensajes
+          onMessagesRead?.();
+        }
+      }
       
       // Obtener todos los user_ids únicos (incluyendo el usuario actual)
       const allUserIds = new Set(data?.map(msg => msg.sender_id) || []);
@@ -79,7 +100,7 @@ export function OrderChat({ orderId, disabled }: OrderChatProps) {
       }
     };
     load();
-  }, [orderId, user?.id]);
+  }, [orderId, user?.id, onMessagesRead]);
 
   // Realtime: escuchar nuevos mensajes de esta orden
   useEffect(() => {

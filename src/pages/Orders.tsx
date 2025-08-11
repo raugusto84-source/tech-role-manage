@@ -162,13 +162,16 @@ export default function Orders() {
         },
         (payload) => {
           console.log('Orders table changed:', payload);
-          // Recargar órdenes cuando haya cambios
-          loadOrders();
+          // Solo recargar órdenes cuando haya cambios importantes
+          if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE' || 
+              (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
+            loadOrders();
+          }
         }
       )
       .subscribe();
 
-    // Suscribirse a cambios en tiempo real en los mensajes de chat
+    // Suscripción más específica para mensajes de chat - solo actualizar contadores
     const chatChannel = supabase
       .channel('chat-messages-changes')
       .on('postgres_changes',
@@ -179,8 +182,8 @@ export default function Orders() {
         },
         (payload) => {
           console.log('Chat messages changed:', payload);
-          // Recargar órdenes para actualizar contadores de mensajes no leídos
-          loadOrders();
+          // Solo actualizar contadores de mensajes, no recargar todo
+          updateUnreadCounts();
         }
       )
       .subscribe();
@@ -190,6 +193,33 @@ export default function Orders() {
       supabase.removeChannel(chatChannel);
     };
   }, [profile?.role, profile?.email, user?.id]);
+
+  // Función para actualizar solo los contadores de mensajes no leídos
+  const updateUnreadCounts = async () => {
+    if (!user?.id || orders.length === 0) return;
+    
+    try {
+      const updatedOrders = await Promise.all(
+        orders.map(async (order) => {
+          const { count } = await supabase
+            .from('order_chat_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('order_id', order.id)
+            .neq('sender_id', user.id)
+            .is('read_at', null);
+            
+          return {
+            ...order,
+            unread_messages_count: count || 0
+          };
+        })
+      );
+      
+      setOrders(updatedOrders);
+    } catch (error) {
+      console.error('Error updating unread counts:', error);
+    }
+  };
 
   // Abrir formulario automáticamente si viene con ?new=1 (flujo rápido desde Panel Cliente)
   useEffect(() => {
