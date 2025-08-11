@@ -64,25 +64,46 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
         );
         
         console.log('Unread messages found:', unreadMessages.length);
+        console.log('Current user ID:', user.id);
+        console.log('All messages:', data.map(m => ({ 
+          id: m.id, 
+          sender_id: m.sender_id, 
+          read_at: m.read_at,
+          is_from_current_user: m.sender_id === user.id
+        })));
         
         if (unreadMessages.length > 0) {
           const messageIds = unreadMessages.map(msg => msg.id);
           
           console.log('Marking messages as read:', messageIds);
           
-          // Marcar mensajes como leídos
-          const { error } = await supabase
+          // Marcar mensajes como leídos con un timestamp específico
+          const readTimestamp = new Date().toISOString();
+          console.log('Using read timestamp:', readTimestamp);
+          
+          const { error, data: updatedData } = await supabase
             .from("order_chat_messages")
-            .update({ read_at: new Date().toISOString() })
-            .in("id", messageIds);
+            .update({ read_at: readTimestamp })
+            .in("id", messageIds)
+            .select('id, read_at');
+          
+          console.log('Update response:', { error, updatedData });
           
           if (error) {
             console.error('Error marking messages as read:', error);
           } else {
-            console.log('Messages marked as read successfully');
+            console.log('Messages marked as read successfully:', updatedData);
+            // Actualizar los mensajes localmente para reflejar el cambio inmediatamente
+            setMessages(prev => prev.map(msg => 
+              messageIds.includes(msg.id) 
+                ? { ...msg, read_at: readTimestamp }
+                : msg
+            ));
             // Notificar al componente padre que se leyeron mensajes
             onMessagesRead?.();
           }
+        } else {
+          console.log('No unread messages to mark as read');
         }
       }
       

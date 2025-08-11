@@ -117,14 +117,22 @@ export default function Orders() {
 
           // Count unread messages for current user
           if (user?.id) {
-            const { count } = await supabase
+            console.log(`Counting unread messages for order ${order.order_number} and user ${user.id}`);
+            
+            const { count, error } = await supabase
               .from('order_chat_messages')
               .select('*', { count: 'exact', head: true })
               .eq('order_id', order.id)
               .neq('sender_id', user.id) // Messages not sent by current user
               .is('read_at', null); // Messages not yet read
               
-            unreadCount = count || 0;
+            if (error) {
+              console.error('Error counting unread messages:', error);
+              unreadCount = 0;
+            } else {
+              unreadCount = count || 0;
+              console.log(`Order ${order.order_number}: ${unreadCount} unread messages`);
+            }
           }
           
           return {
@@ -206,6 +214,8 @@ export default function Orders() {
     try {
       const updatedOrders = await Promise.all(
         orders.map(async (order) => {
+          console.log(`Updating unread count for order ${order.order_number}`);
+          
           const { count, error } = await supabase
             .from('order_chat_messages')
             .select('*', { count: 'exact', head: true })
