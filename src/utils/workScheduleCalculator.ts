@@ -212,8 +212,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   if (daysAdded === 1) {
     const startTime = new Date(`1970-01-01T${primaryTechnicianSchedule.start_time}`);
     
-    // Horario corrido: solo sumar las horas efectivas sin descansos
-    const totalMinutes = effectiveHours * 60;
+    // Usar las horas ajustadas (incluyendo carga previa) para el cálculo del tiempo
+    const totalMinutes = adjustedHours * 60;
     const endTime = new Date(startTime.getTime() + totalMinutes * 60 * 1000);
     
     deliveryTime = endTime.toLocaleTimeString('es-CO', { 
@@ -356,6 +356,62 @@ export function calculateTechnicianWorkload(
   });
 
   return workloadMap;
+}
+
+export async function getTechnicianCurrentWorkload(technicianId: string): Promise<number> {
+  const { supabase } = await import('../integrations/supabase/client');
+  
+  try {
+    // Get all active orders for this technician with service type details
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        order_items!inner(
+          id,
+          service_type_id,
+          quantity,
+          service_types!inner(
+            estimated_hours,
+            shared_time
+          )
+        )
+      `)
+      .eq('assigned_technician', technicianId)
+      .in('status', ['pendiente', 'en_proceso', 'en_camino']);
+
+    if (error) {
+      console.error('Error getting technician workload:', error);
+      return 0;
+    }
+
+    if (!orders || orders.length === 0) {
+      return 0;
+    }
+
+    // Calculate total workload from all active orders
+    let totalWorkload = 0;
+    
+    orders.forEach(order => {
+      if (order.order_items && order.order_items.length > 0) {
+        const orderItems = order.order_items.map(item => ({
+          id: item.id,
+          estimated_hours: item.service_types?.estimated_hours || 0,
+          shared_time: item.service_types?.shared_time || false,
+          service_type_id: item.service_type_id,
+          quantity: item.quantity || 1
+        }));
+        
+        // Calculate effective hours for this order using shared time logic
+        totalWorkload += calculateSharedTimeHours(orderItems);
+      }
+    });
+
+    return totalWorkload;
+  } catch (error) {
+    console.error('Failed to get technician workload:', error);
+    return 0;
+  }
 }
 
 export function suggestSupportTechnician(
