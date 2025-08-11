@@ -383,6 +383,27 @@ export default function Finance() {
     if (!isAdmin) return;
     try {
       const today = new Date().toISOString().substring(0,10);
+      
+      // First, check if this income is related to any order payments and remove them
+      // This will make the orders appear back in pending collections
+      const { data: relatedPayments, error: paymentsQueryError } = await supabase
+        .from('order_payments')
+        .select('id, order_id, order_number')
+        .eq('income_id', row.id);
+      
+      if (paymentsQueryError) throw paymentsQueryError;
+      
+      // Remove related order payments to return orders to pending collections
+      if (relatedPayments && relatedPayments.length > 0) {
+        const { error: deletePaymentsError } = await supabase
+          .from('order_payments')
+          .delete()
+          .eq('income_id', row.id);
+        
+        if (deletePaymentsError) throw deletePaymentsError;
+      }
+      
+      // Create expense to counteract the income
       const { error: insErr } = await supabase.from('expenses').insert({
         amount: row.amount,
         description: `Reverso ingreso ${row.income_number ?? ''} - ${row.description ?? ''}`.trim(),
@@ -392,11 +413,22 @@ export default function Finance() {
         expense_date: today,
       } as any);
       if (insErr) throw insErr;
+      
+      // Delete the original income
       const { error: delErr } = await supabase.from('incomes').delete().eq('id', row.id);
       if (delErr) throw delErr;
-      toast({ title: 'Ingreso revertido' });
+      
+      const orderNumbers = relatedPayments?.map(p => p.order_number).join(', ') || '';
+      toast({ 
+        title: 'Ingreso revertido', 
+        description: relatedPayments && relatedPayments.length > 0 
+          ? `Las órdenes ${orderNumbers} han regresado a cobranzas pendientes` 
+          : undefined
+      });
+      
       incomesQuery.refetch();
       expensesQuery.refetch();
+      collectionsQuery.refetch(); // Refresh pending collections
     } catch (e: any) {
       toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
     }
