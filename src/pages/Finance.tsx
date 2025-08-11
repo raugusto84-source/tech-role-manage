@@ -308,6 +308,14 @@ export default function Finance() {
   const [fiMethod, setFiMethod] = useState("");
   const [fiDayOfMonth, setFiDayOfMonth] = useState<number>(1);
 
+  // Estados para egresos directos
+  const [expDesc, setExpDesc] = useState("");
+  const [expAmount, setExpAmount] = useState("");
+  const [expAccount, setExpAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
+  const [expMethod, setExpMethod] = useState("");
+  const [expCategory, setExpCategory] = useState("");
+  const [expDate, setExpDate] = useState<string>(new Date().toISOString().substring(0,10));
+
   // Estados para IVA (ya no se usan para registrar, solo para mostrar cálculos)
   const [showVatCalculator, setShowVatCalculator] = useState(false);
   const [tempAmount, setTempAmount] = useState("");
@@ -533,6 +541,70 @@ export default function Finance() {
     }
   };
 
+  const addExpense = async () => {
+    try {
+      const amount = Number(expAmount);
+      if (!expDesc || !amount || !expAccount || !expCategory) throw new Error("Completa todos los campos requeridos");
+      
+      // Calcular IVA si es cuenta fiscal
+      let vatRate = 0;
+      let vatAmount = 0;
+      let taxableAmount = amount;
+      
+      if (expAccount === 'fiscal') {
+        vatRate = 16; // IVA del 16% para México
+        taxableAmount = amount / 1.16; // Calcular base gravable
+        vatAmount = amount - taxableAmount; // IVA incluido
+      }
+      
+      const { data, error } = await supabase.from("expenses").insert({
+        amount,
+        description: expDesc,
+        category: expCategory,
+        account_type: expAccount as any,
+        payment_method: expMethod || null,
+        expense_date: expDate,
+        vat_rate: expAccount === 'fiscal' ? vatRate : null,
+        vat_amount: expAccount === 'fiscal' ? vatAmount : null,
+        taxable_amount: expAccount === 'fiscal' ? taxableAmount : null,
+      } as any).select('*').single();
+      
+      if (error) throw error;
+      
+      // Log en historial financiero
+      await logFinancialOperation(
+        'create',
+        'expenses',
+        data.id,
+        data,
+        `Creación de egreso: ${expDesc}`,
+        amount,
+        expAccount as any,
+        expDate
+      );
+      
+      toast({ 
+        title: "Egreso registrado exitosamente", 
+        description: expAccount === 'fiscal' && vatAmount > 0 
+          ? `Base: $${taxableAmount.toFixed(2)}, IVA: $${vatAmount.toFixed(2)}, Total: $${amount.toFixed(2)}`
+          : `Total: $${amount.toFixed(2)}`
+      });
+      
+      // Clear form
+      setExpDesc(""); 
+      setExpAmount(""); 
+      setExpMethod(""); 
+      setExpCategory("");
+      setExpAccount("fiscal");
+      setExpDate(new Date().toISOString().substring(0,10));
+      
+      expensesQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible registrar el egreso", variant: "destructive" });
+    }
+  };
+
   const deleteIncome = async (id: string) => {
     if (!isAdmin) return;
     try {
@@ -602,6 +674,17 @@ export default function Finance() {
       
       const today = new Date().toISOString().split('T')[0];
       
+      // Calcular IVA si es cuenta fiscal
+      let vatRate = 0;
+      let vatAmount = 0;
+      let taxableAmount = amount;
+      
+      if (feAccount === 'fiscal') {
+        vatRate = 16; // IVA del 16% para México
+        taxableAmount = amount / 1.16; // Calcular base gravable
+        vatAmount = amount - taxableAmount; // IVA incluido
+      }
+      
       // Create expense for the withdrawal
       const { error } = await supabase.from("expenses").insert({
         amount,
@@ -610,6 +693,9 @@ export default function Finance() {
         account_type: feAccount as any,
         payment_method: feMethod || null,
         expense_date: today,
+        vat_rate: feAccount === 'fiscal' ? vatRate : null,
+        vat_amount: feAccount === 'fiscal' ? vatAmount : null,
+        taxable_amount: feAccount === 'fiscal' ? taxableAmount : null,
       } as any);
       
       if (error) throw error;
@@ -663,12 +749,27 @@ export default function Finance() {
       if (payErr) throw payErr;
 
       const totalAmount = netSalary + (pBonusAmount ? Number(pBonusAmount) : 0) + (pExtraPayments ? Number(pExtraPayments) : 0);
+      
+      // Calcular IVA si es cuenta fiscal
+      let vatRate = 0;
+      let vatAmount = 0;
+      let taxableAmount = totalAmount;
+      
+      if (pAccount === 'fiscal') {
+        vatRate = 16; // IVA del 16% para México
+        taxableAmount = totalAmount / 1.16; // Calcular base gravable
+        vatAmount = totalAmount - taxableAmount; // IVA incluido
+      }
+      
       const { error: expErr } = await supabase.from("expenses").insert({
         amount: totalAmount,
         description: `Nómina ${pEmployee} ${pMonth}/${pYear}${pBonusDesc ? ` - ${pBonusDesc}` : ''}`,
         category: "nomina",
         account_type: pAccount as any,
         payment_method: pMethod || null,
+        vat_rate: pAccount === 'fiscal' ? vatRate : null,
+        vat_amount: pAccount === 'fiscal' ? vatAmount : null,
+        taxable_amount: pAccount === 'fiscal' ? taxableAmount : null,
       } as any);
       if (expErr) throw expErr;
 
@@ -1381,17 +1482,121 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de retiro</label>
                   <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, Cheque, etc." />
                 </div>
+                {feAccount === 'fiscal' && feAmount && (
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="text-sm font-medium text-orange-800 mb-1">Cálculo automático de IVA (16%)</div>
+                    <div className="text-xs text-orange-600 space-y-1">
+                      <div>Base gravable: ${(Number(feAmount) / 1.16).toFixed(2)}</div>
+                      <div>IVA (16%): ${(Number(feAmount) - (Number(feAmount) / 1.16)).toFixed(2)}</div>
+                      <div className="font-medium">Total: ${Number(feAmount).toFixed(2)}</div>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-3 pt-2">
                   <Button onClick={processWithdrawal} disabled={!feDesc || !feAmount || !feAccount}>
                     💰 Procesar Retiro
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Este retiro se registrará como un egreso en la cuenta seleccionada con la fecha actual.
+                  {feAccount === 'fiscal' 
+                    ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%). Ingresa el monto total con IVA incluido.'
+                    : 'Este retiro se registrará como un egreso en la cuenta seleccionada con la fecha actual.'
+                  }
                 </p>
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle>Registrar Egreso</CardTitle>
+                <p className="text-sm text-muted-foreground">Registra gastos y egresos con cálculo automático de IVA para cuentas fiscales</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-sm text-muted-foreground">Descripción</label>
+                  <Input value={expDesc} onChange={e => setExpDesc(e.target.value)} placeholder="Ej. Compra de material, Servicios profesionales, etc." />
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-muted-foreground">Monto {expAccount === 'fiscal' ? '(con IVA incluido)' : ''}</label>
+                    <Input type="number" inputMode="decimal" value={expAmount} onChange={e => setExpAmount(e.target.value)} placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Fecha</label>
+                    <Input type="date" value={expDate} onChange={e => setExpDate(e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-muted-foreground">Tipo de Cuenta</label>
+                    <Select value={expAccount} onValueChange={(v) => setExpAccount(v as any)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona tipo de cuenta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fiscal">
+                          <span className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                            Fiscal (IVA 16% automático)
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="no_fiscal">
+                          <span className="flex items-center gap-2">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            No Fiscal
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted-foreground">Categoría</label>
+                    <Select value={expCategory} onValueChange={setExpCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="operativo">Gasto Operativo</SelectItem>
+                        <SelectItem value="proveedor">Pago a Proveedor</SelectItem>
+                        <SelectItem value="servicio">Servicio Profesional</SelectItem>
+                        <SelectItem value="material">Material y Suministros</SelectItem>
+                        <SelectItem value="transporte">Transporte</SelectItem>
+                        <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
+                        <SelectItem value="otro">Otro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-muted-foreground">Método de pago</label>
+                  <Input value={expMethod} onChange={e => setExpMethod(e.target.value)} placeholder="Transferencia, Efectivo, Tarjeta, etc." />
+                </div>
+                {expAccount === 'fiscal' && expAmount && (
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <div className="text-sm font-medium text-orange-800 mb-1">Cálculo automático de IVA (16%)</div>
+                    <div className="text-xs text-orange-600 space-y-1">
+                      <div>Base gravable: ${(Number(expAmount) / 1.16).toFixed(2)}</div>
+                      <div>IVA (16%): ${(Number(expAmount) - (Number(expAmount) / 1.16)).toFixed(2)}</div>
+                      <div className="font-medium">Total: ${Number(expAmount).toFixed(2)}</div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={addExpense} disabled={!expDesc || !expAmount || !expAccount || !expCategory}>
+                    📝 Registrar Egreso
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {expAccount === 'fiscal' 
+                    ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%). Ingresa el monto total con IVA incluido.'
+                    : 'Este egreso se registrará sin IVA para cuenta no fiscal.'
+                  }
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-1 mt-4">
             <Card>
               <CardHeader>
                 <CardTitle>Historial de Retiros Recientes</CardTitle>
