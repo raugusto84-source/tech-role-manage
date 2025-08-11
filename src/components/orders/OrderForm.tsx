@@ -276,13 +276,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  const handleServiceAdd = (service: ServiceType, quantity: number = 1) => {
+  const handleServiceAdd = async (service: ServiceType, quantity: number = 1) => {
     // Verificar si el servicio ya existe
     const existingItemIndex = orderItems.findIndex(item => item.service_type_id === service.id);
     
+    let updatedItems: OrderItem[];
     if (existingItemIndex >= 0) {
       // Si ya existe, aumentar cantidad
-      const updatedItems = [...orderItems];
+      updatedItems = [...orderItems];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       const subtotal = newQuantity * existingItem.unit_price;
@@ -301,7 +302,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         estimated_hours: totalEstimatedHours
       };
       
-      setOrderItems(updatedItems);
       toast({
         title: "Cantidad actualizada",
         description: `Se aumentó la cantidad de ${service.name} a ${newQuantity}`,
@@ -331,15 +331,17 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         status: 'pendiente' // Estado inicial
       };
       
-      setOrderItems([...orderItems, newItem]);
+      updatedItems = [...orderItems, newItem];
       toast({
         title: "Servicio agregado",
         description: `${service.name} ha sido agregado a la orden`,
       });
     }
     
-    // Recalcular fecha de entrega y sugerir apoyo
-    recalculateDeliveryAndSuggestSupport();
+    setOrderItems(updatedItems);
+    
+    // Asignación automática de técnico basada en habilidades y disponibilidad
+    await autoAssignOptimalTechnician(service.id, updatedItems);
   };
 
   const calculateTotalHours = () => {
@@ -399,6 +401,61 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
    * - technicianId: ID del técnico seleccionado
    * - reason: Razón por la cual fue sugerido este técnico
    */
+  /**
+   * FUNCIÓN: autoAssignOptimalTechnician
+   * 
+   * PROPÓSITO:
+   * - Asignar automáticamente el mejor técnico basado en habilidades y disponibilidad
+   * - Se ejecuta cuando se agrega un servicio a la orden
+   * - Considera todos los servicios de la orden para la asignación óptima
+   */
+  const autoAssignOptimalTechnician = async (serviceTypeId: string, currentItems: OrderItem[]) => {
+    try {
+      // Si ya hay un técnico asignado y solo es el primer servicio, mantenerlo
+      if (formData.assigned_technician && currentItems.length === 1) {
+        return;
+      }
+
+      const { data: suggestions, error } = await supabase
+        .rpc('suggest_optimal_technician', {
+          p_service_type_id: serviceTypeId,
+          p_delivery_date: formData.delivery_date || null
+        });
+
+      if (error) {
+        console.error('Error getting technician suggestions:', error);
+        return;
+      }
+
+      // Ordenar por puntuación y seleccionar el mejor
+      const sortedSuggestions = (suggestions || []).sort((a, b) => b.score - a.score);
+      
+      if (sortedSuggestions.length > 0) {
+        const bestTechnician = sortedSuggestions[0];
+        
+        // Solo reasignar si es un técnico diferente al actual o si no hay técnico asignado
+        if (!formData.assigned_technician || formData.assigned_technician !== bestTechnician.technician_id) {
+          setFormData(prev => ({ 
+            ...prev, 
+            assigned_technician: bestTechnician.technician_id 
+          }));
+          setSuggestionReason(bestTechnician.suggestion_reason);
+          
+          // Notificar sobre la asignación automática
+          toast({
+            title: "Técnico asignado automáticamente",
+            description: `${bestTechnician.full_name}: ${bestTechnician.suggestion_reason}`,
+          });
+        }
+      } else {
+        // No hay técnicos disponibles para este servicio específico
+        console.log('No technicians available for service:', serviceTypeId);
+      }
+    } catch (error) {
+      console.error('Error in auto-assignment:', error);
+    }
+  };
+
   /**
    * FUNCIÓN: autoAssignTechnicianForClient
    * 
@@ -782,7 +839,41 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     serviceTypeId={orderItems[0].service_type_id}
                     deliveryDate={formData.delivery_date}
                     onTechnicianSelect={handleTechnicianSuggestionSelect}
+                    selectedTechnicianId={formData.assigned_technician}
                   />
+                </div>
+              )}
+
+              {/* Información del Técnico Asignado Automáticamente */}
+              {formData.assigned_technician && suggestionReason && (
+                <div className="mt-4 p-4 bg-success/10 border border-success/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <div className="h-5 w-5 rounded-full bg-success flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-success-foreground">Técnico Asignado Automáticamente</h4>
+                      <p className="text-sm text-success-foreground/80 mt-1">
+                        {technicians.find(t => t.user_id === formData.assigned_technician)?.full_name}
+                      </p>
+                      <p className="text-xs text-success-foreground/70 mt-1">
+                        {suggestionReason}
+                      </p>
+                    </div>
+                    {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowTechnicianSuggestions(true)}
+                        className="text-success-foreground hover:bg-success/20"
+                      >
+                        Cambiar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 
