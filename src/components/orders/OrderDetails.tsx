@@ -278,7 +278,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           onSignatureComplete={() => {
             setHasDeliverySignature(true);
             setDeliveryPhase('survey');
-            checkDeliveryStatus();
           }}
         />
       );
