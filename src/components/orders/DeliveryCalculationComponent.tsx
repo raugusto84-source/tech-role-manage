@@ -29,17 +29,19 @@ export function DeliveryCalculationDisplay({
   onDateUpdate,
   currentDeliveryDate
 }: DeliveryCalculationDisplayProps) {
-  // Obtener el horario del técnico principal
-  const primarySchedule = technicianSchedules[technicianId] || {
+  // Obtener el horario del técnico principal con valores por defecto mejorados
+  const defaultSchedule = {
     work_days: [1, 2, 3, 4, 5],
     start_time: '08:00',
     end_time: '16:00',
     break_duration_minutes: 60
   };
 
+  const primarySchedule = technicianSchedules[technicianId] || defaultSchedule;
+
   // Obtener el horario del técnico de apoyo si existe
   const supportSchedule = supportTechnicianId 
-    ? technicianSchedules[supportTechnicianId] || primarySchedule
+    ? technicianSchedules[supportTechnicianId] || defaultSchedule
     : undefined;
 
   // Usar el hook para calcular la carga de trabajo y fecha de entrega

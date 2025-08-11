@@ -152,18 +152,41 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       // Convertir array a objeto indexado por employee_id
       const schedulesMap: Record<string, any> = {};
+      
+      // Primero, crear horarios por defecto para todos los técnicos
+      technicians.forEach(technician => {
+        schedulesMap[technician.user_id] = {
+          work_days: [1, 2, 3, 4, 5],
+          start_time: '08:00',
+          end_time: '16:00',
+          break_duration_minutes: 60
+        };
+      });
+
+      // Luego, sobrescribir con los horarios específicos que existan
       (data || []).forEach(schedule => {
         schedulesMap[schedule.employee_id] = {
           work_days: schedule.work_days,
           start_time: schedule.start_time,
           end_time: schedule.end_time,
-          break_duration_minutes: schedule.break_duration_minutes || 0
+          break_duration_minutes: schedule.break_duration_minutes || 60
         };
       });
       
       setTechnicianSchedules(schedulesMap);
     } catch (error) {
       console.error('Error loading technician schedules:', error);
+      // Crear horarios por defecto si hay error
+      const defaultSchedules: Record<string, any> = {};
+      technicians.forEach(technician => {
+        defaultSchedules[technician.user_id] = {
+          work_days: [1, 2, 3, 4, 5],
+          start_time: '08:00',
+          end_time: '16:00',
+          break_duration_minutes: 60
+        };
+      });
+      setTechnicianSchedules(defaultSchedules);
     }
   };
 
