@@ -352,7 +352,7 @@ export default function Orders() {
       <OrderDetails
         order={selectedOrder}
         onBack={() => setSelectedOrder(null)}
-        onUpdate={loadOrders}
+        onUpdate={updateUnreadCounts}
       />
     );
   }
