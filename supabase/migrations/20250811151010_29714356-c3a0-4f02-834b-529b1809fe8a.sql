@@ -1,0 +1,150 @@
+-- Limpiar el trigger de prueba
+DROP TRIGGER IF EXISTS test_trigger_quotes ON public.quotes;
+DROP FUNCTION IF EXISTS public.test_trigger_execution();
+
+-- El problema principal es que el trigger original no se está ejecutando desde el frontend
+-- debido a restricciones de RLS. Voy a crear una solución híbrida:
+
+-- 1. Primero, crear una función que los usuarios puedan llamar directamente
+CREATE OR REPLACE FUNCTION public.convert_quote_to_order(quote_id UUID)
+RETURNS JSON
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+DECLARE
+  quote_record RECORD;
+  client_record RECORD;
+  order_record RECORD;
+  service_type_record RECORD;
+  order_total NUMERIC := 0;
+  result JSON;
+BEGIN
+  -- Verificar que el usuario tenga permisos
+  IF get_user_role_safe() NOT IN ('administrador', 'vendedor') THEN
+    RETURN json_build_object('error', 'No tiene permisos para crear órdenes');
+  END IF;
+
+  -- Obtener la cotización
+  SELECT * INTO quote_record
+  FROM public.quotes 
+  WHERE id = quote_id AND status = 'aceptada';
+  
+  IF quote_record.id IS NULL THEN
+    RETURN json_build_object('error', 'Cotización no encontrada o no está aceptada');
+  END IF;
+  
+  -- Verificar si ya existe una orden para esta cotización
+  IF EXISTS (
+    SELECT 1 FROM public.orders o 
+    JOIN public.clients c ON c.id = o.client_id 
+    WHERE c.email = quote_record.client_email 
+    AND o.created_at > quote_record.final_decision_date
+  ) THEN
+    RETURN json_build_object('error', 'Ya existe una orden para esta cotización');
+  END IF;
+  
+  -- Buscar el cliente por email
+  SELECT id INTO client_record
+  FROM public.clients 
+  WHERE email = quote_record.client_email
+  LIMIT 1;
+  
+  -- Si no existe el cliente, crearlo
+  IF client_record.id IS NULL THEN
+    INSERT INTO public.clients (name, email, phone, address, created_by)
+    VALUES (
+      quote_record.client_name,
+      quote_record.client_email,
+      COALESCE(quote_record.client_phone, ''),
+      'Dirección no especificada',
+      quote_record.assigned_to
+    ) RETURNING id INTO client_record;
+  END IF;
+  
+  -- Obtener un tipo de servicio genérico
+  SELECT id INTO service_type_record
+  FROM public.service_types 
+  WHERE is_active = true 
+  LIMIT 1;
+  
+  -- Crear la orden
+  INSERT INTO public.orders (
+    client_id,
+    service_type,
+    failure_description,
+    estimated_cost,
+    delivery_date,
+    created_by,
+    assigned_technician,
+    status,
+    client_approval
+  ) VALUES (
+    client_record.id,
+    service_type_record.id,
+    quote_record.service_description,
+    quote_record.estimated_amount,
+    CURRENT_DATE + INTERVAL '7 days',
+    quote_record.assigned_to,
+    NULL,
+    'pendiente_aprobacion'::order_status,
+    NULL
+  ) RETURNING * INTO order_record;
+  
+  -- Calcular total de items de la cotización
+  SELECT COALESCE(SUM(total), 0) INTO order_total
+  FROM public.quote_items 
+  WHERE quote_id = quote_record.id;
+  
+  -- Crear los items de la orden
+  INSERT INTO public.order_items (
+    order_id,
+    service_type_id,
+    service_name,
+    service_description,
+    quantity,
+    unit_cost_price,
+    unit_base_price,
+    profit_margin_rate,
+    subtotal,
+    vat_rate,
+    vat_amount,
+    total_amount,
+    item_type,
+    status
+  ) 
+  SELECT 
+    order_record.id,
+    qi.service_type_id,
+    qi.name,
+    qi.description,
+    qi.quantity,
+    qi.unit_price,
+    qi.unit_price,
+    0,
+    qi.subtotal,
+    qi.vat_rate,
+    qi.vat_amount,
+    qi.total,
+    CASE WHEN qi.is_custom THEN 'articulo' ELSE 'servicio' END,
+    'pendiente'::order_status
+  FROM public.quote_items qi
+  WHERE qi.quote_id = quote_record.id;
+  
+  -- Actualizar el total de la orden
+  UPDATE public.orders 
+  SET estimated_cost = order_total
+  WHERE id = order_record.id;
+  
+  RETURN json_build_object(
+    'success', true,
+    'order_id', order_record.id,
+    'order_number', order_record.order_number,
+    'total_amount', order_total
+  );
+  
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN json_build_object('error', SQLERRM);
+END;
+$function$;

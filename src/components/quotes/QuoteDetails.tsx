@@ -30,6 +30,14 @@ interface QuoteItem {
   taxes?: any[];
 }
 
+interface ConvertQuoteResult {
+  success?: boolean;
+  error?: string;
+  order_id?: string;
+  order_number?: string;
+  total_amount?: number;
+}
+
 interface Quote {
   id: string;
   quote_number: string;
@@ -203,14 +211,13 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  // Convertir cotización a orden
+  // Convertir cotización a orden usando la función de base de datos
   const convertToOrder = async () => {
     try {
       setLoading(true);
 
-      // Solo actualizar el estado de la cotización a 'aceptada'
-      // El trigger create_order_from_approved_quote se encargará de crear la orden automáticamente
-      const { error } = await supabase
+      // Primero actualizar el estado de la cotización a 'aceptada'
+      const { error: updateError } = await supabase
         .from('quotes')
         .update({ 
           status: 'aceptada',
@@ -218,26 +225,58 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         })
         .eq('id', quote.id);
 
-      if (error) {
+      if (updateError) {
         toast({
           title: "Error",
-          description: `Error al aceptar cotización: ${error.message}`,
+          description: `Error al aceptar cotización: ${updateError.message}`,
           variant: "destructive",
         });
         return;
       }
 
-      toast({
-        title: "Cotización aceptada",
-        description: "La cotización ha sido aceptada y se ha creado la orden automáticamente.",
+      // Luego llamar a la función que crea la orden
+      const { data, error } = await supabase.rpc('convert_quote_to_order', {
+        quote_id: quote.id
       });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: `Error al crear orden: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar el resultado de la función
+      const result = data as ConvertQuoteResult;
+      if (result?.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (result?.success) {
+        toast({
+          title: "Orden creada exitosamente",
+          description: `Se ha creado la orden ${result.order_number} con un total de ${formatCurrency(result.total_amount || 0)}`,
+        });
+      } else {
+        toast({
+          title: "Cotización aceptada",
+          description: "La cotización ha sido aceptada correctamente.",
+        });
+      }
 
       onQuoteUpdated();
     } catch (error) {
       console.error('Error converting quote to order:', error);
       toast({
         title: "Error inesperado",
-        description: "No se pudo aceptar la cotización",
+        description: "No se pudo procesar la cotización",
         variant: "destructive",
       });
     } finally {

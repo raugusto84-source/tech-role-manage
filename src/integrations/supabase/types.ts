@@ -3743,6 +3743,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      convert_quote_to_order: {
+        Args: { quote_id: string }
+        Returns: Json
+      }
       generate_client_number: {
         Args: Record<PropertyKey, never>
         Returns: string
