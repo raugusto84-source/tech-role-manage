@@ -224,34 +224,16 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="amount">
-              {accountType === "fiscal" ? "Monto (Subtotal sin IVA)" : "Monto"}
-            </Label>
+            <Label htmlFor="amount">Monto</Label>
             <Input
               id="amount"
               type="number"
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={accountType === "fiscal" ? "Subtotal sin IVA" : "0.00"}
+              placeholder="0.00"
               required
             />
-            {accountType === "fiscal" && amount && (
-              <div className="p-3 bg-blue-50 rounded border text-sm">
-                <div className="flex justify-between">
-                  <span>Subtotal (sin IVA):</span>
-                  <span className="font-medium">${Number(amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between text-blue-600">
-                  <span>IVA ({vatRate}%):</span>
-                  <span className="font-medium">${(Number(amount) * Number(vatRate) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between font-semibold border-t pt-1 mt-1 text-lg">
-                  <span>Total a registrar:</span>
-                  <span>${(Number(amount) + (Number(amount) * Number(vatRate) / 100)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-            )}
           </div>
 
           <div className="space-y-2">
@@ -283,28 +265,6 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
             </p>
            </div>
 
-          {accountType === "fiscal" && (
-            <div className="space-y-3 p-4 border rounded-lg bg-blue-50">
-              <div className="space-y-2">
-                <Label htmlFor="vatRate">Tasa de IVA (%)</Label>
-                <Select value={vatRate} onValueChange={setVatRate}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar tasa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="0">0% (Exento)</SelectItem>
-                    <SelectItem value="8">8%</SelectItem>
-                    <SelectItem value="16">16% (General)</SelectItem>
-                    <SelectItem value="21">21%</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <p className="text-xs text-blue-700">
-                💡 Al registrar un ingreso fiscal, se genera automáticamente un item de retiro fiscal disponible por el total de la orden y su IVA correspondiente.
-              </p>
-            </div>
-          )}
 
           <div className="space-y-2">
             <Label htmlFor="paymentMethod">Método de Pago</Label>
@@ -342,7 +302,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
               disabled={loading || !amount}
               className="bg-green-600 hover:bg-green-700"
             >
-              {loading ? "Registrando..." : `Registrar Cobro${accountType === "fiscal" && amount ? ` ($${(Number(amount) + (Number(amount) * Number(vatRate) / 100)).toLocaleString('es-MX', { minimumFractionDigits: 2 })})` : ""}`}
+              {loading ? "Registrando..." : "Registrar Cobro"}
             </Button>
           </DialogFooter>
         </form>
