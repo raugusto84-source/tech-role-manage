@@ -259,10 +259,36 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           variant: "default"
         });
       } else {
-        console.log('No client found for email:', profile.email);
+        console.log('No client found for email:', profile.email, 'Creating client record automatically');
+        
+        // Crear automáticamente el registro de cliente si no existe
+        const { data: newClient, error: createError } = await supabase
+          .from('clients')
+          .insert({
+            name: profile.full_name || 'Usuario Cliente',
+            email: profile.email,
+            phone: '', 
+            address: 'Dirección no especificada',
+            created_by: user?.id
+          } as any)
+          .select()
+          .single();
+          
+        if (createError) {
+          console.error('Error creating client record:', createError);
+          toast({
+            title: "Error",
+            description: `No se pudo crear el registro de cliente: ${createError.message}`,
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        console.log('Client record created automatically:', newClient);
+        setFormData(prev => ({ ...prev, client_id: newClient.id }));
         toast({
-          title: "Información",
-          description: "No se encontró un cliente asociado a tu email. El administrador debe crear tu registro de cliente primero.",
+          title: "Cliente creado",
+          description: `Se ha creado tu registro de cliente automáticamente: ${newClient.name}`,
           variant: "default"
         });
       }
