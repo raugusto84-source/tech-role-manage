@@ -453,10 +453,29 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
           {/* Paso 2: Artículos */}
           {currentStep === 'items' && (
-            <CategoryServiceSelection 
-              selectedItems={quoteItems}
-              onItemsChange={setQuoteItems}
-            />
+            <div>
+              {/* Debug: mostrar items actuales */}
+              <div className="mb-4 p-2 bg-gray-100 rounded text-sm">
+                <strong>Debug - Items actuales ({quoteItems.length}):</strong>
+                {quoteItems.length > 0 ? (
+                  <ul className="list-disc list-inside">
+                    {quoteItems.map((item, index) => (
+                      <li key={index}>{item.name} - {item.quantity} x ${item.unit_price}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>No hay artículos agregados</p>
+                )}
+              </div>
+              
+              <CategoryServiceSelection 
+                selectedItems={quoteItems}
+                onItemsChange={(items) => {
+                  console.log('Items changed in QuoteWizard:', items);
+                  setQuoteItems(items);
+                }}
+              />
+            </div>
           )}
 
           {/* Paso 3: Detalles */}
