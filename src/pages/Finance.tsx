@@ -1406,11 +1406,12 @@ export default function Finance() {
                       <TableHead>Descripción</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Estado</TableHead>
+                      <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {fiscalExpensesQuery.isLoading && (
-                      <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
                     )}
                     {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
                       <TableRow key={expense.id}>
@@ -1431,10 +1432,35 @@ export default function Finance() {
                             Pendiente
                           </span>
                         </TableCell>
+                        <TableCell>
+                          {isAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar egreso?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta acción no se puede revertir. El egreso será eliminado permanentemente.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteExpense(expense.id)}>
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                     {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={6}>No hay gastos fiscales pendientes de retiro.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7}>No hay gastos fiscales pendientes de retiro.</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
