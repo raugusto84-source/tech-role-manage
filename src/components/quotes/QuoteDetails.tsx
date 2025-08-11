@@ -141,7 +141,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       case 'enviada': return 'Enviada';
       case 'aceptada': return 'Aceptada';
       case 'rechazada': return 'Rechazada';
-      case 'seguimiento': return 'En Seguimiento';
       default: return status;
     }
   };
@@ -204,14 +203,123 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  // Convertir cotización a orden usando el trigger automático
+  // Convertir cotización a orden
   const convertToOrder = async () => {
     try {
       setLoading(true);
 
-      // Simplemente cambiar el estado de la cotización a "aceptada"
-      // El trigger create_order_from_approved_quote se encargará de crear la orden automáticamente
-      const { error: updateError } = await supabase
+      // Buscar el cliente en la tabla clients
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', quote.client_email)
+        .maybeSingle();
+
+      if (clientError) {
+        toast({
+          title: "Error",
+          description: `Error al buscar cliente: ${clientError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!clientData) {
+        toast({
+          title: "Cliente no encontrado",
+          description: "El cliente de esta cotización no existe en el sistema. Debe ser creado primero.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Buscar un tipo de servicio genérico o crear uno por defecto
+      const { data: serviceTypes, error: serviceError } = await supabase
+        .from('service_types')
+        .select('id')
+        .eq('is_active', true)
+        .limit(1);
+
+      if (serviceError) {
+        toast({
+          title: "Error",
+          description: `Error al buscar tipos de servicio: ${serviceError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!serviceTypes || serviceTypes.length === 0) {
+        toast({
+          title: "Sin tipos de servicio",
+          description: "No hay tipos de servicio disponibles. Contacta al administrador.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Crear la orden primero
+      const orderData = {
+        client_id: clientData.id,
+        service_type: serviceTypes[0].id,
+        failure_description: quote.service_description,
+        estimated_cost: total, // Usar el total calculado de los items
+        delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        created_by: profile?.user_id,
+        status: 'pendiente_aprobacion', // Requiere aprobación del cliente primero
+        client_approval: null
+      };
+
+      const { data: orderResult, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderData as any)
+        .select('id')
+        .single();
+
+      if (orderError) {
+        toast({
+          title: "Error",
+          description: `Error al crear orden: ${orderError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Crear los items de la orden basados en los items de la cotización
+      const orderItems = quoteItems.map(item => ({
+        order_id: orderResult.id,
+        service_type_id: item.service_type_id || null,
+        service_name: item.name,
+        service_description: item.description || '',
+        quantity: item.quantity,
+        unit_cost_price: item.unit_price,
+        unit_base_price: item.unit_price,
+        profit_margin_rate: 0,
+        subtotal: item.subtotal,
+        vat_rate: item.vat_rate,
+        vat_amount: item.vat_amount,
+        total_amount: item.total,
+        item_type: item.is_custom ? 'articulo' : 'servicio',
+        status: 'pendiente' as const
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) {
+        // Si fallan los items, eliminar la orden creada
+        await supabase.from('orders').delete().eq('id', orderResult.id);
+        toast({
+          title: "Error",
+          description: `Error al crear items de la orden: ${itemsError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Actualizar estado de la cotización a aceptada
+      await supabase
         .from('quotes')
         .update({ 
           status: 'aceptada',
@@ -219,18 +327,9 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         })
         .eq('id', quote.id);
 
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: `Error al aceptar cotización: ${updateError.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
       toast({
-        title: "Cotización aceptada",
-        description: "La cotización ha sido aceptada y se ha creado automáticamente la orden correspondiente.",
+        title: "Orden creada exitosamente",
+        description: `Se ha creado la orden con todos los servicios y costos de la cotización. Total: ${formatCurrency(total)}`,
       });
 
       onQuoteUpdated();
@@ -238,7 +337,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       console.error('Error converting quote to order:', error);
       toast({
         title: "Error inesperado",
-        description: "No se pudo aceptar la cotización",
+        description: "No se pudo convertir la cotización a orden",
         variant: "destructive",
       });
     } finally {
@@ -494,84 +593,31 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                 <CardTitle>Acciones</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Botones de decisión */}
-                {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
-                  <div className="grid grid-cols-2 gap-3">
+                {/* Actualizar estado */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Cambiar Estado</label>
+                  <div className="flex gap-2">
+                    <Select value={newStatus} onValueChange={(value: any) => setNewStatus(value)}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
+                  <SelectItem value="solicitud">Nueva</SelectItem>
+                  <SelectItem value="enviada">Enviada</SelectItem>
+                  <SelectItem value="aceptada">Aceptada</SelectItem>
+                  <SelectItem value="rechazada">Rechazada</SelectItem>
+                </SelectContent>
+                    </Select>
                     <Button 
-                      onClick={async () => {
-                        setNewStatus('aceptada');
-                         const updateData = { 
-                           status: 'aceptada' as const,
-                           final_decision_date: new Date().toISOString()
-                         };
-                        
-                        setLoading(true);
-                        const { error } = await supabase
-                          .from('quotes')
-                          .update(updateData)
-                          .eq('id', quote.id);
-                        
-                        if (error) {
-                          toast({
-                            title: "Error",
-                            description: `Error al aceptar cotización: ${error.message}`,
-                            variant: "destructive",
-                          });
-                        } else {
-                          toast({
-                            title: "Cotización Aceptada",
-                            description: "La cotización ha sido aceptada exitosamente",
-                          });
-                          onQuoteUpdated();
-                        }
-                        setLoading(false);
-                      }}
-                      disabled={loading}
-                      className="w-full"
-                      variant="default"
+                      onClick={updateQuoteStatus}
+                      disabled={loading || newStatus === quote.status}
+                      size="sm"
                     >
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {loading ? "Procesando..." : "Aceptar"}
-                    </Button>
-                    
-                    <Button 
-                      onClick={async () => {
-                        setNewStatus('rechazada');
-                         const updateData = { 
-                           status: 'rechazada' as const,
-                           final_decision_date: new Date().toISOString()
-                         };
-                        
-                        setLoading(true);
-                        const { error } = await supabase
-                          .from('quotes')
-                          .update(updateData)
-                          .eq('id', quote.id);
-                        
-                        if (error) {
-                          toast({
-                            title: "Error",
-                            description: `Error al rechazar cotización: ${error.message}`,
-                            variant: "destructive",
-                          });
-                        } else {
-                          toast({
-                            title: "Cotización Rechazada",
-                            description: "La cotización ha sido rechazada",
-                          });
-                          onQuoteUpdated();
-                        }
-                        setLoading(false);
-                      }}
-                      disabled={loading}
-                      className="w-full"
-                      variant="destructive"
-                    >
-                      <XCircle className="h-4 w-4 mr-2" />
-                      {loading ? "Procesando..." : "Rechazar"}
+                      Actualizar
                     </Button>
                   </div>
-                )}
+                </div>
 
                 <Separator />
 
