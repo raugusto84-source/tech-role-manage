@@ -83,7 +83,7 @@ export function SkillsManager({
   const targetTechnicianId = technicianId || user?.id;
   const canEdit = !readonly && (
     profile?.role === 'administrador' || 
-    (profile?.role === 'tecnico' && targetTechnicianId === user?.id)
+    (targetTechnicianId === user?.id && (profile?.role === 'tecnico' || profile?.role === 'vendedor'))
   );
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export function SkillsManager({
         .from('technician_skills')
         .select(`
           *,
-          service_types:service_type_id (
+          service_types:service_type_id!inner (
             id,
             name,
             description,
@@ -113,7 +113,16 @@ export function SkillsManager({
         .eq('technician_id', targetTechnicianId);
 
       if (error) throw error;
-      setSkills(data || []);
+      
+      // Filter and type the data properly, converting to unknown first to avoid TypeScript errors
+      const validSkills = (data || []).filter((skill: any) => 
+        skill.service_types && 
+        typeof skill.service_types === 'object' && 
+        !('error' in skill.service_types) &&
+        skill.service_types.id
+      ) as unknown as TechnicianSkill[];
+      
+      setSkills(validSkills);
     } catch (error) {
       console.error('Error loading technician skills:', error);
     } finally {
@@ -303,7 +312,8 @@ export function SkillsManager({
         <CardContent>
           <Alert>
             <AlertDescription>
-              Selecciona un técnico para gestionar sus habilidades técnicas basadas en los servicios disponibles en el sistema.
+              Selecciona un usuario para gestionar sus habilidades técnicas basadas en los servicios del módulo de ventas.
+              Las habilidades pueden asignarse a técnicos, administradores y vendedores.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -535,7 +545,7 @@ export function SkillsManager({
             <Star className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Sin habilidades registradas</h3>
             <p className="text-muted-foreground mb-4">
-              Este técnico aún no tiene habilidades técnicas asignadas basadas en los servicios disponibles.
+              Este usuario aún no tiene habilidades técnicas asignadas basadas en los servicios del módulo de ventas.
             </p>
             {canEdit && serviceTypes.length > 0 && (
               <p className="text-sm text-muted-foreground">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UserManagement } from '@/components/admin/UserManagement';
-import { TechnicalKnowledgePanel } from '@/components/admin/TechnicalKnowledgePanel';
+import { SkillsManager } from '@/components/technicians/SkillsManager';
 import { SalesKnowledgePanel } from '@/components/admin/SalesKnowledgePanel';
 import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -88,14 +88,14 @@ export default function Users() {
               <CardHeader>
                 <CardTitle>Habilidades Técnicas</CardTitle>
                 <CardDescription>
-                  Gestiona las habilidades y especializaciones de los técnicos.
-                  Asigna niveles de competencia y experiencia por tipo de servicio.
+                  Gestiona las habilidades técnicas basadas en los servicios del módulo de ventas.
+                  Cada servicio representa una habilidad técnica que puede asignarse a técnicos, administradores o vendedores.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <TechnicalKnowledgePanel 
-                  selectedUserId={selectedUserId}
-                  selectedUserRole={selectedUserRole}
+                <SkillsManager 
+                  technicianId={selectedUserId || undefined}
+                  readonly={false}
                 />
               </CardContent>
             </Card>
