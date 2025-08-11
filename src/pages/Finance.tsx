@@ -176,6 +176,20 @@ export default function Finance() {
     }
   });
 
+  // Query para compras
+  const purchasesQuery = useQuery({
+    queryKey: ["purchases", startDate, endDate, accountType],
+    queryFn: async () => {
+      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,created_at").eq("category", "compra").order("expense_date", { ascending: false });
+      if (startDate) q = q.gte("expense_date", startDate);
+      if (endDate) q = q.lte("expense_date", endDate);
+      if (accountType !== "all") q = q.eq("account_type", accountType as any);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
   const financialHistoryQuery = useQuery({
     queryKey: ["financial_history", startDate, endDate],
     queryFn: async () => {
@@ -316,6 +330,14 @@ export default function Finance() {
   const [expCategory, setExpCategory] = useState("");
   const [expDate, setExpDate] = useState<string>(new Date().toISOString().substring(0,10));
 
+  // Estados para compras
+  const [purchaseSupplier, setPurchaseSupplier] = useState("");
+  const [purchaseConcept, setPurchaseConcept] = useState("");
+  const [purchaseAmount, setPurchaseAmount] = useState("");
+  const [purchaseAccount, setPurchaseAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
+  const [purchaseMethod, setPurchaseMethod] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().substring(0,10));
+
   // Estados para IVA (ya no se usan para registrar, solo para mostrar cálculos)
   const [showVatCalculator, setShowVatCalculator] = useState(false);
   const [tempAmount, setTempAmount] = useState("");
@@ -423,6 +445,55 @@ export default function Finance() {
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+    }
+  };
+
+  const addPurchase = async () => {
+    try {
+      const amount = Number(purchaseAmount);
+      if (!purchaseSupplier || !purchaseConcept || !amount) throw new Error("Completa todos los campos obligatorios");
+      
+      // Calcular IVA si es cuenta fiscal
+      const vatRate = purchaseAccount === "fiscal" ? 16 : 0;
+      const vatAmount = purchaseAccount === "fiscal" ? amount * 0.16 : 0;
+      const taxableAmount = purchaseAccount === "fiscal" ? amount - vatAmount : amount;
+
+      const { data, error } = await supabase.from("expenses").insert({
+        description: `[Compra] ${purchaseSupplier} - ${purchaseConcept}`,
+        amount,
+        account_type: purchaseAccount as any,
+        category: "compra",
+        payment_method: purchaseMethod || null,
+        expense_date: purchaseDate,
+        vat_rate: vatRate,
+        vat_amount: vatAmount,
+        taxable_amount: taxableAmount,
+        status: "pagado"
+      } as any).select('*').single();
+      
+      if (error) throw error;
+
+      // Log en historial financiero
+      await logFinancialOperation(
+        'create',
+        'expenses',
+        data.id,
+        data,
+        `Registro de compra: ${purchaseSupplier} - ${purchaseConcept}`,
+        amount,
+        purchaseAccount as any,
+        purchaseDate
+      );
+
+      toast({ title: "Compra registrada exitosamente" });
+      setPurchaseSupplier(""); setPurchaseConcept(""); setPurchaseAmount(""); 
+      setPurchaseMethod(""); setPurchaseAccount("fiscal"); 
+      setPurchaseDate(new Date().toISOString().substring(0,10));
+      purchasesQuery.refetch();
+      expensesQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "No fue posible registrar la compra", variant: "destructive" });
     }
   };
 
@@ -1123,6 +1194,7 @@ export default function Finance() {
         <TabsList>
           <TabsTrigger value="incomes">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
+          <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="recurring">Gastos Recurrentes</TabsTrigger>
           <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
@@ -1448,6 +1520,196 @@ export default function Finance() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Compras */}
+        <TabsContent value="purchases" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Formulario de registro de compras */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Registrar Compra</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Proveedor*</label>
+                  <Input
+                    value={purchaseSupplier}
+                    onChange={(e) => setPurchaseSupplier(e.target.value)}
+                    placeholder="Nombre del proveedor"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Concepto*</label>
+                  <Input
+                    value={purchaseConcept}
+                    onChange={(e) => setPurchaseConcept(e.target.value)}
+                    placeholder="Descripción de la compra"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Monto*</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={purchaseAmount}
+                    onChange={(e) => setPurchaseAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  {purchaseAccount === "fiscal" && purchaseAmount && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      IVA (16%): ${(Number(purchaseAmount) * 0.16).toFixed(2)} | 
+                      Base: ${(Number(purchaseAmount) - (Number(purchaseAmount) * 0.16)).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Cuenta</label>
+                  <Select value={purchaseAccount} onValueChange={(v: "fiscal" | "no_fiscal") => setPurchaseAccount(v)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fiscal">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                          Fiscal
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="no_fiscal">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                          No Fiscal
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Método de Pago</label>
+                  <Select value={purchaseMethod} onValueChange={setPurchaseMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="transferencia">Transferencia</SelectItem>
+                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="cheque">Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Fecha</label>
+                  <Input
+                    type="date"
+                    value={purchaseDate}
+                    onChange={(e) => setPurchaseDate(e.target.value)}
+                  />
+                </div>
+                <Button onClick={addPurchase} className="w-full">
+                  Registrar Compra
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Resumen de compras */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumen de Compras</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Total de Compras:</span>
+                    <span className="font-medium">
+                      ${(purchasesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Cuenta Fiscal:</span>
+                    <span>
+                      ${(purchasesQuery.data?.filter(r => r.account_type === 'fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Cuenta No Fiscal:</span>
+                    <span>
+                      ${(purchasesQuery.data?.filter(r => r.account_type === 'no_fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Lista de compras */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Historial de Compras</CardTitle>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportCsv("compras", purchasesQuery.data?.map(r => ({
+                  numero: r.expense_number,
+                  fecha: r.expense_date,
+                  proveedor: r.description?.split(' - ')[0]?.replace('[Compra] ', '') || '',
+                  concepto: r.description?.split(' - ')[1] || '',
+                  monto: r.amount,
+                  cuenta: r.account_type,
+                  metodo: r.payment_method
+                })) ?? [])}
+              >
+                Exportar CSV
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Proveedor</TableHead>
+                      <TableHead>Concepto</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Cuenta</TableHead>
+                      <TableHead>Método</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {purchasesQuery.data?.map((purchase) => {
+                      const parts = purchase.description?.split(' - ') || [];
+                      const supplier = parts[0]?.replace('[Compra] ', '') || '';
+                      const concept = parts[1] || '';
+                      
+                      return (
+                        <TableRow key={purchase.id}>
+                          <TableCell>{purchase.expense_date}</TableCell>
+                          <TableCell>{supplier}</TableCell>
+                          <TableCell>{concept}</TableCell>
+                          <TableCell>${Number(purchase.amount).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <div className={`w-2 h-2 rounded-full ${purchase.account_type === 'fiscal' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                              {purchase.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
+                            </div>
+                          </TableCell>
+                          <TableCell>{purchase.payment_method || '-'}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {(!purchasesQuery.data || purchasesQuery.data.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          No hay compras registradas
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="withdrawals">
