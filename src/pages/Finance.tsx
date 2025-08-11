@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { CollectionDialog } from "@/components/finance/CollectionDialog";
 import { X } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Util simple para exportar CSV en cliente
 function exportCsv(filename: string, rows: Record<string, any>[]) {
@@ -676,9 +677,27 @@ export default function Finance() {
                                 {isAdmin && (
                                   <>
                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
-                                    <Button size="icon" variant="ghost" onClick={() => deleteIncome(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar ingreso?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede revertir. El ingreso será eliminado permanentemente del sistema.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteIncome(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                   </>
                                 )}
                               </div>
@@ -727,9 +746,27 @@ export default function Finance() {
                                 {isAdmin && (
                                   <>
                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
-                                    <Button size="icon" variant="ghost" onClick={() => deleteIncome(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                      <X className="h-4 w-4" />
-                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar ingreso?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede revertir. El ingreso será eliminado permanentemente del sistema.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteIncome(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
                                   </>
                                 )}
                               </div>
@@ -790,9 +827,27 @@ export default function Finance() {
                                {isAdmin && (
                                  <>
                                    <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
-                                   <Button size="icon" variant="ghost" onClick={() => deleteExpense(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                     <X className="h-4 w-4" />
-                                   </Button>
+                                   <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                         <X className="h-4 w-4" />
+                                       </Button>
+                                     </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Eliminar egreso?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                           Esta acción no se puede revertir. El egreso será eliminado permanentemente del sistema.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={() => deleteExpense(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                           Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
                                  </>
                                )}
                              </div>
@@ -849,9 +904,27 @@ export default function Finance() {
                                {isAdmin && (
                                  <>
                                    <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
-                                   <Button size="icon" variant="ghost" onClick={() => deleteExpense(r.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                     <X className="h-4 w-4" />
-                                   </Button>
+                                   <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                         <X className="h-4 w-4" />
+                                       </Button>
+                                     </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Eliminar egreso?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                           Esta acción no se puede revertir. El egreso será eliminado permanentemente del sistema.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={() => deleteExpense(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                           Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
                                  </>
                                )}
                              </div>
@@ -934,9 +1007,27 @@ export default function Finance() {
                                    {fx.active ? 'Desactivar' : 'Activar'}
                                  </Button>
                                  {isAdmin && (
-                                   <Button size="icon" variant="ghost" onClick={() => deleteFixedExpense(fx.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                     <X className="h-4 w-4" />
-                                   </Button>
+                                   <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                         <X className="h-4 w-4" />
+                                       </Button>
+                                     </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Eliminar gasto fijo?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                           Esta acción no se puede revertir. El gasto fijo será eliminado permanentemente del sistema.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={() => deleteFixedExpense(fx.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                           Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
                                  )}
                                </div>
                              </TableCell>
@@ -1091,9 +1182,27 @@ export default function Finance() {
                                    {rp.active ? 'Desactivar' : 'Activar'}
                                  </Button>
                                  {isAdmin && (
-                                   <Button size="icon" variant="ghost" onClick={() => deleteRecurringPayroll(rp.id)} className="h-8 w-8 text-destructive hover:text-destructive">
-                                     <X className="h-4 w-4" />
-                                   </Button>
+                                   <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                         <X className="h-4 w-4" />
+                                       </Button>
+                                     </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Eliminar nómina recurrente?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                           Esta acción no se puede revertir. La nómina recurrente será eliminada permanentemente del sistema.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={() => deleteRecurringPayroll(rp.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                           Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
                                  )}
                                </div>
                              </TableCell>
