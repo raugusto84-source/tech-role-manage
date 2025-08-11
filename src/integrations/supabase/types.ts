@@ -905,6 +905,45 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_withdrawals: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          income_id: string
+          order_id: string | null
+          updated_at: string
+          withdrawal_status: string
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description: string
+          id?: string
+          income_id: string
+          order_id?: string | null
+          updated_at?: string
+          withdrawal_status?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          income_id?: string
+          order_id?: string | null
+          updated_at?: string
+          withdrawal_status?: string
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+        }
+        Relationships: []
+      }
       fixed_expenses: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
