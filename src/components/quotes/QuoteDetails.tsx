@@ -266,7 +266,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         estimated_cost: total, // Usar el total calculado de los items
         delivery_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         created_by: profile?.user_id,
-        status: 'pendiente_aprobacion', // Requiere aprobación del cliente primero
+        status: 'pendiente', // Estado inicial para nuevas órdenes
         client_approval: null
       };
 
