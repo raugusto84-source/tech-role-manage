@@ -12,12 +12,22 @@ import { useAuth } from '@/hooks/useAuth';
  * Solo permite registro de clientes, otros usuarios los crea el admin
  */
 export default function Auth() {
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signIn, signUp, user, profile, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already authenticated
-  if (user && !loading) {
-    return <Navigate to="/client" replace />;
+  if (user && profile && !loading) {
+    // Redirect based on user role
+    const roleDashboards = {
+      'cliente': '/client',
+      'tecnico': '/technician',
+      'vendedor': '/dashboard',
+      'supervisor': '/dashboard',
+      'administrador': '/dashboard'
+    };
+    
+    const redirectTo = roleDashboards[profile.role] || '/dashboard';
+    return <Navigate to={redirectTo} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {

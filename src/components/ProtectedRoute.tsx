@@ -30,6 +30,20 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   }
 
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
+    // Redirect users to their appropriate dashboard based on role
+    const roleDashboards = {
+      'cliente': '/client',
+      'tecnico': '/technician',
+      'vendedor': '/dashboard',
+      'supervisor': '/dashboard',
+      'administrador': '/dashboard'
+    };
+    
+    const userDashboard = roleDashboards[profile.role];
+    if (userDashboard && window.location.pathname !== userDashboard) {
+      return <Navigate to={userDashboard} replace />;
+    }
+    
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
