@@ -97,7 +97,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={`${collapsed ? "w-14" : "w-60"} border-r border-sidebar-border bg-sidebar`} collapsible="icon">
-      <SidebarTrigger className="m-2 self-end text-sidebar-foreground hover:bg-sidebar-accent" />
+      <SidebarTrigger className="m-2 self-end text-sidebar-foreground hover:bg-sidebar-accent hidden md:flex" />
       
       <SidebarContent className="bg-sidebar">
         <SidebarGroup>
