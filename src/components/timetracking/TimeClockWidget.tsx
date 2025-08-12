@@ -47,15 +47,20 @@ export function TimeClockWidget() {
     try {
       const today = new Date().toISOString().split('T')[0];
       
+      // Obtener el registro más reciente del día
       const { data, error } = await supabase
         .from('time_records')
         .select('*')
         .eq('employee_id', user.id)
         .eq('work_date', today)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      setCurrentRecord(data);
+      
+      // Si hay registros, tomar el más reciente
+      const latestRecord = data && data.length > 0 ? data[0] : null;
+      setCurrentRecord(latestRecord);
     } catch (error) {
       console.error('Error loading today record:', error);
       toast({
