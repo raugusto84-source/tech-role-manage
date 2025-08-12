@@ -3305,6 +3305,51 @@ export type Database = {
           },
         ]
       }
+      time_records: {
+        Row: {
+          check_in_location: Json | null
+          check_in_time: string | null
+          check_out_location: Json | null
+          check_out_time: string | null
+          created_at: string
+          employee_id: string
+          id: string
+          notes: string | null
+          status: string
+          total_hours: number | null
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          check_in_location?: Json | null
+          check_in_time?: string | null
+          check_out_location?: Json | null
+          check_out_time?: string | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          notes?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+          work_date?: string
+        }
+        Update: {
+          check_in_location?: Json | null
+          check_in_time?: string | null
+          check_out_location?: Json | null
+          check_out_time?: string | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -3687,6 +3732,51 @@ export type Database = {
           },
         ]
       }
+      weekly_reports: {
+        Row: {
+          created_at: string
+          days_worked: number
+          employee_id: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          overtime_hours: number
+          regular_hours: number
+          report_data: Json | null
+          total_hours: number
+          week_end_date: string
+          week_start_date: string
+        }
+        Insert: {
+          created_at?: string
+          days_worked?: number
+          employee_id: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          overtime_hours?: number
+          regular_hours?: number
+          report_data?: Json | null
+          total_hours?: number
+          week_end_date: string
+          week_start_date: string
+        }
+        Update: {
+          created_at?: string
+          days_worked?: number
+          employee_id?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          overtime_hours?: number
+          regular_hours?: number
+          report_data?: Json | null
+          total_hours?: number
+          week_end_date?: string
+          week_start_date?: string
+        }
+        Relationships: []
+      }
       whatsapp_notifications: {
         Row: {
           client_email: string
@@ -3940,6 +4030,14 @@ export type Database = {
       }
       generate_survey_token: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_weekly_report: {
+        Args: {
+          p_employee_id: string
+          p_week_start: string
+          p_week_end: string
+        }
         Returns: string
       }
       get_attendance_summary: {

@@ -1,14 +1,20 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { AuthDebug } from '@/components/AuthDebug';
+import { TimeClockWidget } from '@/components/timetracking/TimeClockWidget';
+import { WeeklyTimeReport } from '@/components/timetracking/WeeklyTimeReport';
 
 /**
  * Dashboard principal personalizado por rol
  * Muestra información relevante según el tipo de usuario
+ * Incluye control de horarios para empleados
  */
 export default function Dashboard() {
   const { profile } = useAuth();
+
+  // Determinar si el usuario debe ver el control de horarios (todos excepto clientes)
+  const showTimeTracking = profile && profile.role !== 'cliente';
+  const showTimeReports = profile && ['administrador', 'supervisor'].includes(profile.role);
 
   const getRoleGreeting = () => {
     switch (profile?.role) {
@@ -20,7 +26,20 @@ export default function Dashboard() {
             'Gestión completa de usuarios y roles',
             'Supervisión de todas las órdenes y servicios',
             'Reportes y análisis de rendimiento',
+            'Control de horarios de empleados',
             'Configuración del sistema'
+          ]
+        };
+      case 'supervisor':
+        return {
+          title: '¡Hola, Supervisor!',
+          description: 'Panel de supervisión para gestionar equipos, órdenes, ventas y finanzas.',
+          features: [
+            'Gestión de usuarios del equipo',
+            'Supervisión de órdenes y servicios',
+            'Reportes de ventas y finanzas',
+            'Control de horarios de empleados',
+            'Gestión de encuestas'
           ]
         };
       case 'vendedor':
@@ -31,6 +50,7 @@ export default function Dashboard() {
             'Crear y gestionar cotizaciones',
             'Seguimiento de leads y clientes',
             'Registro de ventas',
+            'Control de horarios personal',
             'Reportes de rendimiento'
           ]
         };
@@ -42,6 +62,7 @@ export default function Dashboard() {
             'Órdenes asignadas a ti',
             'Calendario de servicios',
             'Registro de trabajo realizado',
+            'Control de horarios personal',
             'Comunicación con clientes'
           ]
         };
@@ -80,6 +101,13 @@ export default function Dashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Widget de control de horarios - Solo para empleados */}
+          {showTimeTracking && (
+            <div className="lg:col-span-1">
+              <TimeClockWidget />
+            </div>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Perfil de Usuario</CardTitle>
@@ -123,19 +151,25 @@ export default function Dashboard() {
                   Usa el menú lateral para navegar por las diferentes secciones.
                 </p>
                 <div className="mt-4 p-3 bg-muted rounded-lg">
-                  <p className="font-medium">Desarrollo Modular:</p>
+                  <p className="font-medium">Sistema de Horarios:</p>
                   <p className="text-xs mt-1">
-                    Esta aplicación está diseñada para crecer módulo por módulo,
-                    reutilizando componentes y manteniendo código limpio.
+                    {showTimeTracking 
+                      ? "Registra tu entrada y salida diaria usando el widget de control de horarios."
+                      : "Los clientes no requieren registro de horarios."}
                   </p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-        
-        {/* Componente de debug temporal */}
-        <AuthDebug />
+
+        {/* Sección de reportes semanales - Solo para administradores y supervisores */}
+        {showTimeReports && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4">Reportes de Tiempo</h2>
+            <WeeklyTimeReport />
+          </div>
+        )}
       </div>
     </AppLayout>
   );
