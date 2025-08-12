@@ -4084,7 +4084,12 @@ export type Database = {
       task_5s_category: "seiri" | "seiton" | "seiso" | "seiketsu" | "shitsuke"
       task_priority: "baja" | "media" | "alta" | "critica"
       task_status: "pendiente" | "en_progreso" | "completada" | "cancelada"
-      user_role: "administrador" | "tecnico" | "vendedor" | "cliente"
+      user_role:
+        | "administrador"
+        | "tecnico"
+        | "vendedor"
+        | "cliente"
+        | "supervisor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4291,7 +4296,13 @@ export const Constants = {
       task_5s_category: ["seiri", "seiton", "seiso", "seiketsu", "shitsuke"],
       task_priority: ["baja", "media", "alta", "critica"],
       task_status: ["pendiente", "en_progreso", "completada", "cancelada"],
-      user_role: ["administrador", "tecnico", "vendedor", "cliente"],
+      user_role: [
+        "administrador",
+        "tecnico",
+        "vendedor",
+        "cliente",
+        "supervisor",
+      ],
     },
   },
 } as const

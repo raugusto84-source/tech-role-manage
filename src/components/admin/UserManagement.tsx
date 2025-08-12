@@ -19,7 +19,7 @@ interface User {
   email: string;
   full_name: string;
   phone?: string;
-  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente';
+  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente' | 'supervisor';
   created_at: string;
   updated_at: string;
 }
@@ -276,6 +276,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'administrador': return 'default';
+      case 'supervisor': return 'default';
       case 'vendedor': return 'secondary';
       case 'tecnico': return 'outline';
       case 'cliente': return 'secondary';
@@ -289,6 +290,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   const translateRole = (role: string) => {
     const translations = {
       'administrador': 'Administrador',
+      'supervisor': 'Supervisor',
       'vendedor': 'Vendedor',
       'tecnico': 'Técnico',
       'cliente': 'Cliente'
@@ -322,6 +324,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
           <SelectContent>
             <SelectItem value="all">Todos los roles</SelectItem>
             <SelectItem value="administrador">Administradores</SelectItem>
+            <SelectItem value="supervisor">Supervisores</SelectItem>
             <SelectItem value="vendedor">Vendedores</SelectItem>
             <SelectItem value="tecnico">Técnicos</SelectItem>
             <SelectItem value="cliente">Clientes</SelectItem>
@@ -384,6 +387,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                     <SelectItem value="cliente">Cliente</SelectItem>
                     <SelectItem value="tecnico">Técnico</SelectItem>
                     <SelectItem value="vendedor">Vendedor</SelectItem>
+                    <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>

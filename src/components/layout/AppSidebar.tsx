@@ -67,6 +67,16 @@ export function AppSidebar() {
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
         ];
+      case 'supervisor':
+        return [
+          ...commonItems,
+          { title: 'Usuarios', url: '/users', icon: Users },
+          { title: 'Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Cotizaciones', url: '/quotes', icon: FileText },
+          { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
+          { title: 'Finanzas', url: '/finanzas', icon: Banknote },
+          { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
+        ];
       case 'tecnico':
         return [
           { title: 'Panel Técnico', url: '/technician', icon: Wrench },
