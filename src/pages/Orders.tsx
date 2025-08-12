@@ -54,6 +54,13 @@ interface Order {
   technician_profile?: {
     full_name: string;
   } | null;
+  support_technicians?: Array<{
+    technician_id: string;
+    reduction_percentage: number;
+    profiles: {
+      full_name: string;
+    } | null;
+  }>;
 }
 
 export default function Orders() {
@@ -99,10 +106,11 @@ export default function Orders() {
 
       if (error) throw error;
 
-      // Get technician profiles and unread messages count for each order
+      // Get technician profiles, support technicians and unread messages count for each order
       const ordersWithExtendedInfo = await Promise.all(
         (ordersData || []).map(async (order: any) => {
           let techProfile = null;
+          let supportTechnicians = [];
           let unreadCount = 0;
 
           // Get technician profile if assigned
@@ -113,6 +121,20 @@ export default function Orders() {
               .eq('user_id', order.assigned_technician)
               .maybeSingle();
             techProfile = techProfileData;
+          }
+
+          // Get support technicians for this order
+          const { data: supportTechData } = await supabase
+            .from('order_support_technicians')
+            .select(`
+              technician_id,
+              reduction_percentage,
+              profiles!order_support_technicians_technician_id_fkey(full_name)
+            `)
+            .eq('order_id', order.id);
+          
+          if (supportTechData) {
+            supportTechnicians = supportTechData;
           }
 
           // Count unread messages for current user
@@ -138,6 +160,7 @@ export default function Orders() {
           return {
             ...order,
             technician_profile: techProfile,
+            support_technicians: supportTechnicians,
             unread_messages_count: unreadCount
           } as Order;
         })

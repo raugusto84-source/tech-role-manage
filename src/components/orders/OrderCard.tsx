@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle } from 'lucide-react';
+import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
@@ -32,6 +32,16 @@ interface OrderCardProps {
       phone?: string;
       address: string;
     } | null;
+    technician_profile?: {
+      full_name: string;
+    } | null;
+    support_technicians?: Array<{
+      technician_id: string;
+      reduction_percentage: number;
+      profiles: {
+        full_name: string;
+      } | null;
+    }>;
   };
   onClick: () => void;
   onDelete?: (orderId: string) => void;
@@ -156,6 +166,26 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           <div className="flex items-center text-sm text-muted-foreground">
             <User className="h-4 w-4 mr-2 text-primary" />
             <span className="truncate">{order.clients.client_number}</span>
+          </div>
+        )}
+
+        {/* Técnico principal */}
+        {order.technician_profile && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <User className="h-4 w-4 mr-2 text-primary" />
+            <span className="truncate">Técnico: {order.technician_profile.full_name}</span>
+          </div>
+        )}
+
+        {/* Técnicos de apoyo */}
+        {order.support_technicians && order.support_technicians.length > 0 && (
+          <div className="flex items-center text-sm text-muted-foreground">
+            <Users className="h-4 w-4 mr-2 text-primary" />
+            <span className="truncate">
+              Apoyo: {order.support_technicians.map(tech => 
+                tech.profiles?.full_name || 'Sin nombre'
+              ).join(', ')}
+            </span>
           </div>
         )}
         
