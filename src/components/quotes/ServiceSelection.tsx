@@ -273,13 +273,15 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="predefined" className="flex items-center gap-2">
+          <TabsTrigger value="predefined" className="flex items-center gap-2 text-xs md:text-sm">
             <Package className="h-4 w-4" />
-            Servicios Predefinidos
+            <span className="md:hidden">Predef.</span>
+            <span className="hidden md:inline">Servicios Predefinidos</span>
           </TabsTrigger>
-          <TabsTrigger value="custom" className="flex items-center gap-2">
+          <TabsTrigger value="custom" className="flex items-center gap-2 text-xs md:text-sm">
             <Plus className="h-4 w-4" />
-            Artículo Personalizado
+            <span className="md:hidden">Pers.</span>
+            <span className="hidden md:inline">Artículo Personalizado</span>
           </TabsTrigger>
         </TabsList>
 

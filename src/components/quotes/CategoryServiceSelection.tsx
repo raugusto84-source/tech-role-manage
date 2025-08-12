@@ -297,10 +297,19 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange }: Categ
     <div className="space-y-6">
       <Tabs defaultValue="services" className="w-full">
         <TabsList className={`grid w-full ${isClient ? 'grid-cols-3' : 'grid-cols-2 md:grid-cols-4'} gap-1 p-1`}>
-          <TabsTrigger value="services" className="text-xs md:text-sm">Servicios</TabsTrigger>
-          <TabsTrigger value="products" className="text-xs md:text-sm">Productos</TabsTrigger>
+          <TabsTrigger value="services" className="text-xs md:text-sm">
+            <span className="md:hidden">Serv.</span>
+            <span className="hidden md:inline">Servicios</span>
+          </TabsTrigger>
+          <TabsTrigger value="products" className="text-xs md:text-sm">
+            <span className="md:hidden">Prod.</span>
+            <span className="hidden md:inline">Productos</span>
+          </TabsTrigger>
           {!isClient && <TabsTrigger value="taxes" className="text-xs md:text-sm hidden md:flex">Impuestos</TabsTrigger>}
-          <TabsTrigger value="custom" className="text-xs md:text-sm">Personalizado</TabsTrigger>
+          <TabsTrigger value="custom" className="text-xs md:text-sm">
+            <span className="md:hidden">Pers.</span>
+            <span className="hidden md:inline">Personalizado</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* Global Tax Configuration */}

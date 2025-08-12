@@ -238,10 +238,16 @@ export function RewardsAdminPanel() {
       </div>
 
       <Tabs defaultValue="clients" className="w-full">
-        <TabsList>
-          <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="transactions">Transacciones</TabsTrigger>
-        </TabsList>
+         <TabsList className="grid w-full grid-cols-2 gap-1 p-1">
+           <TabsTrigger value="clients" className="text-xs md:text-sm">
+             <span className="md:hidden">Clientes</span>
+             <span className="hidden md:inline">Clientes</span>
+           </TabsTrigger>
+           <TabsTrigger value="transactions" className="text-xs md:text-sm">
+             <span className="md:hidden">Trans.</span>
+             <span className="hidden md:inline">Transacciones</span>
+           </TabsTrigger>
+         </TabsList>
 
         <TabsContent value="clients" className="space-y-4">
           <Card>

@@ -170,11 +170,20 @@ export default function Dashboard() {
         {profile?.role === 'administrador' && (
           <div className="lg:col-span-full">
             <Tabs defaultValue="presence" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="presence">Presencia Empleados</TabsTrigger>
-                <TabsTrigger value="reports">Reportes de Tiempo</TabsTrigger>
-                <TabsTrigger value="rewards">Sistema de Recompensas</TabsTrigger>
-              </TabsList>
+               <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+                 <TabsTrigger value="presence" className="text-xs md:text-sm">
+                   <span className="md:hidden">Presencia</span>
+                   <span className="hidden md:inline">Presencia Empleados</span>
+                 </TabsTrigger>
+                 <TabsTrigger value="reports" className="text-xs md:text-sm">
+                   <span className="md:hidden">Reportes</span>
+                   <span className="hidden md:inline">Reportes de Tiempo</span>
+                 </TabsTrigger>
+                 <TabsTrigger value="rewards" className="text-xs md:text-sm">
+                   <span className="md:hidden">Recompensas</span>
+                   <span className="hidden md:inline">Sistema de Recompensas</span>
+                 </TabsTrigger>
+               </TabsList>
               
               <TabsContent value="presence">
                 <TechnicianPresencePanel />
