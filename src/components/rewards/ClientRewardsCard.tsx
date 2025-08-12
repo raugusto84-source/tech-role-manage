@@ -175,74 +175,92 @@ export function ClientRewardsCard() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card className="overflow-hidden bg-gradient-to-br from-card to-primary/5 border-primary/20 shadow-lg">
+      <CardHeader className="bg-gradient-primary text-white">
+        <CardTitle className="flex items-center gap-2 text-white">
           <Gift className="h-5 w-5" />
           Recompensas y Bonos
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-white/90">
           Gana cashback y obtén descuentos especiales
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 p-6">
         {/* Cashback Balance */}
-        <div className="text-center p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg">
-          <div className="text-2xl font-bold text-primary">
+        <div className="text-center p-6 bg-gradient-to-br from-success/10 to-success/20 rounded-xl border border-success/30">
+          <div className="text-3xl font-bold text-success mb-2">
             {formatCurrency(rewards?.total_cashback || 0)}
           </div>
-          <p className="text-sm text-muted-foreground">Cashback disponible</p>
+          <p className="text-sm text-success-foreground font-medium">Cashback disponible</p>
         </div>
 
         {/* New Client Discount */}
         {rewards?.is_new_client && !rewards?.new_client_discount_used && (
-          <div className="p-4 bg-accent rounded-lg">
-            <div className="flex items-center gap-2 mb-2">
-              <Star className="h-4 w-4 text-accent-foreground" />
-              <span className="font-semibold">¡Bienvenido!</span>
+          <div className="p-4 bg-gradient-to-r from-warning/10 to-warning/20 rounded-xl border border-warning/30 animate-fade-in">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 bg-warning rounded-full flex items-center justify-center">
+                <Star className="h-5 w-5 text-warning-foreground" />
+              </div>
+              <div>
+                <span className="font-bold text-warning-foreground text-lg">¡Bienvenido!</span>
+                <p className="text-sm text-warning-foreground/80">
+                  Tienes un <strong>50% de descuento</strong> en tu primer servicio.
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-accent-foreground">
-              Tienes un <strong>50% de descuento</strong> en tu primer servicio.
-            </p>
           </div>
         )}
 
-        <Separator />
+        <Separator className="bg-border/50" />
 
         {/* Referral System */}
         <div>
-          <h3 className="flex items-center gap-2 font-semibold mb-3">
-            <Users className="h-4 w-4" />
+          <h3 className="flex items-center gap-2 font-bold mb-4 text-foreground">
+            <Users className="h-5 w-5 text-primary" />
             Sistema de Referencias
           </h3>
           
           {referral ? (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                <span className="text-sm">Tu código:</span>
-                <code className="font-mono font-bold">{referral.referral_code}</code>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyReferralCode}
-                  className="ml-auto"
-                >
-                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                </Button>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-info/10 to-info/20 rounded-xl border border-info/30">
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-info-foreground">Tu código:</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="font-mono font-bold text-lg text-info">{referral.referral_code}</code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={copyReferralCode}
+                      className="h-8 w-8 p-0 hover:bg-info/20"
+                    >
+                      {copied ? 
+                        <Check className="h-4 w-4 text-success" /> : 
+                        <Copy className="h-4 w-4 text-info" />
+                      }
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Comparte tu código y obtén <strong>5% de cashback</strong> de las primeras 3 compras de cada referido.
-              </p>
-              <Badge variant="secondary">
-                Bonos otorgados: {referral.referral_bonus_given}/3
-              </Badge>
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Comparte tu código y obtén <strong className="text-primary">5% de cashback</strong> de las primeras 3 compras de cada referido.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-success/20 text-success-foreground border-success/30">
+                    Bonos otorgados: {referral.referral_bonus_given}/3
+                  </Badge>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                Crea tu código de referido y gana 5% de cashback por cada amigo que refiera.
+            <div className="text-center py-6 px-4 bg-muted/30 rounded-xl border border-dashed border-muted-foreground/30">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-primary" />
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Crea tu código de referido y gana <strong className="text-primary">5% de cashback</strong> por cada amigo que refiera.
               </p>
-              <Button onClick={createReferralCode} variant="outline">
+              <Button onClick={createReferralCode} className="btn-primary-mobile">
                 Crear código de referido
               </Button>
             </div>
@@ -290,12 +308,17 @@ export function ClientRewardsCard() {
         </div>
 
         {/* Info */}
-        <div className="p-3 bg-muted/50 rounded-lg">
-          <p className="text-xs text-muted-foreground">
-            • Gana 2% de cashback en todos los servicios<br/>
-            • El cashback expira después de 1 año<br/>
-            • Los referidos deben usar tu código al registrarse
-          </p>
+        <div className="p-4 bg-gradient-to-r from-info/10 to-info/5 rounded-xl border border-info/20">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-info/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Gift className="h-4 w-4 text-info" />
+            </div>
+            <div className="text-xs text-info-foreground space-y-1">
+              <p>• Gana <strong>2% de cashback</strong> en todos los servicios</p>
+              <p>• El cashback expira después de <strong>1 año</strong></p>
+              <p>• Los referidos deben usar tu código al registrarse</p>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>

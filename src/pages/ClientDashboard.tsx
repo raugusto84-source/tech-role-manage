@@ -200,18 +200,19 @@ export default function ClientDashboard() {
     };
   }, [profile?.user_id]);
 
-  // Utilidades UI
+  // Utilidades UI con colores semánticos
   const statusBadge = (status: string) => {
-    const map: Record<string, string> = {
-      pendiente_aprobacion: "bg-warning/10 text-warning border-warning/20",
-      pendiente: "bg-info/10 text-info border-info/20",
-      en_camino: "bg-info/10 text-info border-info/20",
-      en_proceso: "bg-info/10 text-info border-info/20",
-      finalizada: "bg-success/10 text-success border-success/20",
-      cancelada: "bg-destructive/10 text-destructive border-destructive/20",
+    const statusClasses: Record<string, string> = {
+      pendiente_aprobacion: "bg-warning-light text-warning-foreground border border-warning-border",
+      pendiente: "bg-info-light text-info-foreground border border-info-border",
+      en_camino: "bg-info-light text-info-foreground border border-info-border",
+      en_proceso: "bg-warning-light text-warning-foreground border border-warning-border",
+      finalizada: "bg-success-light text-success-foreground border border-success-border",
+      cancelada: "bg-error-light text-error-foreground border border-error-border",
     };
+    
     const statusText = status === "pendiente_aprobacion" ? "pendiente aprobación" : status.replace("_", " ");
-    return <Badge className={map[status] || "bg-muted text-foreground"}>{statusText}</Badge>;
+    return <Badge className={statusClasses[status] || "bg-muted text-muted-foreground"}>{statusText}</Badge>;
   };
 
   const metrics = useMemo(() => ({
@@ -228,97 +229,129 @@ export default function ClientDashboard() {
         <p className="text-muted-foreground">Crea y sigue tus solicitudes de forma sencilla.</p>
       </header>
 
-      {/* Acciones principales al estilo app bancaria */}
+      {/* Acciones principales optimizadas para móvil */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Button onClick={() => setOpenNew(true)} className="h-16 flex-col items-start justify-center px-4">
-          <Plus />
-          <span className="text-left text-sm">Nueva solicitud</span>
+        <Button 
+          onClick={() => setOpenNew(true)} 
+          className="h-16 md:h-20 flex-col items-center justify-center px-4 bg-primary hover:bg-primary-hover text-primary-foreground shadow-colored"
+        >
+          <Plus className="mb-1" />
+          <span className="text-xs md:text-sm font-medium">Nueva solicitud</span>
         </Button>
-        <Button variant="secondary" onClick={() => { loadOrders(); loadQuotes(); }} className="h-16 flex-col items-start justify-center px-4">
-          <RefreshCw />
-          <span className="text-left text-sm">Actualizar</span>
+        <Button 
+          variant="secondary" 
+          onClick={() => { loadOrders(); loadQuotes(); }} 
+          className="h-16 md:h-20 flex-col items-center justify-center px-4 bg-secondary hover:bg-hover text-secondary-foreground"
+        >
+          <RefreshCw className="mb-1" />
+          <span className="text-xs md:text-sm font-medium">Actualizar</span>
         </Button>
-        <Button asChild variant="outline" className="h-16 flex-col items-start justify-center px-4">
+        <Button 
+          asChild 
+          variant="outline" 
+          className="h-16 md:h-20 flex-col items-center justify-center px-4 border-2 hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+        >
           <Link to="/orders">
-            <ClipboardList />
-            <span className="text-left text-sm">Mis órdenes</span>
+            <ClipboardList className="mb-1" />
+            <span className="text-xs md:text-sm font-medium">Mis órdenes</span>
           </Link>
         </Button>
-        <Button asChild variant="outline" className="h-16 flex-col items-start justify-center px-4">
+        <Button 
+          asChild 
+          variant="outline" 
+          className="h-16 md:h-20 flex-col items-center justify-center px-4 border-2 hover:bg-accent hover:text-accent-foreground transition-all duration-200"
+        >
           <Link to="/quotes">
-            <FileText />
-            <span className="text-left text-sm">Mis cotizaciones</span>
+            <FileText className="mb-1" />
+            <span className="text-xs md:text-sm font-medium">Mis cotizaciones</span>
           </Link>
         </Button>
       </section>
 
-      {/* Resumen */}
+      {/* Resumen con colores mejorados */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Órdenes activas</CardTitle>
+        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-md transition-all duration-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg text-primary">Órdenes activas</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.pending}</p>
-            <p className="text-muted-foreground text-sm">En curso o pendientes</p>
+            <p className="text-3xl font-bold text-primary">{metrics.pending}</p>
+            <p className="text-sm text-muted-foreground">En curso o pendientes</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Total órdenes recientes</CardTitle>
+        <Card className="bg-gradient-to-br from-info/5 to-info/10 border-info/20 hover:shadow-md transition-all duration-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg text-info">Total órdenes recientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.totalOrders}</p>
-            <p className="text-muted-foreground text-sm">Últimas 5</p>
+            <p className="text-3xl font-bold text-info">{metrics.totalOrders}</p>
+            <p className="text-sm text-muted-foreground">Últimas 5</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Cotizaciones recientes</CardTitle>
+        <Card className="bg-gradient-to-br from-success/5 to-success/10 border-success/20 hover:shadow-md transition-all duration-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg text-success">Cotizaciones recientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">{metrics.quotesCount}</p>
-            <p className="text-muted-foreground text-sm">Últimas 5</p>
+            <p className="text-3xl font-bold text-success">{metrics.quotesCount}</p>
+            <p className="text-sm text-muted-foreground">Últimas 5</p>
           </CardContent>
         </Card>
       </section>
 
-      {/* Listas recientes */}
+      {/* Listas recientes con mejor diseño móvil */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Órdenes (realtime) */}
-        <Card>
-          <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Órdenes recientes</CardTitle>
-            <Badge variant="secondary">Tiempo real</Badge>
+        <Card className="overflow-hidden">
+          <CardHeader className="flex-row items-center justify-between bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/20">
+            <CardTitle className="text-primary">Órdenes recientes</CardTitle>
+            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+              Tiempo real
+            </Badge>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-4 space-y-3">
             {orders.length === 0 ? (
-              <p className="text-muted-foreground">Aún no tienes órdenes</p>
+              <div className="text-center py-8">
+                <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">Aún no tienes órdenes</p>
+              </div>
             ) : (
               orders.map((o) => (
-                <div key={o.id} className={`flex items-start justify-between rounded-lg border p-3 ${
-                  o.status === 'pendiente_aprobacion' ? 'bg-warning/5 border-warning/20' : ''
-                }`}>
-                  <div>
-                    <p className="font-medium">{o.order_number}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{o.failure_description || "Sin descripción"}</p>
-                    {o.status === 'pendiente_aprobacion' && (
-                      <p className="text-xs text-warning font-medium mt-1">
-                        ⚠️ Requiere tu firma y aprobación
-                      </p>
-                    )}
-                    {o.technician_profile && (
-                      <div className="text-xs text-primary font-medium mt-1">
-                        Técnico: {o.technician_profile.full_name}
-                        {o.assignment_reason && (
-                          <div className="text-xs text-muted-foreground italic">
-                            {o.assignment_reason}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                <div 
+                  key={o.id} 
+                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
+                    o.status === 'pendiente_aprobacion' 
+                      ? 'bg-warning-light/50 border-warning-border shadow-sm' 
+                      : 'bg-card hover:bg-accent/50 border-border'
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold text-foreground">{o.order_number}</h4>
+                    {statusBadge(o.status)}
                   </div>
-                  {statusBadge(o.status)}
+                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                    {o.failure_description || "Sin descripción"}
+                  </p>
+                  {o.status === 'pendiente_aprobacion' && (
+                    <div className="flex items-center gap-2 p-2 bg-warning-light rounded-md border border-warning-border">
+                      <span className="text-lg">⚠️</span>
+                      <p className="text-xs text-warning-foreground font-medium">
+                        Requiere tu firma y aprobación
+                      </p>
+                    </div>
+                  )}
+                  {o.technician_profile && (
+                    <div className="mt-2 p-2 bg-info-light rounded-md border border-info-border">
+                      <p className="text-xs text-info-foreground font-medium">
+                        Técnico: {o.technician_profile.full_name}
+                      </p>
+                      {o.assignment_reason && (
+                        <p className="text-xs text-muted-foreground italic">
+                          {o.assignment_reason}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -326,21 +359,29 @@ export default function ClientDashboard() {
         </Card>
 
         {/* Cotizaciones */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Cotizaciones recientes</CardTitle>
+        <Card className="overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-success/5 to-success/10 border-b border-success/20">
+            <CardTitle className="text-success">Cotizaciones recientes</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-4 space-y-3">
             {quotes.length === 0 ? (
-              <p className="text-muted-foreground">Aún no tienes cotizaciones</p>
+              <div className="text-center py-8">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-muted-foreground">Aún no tienes cotizaciones</p>
+              </div>
             ) : (
               quotes.map((q) => (
-                <div key={q.id} className="flex items-start justify-between rounded-lg border p-3">
-                  <div>
-                    <p className="font-medium">{q.quote_number}</p>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{q.service_description || "Sin descripción"}</p>
+                <div 
+                  key={q.id} 
+                  className="p-4 rounded-lg border bg-card hover:bg-accent/50 border-border transition-all duration-200 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h4 className="font-semibold text-foreground">{q.quote_number}</h4>
+                    <Badge variant="outline" className="text-xs">{q.status}</Badge>
                   </div>
-                  <Badge variant="outline">{q.status}</Badge>
+                  <p className="text-sm text-muted-foreground line-clamp-2">
+                    {q.service_description || "Sin descripción"}
+                  </p>
                 </div>
               ))
             )}

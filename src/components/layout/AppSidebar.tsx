@@ -96,30 +96,45 @@ export function AppSidebar() {
   const items = getNavigationItems();
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
-      <SidebarTrigger className="m-2 self-end" />
+    <Sidebar className={`${collapsed ? "w-14" : "w-60"} border-r border-sidebar-border bg-sidebar`} collapsible="icon">
+      <SidebarTrigger className="m-2 self-end text-sidebar-foreground hover:bg-sidebar-accent" />
       
-      <SidebarContent>
+      <SidebarContent className="bg-sidebar">
         <SidebarGroup>
-          <SidebarGroupLabel>
-            {!collapsed && 'SYSLAG - Sistema Técnico'}
+          <SidebarGroupLabel className="text-sidebar-foreground/70 font-semibold">
+            {!collapsed && (
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-gradient-primary flex items-center justify-center">
+                  <span className="text-xs font-bold text-white">S</span>
+                </div>
+                <span>SYSLAG</span>
+              </div>
+            )}
           </SidebarGroupLabel>
           
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton asChild className="touch-target">
                     <NavLink 
                       to={item.url} 
                       className={({ isActive }) =>
-                        isActive 
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
-                          : "hover:bg-sidebar-accent/50"
+                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${
+                          isActive 
+                            ? "bg-gradient-primary text-white shadow-md font-medium" 
+                            : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
+                        }`
                       }
                     >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      <item.icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
+                        !collapsed ? '' : 'mx-auto'
+                      }`} />
+                      {!collapsed && (
+                        <span className="font-medium transition-all duration-200">
+                          {item.title}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
