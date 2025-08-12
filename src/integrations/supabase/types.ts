@@ -481,6 +481,51 @@ export type Database = {
           },
         ]
       }
+      client_referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_bonus_given: number | null
+          referral_code: string
+          referred_client_id: string
+          referrer_client_id: string
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_bonus_given?: number | null
+          referral_code: string
+          referred_client_id: string
+          referrer_client_id: string
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_bonus_given?: number | null
+          referral_code?: string
+          referred_client_id?: string
+          referrer_client_id?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_referrals_referred_client_id_fkey"
+            columns: ["referred_client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_referrals_referrer_client_id_fkey"
+            columns: ["referrer_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_requests: {
         Row: {
           assigned_to_visit_id: string | null
@@ -531,6 +576,47 @@ export type Database = {
             columns: ["policy_id"]
             isOneToOne: false
             referencedRelation: "policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_rewards: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_new_client: boolean | null
+          new_client_discount_used: boolean | null
+          total_cashback: number | null
+          total_points: number | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_new_client?: boolean | null
+          new_client_discount_used?: boolean | null
+          total_cashback?: number | null
+          total_points?: number | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_new_client?: boolean | null
+          new_client_discount_used?: boolean | null
+          total_cashback?: number | null
+          total_points?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_rewards_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -2448,6 +2534,61 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_transactions: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          description: string
+          expires_at: string | null
+          id: string
+          order_id: string | null
+          transaction_type: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          description: string
+          expires_at?: string | null
+          id?: string
+          order_id?: string | null
+          transaction_type: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          description?: string
+          expires_at?: string | null
+          id?: string
+          order_id?: string | null
+          transaction_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_transactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_transactions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales: {
         Row: {
           amount: number
@@ -3984,6 +4125,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      clean_expired_rewards: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       convert_quote_to_order: {
         Args: { quote_id: string }
         Returns: Json
@@ -4021,6 +4166,10 @@ export type Database = {
         Returns: string
       }
       generate_quote_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_referral_code: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
