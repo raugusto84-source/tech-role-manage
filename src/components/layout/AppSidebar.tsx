@@ -66,7 +66,6 @@ export function AppSidebar() {
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
-          { title: 'Clientes', url: '/clients', icon: Users },
         ];
       case 'tecnico':
         return [
