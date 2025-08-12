@@ -9,10 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, Plus, CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Save, Plus, CalendarIcon, MapPin, Crosshair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
@@ -60,6 +61,12 @@ interface OrderFormData {
   delivery_date: string;
   assigned_technician: string;
   estimated_cost: string;
+  is_home_service: boolean;
+  service_location: {
+    latitude?: number;
+    longitude?: number;
+    address?: string;
+  } | null;
 }
 
 interface SupportTechnicianEntry {
@@ -85,8 +92,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     failure_description: '',
     delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     assigned_technician: '',
-    estimated_cost: ''
+    estimated_cost: '',
+    is_home_service: false,
+    service_location: null
   });
+  const [loadingLocation, setLoadingLocation] = useState(false);
   const [supportTechnicians, setSupportTechnicians] = useState<SupportTechnicianEntry[]>([]);
 
   // Estados para el sistema de sugerencias de técnicos
@@ -372,7 +382,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const calculateTotalHours = () => {
     // Usar la función mejorada de cálculo de tiempo compartido
-    return calculateSharedTimeHours(orderItems);
+    const baseHours = calculateSharedTimeHours(orderItems);
+    // Agregar 1 hora si es servicio a domicilio para tiempo de traslado
+    return formData.is_home_service ? baseHours + 1 : baseHours;
   };
 
   const recalculateDeliveryAndSuggestSupport = () => {
@@ -551,6 +563,61 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
+  const handleLocationCapture = () => {
+    setLoadingLocation(true);
+    
+    if (!navigator.geolocation) {
+      toast({
+        title: "Error",
+        description: "Tu navegador no soporta geolocalización",
+        variant: "destructive"
+      });
+      setLoadingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setFormData(prev => ({
+          ...prev,
+          service_location: {
+            latitude,
+            longitude,
+            address: `Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`
+          }
+        }));
+        setLoadingLocation(false);
+        toast({
+          title: "Ubicación capturada",
+          description: "Se ha guardado tu ubicación actual",
+        });
+      },
+      (error) => {
+        console.error('Error getting location:', error);
+        setLoadingLocation(false);
+        toast({
+          title: "Error",
+          description: "No se pudo obtener tu ubicación. Verifica los permisos del navegador.",
+          variant: "destructive"
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
+  };
+
+  const handleHomeServiceChange = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      is_home_service: checked,
+      service_location: checked ? prev.service_location : null
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -599,7 +666,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
         created_by: user?.id,
-        status: 'pendiente_aprobacion' as const // Explicitly set the correct enum value
+        status: 'pendiente_aprobacion' as const, // Explicitly set the correct enum value
+        is_home_service: formData.is_home_service,
+        service_location: formData.service_location,
+        travel_time_hours: formData.is_home_service ? 1 : 0
       };
 
       console.log('Creating order with data:', orderData);
@@ -754,6 +824,68 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                   </div>
                 </div>
               )}
+
+              {/* Servicio a Domicilio */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_home_service"
+                    checked={formData.is_home_service}
+                    onCheckedChange={handleHomeServiceChange}
+                  />
+                  <Label htmlFor="is_home_service" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Servicio a domicilio (+1 hora por traslado)
+                  </Label>
+                </div>
+                
+                {formData.is_home_service && (
+                  <div className="space-y-3 border border-border rounded-lg p-4 bg-muted/50">
+                    <Label className="text-sm font-medium">Ubicación del servicio</Label>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleLocationCapture}
+                          disabled={loadingLocation}
+                          className="flex-1"
+                        >
+                          {loadingLocation ? (
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                              Capturando...
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Crosshair className="h-4 w-4" />
+                              Usar GPS
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+                      
+                      <Input
+                        placeholder="O ingresa la dirección manualmente"
+                        value={formData.service_location?.address || ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          service_location: {
+                            ...prev.service_location,
+                            address: e.target.value
+                          }
+                        }))}
+                      />
+                      
+                      {formData.service_location && formData.service_location.latitude && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-green-50 border border-green-200 rounded p-2">
+                          <MapPin className="h-4 w-4 text-green-600" />
+                          <span>Ubicación GPS capturada: {formData.service_location.address}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Descripción del Problema - Arriba */}
               <div className="space-y-2">

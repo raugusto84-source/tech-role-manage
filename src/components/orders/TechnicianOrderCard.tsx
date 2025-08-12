@@ -16,7 +16,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck } from 'lucide-react';
+import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck, Home } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -30,6 +30,9 @@ interface TechnicianOrderCardProps {
     delivery_date: string;
     status: 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada';
     created_at: string;
+    is_home_service?: boolean;
+    service_location?: any;
+    travel_time_hours?: number;
     service_types?: {
       name: string;
       description?: string;
@@ -178,11 +181,19 @@ export function TechnicianOrderCard({
             </span>
           </div>
 
-          <div className="flex items-center text-sm">
-            <Wrench className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-            <span className="text-muted-foreground truncate">
-              {order.service_types?.name || 'Servicio no especificado'}
-            </span>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center">
+              <Wrench className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
+              <span className="text-muted-foreground truncate">
+                {order.service_types?.name || 'Servicio no especificado'}
+              </span>
+            </div>
+            {order.is_home_service && (
+              <div className="flex items-center gap-1 text-blue-600">
+                <Home className="h-3 w-3" />
+                <span className="text-xs font-medium">Domicilio</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -35,6 +35,9 @@ interface OrderDetailsProps {
     assignment_reason?: string;
     evidence_photos?: string[];
     created_at: string;
+    is_home_service?: boolean;
+    service_location?: any;
+    travel_time_hours?: number;
     service_types?: {
       name: string;
       description?: string;
@@ -421,11 +424,42 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     <Label className="text-sm font-medium text-muted-foreground">Dirección</Label>
                     <p className="text-foreground">{order.clients.address}</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                 )}
+                 
+                 {/* Información de servicio a domicilio */}
+                 {order.is_home_service && (
+                   <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                     <div className="flex items-center gap-2 mb-2">
+                       <Home className="h-4 w-4 text-blue-600" />
+                       <span className="text-sm font-medium text-blue-800">Servicio a Domicilio</span>
+                       {order.travel_time_hours && (
+                         <Badge variant="outline" className="text-xs text-blue-600 border-blue-300">
+                           +{order.travel_time_hours}h traslado
+                         </Badge>
+                       )}
+                     </div>
+                     {order.service_location && (
+                       <div className="text-sm text-blue-700">
+                         <div className="flex items-start gap-2">
+                           <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                           <div>
+                             <span className="font-medium">Ubicación: </span>
+                             <span>{order.service_location.address}</span>
+                             {order.service_location.latitude && order.service_location.longitude && (
+                               <div className="text-xs text-blue-600 mt-1">
+                                 GPS: {order.service_location.latitude.toFixed(6)}, {order.service_location.longitude.toFixed(6)}
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 )}
+               </CardContent>
+             </Card>
 
-            {/* Descripción del Problema */}
+             {/* Descripción del Problema */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">

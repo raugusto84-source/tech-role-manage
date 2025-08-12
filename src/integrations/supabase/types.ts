@@ -1752,11 +1752,14 @@ export type Database = {
           final_signature_url: string | null
           id: string
           initial_signature_url: string | null
+          is_home_service: boolean | null
           order_number: string
           pdf_url: string | null
           requested_date: string | null
+          service_location: Json | null
           service_type: string
           status: Database["public"]["Enums"]["order_status"]
+          travel_time_hours: number | null
           updated_at: string
         }
         Insert: {
@@ -1777,11 +1780,14 @@ export type Database = {
           final_signature_url?: string | null
           id?: string
           initial_signature_url?: string | null
+          is_home_service?: boolean | null
           order_number: string
           pdf_url?: string | null
           requested_date?: string | null
+          service_location?: Json | null
           service_type: string
           status?: Database["public"]["Enums"]["order_status"]
+          travel_time_hours?: number | null
           updated_at?: string
         }
         Update: {
@@ -1802,11 +1808,14 @@ export type Database = {
           final_signature_url?: string | null
           id?: string
           initial_signature_url?: string | null
+          is_home_service?: boolean | null
           order_number?: string
           pdf_url?: string | null
           requested_date?: string | null
+          service_location?: Json | null
           service_type?: string
           status?: Database["public"]["Enums"]["order_status"]
+          travel_time_hours?: number | null
           updated_at?: string
         }
         Relationships: [

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle, Users } from 'lucide-react';
+import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle, Users, MapPin, Home } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
@@ -21,6 +21,9 @@ interface OrderCardProps {
     assigned_technician?: string;
     created_at: string;
     unread_messages_count?: number; // Nuevo campo para mensajes no leídos
+    is_home_service?: boolean;
+    service_location?: any;
+    travel_time_hours?: number;
     service_types?: {
       name: string;
       description?: string;
@@ -121,11 +124,19 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       </CardHeader>
       
       <CardContent className="space-y-2 px-3 pb-3">
-        <div className="flex items-center text-xs text-muted-foreground">
-          <Wrench className="h-3 w-3 mr-2 text-primary flex-shrink-0" />
-          <span className="truncate">
-            {order.service_types?.name || 'Servicio no especificado'}
-          </span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center">
+            <Wrench className="h-3 w-3 mr-2 text-primary flex-shrink-0" />
+            <span className="truncate">
+              {order.service_types?.name || 'Servicio no especificado'}
+            </span>
+          </div>
+          {order.is_home_service && (
+            <div className="flex items-center gap-1 text-blue-600">
+              <Home className="h-3 w-3" />
+              <span className="text-xs font-medium">Domicilio</span>
+            </div>
+          )}
         </div>
         
         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
