@@ -40,8 +40,9 @@ export default function Auth() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
+    const referralCode = formData.get('referralCode') as string;
     
-    await signUp(email, password, fullName, 'cliente');
+    await signUp(email, password, fullName, 'cliente', referralCode);
     setIsLoading(false);
   };
 
@@ -136,6 +137,19 @@ export default function Auth() {
                     required
                     minLength={6}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referralCode">Código de Referido (Opcional)</Label>
+                  <Input
+                    id="referralCode"
+                    name="referralCode"
+                    type="text"
+                    placeholder="REF123456"
+                    className="uppercase"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Si tienes un código de referido, ingrésalo para obtener beneficios adicionales
+                  </p>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Solo clientes pueden registrarse aquí. 
