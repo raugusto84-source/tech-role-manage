@@ -146,6 +146,9 @@ export default function Auth() {
                     type="text"
                     placeholder="REF123456"
                     className="uppercase"
+                    onChange={(e) => {
+                      e.target.value = e.target.value.toUpperCase();
+                    }}
                   />
                   <p className="text-xs text-muted-foreground">
                     Si tienes un código de referido, ingrésalo para obtener beneficios adicionales
