@@ -5,18 +5,19 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 
-interface TechnicianPresence {
+interface EmployeePresence {
   user_id: string;
   full_name: string;
+  role: string;
   currentRecord: any;
   status: 'present' | 'absent' | 'checked_out';
 }
 
 /**
- * Panel para que los administradores vean todos los técnicos presentes
+ * Panel para que los administradores vean todos los empleados presentes
  */
 export function TechnicianPresencePanel() {
-  const [technicians, setTechnicians] = useState<TechnicianPresence[]>([]);
+  const [employees, setEmployees] = useState<EmployeePresence[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,31 +30,31 @@ export function TechnicianPresencePanel() {
 
   const loadTechnicianPresence = async () => {
     try {
-      // Obtener todos los técnicos
-      const { data: techProfiles, error: profilesError } = await supabase
+      // Obtener todos los empleados (técnicos, vendedores, supervisores y administradores)
+      const { data: employeeProfiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, full_name')
-        .eq('role', 'tecnico')
+        .select('user_id, full_name, role')
+        .in('role', ['tecnico', 'vendedor', 'supervisor', 'administrador'])
         .order('full_name');
 
       if (profilesError) throw profilesError;
 
-      // Obtener registros de tiempo del día actual para todos los técnicos
+      // Obtener registros de tiempo del día actual para todos los empleados
       const today = new Date().toISOString().split('T')[0];
       
-      const presenceData: TechnicianPresence[] = [];
+      const presenceData: EmployeePresence[] = [];
 
-      for (const tech of techProfiles || []) {
+      for (const employee of employeeProfiles || []) {
         const { data: records, error: recordsError } = await supabase
           .from('time_records')
           .select('*')
-          .eq('employee_id', tech.user_id)
+          .eq('employee_id', employee.user_id)
           .eq('work_date', today)
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (recordsError) {
-          console.error(`Error loading records for ${tech.full_name}:`, recordsError);
+          console.error(`Error loading records for ${employee.full_name}:`, recordsError);
           continue;
         }
 
@@ -69,16 +70,17 @@ export function TechnicianPresencePanel() {
         }
 
         presenceData.push({
-          user_id: tech.user_id,
-          full_name: tech.full_name,
+          user_id: employee.user_id,
+          full_name: employee.full_name,
+          role: employee.role,
           currentRecord: latestRecord,
           status
         });
       }
 
-      setTechnicians(presenceData);
+      setEmployees(presenceData);
     } catch (error) {
-      console.error('Error loading technician presence:', error);
+      console.error('Error loading employee presence:', error);
     } finally {
       setLoading(false);
     }
@@ -109,11 +111,33 @@ export function TechnicianPresencePanel() {
     return `${location.lat?.toFixed(4)}, ${location.lng?.toFixed(4)}`;
   };
 
+  const getRoleBadge = (role: string) => {
+    const roleLabels = {
+      'administrador': 'Admin',
+      'supervisor': 'Supervisor', 
+      'tecnico': 'Técnico',
+      'vendedor': 'Vendedor'
+    };
+    
+    const roleColors = {
+      'administrador': 'bg-red-500',
+      'supervisor': 'bg-blue-500',
+      'tecnico': 'bg-green-500', 
+      'vendedor': 'bg-purple-500'
+    };
+    
+    return (
+      <Badge variant="outline" className={`${roleColors[role as keyof typeof roleColors]} text-white`}>
+        {roleLabels[role as keyof typeof roleLabels] || role}
+      </Badge>
+    );
+  };
+
   if (loading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Técnicos Presentes</CardTitle>
+          <CardTitle>Personal Presente</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">Cargando...</div>
@@ -122,68 +146,69 @@ export function TechnicianPresencePanel() {
     );
   }
 
-  const presentTechnicians = technicians.filter(t => t.status === 'present');
-  const totalTechnicians = technicians.length;
+  const presentEmployees = employees.filter(e => e.status === 'present');
+  const totalEmployees = employees.length;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5" />
-          Panel de Presencia - Técnicos
+          Panel de Presencia - Personal
         </CardTitle>
         <CardDescription>
-          {presentTechnicians.length} de {totalTechnicians} técnicos presentes
+          {presentEmployees.length} de {totalEmployees} empleados presentes
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {technicians.map((tech) => (
+        {employees.map((employee) => (
           <div
-            key={tech.user_id}
+            key={employee.user_id}
             className="flex items-center justify-between p-3 bg-muted rounded-lg"
           >
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="font-medium">{tech.full_name}</span>
-                {getStatusBadge(tech.status)}
+                <span className="font-medium">{employee.full_name}</span>
+                {getRoleBadge(employee.role)}
+                {getStatusBadge(employee.status)}
               </div>
               
-              {tech.currentRecord && (
+              {employee.currentRecord && (
                 <div className="text-sm text-muted-foreground space-y-1">
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Entrada: {formatTime(tech.currentRecord.check_in_time)}
+                      Entrada: {formatTime(employee.currentRecord.check_in_time)}
                     </span>
                     
-                    {tech.currentRecord.check_out_time && (
+                    {employee.currentRecord.check_out_time && (
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        Salida: {formatTime(tech.currentRecord.check_out_time)}
+                        Salida: {formatTime(employee.currentRecord.check_out_time)}
                       </span>
                     )}
                   </div>
                   
-                  {tech.currentRecord.total_hours && (
+                  {employee.currentRecord.total_hours && (
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      Total: {formatHoursAndMinutes(tech.currentRecord.total_hours)}
+                      Total: {formatHoursAndMinutes(employee.currentRecord.total_hours)}
                     </div>
                   )}
                   
-                  {tech.currentRecord.check_in_location && (
+                  {employee.currentRecord.check_in_location && (
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
                       <span className="truncate max-w-xs">
-                        {formatLocation(tech.currentRecord.check_in_location)}
+                        {formatLocation(employee.currentRecord.check_in_location)}
                       </span>
                     </div>
                   )}
                 </div>
               )}
               
-              {!tech.currentRecord && (
+              {!employee.currentRecord && (
                 <div className="text-sm text-muted-foreground">
                   Sin registros hoy
                 </div>
@@ -192,9 +217,9 @@ export function TechnicianPresencePanel() {
           </div>
         ))}
         
-        {technicians.length === 0 && (
+        {employees.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
-            No hay técnicos registrados
+            No hay empleados registrados
           </div>
         )}
       </CardContent>
