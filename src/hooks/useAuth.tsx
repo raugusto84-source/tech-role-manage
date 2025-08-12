@@ -140,6 +140,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
+    } else {
+      // Redirect based on user role after successful login
+      setTimeout(() => {
+        const currentProfile = profile;
+        if (currentProfile?.role === 'cliente') {
+          window.location.href = '/client';
+        } else {
+          window.location.href = '/dashboard';
+        }
+      }, 100);
     }
 
     return { error };

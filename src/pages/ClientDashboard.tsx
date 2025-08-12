@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -238,16 +239,16 @@ export default function ClientDashboard() {
           <span className="text-left text-sm">Actualizar</span>
         </Button>
         <Button asChild variant="outline" className="h-16 flex-col items-start justify-center px-4">
-          <a href="/orders">
+          <Link to="/orders">
             <ClipboardList />
             <span className="text-left text-sm">Mis órdenes</span>
-          </a>
+          </Link>
         </Button>
         <Button asChild variant="outline" className="h-16 flex-col items-start justify-center px-4">
-          <a href="/quotes">
+          <Link to="/quotes">
             <FileText />
             <span className="text-left text-sm">Mis cotizaciones</span>
-          </a>
+          </Link>
         </Button>
       </section>
 
