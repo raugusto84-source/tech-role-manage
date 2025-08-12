@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Edit, Trash2, UserCircle, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, UserCircle, Search, Eye, EyeOff, Key } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -50,6 +50,10 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   const [selectedRole, setSelectedRole] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [passwordChangeUser, setPasswordChangeUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const { toast } = useToast();
 
   // Estado del formulario
@@ -239,6 +243,75 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  /**
+   * Maneja el cambio de contraseña de un usuario
+   */
+  const handleChangePassword = async () => {
+    if (!passwordChangeUser || !newPassword) return;
+
+    try {
+      setLoading(true);
+
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const response = await fetch('https://exunjybsermnxvrvyxnj.supabase.co/functions/v1/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({
+          userId: passwordChangeUser.user_id,
+          newPassword: newPassword
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Error al cambiar contraseña');
+      }
+
+      setIsPasswordDialogOpen(false);
+      setPasswordChangeUser(null);
+      setNewPassword('');
+      toast({
+        title: 'Contraseña actualizada',
+        description: `Contraseña de ${passwordChangeUser.full_name} actualizada exitosamente`
+      });
+
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo cambiar la contraseña',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Alterna la visibilidad de la contraseña para un usuario
+   */
+  const togglePasswordVisibility = (userId: string) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
+  };
+
+  /**
+   * Genera una contraseña temporal para mostrar
+   */
+  const getDisplayPassword = (userId: string) => {
+    return showPasswords[userId] ? '••••••••' : '••••••••';
   };
 
   /**
@@ -440,57 +513,87 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                 {roleUsers.map((user) => (
                   <Card key={user.id} className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-foreground">{user.full_name}</h4>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
-                          {user.phone && (
-                            <p className="text-xs text-muted-foreground">{user.phone}</p>
-                          )}
-                        </div>
-                        <Badge variant={getRoleBadgeVariant(user.role)}>
-                          {translateRole(user.role)}
-                        </Badge>
-                      </div>
-                      
-                      <Separator className="my-3" />
-                      
-                      <div className="flex justify-between items-center">
-                        <div className="text-xs text-muted-foreground">
-                          Creado: {new Date(user.created_at).toLocaleDateString()}
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => startEdit(user)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta acción eliminará el perfil de {user.full_name}. 
-                                  Los datos de autenticación se conservarán por seguridad.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
-                                  Eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
+                       <div className="flex justify-between items-start mb-2">
+                         <div className="flex-1">
+                           <h4 className="font-medium text-foreground">{user.full_name}</h4>
+                           <p className="text-sm text-muted-foreground">{user.email}</p>
+                           {user.phone && (
+                             <p className="text-xs text-muted-foreground">{user.phone}</p>
+                           )}
+                           
+                           {/* Sección de contraseña */}
+                           <div className="flex items-center gap-2 mt-2">
+                             <p className="text-xs text-muted-foreground">
+                               Contraseña: {getDisplayPassword(user.id)}
+                             </p>
+                             <Button
+                               size="sm"
+                               variant="ghost"
+                               onClick={() => togglePasswordVisibility(user.id)}
+                               className="h-5 w-5 p-0"
+                             >
+                               {showPasswords[user.id] ? 
+                                 <EyeOff className="h-3 w-3" /> : 
+                                 <Eye className="h-3 w-3" />
+                               }
+                             </Button>
+                           </div>
+                         </div>
+                         <Badge variant={getRoleBadgeVariant(user.role)}>
+                           {translateRole(user.role)}
+                         </Badge>
+                       </div>
+                       
+                       <Separator className="my-3" />
+                       
+                       <div className="flex justify-between items-center">
+                         <div className="text-xs text-muted-foreground">
+                           Creado: {new Date(user.created_at).toLocaleDateString()}
+                         </div>
+                         <div className="flex gap-1">
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => startEdit(user)}
+                             title="Editar usuario"
+                           >
+                             <Edit className="h-3 w-3" />
+                           </Button>
+                           <Button
+                             size="sm"
+                             variant="outline"
+                             onClick={() => {
+                               setPasswordChangeUser(user);
+                               setIsPasswordDialogOpen(true);
+                             }}
+                             title="Cambiar contraseña"
+                           >
+                             <Key className="h-3 w-3" />
+                           </Button>
+                           <AlertDialog>
+                             <AlertDialogTrigger asChild>
+                               <Button size="sm" variant="outline" title="Eliminar usuario">
+                                 <Trash2 className="h-3 w-3" />
+                               </Button>
+                             </AlertDialogTrigger>
+                             <AlertDialogContent>
+                               <AlertDialogHeader>
+                                 <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                                 <AlertDialogDescription>
+                                   Esta acción eliminará el perfil de {user.full_name}. 
+                                   Los datos de autenticación se conservarán por seguridad.
+                                 </AlertDialogDescription>
+                               </AlertDialogHeader>
+                               <AlertDialogFooter>
+                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                 <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
+                                   Eliminar
+                                 </AlertDialogAction>
+                               </AlertDialogFooter>
+                             </AlertDialogContent>
+                           </AlertDialog>
+                         </div>
+                       </div>
                     </CardContent>
                   </Card>
                 ))}
@@ -510,6 +613,52 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Diálogo para cambiar contraseña */}
+      <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Cambiar Contraseña</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Usuario</Label>
+              <p className="text-sm text-muted-foreground">
+                {passwordChangeUser?.full_name} ({passwordChangeUser?.email})
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="new_password">Nueva Contraseña</Label>
+              <Input
+                id="new_password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                autoComplete="new-password"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsPasswordDialogOpen(false);
+                  setPasswordChangeUser(null);
+                  setNewPassword('');
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleChangePassword}
+                disabled={!newPassword || newPassword.length < 6 || loading}
+              >
+                {loading ? 'Cambiando...' : 'Cambiar Contraseña'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

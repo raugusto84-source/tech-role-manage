@@ -4121,6 +4121,10 @@ export type Database = {
         Args: { base_date: string; cutoff_weekday: number }
         Returns: string
       }
+      change_user_password: {
+        Args: { p_user_id: string; p_new_password: string }
+        Returns: Json
+      }
       check_and_award_achievements: {
         Args: Record<PropertyKey, never>
         Returns: undefined
