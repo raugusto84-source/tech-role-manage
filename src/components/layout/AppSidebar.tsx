@@ -86,6 +86,7 @@ export function AppSidebar() {
         return [
           { title: 'Panel Cliente', url: '/client', icon: Home },
           { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Mis Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Historial', url: '/history', icon: FileText },
         ];
       default:
