@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TimeClockWidget } from '@/components/timetracking/TimeClockWidget';
+import { TechnicianPresencePanel } from '@/components/timetracking/TechnicianPresencePanel';
 import { WeeklyTimeReport } from '@/components/timetracking/WeeklyTimeReport';
 
 /**
@@ -163,9 +164,16 @@ export default function Dashboard() {
           </Card>
         </div>
 
+        {/* Panel de presencia de técnicos - Solo para administradores */}
+        {profile?.role === 'administrador' && (
+          <div className="lg:col-span-1">
+            <TechnicianPresencePanel />
+          </div>
+        )}
+
         {/* Sección de reportes semanales - Solo para administradores y supervisores */}
         {showTimeReports && (
-          <div>
+          <div className="lg:col-span-full">
             <h2 className="text-2xl font-semibold mb-4">Reportes de Tiempo</h2>
             <WeeklyTimeReport />
           </div>
