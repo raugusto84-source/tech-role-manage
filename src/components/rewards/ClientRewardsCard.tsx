@@ -175,36 +175,36 @@ export function ClientRewardsCard() {
   }
 
   return (
-    <Card className="overflow-hidden bg-gradient-to-br from-card to-primary/5 border-primary/20 shadow-lg">
-      <CardHeader className="bg-gradient-primary text-white">
-        <CardTitle className="flex items-center gap-2 text-white">
-          <Gift className="h-5 w-5" />
+    <Card className="overflow-hidden bg-gradient-to-br from-card to-primary/5 border-primary/20 shadow-md compact-card">
+      <CardHeader className="bg-gradient-primary text-white py-3 px-4">
+        <CardTitle className="flex items-center gap-2 text-white text-base">
+          <Gift className="h-4 w-4" />
           Recompensas y Bonos
         </CardTitle>
-        <CardDescription className="text-white/90">
+        <CardDescription className="text-white/90 text-xs">
           Gana cashback y obtén descuentos especiales
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-4 p-4">
         {/* Cashback Balance */}
-        <div className="text-center p-6 bg-gradient-to-br from-success/10 to-success/20 rounded-xl border border-success/30">
-          <div className="text-3xl font-bold text-success mb-2">
+        <div className="text-center p-4 bg-gradient-to-br from-success/10 to-success/20 rounded-lg border border-success/30">
+          <div className="text-2xl font-bold text-success mb-1">
             {formatCurrency(rewards?.total_cashback || 0)}
           </div>
-          <p className="text-sm text-success-foreground font-medium">Cashback disponible</p>
+          <p className="text-xs text-success-foreground font-medium">Cashback disponible</p>
         </div>
 
         {/* New Client Discount */}
         {rewards?.is_new_client && !rewards?.new_client_discount_used && (
-          <div className="p-4 bg-gradient-to-r from-warning/10 to-warning/20 rounded-xl border border-warning/30 animate-fade-in">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-warning rounded-full flex items-center justify-center">
-                <Star className="h-5 w-5 text-warning-foreground" />
+          <div className="p-3 bg-gradient-to-r from-warning/10 to-warning/20 rounded-lg border border-warning/30 animate-fade-in">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-warning rounded-full flex items-center justify-center">
+                <Star className="h-4 w-4 text-warning-foreground" />
               </div>
               <div>
-                <span className="font-bold text-warning-foreground text-lg">¡Bienvenido!</span>
-                <p className="text-sm text-warning-foreground/80">
-                  Tienes un <strong>50% de descuento</strong> en tu primer servicio.
+                <span className="font-bold text-warning-foreground text-sm">¡Bienvenido!</span>
+                <p className="text-xs text-warning-foreground/80">
+                  <strong>50% descuento</strong> en tu primer servicio.
                 </p>
               </div>
             </div>
@@ -215,8 +215,8 @@ export function ClientRewardsCard() {
 
         {/* Referral System */}
         <div>
-          <h3 className="flex items-center gap-2 font-bold mb-4 text-foreground">
-            <Users className="h-5 w-5 text-primary" />
+          <h3 className="flex items-center gap-2 font-bold mb-3 text-foreground text-sm">
+            <Users className="h-4 w-4 text-primary" />
             Sistema de Referencias
           </h3>
           

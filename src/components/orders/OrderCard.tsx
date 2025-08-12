@@ -72,33 +72,33 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   return (
     <Card 
-      className={`hover:shadow-lg transition-all cursor-pointer border-l-4 ${
+      className={`hover:shadow-md transition-all cursor-pointer border-l-4 compact-card ${
         order.status === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
       }`}
       onClick={onClick}
     >
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg font-semibold text-foreground">
+            <CardTitle className="text-base font-semibold text-foreground truncate">
               {order.order_number}
             </CardTitle>
             {order.unread_messages_count != null && order.unread_messages_count > 0 && (
               <div className="relative">
-                <MessageCircle className="h-5 w-5 text-blue-600" />
+                <MessageCircle className="h-4 w-4 text-blue-600" />
                 <Badge 
                   variant="destructive" 
-                  className="absolute -top-2 -right-2 h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
+                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
                 >
                   {order.unread_messages_count}
                 </Badge>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(order.status)}>
+          <div className="flex items-center gap-1">
+            <Badge className={`${getStatusColor(order.status)} text-xs`}>
               {order.status === 'pendiente_aprobacion' 
                 ? 'PENDIENTE APROBACIÓN' 
                 : order.status.replace('_', ' ').toUpperCase()}
@@ -115,97 +115,63 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             )}
           </div>
         </div>
-        <p className="text-sm text-muted-foreground font-medium">
+        <p className="text-xs text-muted-foreground font-medium truncate mt-1">
           {order.clients?.name || 'Cliente no especificado'}
         </p>
       </CardHeader>
       
-      <CardContent className="space-y-3">
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Wrench className="h-4 w-4 mr-2 text-primary" />
+      <CardContent className="space-y-2 px-3 pb-3">
+        <div className="flex items-center text-xs text-muted-foreground">
+          <Wrench className="h-3 w-3 mr-2 text-primary flex-shrink-0" />
           <span className="truncate">
             {order.service_types?.name || 'Servicio no especificado'}
           </span>
         </div>
         
-        <div className="flex items-center text-sm text-muted-foreground">
-          <Calendar className="h-4 w-4 mr-2 text-primary" />
-          <div className="flex flex-col">
-            <span>Entrega: {formatDate(order.delivery_date)}</span>
-            {order.average_service_time && order.created_at && (
-              <span className="text-xs text-blue-600 font-medium">
-                Hora estimada: {(() => {
-                  const primarySchedule = {
-                    work_days: [1, 2, 3, 4, 5],
-                    start_time: '08:00',
-                    end_time: '17:00',
-                    break_duration_minutes: 60
-                  };
-                  
-                  // Simular items de orden para el cálculo
-                  const mockOrderItems = [{
-                    id: 'mock',
-                    estimated_hours: order.average_service_time,
-                    shared_time: false,
-                    status: 'pendiente' as const
-                  }];
-                  
-                  const { deliveryTime } = calculateAdvancedDeliveryDate({
-                    orderItems: mockOrderItems,
-                    primaryTechnicianSchedule: primarySchedule,
-                    creationDate: new Date(order.created_at)
-                  });
-                  return deliveryTime;
-                })()}
-              </span>
-            )}
+        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center">
+            <Calendar className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
+            <span className="truncate">{formatDate(order.delivery_date)}</span>
           </div>
+          
+          {order.clients?.client_number && (
+            <div className="flex items-center">
+              <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
+              <span className="truncate">{order.clients.client_number}</span>
+            </div>
+          )}
         </div>
-        
-        {order.clients?.client_number && (
-          <div className="flex items-center text-sm text-muted-foreground">
-            <User className="h-4 w-4 mr-2 text-primary" />
-            <span className="truncate">{order.clients.client_number}</span>
-          </div>
-        )}
 
-        {/* Técnico principal */}
-        {order.technician_profile && (
-          <div className="flex items-center text-sm text-muted-foreground">
-            <User className="h-4 w-4 mr-2 text-primary" />
-            <span className="truncate">Técnico: {order.technician_profile.full_name}</span>
-          </div>
-        )}
-
-        {/* Técnicos de apoyo */}
-        {order.support_technicians && order.support_technicians.length > 0 && (
-          <div className="flex items-center text-sm text-muted-foreground">
-            <Users className="h-4 w-4 mr-2 text-primary" />
+        {/* Técnicos - versión compacta */}
+        {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
+          <div className="flex items-center text-xs text-muted-foreground">
+            <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
             <span className="truncate">
-              Apoyo: {order.support_technicians.map(tech => 
-                tech.profiles?.full_name || 'Sin nombre'
-              ).join(', ')}
+              {order.technician_profile?.full_name}
+              {order.support_technicians && order.support_technicians.length > 0 && 
+                ` +${order.support_technicians.length} apoyo`
+              }
             </span>
           </div>
         )}
         
-        <div className="flex justify-between items-center text-sm">
+        <div className="flex justify-between items-center text-xs">
           {order.estimated_cost && (
             <div className="flex items-center text-muted-foreground">
-              <DollarSign className="h-4 w-4 mr-1 text-primary" />
+              <DollarSign className="h-3 w-3 mr-1 text-primary" />
               <span>${order.estimated_cost.toLocaleString()}</span>
             </div>
           )}
           
           {order.average_service_time && (
             <div className="flex items-center text-muted-foreground">
-              <Clock className="h-4 w-4 mr-1 text-primary" />
+              <Clock className="h-3 w-3 mr-1 text-primary" />
               <span>{formatTime(order.average_service_time)}</span>
             </div>
           )}
         </div>
         
-        <p className="text-sm text-muted-foreground line-clamp-2">
+        <p className="text-xs text-muted-foreground line-clamp-2">
           {order.failure_description}
         </p>
       </CardContent>

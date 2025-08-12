@@ -237,8 +237,47 @@ All colors MUST be HSL.
 
   /* Gradients */
   .gradient-primary {
-    background: var(--gradient-primary);
+  background: var(--gradient-primary);
+}
+
+/* Mobile-optimized cards */
+.compact-card {
+  @apply shadow-sm border border-border/50;
+}
+
+.compact-card .card-header {
+  @apply py-2 px-3;
+}
+
+.compact-card .card-content {
+  @apply py-2 px-3;
+}
+
+.compact-card .card-footer {
+  @apply py-2 px-3;
+}
+
+/* Mobile touch targets */
+@media (max-width: 768px) {
+  .compact-card {
+    @apply text-sm;
   }
+  
+  .compact-card h1,
+  .compact-card h2,
+  .compact-card h3,
+  .compact-card h4 {
+    @apply text-sm font-medium;
+  }
+  
+  .compact-card .badge {
+    @apply text-xs px-1.5 py-0.5;
+  }
+  
+  .compact-card .button {
+    @apply text-xs h-8 px-2;
+  }
+}
   
   .gradient-success {
     background: var(--gradient-success);

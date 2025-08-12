@@ -137,28 +137,28 @@ export function TechnicianOrderCard({
 
   return (
     <Card 
-      className="hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] border-l-4 border-l-primary"
+      className="compact-card hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.98] border-l-4 border-l-primary"
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        {/* Header con número de orden y estado */}
-        <div className="flex items-start justify-between mb-3">
+      <CardContent className="p-3">
+        {/* Header compacto */}
+        <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate">
+            <h3 className="font-semibold text-sm truncate">
               {order.order_number}
             </h3>
-            <p className="text-sm text-muted-foreground">
-              Creada: {formatDate(order.created_at)}
+            <p className="text-xs text-muted-foreground">
+              {formatDate(order.created_at)}
             </p>
           </div>
-          <div className="flex items-center gap-2 ml-2">
+          <div className="flex items-center gap-1 ml-2">
             <Badge 
-              className={`text-xs px-2 py-1 ${getStatusColor(order.status)}`}
+              className={`text-xs px-1.5 py-0.5 ${getStatusColor(order.status)}`}
               variant="outline"
             >
               {getStatusLabel(order.status)}
             </Badge>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
           </div>
         </div>
 
