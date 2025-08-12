@@ -1,9 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { TimeClockWidget } from '@/components/timetracking/TimeClockWidget';
 import { TechnicianPresencePanel } from '@/components/timetracking/TechnicianPresencePanel';
 import { WeeklyTimeReport } from '@/components/timetracking/WeeklyTimeReport';
+import { RewardsAdminPanel } from '@/components/rewards/RewardsAdminPanel';
 
 /**
  * Dashboard principal personalizado por rol
@@ -164,15 +166,33 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Panel de presencia de técnicos - Solo para administradores */}
+        {/* Paneles administrativos con tabs - Solo para administradores */}
         {profile?.role === 'administrador' && (
-          <div className="lg:col-span-1">
-            <TechnicianPresencePanel />
+          <div className="lg:col-span-full">
+            <Tabs defaultValue="presence" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="presence">Presencia Empleados</TabsTrigger>
+                <TabsTrigger value="reports">Reportes de Tiempo</TabsTrigger>
+                <TabsTrigger value="rewards">Sistema de Recompensas</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="presence">
+                <TechnicianPresencePanel />
+              </TabsContent>
+              
+              <TabsContent value="reports">
+                <WeeklyTimeReport />
+              </TabsContent>
+              
+              <TabsContent value="rewards">
+                <RewardsAdminPanel />
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
-        {/* Sección de reportes semanales - Solo para administradores y supervisores */}
-        {showTimeReports && (
+        {/* Sección de reportes semanales - Para supervisores */}
+        {profile?.role === 'supervisor' && (
           <div className="lg:col-span-full">
             <h2 className="text-2xl font-semibold mb-4">Reportes de Tiempo</h2>
             <WeeklyTimeReport />

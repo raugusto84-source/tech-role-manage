@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, RefreshCw, Gift, FileText, ClipboardList } from "lucide-react";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
+import { ClientRewardsCard } from "@/components/rewards/ClientRewardsCard";
 
 // Tipos locales para órdenes y cotizaciones (ligeros para no depender de types.ts)
 interface Order {
@@ -346,33 +347,9 @@ export default function ClientDashboard() {
         </Card>
       </section>
 
-      {/* Bonos y recompensas (placeholder visual) */}
+      {/* Sistema de Recompensas */}
       <section className="mt-6">
-        <Card className="border-dashed">
-          <CardHeader className="flex-row items-center justify-between">
-            <div>
-              <CardTitle>Bonos y Recompensas</CardTitle>
-              <p className="text-sm text-muted-foreground">Programa de puntos y beneficios</p>
-            </div>
-            <Gift className="opacity-70" />
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm text-muted-foreground">Tus puntos</p>
-                <p className="text-2xl font-bold">—</p>
-              </div>
-              <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm text-muted-foreground">Nivel</p>
-                <p className="text-2xl font-bold">—</p>
-              </div>
-              <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm text-muted-foreground">Beneficios</p>
-                <p className="text-2xl font-bold">Próximamente</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <ClientRewardsCard />
       </section>
 
       {/* Dialog para nueva solicitud */}
