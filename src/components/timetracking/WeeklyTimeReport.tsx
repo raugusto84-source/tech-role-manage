@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { formatHoursAndMinutes, formatHoursCompact } from '@/utils/timeUtils';
 
 interface Employee {
   id: string;
@@ -209,9 +210,9 @@ export function WeeklyTimeReport() {
       ['Empleado', 'Horas Totales', 'Horas Regulares', 'Horas Extra', 'Días Trabajados'],
       ...reports.map(report => [
         report.employee_name,
-        report.total_hours.toString(),
-        report.regular_hours.toString(),
-        report.overtime_hours.toString(),
+        formatHoursCompact(report.total_hours),
+        formatHoursCompact(report.regular_hours),
+        formatHoursCompact(report.overtime_hours),
         report.days_worked.toString()
       ])
     ].map(row => row.join(',')).join('\n');
@@ -348,21 +349,21 @@ export function WeeklyTimeReport() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold">{summary.totalHours.toFixed(1)}h</div>
+              <div className="text-2xl font-bold">{formatHoursAndMinutes(summary.totalHours)}</div>
               <div className="text-sm text-muted-foreground">Horas Totales</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold">{summary.totalRegular.toFixed(1)}h</div>
+              <div className="text-2xl font-bold">{formatHoursAndMinutes(summary.totalRegular)}</div>
               <div className="text-sm text-muted-foreground">Horas Regulares</div>
             </CardContent>
           </Card>
           
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold">{summary.totalOvertime.toFixed(1)}h</div>
+              <div className="text-2xl font-bold">{formatHoursAndMinutes(summary.totalOvertime)}</div>
               <div className="text-sm text-muted-foreground">Horas Extra</div>
             </CardContent>
           </Card>
@@ -403,24 +404,24 @@ export function WeeklyTimeReport() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {report.total_hours.toFixed(1)}h
+                      {formatHoursAndMinutes(report.total_hours)}
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {report.regular_hours.toFixed(1)}h
+                      {formatHoursAndMinutes(report.regular_hours)}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {report.overtime_hours > 0 ? (
                         <Badge variant="secondary">
-                          {report.overtime_hours.toFixed(1)}h
+                          {formatHoursAndMinutes(report.overtime_hours)}
                         </Badge>
                       ) : (
-                        <span className="text-muted-foreground">0h</span>
+                        <span className="text-muted-foreground">0h 0m</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right font-mono">
                       {report.days_worked > 0 
-                        ? (report.total_hours / report.days_worked).toFixed(1) 
-                        : '0'}h
+                        ? formatHoursAndMinutes(report.total_hours / report.days_worked)
+                        : '0h 0m'}
                     </TableCell>
                   </TableRow>
                 ))}

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { formatHoursAndMinutes } from '@/utils/timeUtils';
 
 interface Location {
   lat: number;
@@ -258,7 +259,7 @@ export function TimeClockWidget() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm">Total:</span>
                   <span className="font-mono font-semibold">
-                    {currentRecord.total_hours ? `${currentRecord.total_hours.toFixed(2)}h` : '0h'}
+                    {currentRecord.total_hours ? formatHoursAndMinutes(currentRecord.total_hours) : '0h 0m'}
                   </span>
                 </div>
               </>
