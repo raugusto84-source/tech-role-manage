@@ -283,6 +283,13 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
       setIsPasswordDialogOpen(false);
       setPasswordChangeUser(null);
       setNewPassword('');
+      
+      // Clear password visibility state
+      setShowPasswords(prev => ({
+        ...prev,
+        change_password: false
+      }));
+      
       toast({
         title: 'Contraseña actualizada',
         description: `Contraseña de ${passwordChangeUser.full_name} actualizada exitosamente`

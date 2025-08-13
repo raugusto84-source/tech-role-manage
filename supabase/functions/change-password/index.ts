@@ -81,9 +81,12 @@ serve(async (req) => {
     );
 
     // Update the user's password
-    const { error: updateError } = await adminSupabase.auth.admin.updateUserById(
+    const { data: updateData, error: updateError } = await adminSupabase.auth.admin.updateUserById(
       userId,
-      { password: newPassword }
+      { 
+        password: newPassword,
+        email_confirm: true // Ensure email is confirmed to avoid auth issues
+      }
     );
 
     if (updateError) {
@@ -92,6 +95,7 @@ serve(async (req) => {
     }
 
     console.log(`Password updated successfully for user ${userId} by admin ${user.id}`);
+    console.log(`Update result:`, updateData);
 
     return new Response(
       JSON.stringify({ 
