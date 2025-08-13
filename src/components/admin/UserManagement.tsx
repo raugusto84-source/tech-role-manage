@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Edit, Trash2, UserCircle, Search, Eye, EyeOff, Key } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 // Tipos para TypeScript
@@ -622,6 +622,9 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Cambiar Contraseña</DialogTitle>
+            <DialogDescription>
+              Actualizar la contraseña del usuario seleccionado. La nueva contraseña debe tener al menos 6 caracteres.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
