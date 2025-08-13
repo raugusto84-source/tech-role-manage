@@ -645,8 +645,8 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
               <div className="relative">
                 <Input
                   id="new_password"
-                  type={showPasswords['change_password'] ? 'text' : 'password'}
-                  value={newPassword}
+                   type={showPasswords['change_password'] ? 'text' : 'password'}
+                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Mínimo 6 caracteres"
                   autoComplete="new-password"
@@ -657,10 +657,13 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                   variant="ghost"
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPasswords(prev => ({
-                    ...prev,
-                    change_password: !prev.change_password
-                  }))}
+                   onClick={() => {
+                     console.log('Toggle clicked, current state:', showPasswords['change_password']);
+                     setShowPasswords(prev => ({
+                       ...prev,
+                       change_password: !prev.change_password
+                     }));
+                   }}
                 >
                   {showPasswords['change_password'] ? (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />
