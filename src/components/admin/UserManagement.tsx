@@ -483,13 +483,35 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
               {!editingUser && (
                 <div>
                   <Label htmlFor="password">Contraseña</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    placeholder="Mínimo 6 caracteres"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPasswords['create_user'] ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Mínimo 6 caracteres"
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => {
+                        console.log('Create user password toggle clicked, current state:', showPasswords['create_user']);
+                        setShowPasswords(prev => ({
+                          ...prev,
+                          create_user: !prev.create_user
+                        }));
+                      }}
+                    >
+                      {showPasswords['create_user'] ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
               <div className="flex justify-end gap-2">
