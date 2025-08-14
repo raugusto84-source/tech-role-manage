@@ -126,6 +126,17 @@ export function TimeClockWidget() {
 
   const startCamera = async () => {
     try {
+      // Verificar disponibilidad de la API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('La cámara no está disponible en este dispositivo o navegador');
+      }
+
+      // Verificar permisos
+      const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
+      if (permission.state === 'denied') {
+        throw new Error('Permisos de cámara denegados. Por favor, habilite los permisos de cámara en su navegador.');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'user', // Cámara frontal
@@ -133,15 +144,31 @@ export function TimeClockWidget() {
           height: { ideal: 480 }
         } 
       });
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setShowCamera(true);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accediendo a la cámara:', error);
+      
+      let errorMessage = "No se pudo acceder a la cámara";
+      
+      if (error.name === 'NotAllowedError') {
+        errorMessage = "Permisos de cámara denegados. Por favor, habilite los permisos de cámara.";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = "No se encontró cámara en el dispositivo.";
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = "La cámara no es compatible con este navegador.";
+      } else if (error.name === 'NotReadableError') {
+        errorMessage = "La cámara está siendo usada por otra aplicación.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       toast({
         title: "Error de cámara",
-        description: "No se pudo acceder a la cámara",
+        description: errorMessage,
         variant: "destructive"
       });
     }
