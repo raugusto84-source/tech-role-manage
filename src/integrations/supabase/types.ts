@@ -3458,8 +3458,10 @@ export type Database = {
       time_records: {
         Row: {
           check_in_location: Json | null
+          check_in_photo_url: string | null
           check_in_time: string | null
           check_out_location: Json | null
+          check_out_photo_url: string | null
           check_out_time: string | null
           created_at: string
           employee_id: string
@@ -3472,8 +3474,10 @@ export type Database = {
         }
         Insert: {
           check_in_location?: Json | null
+          check_in_photo_url?: string | null
           check_in_time?: string | null
           check_out_location?: Json | null
+          check_out_photo_url?: string | null
           check_out_time?: string | null
           created_at?: string
           employee_id: string
@@ -3486,8 +3490,10 @@ export type Database = {
         }
         Update: {
           check_in_location?: Json | null
+          check_in_photo_url?: string | null
           check_in_time?: string | null
           check_out_location?: Json | null
+          check_out_photo_url?: string | null
           check_out_time?: string | null
           created_at?: string
           employee_id?: string
