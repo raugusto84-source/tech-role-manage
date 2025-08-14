@@ -58,14 +58,17 @@ export function TimeClockWidget() {
         .eq('employee_id', user.id)
         .eq('work_date', today)
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(1)
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading today record:', error);
+        throw error;
+      }
       
-      // Si hay registros, tomar el más reciente
-      const latestRecord = data && data.length > 0 ? data[0] : null;
-      setCurrentRecord(latestRecord);
-    } catch (error) {
+      console.log('Loaded today record:', data);
+      setCurrentRecord(data);
+    } catch (error: any) {
       console.error('Error loading today record:', error);
       toast({
         title: "Error",
@@ -284,10 +287,18 @@ export function TimeClockWidget() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
+      console.log('Check-in successful, data received:', data);
       setCurrentRecord(data);
       setCapturedPhoto(null);
+      
+      // Recargar el registro para asegurar el estado correcto
+      await loadTodayRecord();
+      
       toast({
         title: "Entrada registrada",
         description: `Registrado a las ${currentTime.toLocaleTimeString()} con foto y ubicación`,
@@ -357,10 +368,18 @@ export function TimeClockWidget() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
+      console.log('Check-out successful, data received:', data);
       setCurrentRecord(data);
       setCapturedPhoto(null);
+      
+      // Recargar el registro para asegurar el estado correcto
+      await loadTodayRecord();
+      
       toast({
         title: "Salida registrada",
         description: `Registrado a las ${currentTime.toLocaleTimeString()} con foto y ubicación`,

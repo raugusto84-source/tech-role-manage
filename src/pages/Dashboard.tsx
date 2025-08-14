@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { TimeClockWidget } from '@/components/timetracking/TimeClockWidget';
+import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { TechnicianPresencePanel } from '@/components/timetracking/TechnicianPresencePanel';
 import { WeeklyTimeReport } from '@/components/timetracking/WeeklyTimeReport';
 import { RewardsAdminPanel } from '@/components/rewards/RewardsAdminPanel';
@@ -106,8 +106,8 @@ export default function Dashboard() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Widget de control de horarios - Solo para empleados */}
           {showTimeTracking && (
-            <div className="lg:col-span-1">
-              <TimeClockWidget />
+            <div className="lg:col-span-3">
+              <PersonalTimeClockPanel />
             </div>
           )}
 
