@@ -136,13 +136,6 @@ export function TimeClockWidget() {
       setHistoryLoading(false);
     }
   };
-    } catch (e) {
-      console.error('Historial error:', e);
-      toast({ title: 'Error cargando historial', description: 'Intenta de nuevo', variant: 'destructive' });
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
 
   // ===== GPS =====
   const resolveAddress = async (lat: number, lng: number): Promise<string | undefined> => {
