@@ -462,7 +462,7 @@ export function TimeClockWidget() {
         )}
 
         {/* ===== Diálogo de historial ===== */}
-        <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <Dialog open={historyOpen} onOpenChange={setHistoryOpen} modal={false}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>Historial de registros</DialogTitle>
@@ -488,7 +488,7 @@ export function TimeClockWidget() {
                     <TableRow><TableCell colSpan={6}>Sin registros</TableCell></TableRow>
                   ) : (
                     history.map((r) => (
-                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedRecord(r); setRecordDialogOpen(true); }}>
+                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedRecord(r); setRecordDialogOpen(true); setHistoryOpen(false); }}>
                         <TableCell>{new Date(r.work_date || r.check_in_time).toLocaleDateString('es-ES')}</TableCell>
                         <TableCell>{fmtTime(r.check_in_time)}</TableCell>
                         <TableCell>{fmtTime(r.check_out_time)}</TableCell>
