@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -31,156 +31,179 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [shouldRedirectAfterProfile, setShouldRedirectAfterProfile] = useState(false);
+
+  // Redirige cuando ya tenemos perfil listo y nos lo solicitaron
+  useEffect(() => {
+    if (!shouldRedirectAfterProfile || !profile) return;
+    if (profile.role === 'cliente') {
+      window.location.href = '/client';
+    } else {
+      window.location.href = '/dashboard';
+    }
+    setShouldRedirectAfterProfile(false);
+  }, [shouldRedirectAfterProfile, profile]);
 
   useEffect(() => {
-    console.log('useAuth: Setting up auth listener');
-    
-    // Set up auth state listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('useAuth: Auth state changed:', event, session?.user?.email);
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          console.log('useAuth: User found, loading profile for:', session.user.id, session.user.email);
-          // Defer profile fetch to avoid deadlock
-          setTimeout(async () => {
-            try {
-              console.log('useAuth: Fetching profile for user:', session.user.id);
-              const { data: profileData, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('user_id', session.user.id)
-                .maybeSingle();
-              
-              if (error) {
-                console.error('useAuth: Error fetching profile:', error);
-                toast({
-                  title: "Error al cargar perfil",
-                  description: `Error: ${error.message}`,
-                  variant: "destructive",
-                });
-              } else if (profileData) {
-                console.log('useAuth: Profile loaded successfully:', profileData);
-                setProfile(profileData);
-              } else {
-                console.log('useAuth: No profile found, creating one...');
-                // If no profile exists, create one for the user
-                const { data: newProfile, error: createError } = await supabase
-                  .from('profiles')
-                  .insert({
-                    user_id: session.user.id,
-                    email: session.user.email || '',
-                    full_name: session.user.user_metadata?.full_name || 'Usuario',
-                    role: (session.user.user_metadata?.role as UserRole) || 'cliente'
-                  })
-                  .select()
-                  .single();
-                
-                if (createError) {
-                  console.error('useAuth: Error creating profile:', createError);
-                  toast({
-                    title: "Error al crear perfil",
-                    description: `Error: ${createError.message}`,
-                    variant: "destructive",
-                  });
-                } else {
-                  console.log('useAuth: New profile created successfully:', newProfile);
-                  setProfile(newProfile);
-                  toast({
-                    title: "Perfil creado",
-                    description: "Se ha creado tu perfil de usuario",
-                    variant: "default",
-                  });
-                }
-              }
-            } catch (error) {
-              console.error('useAuth: Unexpected error loading profile:', error);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      setSession(newSession ?? null);
+      setUser(newSession?.user ?? null);
+
+      if (newSession?.user) {
+        // Carga/crea perfil
+        try {
+          const uid = newSession.user.id;
+          const userEmail = newSession.user.email || '';
+          const fullName = (newSession.user.user_metadata?.full_name as string) || 'Usuario';
+          const role = (newSession.user.user_metadata?.role as UserRole) || 'cliente';
+
+          const { data: profileData, error: selErr } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', uid)
+            .maybeSingle();
+
+          if (selErr) {
+            // Error de lectura de perfil: informar como tal (no credenciales)
+            console.error('Error select profiles:', selErr);
+            toast({
+              title: 'Error al cargar perfil',
+              description: `No se pudo leer tu perfil. Revisa políticas RLS/tabla "profiles".`,
+              variant: 'destructive',
+            });
+            setProfile(null);
+            setLoading(false);
+            return;
+          }
+
+          if (profileData) {
+            setProfile(profileData);
+          } else {
+            // Crear perfil si no existe
+            const { data: newProf, error: insErr } = await supabase
+              .from('profiles')
+              .insert({
+                user_id: uid,
+                email: userEmail,
+                full_name: fullName,
+                role,
+              })
+              .select()
+              .single();
+
+            if (insErr) {
+              console.error('Error insert profiles:', insErr);
               toast({
-                title: "Error inesperado",
-                description: "Ocurrió un error al cargar el perfil",
-                variant: "destructive",
+                title: 'Error al crear perfil',
+                description: `No se pudo crear tu perfil. Revisa políticas RLS de INSERT.`,
+                variant: 'destructive',
               });
+              setProfile(null);
+              setLoading(false);
+              return;
             }
-          }, 0);
-        } else {
-          console.log('useAuth: No session user found, clearing profile');
+            setProfile(newProf);
+            toast({ title: 'Perfil creado', description: 'Se ha creado tu perfil de usuario.' });
+          }
+        } catch (e) {
+          console.error('Unexpected profile load error:', e);
+          toast({
+            title: 'Error inesperado',
+            description: 'Ocurrió un error al cargar el perfil.',
+            variant: 'destructive',
+          });
           setProfile(null);
         }
-        
-        setLoading(false);
+      } else {
+        setProfile(null);
       }
-    );
 
-    // Check for existing session
-    console.log('useAuth: Checking for existing session');
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('useAuth: Existing session check:', session?.user?.email || 'No session');
-      setSession(session);
-      setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    return () => {
-      console.log('useAuth: Cleaning up auth listener');
-      subscription.unsubscribe();
-    };
+    // Chequeo de sesión al montar
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session ?? null);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      // Nota: el listener también disparará INITIAL_SESSION y hará la carga de perfil
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  const parseAuthError = (msg?: string) => {
+    const m = (msg || '').toLowerCase();
+    if (m.includes('email not confirmed') || m.includes('confirm')) {
+      return 'Tu correo no está confirmado. Revisa tu bandeja o solicita reenvío.';
+    }
+    if (m.includes('invalid login') || m.includes('invalid credentials') || m.includes('invalid email or password')) {
+      return 'Email o contraseña incorrectos. Verifica e intenta de nuevo.';
+    }
+    return msg || 'No se pudo iniciar sesión.';
+  };
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // Sanitiza entradas (muy importante en móvil)
+    const emailClean = (email || '').trim().toLowerCase();
+    const passwordClean = (password || '').trim();
+
+    // Si usas Bot Protection (Turnstile/hCaptcha), aquí obtén el token y mándalo en options.captchaToken
+    // const captchaToken = await getCaptchaTokenSomehow();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: emailClean,
+      password: passwordClean,
+      // options: { captchaToken }
     });
 
     if (error) {
       toast({
-        title: "Error al iniciar sesión",
-        description: error.message,
-        variant: "destructive",
+        title: 'Error al iniciar sesión',
+        description: parseAuthError(error.message),
+        variant: 'destructive',
       });
     } else {
-      // Redirect based on user role after successful login
-      setTimeout(() => {
-        const currentProfile = profile;
-        if (currentProfile?.role === 'cliente') {
-          window.location.href = '/client';
-        } else {
-          window.location.href = '/dashboard';
-        }
-      }, 100);
+      // Marca que redirijamos cuando el perfil ya esté cargado por el listener
+      setShouldRedirectAfterProfile(true);
     }
 
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: UserRole = 'cliente', referralCode?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole = 'cliente',
+    referralCode?: string
+  ) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+    const emailClean = (email || '').trim().toLowerCase();
+    const passwordClean = (password || '').trim();
+
     const { error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: emailClean,
+      password: passwordClean,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
-          role: role,
-          referral_code: referralCode
-        }
-      }
+          role,
+          referral_code: referralCode,
+        },
+      },
     });
 
     if (error) {
       toast({
-        title: "Error al registrarse",
+        title: 'Error al registrarse',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     } else {
       toast({
-        title: "Registro exitoso",
-        description: "Verifica tu email para confirmar tu cuenta",
+        title: 'Registro exitoso',
+        description: 'Verifica tu email para confirmar tu cuenta.',
       });
     }
 
@@ -192,22 +215,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setProfile(null);
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión exitosamente",
-    });
+    setShouldRedirectAfterProfile(false);
+    toast({ title: 'Sesión cerrada', description: 'Has cerrado sesión exitosamente' });
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      profile,
-      loading,
-      signIn,
-      signUp,
-      signOut,
-    }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
@@ -215,8 +228,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }
