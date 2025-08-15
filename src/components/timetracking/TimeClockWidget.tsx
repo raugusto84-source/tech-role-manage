@@ -33,11 +33,13 @@ const mapUrl = (raw?: string | null) => {
 
 const fmtHoursAndMinutes = (hours?: number | null) => {
   if (!hours && hours !== 0) return '—';
-  const total = Math.max(0, hours);
+  const total = Math.max(0, hours ?? 0);
   const h = Math.floor(total);
   const m = Math.round((total - h) * 60);
   return `${h}h ${m}m`;
 };
+
+const BUCKET = 'time-tracking-photos'; // Debe ser PÚBLICO (opción 3)
 
 // ===== Componente principal =====
 export function TimeClockWidget() {
@@ -51,8 +53,9 @@ export function TimeClockWidget() {
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [recordDialogOpen, setRecordDialogOpen] = useState(false);
 
-  // Cámara y foto
-  const [showCamera, setShowCamera] = useState(false);
+  // Cámara sencilla (bucket público)
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [checkType, setCheckType] = useState<'in' | 'out' | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -77,20 +80,20 @@ export function TimeClockWidget() {
     void loadHistory();
   }, [user]);
 
-  // ===== Cleanup cámara =====
+  // Cleanup cámara al desmontar
   useEffect(() => () => stopCamera(), []);
 
-  // ===== Conectar stream al <video> cuando se muestre =====
+  // Conectar stream al <video> al abrir el modal
   useEffect(() => {
-    if (!showCamera || !videoRef.current || !streamRef.current) return;
+    if (!cameraOpen || !videoRef.current || !streamRef.current) return;
     const v = videoRef.current;
-    v.muted = true; // autoplay en iOS
+    v.muted = true;
     v.playsInline = true;
-    // @ts-expect-error: srcObject existe en runtime
+    // @ts-expect-error runtime
     v.srcObject = streamRef.current;
     const p = v.play();
     if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
-  }, [showCamera]);
+  }, [cameraOpen]);
 
   // ===== Supabase: cargar registro de hoy =====
   const loadTodayRecord = async () => {
@@ -120,16 +123,7 @@ export function TimeClockWidget() {
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      const rows = data || [];
-      // Pre-resolver src de fotos (descarga/firmada) para miniaturas de la tabla
-      const rowsWithUrls = await Promise.all(
-        rows.map(async (r) => ({
-          ...r,
-          _in_src: r.check_in_photo_url ? await toRenderableSrc(r.check_in_photo_url) : null,
-          _out_src: r.check_out_photo_url ? await toRenderableSrc(r.check_out_photo_url) : null,
-        }))
-      );
-      setHistory(rowsWithUrls);
+      setHistory(data || []);
     } catch (e) {
       console.error('Historial error:', e);
       toast({ title: 'Error cargando historial', description: 'Intenta de nuevo', variant: 'destructive' });
@@ -175,7 +169,7 @@ export function TimeClockWidget() {
     }
   };
 
-  // ===== Cámara =====
+  // ===== Cámara (simple) =====
   const startCamera = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('La cámara no está disponible en este dispositivo');
@@ -183,39 +177,13 @@ export function TimeClockWidget() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' } } });
       } catch {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
-        } catch {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        }
+        try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } }); }
+        catch { stream = await navigator.mediaDevices.getUserMedia({ video: true }); }
       }
       streamRef.current = stream;
-      setShowCamera(true);
-    } catch (error: any) {
-      toast({ title: '❌ Error de cámara', description: error?.message || 'No se pudo acceder a la cámara', variant: 'destructive' });
-      setLoading(false);
+    } catch (e: any) {
+      throw new Error(e?.message || 'No se pudo acceder a la cámara');
     }
-  };
-
-  const waitForVideoReady = async (video: HTMLVideoElement) => {
-    let tries = 0;
-    while ((video.readyState < video.HAVE_CURRENT_DATA || video.videoWidth === 0) && tries < 20) {
-      await new Promise((r) => setTimeout(r, 100));
-      tries++;
-    }
-  };
-
-  const capturePhoto = async () => {
-    if (!videoRef.current || !canvasRef.current) return null;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    await waitForVideoReady(video);
-    canvas.width = video.videoWidth || 320;
-    canvas.height = video.videoHeight || 240;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.8);
   };
 
   const stopCamera = () => {
@@ -225,136 +193,113 @@ export function TimeClockWidget() {
       // @ts-expect-error
       videoRef.current.srcObject = null;
     }
-    setShowCamera(false);
   };
 
-  const BUCKET = 'time-tracking-photos';
+  const capturePhoto = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return null;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
 
-  // Devuelve URL renderizable: si guardaste una pública y el bucket es privado, intenta firmarla.
-  const toRenderableSrc = async (raw?: string | null): Promise<string | null> => {
-    if (!raw) return null;
-    try {
-      // Caso 1: URL de Supabase Storage -> intentar descargar (privado) y luego firmar
-      const m = raw.match(/\/storage\/v1\/object\/[^/]+\/([^/]+)\/(.+)$/);
-      if (m) {
-        const bucket = m[1];
-        const key = decodeURIComponent(m[2]);
-        // Preferir descarga autenticada (funciona con buckets privados)
-        try {
-          const { data, error } = await supabase.storage.from(bucket).download(key);
-          if (!error && data) return URL.createObjectURL(data);
-        } catch (_) {}
-        // Fallback: URL firmada
-        try {
-          const { data, error } = await supabase.storage.from(bucket).createSignedUrl(key, 60 * 60);
-          if (!error && data?.signedUrl) return data.signedUrl;
-        } catch (_) {}
-        return raw; // último recurso (si fuera público de verdad)
-      }
-
-      // Caso 2: es una ruta/clave interna (no http) en el bucket por defecto
-      if (!/^https?:\/\//i.test(raw)) {
-        try {
-          const { data, error } = await supabase.storage.from(BUCKET).download(raw);
-          if (!error && data) return URL.createObjectURL(data);
-        } catch (_) {}
-        try {
-          const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(raw, 60 * 60);
-          if (!error && data?.signedUrl) return data.signedUrl;
-        } catch (_) {}
-        return supabase.storage.from(BUCKET).getPublicUrl(raw).data.publicUrl;
-      }
-
-      // Caso 3: URL externa normal
-      return raw;
-    } catch {
-      return raw ?? null;
+    // Espera breve a que video tenga dimensiones
+    let tries = 0;
+    while ((video.readyState < video.HAVE_CURRENT_DATA || video.videoWidth === 0) && tries < 20) {
+      await new Promise((r) => setTimeout(r, 100));
+      tries++;
     }
+    canvas.width = video.videoWidth || 320;
+    canvas.height = video.videoHeight || 240;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.8);
   };
 
-  const uploadPhoto = async (dataUrl: string): Promise<string | null> => {
+  const uploadPhotoPublic = async (dataUrl: string): Promise<string | null> => {
     try {
       const blob = await fetch(dataUrl).then((r) => r.blob());
       const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
       const { data, error } = await supabase.storage.from(BUCKET).upload(fileName, blob, { contentType: 'image/jpeg' });
-      if (error) {
-        console.error('Upload error:', error);
-        toast({ title: 'No se pudo subir la foto', description: error.message, variant: 'destructive' });
-        return null;
-      }
-      const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl;
-      // Si es privado, toRenderableSrc la hará visible; aún así devolvemos la pública o el path como fallback
-      return publicUrl || data.path;
+      if (error) throw error;
+      return supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl;
     } catch (e: any) {
-      console.error('Upload exception:', e);
-      toast({ title: 'No se pudo subir la foto', description: e?.message || 'Inténtalo de nuevo', variant: 'destructive' });
+      console.error('Upload error:', e);
+      toast({ title: 'No se pudo subir la foto', description: e?.message || 'Intenta de nuevo', variant: 'destructive' });
       return null;
     }
   };
 
-  // ===== Flujos de check-in / check-out =====
-  const handleCheck = async (type: 'in' | 'out') => {
+  // ===== Guardado (con foto simple a bucket público) =====
+  const beginCheck = async (type: 'in' | 'out') => {
     if (!user) return;
     setLoading(true);
     try {
       const loc = await getCurrentLocation();
       setLocation(loc);
       await startCamera();
-      setLoading(false);
-      toast({ title: type === 'in' ? '📸 Tome una foto' : '📸 Foto de salida', description: 'Posiciónese frente a la cámara' });
+      setCheckType(type);
+      setCameraOpen(true);
     } catch (e: any) {
-      toast({ title: '❌ Error', description: e.message, variant: 'destructive' });
+      toast({ title: '❌ Error', description: e?.message || 'No se pudo iniciar cámara/ubicación', variant: 'destructive' });
+    } finally {
       setLoading(false);
     }
   };
 
-  const saveRecord = async (payload: any) => {
-    const { data, error } = await supabase.from('time_records').upsert(payload).select().single();
-    if (error) {
-      console.error('DB error:', error);
-      toast({ title: 'Error de base de datos', description: error.message, variant: 'destructive' });
-      return null;
+  const confirmCheck = async () => {
+    if (!user || !checkType || !location) return;
+    try {
+      const photo = await capturePhoto();
+      if (!photo) throw new Error('No se pudo capturar la foto');
+      const photoUrl = await uploadPhotoPublic(photo);
+      if (!photoUrl) throw new Error('No se obtuvo URL pública');
+
+      const now = new Date();
+      const base = { employee_id: user.id, work_date: now.toISOString().split('T')[0] };
+
+      if (checkType === 'in') {
+        const payload = {
+          ...base,
+          check_in_time: now.toISOString(),
+          check_in_location: JSON.stringify(location),
+          check_in_photo_url: photoUrl,
+          status: 'checked_in',
+        };
+        const { data, error } = await supabase.from('time_records').insert(payload).select().single();
+        if (error) throw error;
+        setCurrentRecord(data);
+        toast({ title: '✅ Entrada registrada', description: now.toLocaleTimeString('es-ES') });
+      } else {
+        if (!currentRecord?.id) throw new Error('No hay entrada activa');
+        const totalHours = currentRecord?.check_in_time
+          ? (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000
+          : null;
+        const update = {
+          check_out_time: now.toISOString(),
+          check_out_location: JSON.stringify(location),
+          check_out_photo_url: photoUrl,
+          status: 'checked_out',
+          total_hours: totalHours,
+        };
+        const { data, error } = await supabase
+          .from('time_records')
+          .update(update)
+          .eq('id', currentRecord.id)
+          .select()
+          .single();
+        if (error) throw error;
+        setCurrentRecord(data);
+        toast({ title: '✅ Salida registrada', description: now.toLocaleTimeString('es-ES') });
+      }
+      setCameraOpen(false);
+      stopCamera();
+      setCapturedPhoto(photo);
+      setTimeout(loadTodayRecord, 400);
+      void loadHistory();
+    } catch (e: any) {
+      toast({ title: '❌ Error', description: e?.message || 'No se pudo guardar', variant: 'destructive' });
     }
-    setCurrentRecord(data);
-    void loadHistory();
-    return data;
   };
 
-  const confirmCheck = async (type: 'in' | 'out') => {
-    if (!user || !location) {
-      toast({ title: 'Faltan datos', description: 'Ubicación o usuario no disponibles', variant: 'destructive' });
-      return;
-    }
-    if (type === 'out' && !currentRecord?.id) {
-      toast({ title: 'No hay entrada activa', description: 'Primero registra una entrada', variant: 'destructive' });
-      return;
-    }
-    if (!showCamera) {
-      toast({ title: 'Cámara no activa', description: 'Abre la cámara y vuelve a intentar', variant: 'destructive' });
-      return;
-    }
-
-    // Captura obligatoria
-    const photo = await capturePhoto();
-    if (!photo) {
-      toast({ title: 'No se pudo capturar la foto', description: 'Verifica permisos e intenta de nuevo', variant: 'destructive' });
-      return;
-    }
-
-    const photoPublicUrl = await uploadPhoto(photo);
-    if (!photoPublicUrl) {
-      // uploadPhoto ya mostró el toast de error
-      return;
-    }
-
-    // Si llegamos aquí, sí hay foto → cerramos cámara y guardamos
-    stopCamera();
-
-    const now = new Date();
-    const base = {
-      employee_id: user.id,
-      work_date: (currentRecord?.work_date as string) || now.toISOString().split('T')[0],
-    };
   // ===== UI helpers =====
   const canCheckIn = !currentRecord || currentRecord.status === 'checked_out';
   const canCheckOut = currentRecord && currentRecord.status === 'checked_in';
@@ -364,7 +309,6 @@ export function TimeClockWidget() {
     switch (currentRecord.status) {
       case 'checked_in':
         return <Badge className="bg-green-500 text-white">Presente</Badge>;
-        
       case 'checked_out':
         return <Badge variant="secondary">Finalizado</Badge>;
       default:
@@ -378,9 +322,11 @@ export function TimeClockWidget() {
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />Control de Horarios</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => { setHistoryOpen(true); void loadHistory(); }}>
-            Ver historial
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setHistoryOpen(true); void loadHistory(); }}>
+              Ver historial
+            </Button>
+          </div>
         </div>
         <CardDescription>Registra tu entrada y salida diaria</CardDescription>
       </CardHeader>
@@ -411,45 +357,19 @@ export function TimeClockWidget() {
           </div>
         )}
 
-        {/* Cámara */}
-        {showCamera && (
-          <div className="space-y-3 p-4 bg-muted rounded-lg">
-            <div className="relative inline-block">
-              <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full max-w-sm border" />
-              <canvas ref={canvasRef} className="hidden" />
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={() => confirmCheck(canCheckIn ? 'in' : 'out')} className="flex-1">
-                <Camera className="h-4 w-4 mr-2" />Capturar y {canCheckIn ? 'Entrar' : 'Salir'}
-              </Button>
-              <Button variant="outline" onClick={() => { stopCamera(); setLoading(false); setLocation(null); }}>Cancelar</Button>
-            </div>
-          </div>
-        )}
-
         {/* Acciones */}
-        {!showCamera && (
-          <div className="space-y-2">
-            {canCheckIn && (
-              <Button onClick={() => handleCheck('in')} disabled={loading} className="w-full" size="lg">
-                {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />} Registrar Entrada
-              </Button>
-            )}
-            {canCheckOut && (
-              <Button onClick={() => handleCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg">
-                {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />} Registrar Salida
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* Preview instantánea local */}
-        {capturedPhoto && (
-          <div className="text-center">
-            <p className="text-sm font-medium mb-2">Foto capturada:</p>
-            <img src={capturedPhoto} alt="Foto de registro" className="rounded-lg w-32 h-24 object-cover mx-auto border" />
-          </div>
-        )}
+        <div className="space-y-2">
+          {canCheckIn && (
+            <Button onClick={() => beginCheck('in')} disabled={loading} className="w-full" size="lg">
+              {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />} Registrar Entrada
+            </Button>
+          )}
+          {canCheckOut && (
+            <Button onClick={() => beginCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg">
+              {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />} Registrar Salida
+            </Button>
+          )}
+        </div>
 
         {/* Ubicación reciente */}
         {location && (
@@ -462,7 +382,7 @@ export function TimeClockWidget() {
         )}
 
         {/* ===== Diálogo de historial ===== */}
-        <Dialog open={historyOpen} onOpenChange={setHistoryOpen} modal={false}>
+        <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>Historial de registros</DialogTitle>
@@ -472,15 +392,15 @@ export function TimeClockWidget() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Entrada</TableHead>
-                  <TableHead>Salida</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                  <TableHead>Fotos</TableHead>
-                </TableRow>
-              </TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Entrada</TableHead>
+                    <TableHead>Salida</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Ubicación</TableHead>
+                    <TableHead>Fotos</TableHead>
+                  </TableRow>
+                </TableHeader>
                 <TableBody>
                   {historyLoading ? (
                     <TableRow><TableCell colSpan={6}>Cargando…</TableCell></TableRow>
@@ -488,7 +408,11 @@ export function TimeClockWidget() {
                     <TableRow><TableCell colSpan={6}>Sin registros</TableCell></TableRow>
                   ) : (
                     history.map((r) => (
-                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedRecord(r); setRecordDialogOpen(true); setHistoryOpen(false); }}>
+                      <TableRow
+                        key={r.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => { setSelectedRecord(r); setRecordDialogOpen(true); }}
+                      >
                         <TableCell>{new Date(r.work_date || r.check_in_time).toLocaleDateString('es-ES')}</TableCell>
                         <TableCell>{fmtTime(r.check_in_time)}</TableCell>
                         <TableCell>{fmtTime(r.check_out_time)}</TableCell>
@@ -498,23 +422,11 @@ export function TimeClockWidget() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {r._in_src ? (
-                              <img
-                                src={r._in_src}
-                                alt="Entrada"
-                                className="w-12 h-9 object-cover rounded border cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._in_src); }}
-                              />
-                            ) : (
-                              <div className="w-12 h-9 bg-muted rounded" />
-                            )}
-                            {r._out_src ? (
-                              <img
-                                src={r._out_src}
-                                alt="Salida"
-                                className="w-12 h-9 object-cover rounded border cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._out_src); }}
-                              />
+                            {r.check_in_photo_url ? (
+                              <img src={r.check_in_photo_url} alt="Entrada" className="w-12 h-9 object-cover rounded border" onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r.check_in_photo_url); }} />
+                            ) : <div className="w-12 h-9 bg-muted rounded" />}
+                            {r.check_out_photo_url ? (
+                              <img src={r.check_out_photo_url} alt="Salida" className="w-12 h-9 object-cover rounded border" onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r.check_out_photo_url); }} />
                             ) : null}
                           </div>
                         </TableCell>
@@ -532,7 +444,7 @@ export function TimeClockWidget() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialogo de detalle de un registro (flotante aparte) */}
+        {/* Dialogo de detalle de un registro */}
         <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -576,17 +488,33 @@ export function TimeClockWidget() {
                   )}
                 </div>
 
-                {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) ? (
+                {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.check_in_photo_url && (
-                      <PhotoCard label="Foto de entrada" rawUrl={selectedRecord.check_in_photo_url} onPreview={setPhotoPreviewUrl} toRenderableSrc={toRenderableSrc} />
+                      <div className="rounded border p-2">
+                        <div className="text-xs mb-1">Foto de entrada</div>
+                        <img src={selectedRecord.check_in_photo_url} alt="Entrada" className="w-full h-40 object-cover rounded" />
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => setPhotoPreviewUrl(selectedRecord.check_in_photo_url)}>
+                            <Eye className="h-4 w-4 mr-1" /> Ver grande
+                          </Button>
+                          <a className="text-xs underline self-center" href={selectedRecord.check_in_photo_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                        </div>
+                      </div>
                     )}
                     {selectedRecord.check_out_photo_url && (
-                      <PhotoCard label="Foto de salida" rawUrl={selectedRecord.check_out_photo_url} onPreview={setPhotoPreviewUrl} toRenderableSrc={toRenderableSrc} />
+                      <div className="rounded border p-2">
+                        <div className="text-xs mb-1">Foto de salida</div>
+                        <img src={selectedRecord.check_out_photo_url} alt="Salida" className="w-full h-40 object-cover rounded" />
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => setPhotoPreviewUrl(selectedRecord.check_out_photo_url)}>
+                            <Eye className="h-4 w-4 mr-1" /> Ver grande
+                          </Button>
+                          <a className="text-xs underline self-center" href={selectedRecord.check_out_photo_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                        </div>
+                      </div>
                     )}
                   </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">No hay fotos asociadas a este registro.</div>
                 )}
               </div>
             ) : (
@@ -599,7 +527,38 @@ export function TimeClockWidget() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de vista previa de foto */}
+        {/* Modal de cámara (simple) */}
+        <Dialog open={cameraOpen} onOpenChange={(o) => { setCameraOpen(o); if (!o) { stopCamera(); setCapturedPhoto(null); } }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{checkType === 'out' ? 'Foto de salida' : 'Foto de entrada'}</DialogTitle>
+              <DialogDescription>Colócate frente a la cámara y presiona capturar.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3">
+              <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full border" />
+              <canvas ref={canvasRef} className="hidden" />
+              {capturedPhoto && (
+                <img src={capturedPhoto} alt="preview" className="w-full h-40 object-cover rounded border" />
+              )}
+              <div className="flex gap-2">
+                <Button className="flex-1" onClick={async () => {
+                  const p = await capturePhoto();
+                  if (p) setCapturedPhoto(p);
+                }}>
+                  <Camera className="h-4 w-4 mr-2" /> Capturar
+                </Button>
+                <Button variant="outline" onClick={() => { setCameraOpen(false); stopCamera(); setCapturedPhoto(null); }}>Cancelar</Button>
+              </div>
+
+              <Button disabled={!capturedPhoto} onClick={confirmCheck}>
+                Guardar {checkType === 'out' ? 'salida' : 'entrada'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de foto grande */}
         {photoPreviewUrl && (
           <Dialog open={true} onOpenChange={(o) => { if (!o) setPhotoPreviewUrl(null); }}>
             <DialogContent className="max-w-2xl">
@@ -616,39 +575,5 @@ export function TimeClockWidget() {
         )}
       </CardContent>
     </Card>
-  );
-}
-
-// ===== Componente auxiliar para foto con URL firmada si es necesario =====
-function PhotoCard({ label, rawUrl, onPreview, toRenderableSrc }: { label: string; rawUrl: string; onPreview: (u: string) => void; toRenderableSrc: (u?: string | null) => Promise<string | null>; }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    toRenderableSrc(rawUrl).then((u) => { if (alive) { setUrl(u); setLoading(false); } });
-    return () => { alive = false; };
-  }, [rawUrl]);
-
-  return (
-    <div className="rounded border p-2">
-      <div className="text-xs mb-1">{label}</div>
-      {loading ? (
-        <div className="w-full h-32 bg-muted animate-pulse rounded" />
-      ) : url ? (
-        <img src={url} alt={label} className="w-full h-32 object-cover rounded" />
-      ) : (
-        <div className="text-xs text-muted-foreground h-32 flex items-center justify-center">No disponible</div>
-      )}
-      <div className="mt-2 flex gap-2">
-        <Button size="sm" variant="secondary" onClick={() => url && onPreview(url)} disabled={!url}>
-          <Eye className="h-4 w-4 mr-1" /> Ver grande
-        </Button>
-        {url && (
-          <a className="text-xs underline self-center" href={url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
-        )}
-      </div>
-    </div>
   );
 }
