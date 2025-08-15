@@ -120,15 +120,22 @@ export function TimeClockWidget() {
         .limit(20);
       if (error) throw error;
       const rows = data || [];
-      // Pre-firmar URLs de fotos para que se vean en la tabla incluso con bucket privado
+      // Pre-resolver src de fotos (descarga/firmada) para miniaturas de la tabla
       const rowsWithUrls = await Promise.all(
         rows.map(async (r) => ({
           ...r,
-          _in_signed: r.check_in_photo_url ? await toRenderableUrl(r.check_in_photo_url) : null,
-          _out_signed: r.check_out_photo_url ? await toRenderableUrl(r.check_out_photo_url) : null,
+          _in_src: r.check_in_photo_url ? await toRenderableSrc(r.check_in_photo_url) : null,
+          _out_src: r.check_out_photo_url ? await toRenderableSrc(r.check_out_photo_url) : null,
         }))
       );
       setHistory(rowsWithUrls);
+    } catch (e) {
+      console.error('Historial error:', e);
+      toast({ title: 'Error cargando historial', description: 'Intenta de nuevo', variant: 'destructive' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
     } catch (e) {
       console.error('Historial error:', e);
       toast({ title: 'Error cargando historial', description: 'Intenta de nuevo', variant: 'destructive' });
@@ -230,23 +237,42 @@ export function TimeClockWidget() {
   const BUCKET = 'time-tracking-photos';
 
   // Devuelve URL renderizable: si guardaste una pública y el bucket es privado, intenta firmarla.
-  const toRenderableUrl = async (raw?: string | null): Promise<string | null> => {
+  const toRenderableSrc = async (raw?: string | null): Promise<string | null> => {
     if (!raw) return null;
     try {
-      // Si ya parece http(s), intentamos parsear bucket y key para firmar
-      if (/^https?:\/\//i.test(raw)) {
-        const m = raw.match(/\/storage\/v1\/object\/[^/]+\/([^/]+)\/(.+)$/); // .../object/public|sign/{bucket}/{key}
-        if (m) {
-          const bucket = m[1];
-          const key = decodeURIComponent(m[2]);
+      // Caso 1: URL de Supabase Storage -> intentar descargar (privado) y luego firmar
+      const m = raw.match(/\/storage\/v1\/object\/[^/]+\/([^/]+)\/(.+)$/);
+      if (m) {
+        const bucket = m[1];
+        const key = decodeURIComponent(m[2]);
+        // Preferir descarga autenticada (funciona con buckets privados)
+        try {
+          const { data, error } = await supabase.storage.from(bucket).download(key);
+          if (!error && data) return URL.createObjectURL(data);
+        } catch (_) {}
+        // Fallback: URL firmada
+        try {
           const { data, error } = await supabase.storage.from(bucket).createSignedUrl(key, 60 * 60);
-          return error ? raw : data.signedUrl;
-        }
-        return raw; // URL externa o no parseable
+          if (!error && data?.signedUrl) return data.signedUrl;
+        } catch (_) {}
+        return raw; // último recurso (si fuera público de verdad)
       }
-      // Si es una ruta tipo "carpeta/archivo.jpg"
-      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(raw, 60 * 60);
-      return error ? null : data.signedUrl;
+
+      // Caso 2: es una ruta/clave interna (no http) en el bucket por defecto
+      if (!/^https?:\/\//i.test(raw)) {
+        try {
+          const { data, error } = await supabase.storage.from(BUCKET).download(raw);
+          if (!error && data) return URL.createObjectURL(data);
+        } catch (_) {}
+        try {
+          const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(raw, 60 * 60);
+          if (!error && data?.signedUrl) return data.signedUrl;
+        } catch (_) {}
+        return supabase.storage.from(BUCKET).getPublicUrl(raw).data.publicUrl;
+      }
+
+      // Caso 3: URL externa normal
+      return raw;
     } catch {
       return raw ?? null;
     }
@@ -480,22 +506,22 @@ export function TimeClockWidget() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {r._in_signed ? (
+                            {r._in_src ? (
                               <img
-                                src={r._in_signed}
+                                src={r._in_src}
                                 alt="Entrada"
                                 className="w-12 h-9 object-cover rounded border cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._in_signed); }}
+                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._in_src); }}
                               />
                             ) : (
                               <div className="w-12 h-9 bg-muted rounded" />
                             )}
-                            {r._out_signed ? (
+                            {r._out_src ? (
                               <img
-                                src={r._out_signed}
+                                src={r._out_src}
                                 alt="Salida"
                                 className="w-12 h-9 object-cover rounded border cursor-pointer"
-                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._out_signed); }}
+                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._out_src); }}
                               />
                             ) : null}
                           </div>
@@ -547,10 +573,10 @@ export function TimeClockWidget() {
                 {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) && (
                   <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.check_in_photo_url && (
-                      <PhotoCard label="Foto de entrada" rawUrl={selectedRecord.check_in_photo_url} onPreview={setPhotoPreviewUrl} toRenderableUrl={toRenderableUrl} />
+                      <PhotoCard label="Foto de entrada" rawUrl={selectedRecord.check_in_photo_url} onPreview={setPhotoPreviewUrl} toRenderableSrc={toRenderableSrc} />
                     )}
                     {selectedRecord.check_out_photo_url && (
-                      <PhotoCard label="Foto de salida" rawUrl={selectedRecord.check_out_photo_url} onPreview={setPhotoPreviewUrl} toRenderableUrl={toRenderableUrl} />
+                      <PhotoCard label="Foto de salida" rawUrl={selectedRecord.check_out_photo_url} onPreview={setPhotoPreviewUrl} toRenderableSrc={toRenderableSrc} />
                     )}
                   </div>
                 )}
@@ -585,14 +611,14 @@ export function TimeClockWidget() {
 }
 
 // ===== Componente auxiliar para foto con URL firmada si es necesario =====
-function PhotoCard({ label, rawUrl, onPreview, toRenderableUrl }: { label: string; rawUrl: string; onPreview: (u: string) => void; toRenderableUrl: (u?: string | null) => Promise<string | null>; }) {
+function PhotoCard({ label, rawUrl, onPreview, toRenderableSrc }: { label: string; rawUrl: string; onPreview: (u: string) => void; toRenderableSrc: (u?: string | null) => Promise<string | null>; }) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    toRenderableUrl(rawUrl).then((u) => { if (alive) { setUrl(u); setLoading(false); } });
+    toRenderableSrc(rawUrl).then((u) => { if (alive) { setUrl(u); setLoading(false); } });
     return () => { alive = false; };
   }, [rawUrl]);
 
