@@ -119,7 +119,16 @@ export function TimeClockWidget() {
         .order('created_at', { ascending: false })
         .limit(20);
       if (error) throw error;
-      setHistory(data || []);
+      const rows = data || [];
+      // Pre-firmar URLs de fotos para que se vean en la tabla incluso con bucket privado
+      const rowsWithUrls = await Promise.all(
+        rows.map(async (r) => ({
+          ...r,
+          _in_signed: r.check_in_photo_url ? await toRenderableUrl(r.check_in_photo_url) : null,
+          _out_signed: r.check_out_photo_url ? await toRenderableUrl(r.check_out_photo_url) : null,
+        }))
+      );
+      setHistory(rowsWithUrls);
     } catch (e) {
       console.error('Historial error:', e);
       toast({ title: 'Error cargando historial', description: 'Intenta de nuevo', variant: 'destructive' });
@@ -445,19 +454,20 @@ export function TimeClockWidget() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Entrada</TableHead>
-                    <TableHead>Salida</TableHead>
-                    <TableHead>Total</TableHead>
-                    <TableHead>Ubicación</TableHead>
-                  </TableRow>
-                </TableHeader>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Entrada</TableHead>
+                  <TableHead>Salida</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>Ubicación</TableHead>
+                  <TableHead>Fotos</TableHead>
+                </TableRow>
+              </TableHeader>
                 <TableBody>
                   {historyLoading ? (
-                    <TableRow><TableCell colSpan={5}>Cargando…</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6}>Cargando…</TableCell></TableRow>
                   ) : history.length === 0 ? (
-                    <TableRow><TableCell colSpan={5}>Sin registros</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6}>Sin registros</TableCell></TableRow>
                   ) : (
                     history.map((r) => (
                       <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(r)}>
@@ -465,7 +475,31 @@ export function TimeClockWidget() {
                         <TableCell>{fmtTime(r.check_in_time)}</TableCell>
                         <TableCell>{fmtTime(r.check_out_time)}</TableCell>
                         <TableCell>{fmtHoursAndMinutes(r.total_hours)}</TableCell>
-                        <TableCell className="max-w-[240px] truncate" title={fmtAddress(r.check_in_location)}>{fmtAddress(r.check_in_location)}</TableCell>
+                        <TableCell className="max-w-[240px] truncate" title={fmtAddress(r.check_in_location)}>
+                          {fmtAddress(r.check_in_location)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {r._in_signed ? (
+                              <img
+                                src={r._in_signed}
+                                alt="Entrada"
+                                className="w-12 h-9 object-cover rounded border cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._in_signed); }}
+                              />
+                            ) : (
+                              <div className="w-12 h-9 bg-muted rounded" />
+                            )}
+                            {r._out_signed ? (
+                              <img
+                                src={r._out_signed}
+                                alt="Salida"
+                                className="w-12 h-9 object-cover rounded border cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); setPhotoPreviewUrl(r._out_signed); }}
+                              />
+                            ) : null}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
