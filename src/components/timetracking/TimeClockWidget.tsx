@@ -358,18 +358,39 @@ export function TimeClockWidget() {
         )}
 
         {/* Acciones */}
-        <div className="space-y-2">
-          {canCheckIn && (
-            <Button onClick={() => beginCheck('in')} disabled={loading} className="w-full" size="lg">
-              {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />} Registrar Entrada
+        {!cameraOpen && (
+          <div className="space-y-2">
+            {canCheckIn && (
+              <Button onClick={() => beginCheck('in')} disabled={loading} className="w-full" size="lg">
+                {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />} Registrar Entrada
+              </Button>
+            )}
+            {canCheckOut && (
+              <Button onClick={() => beginCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg">
+                {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />} Registrar Salida
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Cámara inline (sin modal) */}
+        {cameraOpen && (
+          <div className="space-y-3 p-4 bg-muted rounded-lg">
+            <div className="text-sm font-medium">{checkType === 'out' ? 'Foto de salida' : 'Foto de entrada'}</div>
+            <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full max-w-sm border" />
+            <canvas ref={canvasRef} className="hidden" />
+            {capturedPhoto && <img src={capturedPhoto} alt="preview" className="w-full h-40 object-cover rounded border" />}
+            <div className="flex gap-2">
+              <Button className="flex-1" onClick={async () => { const p = await capturePhoto(); if (p) setCapturedPhoto(p); }}>
+                <Camera className="h-4 w-4 mr-2" /> Capturar
+              </Button>
+              <Button variant="outline" onClick={() => { setCameraOpen(false); stopCamera(); setCapturedPhoto(null); }}>Cancelar</Button>
+            </div>
+            <Button disabled={!capturedPhoto} onClick={confirmCheck} className="w-full">
+              Guardar {checkType === 'out' ? 'salida' : 'entrada'}
             </Button>
-          )}
-          {canCheckOut && (
-            <Button onClick={() => beginCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg">
-              {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />} Registrar Salida
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Ubicación reciente */}
         {location && (
@@ -527,37 +548,7 @@ export function TimeClockWidget() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal de cámara (simple) */}
-        <Dialog open={cameraOpen} onOpenChange={(o) => { setCameraOpen(o); if (!o) { stopCamera(); setCapturedPhoto(null); } }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{checkType === 'out' ? 'Foto de salida' : 'Foto de entrada'}</DialogTitle>
-              <DialogDescription>Colócate frente a la cámara y presiona capturar.</DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-3">
-              <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full border" />
-              <canvas ref={canvasRef} className="hidden" />
-              {capturedPhoto && (
-                <img src={capturedPhoto} alt="preview" className="w-full h-40 object-cover rounded border" />
-              )}
-              <div className="flex gap-2">
-                <Button className="flex-1" onClick={async () => {
-                  const p = await capturePhoto();
-                  if (p) setCapturedPhoto(p);
-                }}>
-                  <Camera className="h-4 w-4 mr-2" /> Capturar
-                </Button>
-                <Button variant="outline" onClick={() => { setCameraOpen(false); stopCamera(); setCapturedPhoto(null); }}>Cancelar</Button>
-              </div>
-
-              <Button disabled={!capturedPhoto} onClick={confirmCheck}>
-                Guardar {checkType === 'out' ? 'salida' : 'entrada'}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
+        
         {/* Modal de foto grande */}
         {photoPreviewUrl && (
           <Dialog open={true} onOpenChange={(o) => { if (!o) setPhotoPreviewUrl(null); }}>
