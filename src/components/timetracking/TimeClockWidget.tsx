@@ -272,15 +272,23 @@ export function TimeClockWidget() {
   };
 
   const uploadPhoto = async (dataUrl: string): Promise<string | null> => {
-    const blob = await fetch(dataUrl).then((r) => r.blob());
-    const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
-    const { data, error } = await supabase.storage.from(BUCKET).upload(fileName, blob, { contentType: 'image/jpeg' });
-    if (error) {
-      console.error('Upload error:', error);
+    try {
+      const blob = await fetch(dataUrl).then((r) => r.blob());
+      const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
+      const { data, error } = await supabase.storage.from(BUCKET).upload(fileName, blob, { contentType: 'image/jpeg' });
+      if (error) {
+        console.error('Upload error:', error);
+        toast({ title: 'No se pudo subir la foto', description: error.message, variant: 'destructive' });
+        return null;
+      }
+      const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl;
+      // Si es privado, toRenderableSrc la hará visible; aún así devolvemos la pública o el path como fallback
+      return publicUrl || data.path;
+    } catch (e: any) {
+      console.error('Upload exception:', e);
+      toast({ title: 'No se pudo subir la foto', description: e?.message || 'Inténtalo de nuevo', variant: 'destructive' });
       return null;
     }
-    // Guardamos la URL pública (si el bucket es público) o la pública "teórica"; al mostrar firmamos si hace falta
-    return supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl;
   };
 
   // ===== Flujos de check-in / check-out =====
@@ -312,16 +320,33 @@ export function TimeClockWidget() {
   };
 
   const confirmCheck = async (type: 'in' | 'out') => {
-    if (!user || !location) return;
-
-    let photoPublicUrl: string | null = null;
-    if (showCamera) {
-      const photo = await capturePhoto();
-      if (photo) {
-        setCapturedPhoto(photo);
-        photoPublicUrl = await uploadPhoto(photo);
-      }
+    if (!user || !location) {
+      toast({ title: 'Faltan datos', description: 'Ubicación o usuario no disponibles', variant: 'destructive' });
+      return;
     }
+    if (type === 'out' && !currentRecord?.id) {
+      toast({ title: 'No hay entrada activa', description: 'Primero registra una entrada', variant: 'destructive' });
+      return;
+    }
+    if (!showCamera) {
+      toast({ title: 'Cámara no activa', description: 'Abre la cámara y vuelve a intentar', variant: 'destructive' });
+      return;
+    }
+
+    // Captura obligatoria
+    const photo = await capturePhoto();
+    if (!photo) {
+      toast({ title: 'No se pudo capturar la foto', description: 'Verifica permisos e intenta de nuevo', variant: 'destructive' });
+      return;
+    }
+
+    const photoPublicUrl = await uploadPhoto(photo);
+    if (!photoPublicUrl) {
+      // uploadPhoto ya mostró el toast de error
+      return;
+    }
+
+    // Si llegamos aquí, sí hay foto → cerramos cámara y guardamos
     stopCamera();
 
     const now = new Date();
@@ -329,6 +354,35 @@ export function TimeClockWidget() {
       employee_id: user.id,
       work_date: (currentRecord?.work_date as string) || now.toISOString().split('T')[0],
     };
+
+    const payload =
+      type === 'in'
+        ? {
+            ...base,
+            check_in_time: now.toISOString(),
+            check_in_location: JSON.stringify(location),
+            check_in_photo_url: photoPublicUrl,
+            status: 'checked_in',
+          }
+        : {
+            ...base,
+            id: currentRecord?.id,
+            check_out_time: now.toISOString(),
+            check_out_location: JSON.stringify(location),
+            check_out_photo_url: photoPublicUrl,
+            status: 'checked_out',
+            total_hours: currentRecord?.check_in_time
+              ? (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000
+              : null,
+          };
+
+    const saved = await saveRecord(payload);
+    if (saved) {
+      toast({ title: '✅ Registro guardado', description: `${type === 'in' ? 'Entrada' : 'Salida'} a las ${fmtTime(now.toISOString())}` });
+      setLocation(null);
+      setCapturedPhoto(null);
+    }
+  };
 
     const payload =
       type === 'in'
