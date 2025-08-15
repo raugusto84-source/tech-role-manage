@@ -226,6 +226,7 @@ export function TimeClockWidget() {
       await startCamera();
       const currentLocation = await getCurrentLocation();
       setLocation(currentLocation);
+      setLoading(false);
       toast({ title: 'Tome una foto', description: 'Posiciónese frente a la cámara y haga clic en Capturar' });
     } catch (error: any) {
       console.error('Error preparando check-in:', error);
@@ -236,6 +237,7 @@ export function TimeClockWidget() {
 
   const confirmCheckIn = async () => {
     if (!user || !location) return;
+    setLoading(true);
     try {
       let photoUrl: string | null = null;
       if (showCamera) {
@@ -285,6 +287,7 @@ export function TimeClockWidget() {
       await startCamera();
       const currentLocation = await getCurrentLocation();
       setLocation(currentLocation);
+      setLoading(false);
       toast({ title: 'Tome una foto de salida', description: 'Posiciónese frente a la cámara y haga clic en Capturar' });
     } catch (error: any) {
       console.error('Error preparando check-out:', error);
@@ -295,6 +298,7 @@ export function TimeClockWidget() {
 
   const confirmCheckOut = async () => {
     if (!user || !currentRecord || !location) return;
+    setLoading(true);
     try {
       let photoUrl: string | null = null;
       if (showCamera) {
