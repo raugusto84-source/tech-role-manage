@@ -28,6 +28,7 @@ export function TimeClockWidget() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Actualizar reloj cada segundo
   useEffect(() => {
@@ -45,13 +46,20 @@ export function TimeClockWidget() {
     }
   }, [user]);
 
+  // Cleanup de la cámara al desmontar
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
+
   const loadTodayRecord = async () => {
     if (!user) return;
 
     try {
       const today = new Date().toISOString().split('T')[0];
+      console.log('Cargando registro para usuario:', user.id, 'fecha:', today);
       
-      // Obtener el registro más reciente del día
       const { data, error } = await supabase
         .from('time_records')
         .select('*')
@@ -63,18 +71,13 @@ export function TimeClockWidget() {
 
       if (error) {
         console.error('Error loading today record:', error);
-        throw error;
+        return;
       }
       
-      console.log('Loaded today record:', data);
+      console.log('Registro del día cargado:', data);
       setCurrentRecord(data);
     } catch (error: any) {
-      console.error('Error loading today record:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el registro del día",
-        variant: "destructive"
-      });
+      console.error('Error en loadTodayRecord:', error);
     }
   };
 
@@ -85,6 +88,7 @@ export function TimeClockWidget() {
         return;
       }
 
+      console.log('Obteniendo ubicación...');
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const location: Location = {
@@ -92,9 +96,7 @@ export function TimeClockWidget() {
             lng: position.coords.longitude
           };
 
-          // Obtener dirección real usando API de geocodificación más precisa
           try {
-            // Usar API de OpenStreetMap Nominatim (gratuita y sin límites)
             const response = await fetch(
               `https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.lat}&lon=${location.lng}&zoom=18&addressdetails=1`,
               {
@@ -104,24 +106,25 @@ export function TimeClockWidget() {
               }
             );
             const data = await response.json();
-            if (data && data.display_name) {
+            if (data?.display_name) {
               location.address = data.display_name;
             }
           } catch (geocodeError) {
             console.warn('Error obteniendo dirección:', geocodeError);
-            // Fallback a coordenadas si falla la geocodificación
             location.address = `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
           }
 
+          console.log('Ubicación obtenida:', location);
           resolve(location);
         },
         (error) => {
+          console.error('Error de geolocalización:', error);
           reject(new Error(`Error de geolocalización: ${error.message}`));
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 300000 // 5 minutos
+          maximumAge: 300000
         }
       );
     });
@@ -129,9 +132,10 @@ export function TimeClockWidget() {
 
   const startCamera = async () => {
     try {
-      // Verificar disponibilidad de la API
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('La cámara no está disponible en este dispositivo o navegador');
+      console.log('Iniciando cámara...');
+      
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('La cámara no está disponible en este dispositivo');
       }
 
       const constraints = {
@@ -142,53 +146,58 @@ export function TimeClockWidget() {
         }
       };
 
-      console.log('Solicitando acceso a la cámara...');
+      console.log('Solicitando permisos de cámara...');
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      
-      console.log('Stream obtenido:', stream);
+      streamRef.current = stream;
+      console.log('✅ Permisos otorgados');
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
         
-        // Asegurar que el video se reproduce automáticamente
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          console.log('Metadata cargada, reproduciendo video...');
-          videoRef.current?.play().then(() => {
-            console.log('Video iniciado correctamente');
-            setShowCamera(true);
-          }).catch(e => {
-            console.error('Error reproduciendo video:', e);
-            setShowCamera(true); // Mostrar de todas formas
-          });
-        });
+        const handleCanPlay = () => {
+          console.log('Video listo para reproducir');
+          if (videoRef.current) {
+            videoRef.current.play()
+              .then(() => {
+                console.log('✅ Video reproduciendo');
+                setShowCamera(true);
+              })
+              .catch(e => {
+                console.warn('Error reproduciendo video:', e);
+                setShowCamera(true);
+              });
+          }
+        };
+
+        videoRef.current.addEventListener('canplay', handleCanPlay, { once: true });
         
-        // Fallback inmediato
+        // Timeout de seguridad
         setTimeout(() => {
           if (!showCamera) {
-            console.log('Activando cámara por timeout');
+            console.log('⚠️ Timeout - activando cámara');
             setShowCamera(true);
           }
-        }, 1000);
+        }, 3000);
       }
     } catch (error: any) {
-      console.error('Error accediendo a la cámara:', error);
+      console.error('❌ Error de cámara:', error);
       
       let errorMessage = "No se pudo acceder a la cámara";
       
       if (error.name === 'NotAllowedError') {
-        errorMessage = "Permisos de cámara denegados. Por favor, permita el acceso a la cámara cuando su navegador lo solicite.";
+        errorMessage = "Permisos denegados. Permita el acceso a la cámara.";
       } else if (error.name === 'NotFoundError') {
-        errorMessage = "No se encontró cámara en el dispositivo.";
+        errorMessage = "No se encontró cámara.";
       } else if (error.name === 'NotSupportedError') {
-        errorMessage = "La cámara no es compatible con este navegador.";
+        errorMessage = "Cámara no compatible.";
       } else if (error.name === 'NotReadableError') {
-        errorMessage = "La cámara está siendo usada por otra aplicación.";
-      } else if (error.message) {
-        errorMessage = error.message;
+        errorMessage = "Cámara en uso por otra aplicación.";
       }
       
       toast({
-        title: "Error de cámara",
+        title: "❌ Error de cámara",
         description: errorMessage,
         variant: "destructive"
       });
@@ -197,47 +206,64 @@ export function TimeClockWidget() {
   };
 
   const capturePhoto = async (): Promise<string | null> => {
-    if (!videoRef.current || !canvasRef.current) return null;
+    if (!videoRef.current || !canvasRef.current) {
+      console.error('Referencias de video o canvas no disponibles');
+      return null;
+    }
     
     const canvas = canvasRef.current;
     const video = videoRef.current;
     const context = canvas.getContext('2d');
     
-    if (!context || video.readyState !== 4) {
-      console.log('Video no está listo para captura');
+    if (!context) {
+      console.error('No se pudo obtener contexto 2D del canvas');
       return null;
     }
+
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+      console.warn('Video no tiene datos suficientes para captura');
+      // Intentar de todas formas
+    }
     
-    // Esperar un momento para asegurar que el video esté cargado
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-    console.log('Foto capturada exitosamente');
-    return dataUrl;
+    try {
+      canvas.width = video.videoWidth || 320;
+      canvas.height = video.videoHeight || 240;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      console.log('✅ Foto capturada');
+      return dataUrl;
+    } catch (error) {
+      console.error('Error capturando foto:', error);
+      return null;
+    }
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+    console.log('Deteniendo cámara...');
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Track detenido:', track.kind);
+      });
+      streamRef.current = null;
     }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
     setShowCamera(false);
   };
 
   const uploadPhoto = async (photoDataUrl: string): Promise<string | null> => {
     try {
-      // Convertir data URL a blob
+      console.log('Subiendo foto...');
       const response = await fetch(photoDataUrl);
       const blob = await response.blob();
       
-      // Crear nombre único para la foto
-      const fileName = `check-in-${user?.id}-${Date.now()}.jpg`;
+      const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
       
-      // Subir a Supabase Storage
       const { data, error } = await supabase.storage
         .from('time-tracking-photos')
         .upload(fileName, blob, {
@@ -245,16 +271,19 @@ export function TimeClockWidget() {
           upsert: false
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error subiendo a storage:', error);
+        return null;
+      }
       
-      // Obtener URL pública
       const { data: urlData } = supabase.storage
         .from('time-tracking-photos')
         .getPublicUrl(data.path);
       
+      console.log('✅ Foto subida:', urlData.publicUrl);
       return urlData.publicUrl;
     } catch (error) {
-      console.error('Error subiendo foto:', error);
+      console.error('Error en uploadPhoto:', error);
       return null;
     }
   };
@@ -264,22 +293,26 @@ export function TimeClockWidget() {
 
     setLoading(true);
     try {
-      // Iniciar cámara y obtener ubicación
-      await startCamera();
+      console.log('=== INICIANDO CHECK-IN ===');
+      console.log('Usuario:', user.id);
+      
+      // Obtener ubicación
       const currentLocation = await getCurrentLocation();
       setLocation(currentLocation);
 
-      // Esperar a que el usuario tome la foto
+      // Iniciar cámara
+      await startCamera();
+      
       toast({
-        title: "Tome una foto",
-        description: "Posiciónese frente a la cámara y haga clic en capturar",
+        title: "📸 Tome una foto",
+        description: "Posiciónese frente a la cámara",
       });
       
     } catch (error: any) {
       console.error('Error preparando check-in:', error);
       toast({
-        title: "Error al preparar entrada",
-        description: error.message || "No se pudo preparar el registro de entrada",
+        title: "❌ Error",
+        description: error.message,
         variant: "destructive"
       });
       setLoading(false);
@@ -287,35 +320,42 @@ export function TimeClockWidget() {
   };
 
   const confirmCheckIn = async () => {
-    if (!user || !location) return;
+    if (!user || !location) {
+      console.error('Datos incompletos para check-in');
+      toast({
+        title: "❌ Error",
+        description: "Faltan datos para registrar entrada",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      console.log('Iniciando confirmación de entrada...');
+      console.log('=== CONFIRMANDO CHECK-IN ===');
       let photoUrl = null;
       
-      // Capturar y subir foto
+      // Capturar foto
       if (showCamera) {
-        console.log('Capturando foto...');
         const photoDataUrl = await capturePhoto();
         if (photoDataUrl) {
           setCapturedPhoto(photoDataUrl);
-          console.log('Foto capturada, subiendo...');
           photoUrl = await uploadPhoto(photoDataUrl);
-          console.log('Foto subida:', photoUrl);
         }
-        stopCamera();
       }
+      
+      stopCamera();
 
+      const now = new Date();
       const checkInData = {
         employee_id: user.id,
-        check_in_time: new Date().toISOString(),
-        check_in_location: location as any,
+        check_in_time: now.toISOString(),
+        check_in_location: JSON.stringify(location),
         check_in_photo_url: photoUrl,
-        work_date: new Date().toISOString().split('T')[0],
+        work_date: now.toISOString().split('T')[0],
         status: 'checked_in'
       };
 
-      console.log('Insertando registro de entrada:', checkInData);
+      console.log('Insertando datos:', checkInData);
 
       const { data, error } = await supabase
         .from('time_records')
@@ -324,24 +364,28 @@ export function TimeClockWidget() {
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        console.error('Error Supabase:', error);
+        throw new Error(`Error de base de datos: ${error.message}`);
       }
 
-      console.log('Check-in successful, data received:', data);
+      console.log('✅ Check-in exitoso:', data);
       setCurrentRecord(data);
       setCapturedPhoto(null);
       setLocation(null);
       
       toast({
-        title: "Entrada registrada",
-        description: `Registrado a las ${currentTime.toLocaleTimeString()} con foto y ubicación`,
+        title: "✅ Entrada registrada",
+        description: `${now.toLocaleTimeString('es-ES')}`,
       });
+
+      // Recargar después de un momento
+      setTimeout(loadTodayRecord, 1000);
+      
     } catch (error: any) {
-      console.error('Error en check-in:', error);
+      console.error('Error en confirmCheckIn:', error);
       toast({
-        title: "Error al registrar entrada",
-        description: error.message || "No se pudo registrar la entrada",
+        title: "❌ Error",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
@@ -350,25 +394,31 @@ export function TimeClockWidget() {
   };
 
   const handleCheckOut = async () => {
-    if (!user || !currentRecord) return;
+    if (!user || !currentRecord) {
+      console.error('No hay registro para check-out');
+      return;
+    }
 
     setLoading(true);
     try {
-      // Iniciar cámara y obtener ubicación para salida
-      await startCamera();
+      console.log('=== INICIANDO CHECK-OUT ===');
+      console.log('Registro actual:', currentRecord.id);
+      
       const currentLocation = await getCurrentLocation();
       setLocation(currentLocation);
 
+      await startCamera();
+
       toast({
-        title: "Tome una foto de salida",
-        description: "Posiciónese frente a la cámara y haga clic en capturar",
+        title: "📸 Foto de salida",
+        description: "Posiciónese frente a la cámara",
       });
       
     } catch (error: any) {
       console.error('Error preparando check-out:', error);
       toast({
-        title: "Error al preparar salida",
-        description: error.message || "No se pudo preparar el registro de salida",
+        title: "❌ Error",
+        description: error.message,
         variant: "destructive"
       });
       setLoading(false);
@@ -376,39 +426,38 @@ export function TimeClockWidget() {
   };
 
   const confirmCheckOut = async () => {
-    if (!user || !currentRecord || !location) return;
+    if (!user || !currentRecord || !location) {
+      console.error('Datos incompletos para check-out');
+      return;
+    }
 
     try {
-      console.log('Iniciando confirmación de salida...');
+      console.log('=== CONFIRMANDO CHECK-OUT ===');
       let photoUrl = null;
       
-      // Capturar y subir foto de salida
       if (showCamera) {
-        console.log('Capturando foto de salida...');
         const photoDataUrl = await capturePhoto();
         if (photoDataUrl) {
           setCapturedPhoto(photoDataUrl);
-          console.log('Foto capturada, subiendo...');
           photoUrl = await uploadPhoto(photoDataUrl);
-          console.log('Foto de salida subida:', photoUrl);
         }
-        stopCamera();
       }
+      
+      stopCamera();
 
-      // Calcular horas trabajadas
       const checkInTime = new Date(currentRecord.check_in_time);
       const checkOutTime = new Date();
       const totalHours = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
 
       const updateData = {
         check_out_time: checkOutTime.toISOString(),
-        check_out_location: location as any,
+        check_out_location: JSON.stringify(location),
         check_out_photo_url: photoUrl,
         status: 'checked_out',
         total_hours: totalHours
       };
 
-      console.log('Actualizando registro de salida:', updateData);
+      console.log('Actualizando registro:', updateData);
 
       const { data, error } = await supabase
         .from('time_records')
@@ -418,24 +467,27 @@ export function TimeClockWidget() {
         .single();
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        console.error('Error Supabase:', error);
+        throw new Error(`Error de base de datos: ${error.message}`);
       }
 
-      console.log('Check-out successful, data received:', data);
+      console.log('✅ Check-out exitoso:', data);
       setCurrentRecord(data);
       setCapturedPhoto(null);
       setLocation(null);
       
       toast({
-        title: "Salida registrada",
-        description: `Registrado a las ${currentTime.toLocaleTimeString()} con foto y ubicación`,
+        title: "✅ Salida registrada",
+        description: `${checkOutTime.toLocaleTimeString('es-ES')}`,
       });
+
+      setTimeout(loadTodayRecord, 1000);
+      
     } catch (error: any) {
-      console.error('Error en check-out:', error);
+      console.error('Error en confirmCheckOut:', error);
       toast({
-        title: "Error al registrar salida",
-        description: error.message || "No se pudo registrar la salida",
+        title: "❌ Error",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
@@ -458,7 +510,7 @@ export function TimeClockWidget() {
     
     switch (currentRecord.status) {
       case 'checked_in':
-        return <Badge variant="default" className="bg-green-500">Presente</Badge>;
+        return <Badge className="bg-green-500 text-white">Presente</Badge>;
       case 'checked_out':
         return <Badge variant="secondary">Finalizado</Badge>;
       default:
@@ -528,26 +580,26 @@ export function TimeClockWidget() {
           </div>
         )}
 
-        {/* Cámara para captura de foto */}
+        {/* Cámara */}
         {showCamera && (
           <div className="space-y-3 p-4 bg-muted rounded-lg">
-              <div className="text-center">
-                <p className="text-sm font-medium mb-2">Tome una foto para completar el registro</p>
-                <div className="relative inline-block">
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline
-                    muted
-                    className="rounded-lg w-full max-w-sm"
-                    style={{ maxWidth: '320px', height: 'auto' }}
-                  />
-                  <canvas 
-                    ref={canvasRef} 
-                    className="hidden"
-                  />
-                </div>
+            <div className="text-center">
+              <p className="text-sm font-medium mb-2">Tome una foto para completar el registro</p>
+              <div className="relative inline-block">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline
+                  muted
+                  className="rounded-lg w-full max-w-sm border"
+                  style={{ maxWidth: '320px', height: 'auto' }}
+                />
+                <canvas 
+                  ref={canvasRef} 
+                  className="hidden"
+                />
               </div>
+            </div>
             <div className="flex gap-2 justify-center">
               <Button 
                 onClick={canCheckIn ? confirmCheckIn : confirmCheckOut}
@@ -561,6 +613,7 @@ export function TimeClockWidget() {
                 onClick={() => {
                   stopCamera();
                   setLoading(false);
+                  setLocation(null);
                 }}
                 variant="outline"
               >
@@ -570,7 +623,7 @@ export function TimeClockWidget() {
           </div>
         )}
 
-        {/* Botones de acción */}
+        {/* Botones principales */}
         {!showCamera && (
           <div className="space-y-2">
             {canCheckIn && (
@@ -608,14 +661,14 @@ export function TimeClockWidget() {
           </div>
         )}
 
-        {/* Foto capturada (preview) */}
+        {/* Preview de foto */}
         {capturedPhoto && (
           <div className="text-center">
             <p className="text-sm font-medium mb-2">Foto capturada:</p>
             <img 
               src={capturedPhoto} 
               alt="Foto de registro" 
-              className="rounded-lg w-32 h-24 object-cover mx-auto"
+              className="rounded-lg w-32 h-24 object-cover mx-auto border"
             />
           </div>
         )}
@@ -628,9 +681,6 @@ export function TimeClockWidget() {
               <span className="leading-tight">
                 {location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
               </span>
-            </div>
-            <div className="text-xs opacity-75">
-              GPS: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
             </div>
           </div>
         )}
