@@ -134,23 +134,24 @@ export function TimeClockWidget() {
         throw new Error('La cámara no está disponible en este dispositivo o navegador');
       }
 
-      // Verificar permisos
-      const permission = await navigator.permissions.query({ name: 'camera' as PermissionName });
-      if (permission.state === 'denied') {
-        throw new Error('Permisos de cámara denegados. Por favor, habilite los permisos de cámara en su navegador.');
-      }
+      const constraints = {
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 }
+        }
+      };
 
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user', // Cámara frontal
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
-      });
+      console.log('Solicitando acceso a la cámara...');
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        setShowCamera(true);
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setShowCamera(true);
+          console.log('Cámara iniciada correctamente');
+        };
       }
     } catch (error: any) {
       console.error('Error accediendo a la cámara:', error);
@@ -158,7 +159,7 @@ export function TimeClockWidget() {
       let errorMessage = "No se pudo acceder a la cámara";
       
       if (error.name === 'NotAllowedError') {
-        errorMessage = "Permisos de cámara denegados. Por favor, habilite los permisos de cámara.";
+        errorMessage = "Permisos de cámara denegados. Por favor, habilite los permisos en su navegador.";
       } else if (error.name === 'NotFoundError') {
         errorMessage = "No se encontró cámara en el dispositivo.";
       } else if (error.name === 'NotSupportedError') {
@@ -174,6 +175,7 @@ export function TimeClockWidget() {
         description: errorMessage,
         variant: "destructive"
       });
+      setLoading(false);
     }
   };
 
@@ -184,13 +186,21 @@ export function TimeClockWidget() {
     const video = videoRef.current;
     const context = canvas.getContext('2d');
     
-    if (!context) return null;
+    if (!context || video.readyState !== 4) {
+      console.log('Video no está listo para captura');
+      return null;
+    }
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0);
+    // Esperar un momento para asegurar que el video esté cargado
+    await new Promise(resolve => setTimeout(resolve, 100));
     
-    return canvas.toDataURL('image/jpeg', 0.8);
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    console.log('Foto capturada exitosamente');
+    return dataUrl;
   };
 
   const stopCamera = () => {
@@ -263,27 +273,36 @@ export function TimeClockWidget() {
     if (!user || !location) return;
 
     try {
+      console.log('Iniciando confirmación de entrada...');
       let photoUrl = null;
       
       // Capturar y subir foto
       if (showCamera) {
+        console.log('Capturando foto...');
         const photoDataUrl = await capturePhoto();
         if (photoDataUrl) {
           setCapturedPhoto(photoDataUrl);
+          console.log('Foto capturada, subiendo...');
           photoUrl = await uploadPhoto(photoDataUrl);
+          console.log('Foto subida:', photoUrl);
         }
         stopCamera();
       }
 
+      const checkInData = {
+        employee_id: user.id,
+        check_in_time: new Date().toISOString(),
+        check_in_location: location as any,
+        check_in_photo_url: photoUrl,
+        work_date: new Date().toISOString().split('T')[0],
+        status: 'checked_in'
+      };
+
+      console.log('Insertando registro de entrada:', checkInData);
+
       const { data, error } = await supabase
         .from('time_records')
-        .insert({
-          employee_id: user.id,
-          check_in_time: new Date().toISOString(),
-          check_in_location: location as any,
-          check_in_photo_url: photoUrl,
-          work_date: new Date().toISOString().split('T')[0]
-        })
+        .insert(checkInData)
         .select()
         .single();
 
@@ -295,9 +314,7 @@ export function TimeClockWidget() {
       console.log('Check-in successful, data received:', data);
       setCurrentRecord(data);
       setCapturedPhoto(null);
-      
-      // Recargar el registro para asegurar el estado correcto
-      await loadTodayRecord();
+      setLocation(null);
       
       toast({
         title: "Entrada registrada",
@@ -345,25 +362,40 @@ export function TimeClockWidget() {
     if (!user || !currentRecord || !location) return;
 
     try {
+      console.log('Iniciando confirmación de salida...');
       let photoUrl = null;
       
       // Capturar y subir foto de salida
       if (showCamera) {
+        console.log('Capturando foto de salida...');
         const photoDataUrl = await capturePhoto();
         if (photoDataUrl) {
           setCapturedPhoto(photoDataUrl);
+          console.log('Foto capturada, subiendo...');
           photoUrl = await uploadPhoto(photoDataUrl);
+          console.log('Foto de salida subida:', photoUrl);
         }
         stopCamera();
       }
 
+      // Calcular horas trabajadas
+      const checkInTime = new Date(currentRecord.check_in_time);
+      const checkOutTime = new Date();
+      const totalHours = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+
+      const updateData = {
+        check_out_time: checkOutTime.toISOString(),
+        check_out_location: location as any,
+        check_out_photo_url: photoUrl,
+        status: 'checked_out',
+        total_hours: totalHours
+      };
+
+      console.log('Actualizando registro de salida:', updateData);
+
       const { data, error } = await supabase
         .from('time_records')
-        .update({
-          check_out_time: new Date().toISOString(),
-          check_out_location: location as any,
-          check_out_photo_url: photoUrl
-        })
+        .update(updateData)
         .eq('id', currentRecord.id)
         .select()
         .single();
@@ -376,9 +408,7 @@ export function TimeClockWidget() {
       console.log('Check-out successful, data received:', data);
       setCurrentRecord(data);
       setCapturedPhoto(null);
-      
-      // Recargar el registro para asegurar el estado correcto
-      await loadTodayRecord();
+      setLocation(null);
       
       toast({
         title: "Salida registrada",
