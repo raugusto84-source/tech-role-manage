@@ -300,6 +300,7 @@ export function TimeClockWidget() {
       setLocation(currentLocation);
 
       await startCamera(); // el useEffect conectará el stream al <video>
+      setLoading(false); // ✅ habilita el botón "Capturar y Entrar"
 
       toast({ title: '📸 Tome una foto', description: 'Posiciónese frente a la cámara' });
     } catch (error: any) {
@@ -366,6 +367,7 @@ export function TimeClockWidget() {
       setLocation(currentLocation);
 
       await startCamera();
+      setLoading(false); // ✅ habilita el botón "Capturar y Salir"
 
       toast({ title: '📸 Foto de salida', description: 'Posiciónese frente a la cámara' });
     } catch (error: any) {
