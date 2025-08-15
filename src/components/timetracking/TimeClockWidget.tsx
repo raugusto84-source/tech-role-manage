@@ -16,6 +16,12 @@ interface Location {
   address?: string;
 }
 
+/**
+ * Widget para registro de entrada/salida con geolocalización + fotos y historial.
+ * - Móvil: monta el <video> antes de asignar stream (useEffect) y usa playsInline/muted.
+ * - GPS: dos intentos (alta precisión + fallback) y reverse geocoding (Nominatim).
+ * - Historial: ver detalle, links a Maps, fotos de entrada/salida y modal para ver en grande.
+ */
 export function TimeClockWidget() {
   const { user } = useAuth();
   const [currentRecord, setCurrentRecord] = useState<any>(null);
@@ -23,23 +29,26 @@ export function TimeClockWidget() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [location, setLocation] = useState<Location | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
 
-  // Reloj
+  // === Reloj de pantalla ===
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Cargar registro de hoy + historial al entrar
+  // === Carga inicial ===
   useEffect(() => {
     if (user) {
       loadTodayRecord();
@@ -47,20 +56,23 @@ export function TimeClockWidget() {
     }
   }, [user]);
 
-  // Cleanup cámara al desmontar
+  // === Cleanup cámara ===
   useEffect(() => () => stopCamera(), []);
 
-  // Conectar stream cuando se muestre la UI de cámara
+  // === Conectar stream cuando se muestra el bloque de cámara ===
   useEffect(() => {
     if (!showCamera || !videoRef.current || !streamRef.current) return;
     const video = videoRef.current;
-    video.muted = true; // autoplay iOS
-    video.playsInline = true;
+    video.muted = true;       // autoplay iOS
+    video.playsInline = true; // no full-screen for iOS
     video.srcObject = streamRef.current;
-    const p = video.play();
-    if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
+    const playPromise = video.play();
+    if (playPromise && typeof (playPromise as any).catch === 'function') {
+      (playPromise as any).catch(() => {});
+    }
   }, [showCamera]);
 
+  // === Supabase: cargar registro de hoy ===
   const loadTodayRecord = async () => {
     if (!user) return;
     const today = new Date().toISOString().split('T')[0];
@@ -76,6 +88,7 @@ export function TimeClockWidget() {
     setCurrentRecord(data);
   };
 
+  // === Supabase: cargar historial ===
   const loadHistory = async () => {
     if (!user) return;
     setHistoryLoading(true);
@@ -96,7 +109,7 @@ export function TimeClockWidget() {
     }
   };
 
-  // === Ubicación y dirección ===
+  // === Utilidades de ubicación y formato ===
   const resolveAddress = async (lat: number, lng: number): Promise<string | undefined> => {
     try {
       const r = await fetch(
@@ -119,18 +132,18 @@ export function TimeClockWidget() {
 
   const getCurrentLocation = async (): Promise<Location> => {
     try {
-      // (Opcional) inspecciona permisos si el API existe
+      // (Opcional) Permissions API: no detiene si no existe
       try {
         const perm = await (navigator.permissions as any)?.query?.({ name: 'geolocation' as PermissionName });
         if (perm && perm.state === 'denied') throw new Error('Permiso de geolocalización denegado');
       } catch (_) {}
 
-      // 1) Intento de alta precisión (rápido)
+      // 1) alta precisión
       let pos: GeolocationPosition | null = null;
       try {
         pos = await getPosition({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
       } catch {
-        // 2) Fallback menos estricto
+        // 2) fallback normal
         pos = await getPosition({ enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
       }
 
@@ -164,16 +177,20 @@ export function TimeClockWidget() {
   // === Cámara ===
   const startCamera = async () => {
     try {
-      const constraints: MediaStreamConstraints = {
-        video: { facingMode: { ideal: 'user' }, width: { ideal: 320, max: 640 }, height: { ideal: 240, max: 480 } },
-      };
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('La cámara no está disponible en este dispositivo');
+      }
       let stream: MediaStream | null = null;
+      // Intenta frontal → trasera → cualquiera
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'user' }, width: { ideal: 320, max: 640 }, height: { ideal: 240, max: 480 } },
+        });
       } catch {
-        // fallback a trasera o cualquiera
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 320, max: 640 }, height: { ideal: 240, max: 480 } },
+          });
         } catch {
           stream = await navigator.mediaDevices.getUserMedia({ video: true });
         }
@@ -181,6 +198,7 @@ export function TimeClockWidget() {
       streamRef.current = stream;
       setShowCamera(true);
     } catch (error: any) {
+      console.error('❌ Error de cámara:', error);
       toast({ title: '❌ Error de cámara', description: error?.message || 'No se pudo acceder a la cámara', variant: 'destructive' });
       setLoading(false);
     }
@@ -220,30 +238,41 @@ export function TimeClockWidget() {
     const { data, error } = await supabase.storage
       .from('time-tracking-photos')
       .upload(fileName, blob, { contentType: 'image/jpeg' });
-    if (error) return null;
+    if (error) {
+      console.error('Error subiendo a storage:', error);
+      return null;
+    }
     return supabase.storage.from('time-tracking-photos').getPublicUrl(data?.path || '').data.publicUrl;
   };
 
+  // upsert (inserta para entrada; actualiza para salida)
   const saveRecord = async (payload: any) => {
     const { data, error } = await supabase.from('time_records').upsert(payload).select().single();
-    if (!error) {
-      setCurrentRecord(data);
-      loadHistory();
-    } else {
-      console.error(error);
+    if (error) {
+      console.error('Supabase error:', error);
+      toast({ title: 'Error de base de datos', description: error.message, variant: 'destructive' });
+      return null;
     }
+    setCurrentRecord(data);
+    loadHistory();
+    return data;
   };
 
-  // === Flujo check-in/out ===
+  // === Flujo check-in / check-out ===
   const handleCheck = async (type: 'in' | 'out') => {
     if (!user) return;
     setLoading(true);
     try {
       const loc = await getCurrentLocation();
       setLocation(loc);
-      await startCamera();
-      setLoading(false); // habilita botón de capturar
-      toast({ title: type === 'in' ? '📸 Tome una foto' : '📸 Foto de salida', description: 'Posiciónese frente a la cámara' });
+
+      await startCamera();   // el useEffect conectará stream → <video>
+      setLoading(false);     // habilita botón de “Capturar y ...”
+
+      toast({
+        title: type === 'in' ? '📸 Tome una foto' : '📸 Foto de salida',
+        description: 'Posiciónese frente a la cámara',
+      });
     } catch (e: any) {
       toast({ title: '❌ Error', description: e.message, variant: 'destructive' });
       setLoading(false);
@@ -253,6 +282,7 @@ export function TimeClockWidget() {
   const confirmCheck = async (type: 'in' | 'out') => {
     if (!location || !user) return;
     let photoUrl: string | null = null;
+
     if (showCamera) {
       const photo = await capturePhoto();
       if (photo) {
@@ -274,30 +304,44 @@ export function TimeClockWidget() {
             status: 'checked_in',
           }
         : {
-            id: currentRecord?.id,
+            id: currentRecord?.id, // importante para upsert de salida
+            employee_id: user.id,
             check_out_time: now.toISOString(),
             check_out_location: JSON.stringify(location),
             check_out_photo_url: photoUrl,
             status: 'checked_out',
             total_hours: (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000,
+            work_date: currentRecord?.work_date || now.toISOString().split('T')[0],
           };
 
-    await saveRecord(payload);
-    toast({ title: '✅ Registro guardado', description: `${type === 'in' ? 'Entrada' : 'Salida'} a las ${now.toLocaleTimeString('es-ES')}` });
+    const saved = await saveRecord(payload);
+    if (saved) {
+      toast({
+        title: '✅ Registro guardado',
+        description: `${type === 'in' ? 'Entrada' : 'Salida'} a las ${now.toLocaleTimeString('es-ES')}`,
+      });
+    }
     setLocation(null);
   };
 
+  // === Helpers de UI ===
   const formatTime = (time?: string) =>
     time ? new Date(time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
   const getStatusBadge = () => {
     if (!currentRecord) return <Badge variant="outline">Sin registrar</Badge>;
     switch (currentRecord.status) {
-      case 'checked_in': return <Badge className="bg-green-500 text-white">Presente</Badge>;
-      case 'checked_out': return <Badge variant="secondary">Finalizado</Badge>;
-      default: return <Badge variant="outline">Incompleto</Badge>;
+      case 'checked_in':
+        return <Badge className="bg-green-500 text-white">Presente</Badge>;
+      case 'checked_out':
+        return <Badge variant="secondary">Finalizado</Badge>;
+      default:
+        return <Badge variant="outline">Incompleto</Badge>;
     }
   };
+
+  const canCheckIn = !currentRecord || currentRecord.status === 'checked_out';
+  const canCheckOut = currentRecord && currentRecord.status === 'checked_in';
 
   return (
     <Card className="w-full">
@@ -310,10 +354,14 @@ export function TimeClockWidget() {
         </div>
         <CardDescription>Registra tu entrada y salida diaria</CardDescription>
       </CardHeader>
+
       <CardContent className="space-y-4">
+        {/* Reloj actual */}
         <div className="text-center">
           <div className="text-3xl font-mono font-bold">{currentTime.toLocaleTimeString('es-ES')}</div>
-          <div className="text-sm text-muted-foreground">{currentTime.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+          <div className="text-sm text-muted-foreground">
+            {currentTime.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
         </div>
 
         {/* Estado actual */}
@@ -338,12 +386,14 @@ export function TimeClockWidget() {
         {/* Cámara */}
         {showCamera && (
           <div className="space-y-3 p-4 bg-muted rounded-lg">
-            <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full max-w-sm border" />
-            <canvas ref={canvasRef} className="hidden" />
+            <div className="relative inline-block">
+              <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full max-w-sm border" />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
             <div className="flex gap-2">
-              <Button onClick={() => confirmCheck(!currentRecord || currentRecord.status === 'checked_out' ? 'in' : 'out')} className="flex-1">
+              <Button onClick={() => confirmCheck(canCheckIn ? 'in' : 'out')} className="flex-1">
                 <Camera className="h-4 w-4 mr-2" />
-                Capturar y {!currentRecord || currentRecord.status === 'checked_out' ? 'Entrar' : 'Salir'}
+                Capturar y {canCheckIn ? 'Entrar' : 'Salir'}
               </Button>
               <Button variant="outline" onClick={() => { stopCamera(); setLoading(false); setLocation(null); }}>Cancelar</Button>
             </div>
@@ -353,13 +403,13 @@ export function TimeClockWidget() {
         {/* Botones principales */}
         {!showCamera && (
           <div className="space-y-2">
-            {(!currentRecord || currentRecord.status === 'checked_out') && (
+            {canCheckIn && (
               <Button onClick={() => handleCheck('in')} disabled={loading} className="w-full" size="lg">
                 {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
                 Registrar Entrada
               </Button>
             )}
-            {currentRecord && currentRecord.status === 'checked_in' && (
+            {canCheckOut && (
               <Button onClick={() => handleCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg">
                 {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
                 Registrar Salida
@@ -369,17 +419,26 @@ export function TimeClockWidget() {
         )}
 
         {/* Preview instantánea */}
-        {capturedPhoto && <img src={capturedPhoto} alt="Foto de registro" className="rounded-lg w-32 h-24 object-cover mx-auto border" />}
-
-        {/* Ubicación reciente */}
-        {location && (
-          <div className="text-xs text-muted-foreground flex items-start gap-1">
-            <MapPin className="h-3 w-3 mt-0.5" />
-            <span>{location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}</span>
+        {capturedPhoto && (
+          <div className="text-center">
+            <p className="text-sm font-medium mb-2">Foto capturada:</p>
+            <img src={capturedPhoto} alt="Foto de registro" className="rounded-lg w-32 h-24 object-cover mx-auto border" />
           </div>
         )}
 
-        {/* Diálogo de Historial */}
+        {/* Ubicación reciente */}
+        {location && (
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div className="flex items-start gap-1">
+              <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+              <span className="leading-tight">
+                {location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Diálogo Historial */}
         <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
           <DialogContent className="max-w-3xl">
             <DialogHeader>
@@ -405,7 +464,11 @@ export function TimeClockWidget() {
                     <TableRow><TableCell colSpan={5}>Sin registros</TableCell></TableRow>
                   ) : (
                     history.map((r) => (
-                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(r)}>
+                      <TableRow
+                        key={r.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => setSelectedRecord(r)}
+                      >
                         <TableCell>{new Date(r.work_date || r.check_in_time).toLocaleDateString('es-ES')}</TableCell>
                         <TableCell>{r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
                         <TableCell>{r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
@@ -420,13 +483,16 @@ export function TimeClockWidget() {
               </Table>
             </div>
 
+            {/* Detalle del registro */}
             {selectedRecord && (
               <div className="mt-4 space-y-2 rounded-lg border p-3">
                 <div className="text-sm font-medium">Detalle del registro</div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div><span className="text-muted-foreground">Entrada:</span> {formatTime(selectedRecord.check_in_time)}</div>
                   <div><span className="text-muted-foreground">Salida:</span> {formatTime(selectedRecord.check_out_time)}</div>
                   <div><span className="text-muted-foreground">Total:</span> {selectedRecord.total_hours ? formatHoursAndMinutes(selectedRecord.total_hours) : '—'}</div>
+
                   <div className="flex items-start gap-2">
                     <MapPin className="h-4 w-4 mt-0.5" />
                     <div>
@@ -434,10 +500,13 @@ export function TimeClockWidget() {
                         {formatAddress(selectedRecord.check_in_location)}
                       </div>
                       {mapLink(selectedRecord.check_in_location) && (
-                        <a className="text-xs underline" href={mapLink(selectedRecord.check_in_location)} target="_blank" rel="noreferrer">Ver entrada en mapas</a>
+                        <a className="text-xs underline" href={mapLink(selectedRecord.check_in_location)} target="_blank" rel="noreferrer">
+                          Ver entrada en mapas
+                        </a>
                       )}
                     </div>
                   </div>
+
                   {selectedRecord.check_out_location && (
                     <div className="flex items-start gap-2 sm:col-span-2">
                       <MapPin className="h-4 w-4 mt-0.5" />
@@ -446,7 +515,9 @@ export function TimeClockWidget() {
                           {formatAddress(selectedRecord.check_out_location)}
                         </div>
                         {mapLink(selectedRecord.check_out_location) && (
-                          <a className="text-xs underline" href={mapLink(selectedRecord.check_out_location)} target="_blank" rel="noreferrer">Ver salida en mapas</a>
+                          <a className="text-xs underline" href={mapLink(selectedRecord.check_out_location)} target="_blank" rel="noreferrer">
+                            Ver salida en mapas
+                          </a>
                         )}
                       </div>
                     </div>
@@ -454,7 +525,7 @@ export function TimeClockWidget() {
                 </div>
 
                 {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) && (
-                  <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.check_in_photo_url && (
                       <div className="rounded border p-2">
                         <div className="text-xs mb-1">Foto de entrada</div>
@@ -463,10 +534,13 @@ export function TimeClockWidget() {
                           <Button size="sm" variant="secondary" onClick={() => setPhotoPreviewUrl(selectedRecord.check_in_photo_url)}>
                             <Eye className="h-4 w-4 mr-1" /> Ver grande
                           </Button>
-                          <a className="text-xs underline self-center" href={selectedRecord.check_in_photo_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                          <a className="text-xs underline self-center" href={selectedRecord.check_in_photo_url} target="_blank" rel="noreferrer">
+                            Abrir en nueva pestaña
+                          </a>
                         </div>
                       </div>
                     )}
+
                     {selectedRecord.check_out_photo_url && (
                       <div className="rounded border p-2">
                         <div className="text-xs mb-1">Foto de salida</div>
@@ -475,7 +549,9 @@ export function TimeClockWidget() {
                           <Button size="sm" variant="secondary" onClick={() => setPhotoPreviewUrl(selectedRecord.check_out_photo_url)}>
                             <Eye className="h-4 w-4 mr-1" /> Ver grande
                           </Button>
-                          <a className="text-xs underline self-center" href={selectedRecord.check_out_photo_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                          <a className="text-xs underline self-center" href={selectedRecord.check_out_photo_url} target="_blank" rel="noreferrer">
+                            Abrir en nueva pestaña
+                          </a>
                         </div>
                       </div>
                     )}
@@ -491,7 +567,7 @@ export function TimeClockWidget() {
           </DialogContent>
         </Dialog>
 
-        {/* Dialogo de vista previa de foto */}
+        {/* Modal de vista previa de foto */}
         {photoPreviewUrl && (
           <Dialog open={true} onOpenChange={(o) => { if (!o) setPhotoPreviewUrl(null); }}>
             <DialogContent className="max-w-2xl">
