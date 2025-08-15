@@ -49,6 +49,7 @@ export function TimeClockWidget() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [recordDialogOpen, setRecordDialogOpen] = useState(false);
 
   // Cámara y foto
   const [showCamera, setShowCamera] = useState(false);
@@ -354,62 +355,6 @@ export function TimeClockWidget() {
       employee_id: user.id,
       work_date: (currentRecord?.work_date as string) || now.toISOString().split('T')[0],
     };
-
-    const payload =
-      type === 'in'
-        ? {
-            ...base,
-            check_in_time: now.toISOString(),
-            check_in_location: JSON.stringify(location),
-            check_in_photo_url: photoPublicUrl,
-            status: 'checked_in',
-          }
-        : {
-            ...base,
-            id: currentRecord?.id,
-            check_out_time: now.toISOString(),
-            check_out_location: JSON.stringify(location),
-            check_out_photo_url: photoPublicUrl,
-            status: 'checked_out',
-            total_hours: currentRecord?.check_in_time
-              ? (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000
-              : null,
-          };
-
-    const saved = await saveRecord(payload);
-    if (saved) {
-      toast({ title: '✅ Registro guardado', description: `${type === 'in' ? 'Entrada' : 'Salida'} a las ${fmtTime(now.toISOString())}` });
-      setLocation(null);
-      setCapturedPhoto(null);
-    }
-  };
-
-    const payload =
-      type === 'in'
-        ? {
-            ...base,
-            check_in_time: now.toISOString(),
-            check_in_location: JSON.stringify(location),
-            check_in_photo_url: photoPublicUrl,
-            status: 'checked_in',
-          }
-        : {
-            ...base,
-            id: currentRecord?.id,
-            check_out_time: now.toISOString(),
-            check_out_location: JSON.stringify(location),
-            check_out_photo_url: photoPublicUrl,
-            status: 'checked_out',
-            total_hours: currentRecord?.check_in_time
-              ? (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000
-              : null,
-          };
-
-    const saved = await saveRecord(payload);
-    if (saved) toast({ title: '✅ Registro guardado', description: `${type === 'in' ? 'Entrada' : 'Salida'} a las ${fmtTime(now.toISOString())}` });
-    setLocation(null);
-  };
-
   // ===== UI helpers =====
   const canCheckIn = !currentRecord || currentRecord.status === 'checked_out';
   const canCheckOut = currentRecord && currentRecord.status === 'checked_in';
@@ -543,7 +488,7 @@ export function TimeClockWidget() {
                     <TableRow><TableCell colSpan={6}>Sin registros</TableCell></TableRow>
                   ) : (
                     history.map((r) => (
-                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(r)}>
+                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => { setSelectedRecord(r); setRecordDialogOpen(true); }}>
                         <TableCell>{new Date(r.work_date || r.check_in_time).toLocaleDateString('es-ES')}</TableCell>
                         <TableCell>{fmtTime(r.check_in_time)}</TableCell>
                         <TableCell>{fmtTime(r.check_out_time)}</TableCell>
@@ -580,17 +525,32 @@ export function TimeClockWidget() {
               </Table>
             </div>
 
-            {/* Detalle de un registro */}
-            {selectedRecord && (
-              <div className="mt-4 space-y-2 rounded-lg border p-3">
-                <div className="text-sm font-medium">Detalle del registro</div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setSelectedRecord(null); void loadHistory(); }}>Actualizar</Button>
+              <Button onClick={() => setHistoryOpen(false)}>Cerrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
+        {/* Dialogo de detalle de un registro (flotante aparte) */}
+        <Dialog open={recordDialogOpen} onOpenChange={setRecordDialogOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedRecord ? (
+                  <>Detalle del {new Date(selectedRecord.work_date || selectedRecord.check_in_time).toLocaleDateString('es-ES')} ({selectedRecord.status || '—'})</>
+                ) : 'Detalle del registro'}
+              </DialogTitle>
+              <DialogDescription>Datos y fotos del día seleccionado</DialogDescription>
+            </DialogHeader>
+
+            {selectedRecord ? (
+              <div className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div><span className="text-muted-foreground">Entrada:</span> {fmtTime(selectedRecord.check_in_time)}</div>
                   <div><span className="text-muted-foreground">Salida:</span> {fmtTime(selectedRecord.check_out_time)}</div>
-                  <div><span className="text-muted-foreground">Total:</span> {fmtHoursAndMinutes(selectedRecord.total_hours)}</div>
-
-                  <div className="flex items-start gap-2">
+                  <div className="sm:col-span-2"><span className="text-muted-foreground">Total:</span> {fmtHoursAndMinutes(selectedRecord.total_hours)}</div>
+                  <div className="flex items-start gap-2 sm:col-span-2">
                     <MapPin className="h-4 w-4 mt-0.5" />
                     <div>
                       <div className="truncate" title={fmtAddress(selectedRecord.check_in_location)}>
@@ -601,7 +561,6 @@ export function TimeClockWidget() {
                       )}
                     </div>
                   </div>
-
                   {selectedRecord.check_out_location && (
                     <div className="flex items-start gap-2 sm:col-span-2">
                       <MapPin className="h-4 w-4 mt-0.5" />
@@ -617,8 +576,8 @@ export function TimeClockWidget() {
                   )}
                 </div>
 
-                {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) && (
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.check_in_photo_url && (
                       <PhotoCard label="Foto de entrada" rawUrl={selectedRecord.check_in_photo_url} onPreview={setPhotoPreviewUrl} toRenderableSrc={toRenderableSrc} />
                     )}
@@ -626,13 +585,16 @@ export function TimeClockWidget() {
                       <PhotoCard label="Foto de salida" rawUrl={selectedRecord.check_out_photo_url} onPreview={setPhotoPreviewUrl} toRenderableSrc={toRenderableSrc} />
                     )}
                   </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No hay fotos asociadas a este registro.</div>
                 )}
               </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">Selecciona un registro del historial.</div>
             )}
 
             <DialogFooter>
-              <Button variant="outline" onClick={() => { setSelectedRecord(null); void loadHistory(); }}>Actualizar</Button>
-              <Button onClick={() => setHistoryOpen(false)}>Cerrar</Button>
+              <Button onClick={() => setRecordDialogOpen(false)}>Cerrar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
