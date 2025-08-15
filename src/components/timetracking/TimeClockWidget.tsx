@@ -214,18 +214,28 @@ export function TimeClockWidget() {
     return canvas.toDataURL('image/jpeg', 0.8);
   };
 
-  const uploadPhotoPublic = async (dataUrl: string): Promise<string | null> => {
-    try {
-      const blob = await fetch(dataUrl).then((r) => r.blob());
-      const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
-      const { data, error } = await supabase.storage.from(BUCKET).upload(fileName, blob, { contentType: 'image/jpeg' });
-      if (error) throw error;
-      return supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl;
-    } catch (e: any) {
-      console.error('Upload error:', e);
-      toast({ title: 'No se pudo subir la foto', description: e?.message || 'Intenta de nuevo', variant: 'destructive' });
-      return null;
+  const uploadPhotoUrl = async (dataUrl: string): Promise<string> => {
+    // Sube la foto y devuelve una URL utilizable.
+    // 1) Intenta URL pública (bucket debe ser Public)
+    // 2) Si no hay pública (bucket privado), genera URL firmada como respaldo
+    const blob = await fetch(dataUrl).then((r) => r.blob());
+    const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
+    const { data, error } = await supabase.storage.from(BUCKET).upload(fileName, blob, { contentType: 'image/jpeg' });
+    if (error) {
+      throw new Error(error.message || 'Upload falló');
     }
+    // Pública
+    const pub = supabase.storage.from(BUCKET).getPublicUrl(data.path).data.publicUrl;
+    if (pub) return pub;
+    // Firmada (por si el bucket no es público)
+    const { data: signed, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(data.path, 60 * 60 * 24 * 7);
+    if (signErr) {
+      throw new Error(signErr.message || 'No se pudo generar URL');
+    }
+    if (!signed?.signedUrl) {
+      throw new Error('No se obtuvo una URL de acceso a la imagen');
+    }
+    return signed.signedUrl;
   };
 
   // ===== Guardado (con foto simple a bucket público) =====
@@ -250,8 +260,7 @@ export function TimeClockWidget() {
     try {
       const photo = await capturePhoto();
       if (!photo) throw new Error('No se pudo capturar la foto');
-      const photoUrl = await uploadPhotoPublic(photo);
-      if (!photoUrl) throw new Error('No se obtuvo URL pública');
+      const photoUrl = await uploadPhotoUrl(photo);
 
       const now = new Date();
       const base = { employee_id: user.id, work_date: now.toISOString().split('T')[0] };
