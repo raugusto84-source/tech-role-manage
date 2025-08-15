@@ -3,12 +3,12 @@ import { Clock, MapPin, CheckCircle, AlertCircle, Camera, Eye } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Location {
   lat: number;
@@ -21,7 +21,7 @@ export function TimeClockWidget() {
   const [currentRecord, setCurrentRecord] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<Location | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -30,12 +30,16 @@ export function TimeClockWidget() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showCamera, setShowCamera] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
+  const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
 
+  // Reloj
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // Cargar registro de hoy + historial al entrar
   useEffect(() => {
     if (user) {
       loadTodayRecord();
@@ -43,70 +47,150 @@ export function TimeClockWidget() {
     }
   }, [user]);
 
+  // Cleanup cámara al desmontar
   useEffect(() => () => stopCamera(), []);
 
+  // Conectar stream cuando se muestre la UI de cámara
   useEffect(() => {
     if (!showCamera || !videoRef.current || !streamRef.current) return;
     const video = videoRef.current;
-    video.muted = true;
+    video.muted = true; // autoplay iOS
     video.playsInline = true;
     video.srcObject = streamRef.current;
-    video.play().catch(() => {});
+    const p = video.play();
+    if (p && typeof (p as any).catch === 'function') (p as any).catch(() => {});
   }, [showCamera]);
 
+  const loadTodayRecord = async () => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+    const { data, error } = await supabase
+      .from('time_records')
+      .select('*')
+      .eq('employee_id', user.id)
+      .eq('work_date', today)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) console.error(error);
+    setCurrentRecord(data);
+  };
+
+  const loadHistory = async () => {
+    if (!user) return;
+    setHistoryLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('time_records')
+        .select('*')
+        .eq('employee_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      setHistory(data || []);
+    } catch (e) {
+      console.error('Error cargando historial:', e);
+      toast({ title: 'Error cargando historial', description: 'Intenta de nuevo', variant: 'destructive' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // === Ubicación y dirección ===
   const resolveAddress = async (lat: number, lng: number): Promise<string | undefined> => {
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, { headers: { 'User-Agent': 'TimeTrackingApp/1.0' } });
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { headers: { 'User-Agent': 'TimeTrackingApp/1.0' } }
+      );
       const j = await r.json();
-      return j?.display_name;
-    } catch {
+      return j?.display_name as string | undefined;
+    } catch (e) {
+      console.warn('Reverse geocode error:', e);
       return undefined;
     }
   };
 
-  const getCurrentLocation = (): Promise<Location> => {
-    return new Promise((resolve, reject) => {
+  const getPosition = (options?: PositionOptions) =>
+    new Promise<GeolocationPosition>((resolve, reject) => {
       if (!navigator.geolocation) return reject(new Error('Geolocalización no soportada'));
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const loc: Location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        const addr = await resolveAddress(loc.lat, loc.lng);
-        loc.address = addr || `${loc.lat.toFixed(6)}, ${loc.lng.toFixed(6)}`;
-        resolve(loc);
-      }, (err) => reject(new Error(`Error de geolocalización: ${err.message}`)), { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
+      navigator.geolocation.getCurrentPosition(resolve, reject, options);
     });
+
+  const getCurrentLocation = async (): Promise<Location> => {
+    try {
+      // (Opcional) inspecciona permisos si el API existe
+      try {
+        const perm = await (navigator.permissions as any)?.query?.({ name: 'geolocation' as PermissionName });
+        if (perm && perm.state === 'denied') throw new Error('Permiso de geolocalización denegado');
+      } catch (_) {}
+
+      // 1) Intento de alta precisión (rápido)
+      let pos: GeolocationPosition | null = null;
+      try {
+        pos = await getPosition({ enableHighAccuracy: true, timeout: 7000, maximumAge: 0 });
+      } catch {
+        // 2) Fallback menos estricto
+        pos = await getPosition({ enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+      }
+
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const addr = await resolveAddress(lat, lng);
+      return { lat, lng, address: addr || `${lat.toFixed(6)}, ${lng.toFixed(6)}` };
+    } catch (e: any) {
+      console.error('Error obteniendo ubicación:', e);
+      throw new Error(e?.message || 'No se pudo obtener la ubicación');
+    }
   };
 
   const parseLocation = (raw?: string | null) => {
     if (!raw) return null;
     try { return JSON.parse(raw); } catch { return null; }
   };
+
   const formatAddress = (raw?: string | null) => {
     const loc = parseLocation(raw);
     if (!loc) return '—';
     return loc.address || `${Number(loc.lat).toFixed(6)}, ${Number(loc.lng).toFixed(6)}`;
   };
 
-  const loadTodayRecord = async () => {
-    if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase.from('time_records').select('*').eq('employee_id', user.id).eq('work_date', today).order('created_at', { ascending: false }).limit(1).maybeSingle();
-    setCurrentRecord(data);
+  const mapLink = (raw?: string | null) => {
+    const loc = parseLocation(raw);
+    if (!loc) return undefined;
+    return `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
   };
 
-  const loadHistory = async () => {
-    if (!user) return;
-    const { data } = await supabase.from('time_records').select('*').eq('employee_id', user.id).order('created_at', { ascending: false }).limit(20);
-    setHistory(data || []);
-  };
-
+  // === Cámara ===
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'user' }, width: { ideal: 320 }, height: { ideal: 240 } } });
+      const constraints: MediaStreamConstraints = {
+        video: { facingMode: { ideal: 'user' }, width: { ideal: 320, max: 640 }, height: { ideal: 240, max: 480 } },
+      };
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch {
+        // fallback a trasera o cualquiera
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } } });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        }
+      }
       streamRef.current = stream;
       setShowCamera(true);
-    } catch (error) {
-      toast({ title: '❌ Error de cámara', description: (error as any).message, variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: '❌ Error de cámara', description: error?.message || 'No se pudo acceder a la cámara', variant: 'destructive' });
       setLoading(false);
+    }
+  };
+
+  const waitForVideoReady = async (video: HTMLVideoElement) => {
+    let tries = 0;
+    while ((video.readyState < video.HAVE_CURRENT_DATA || video.videoWidth === 0) && tries < 20) {
+      await new Promise((r) => setTimeout(r, 100));
+      tries++;
     }
   };
 
@@ -116,6 +200,7 @@ export function TimeClockWidget() {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
+    await waitForVideoReady(video);
     canvas.width = video.videoWidth || 320;
     canvas.height = video.videoHeight || 240;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -123,16 +208,19 @@ export function TimeClockWidget() {
   };
 
   const stopCamera = () => {
-    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
+    if (videoRef.current) videoRef.current.srcObject = null as any;
     setShowCamera(false);
   };
 
   const uploadPhoto = async (dataUrl: string) => {
-    const blob = await fetch(dataUrl).then(r => r.blob());
+    const blob = await fetch(dataUrl).then((r) => r.blob());
     const fileName = `time-record-${user?.id}-${Date.now()}.jpg`;
-    const { data } = await supabase.storage.from('time-tracking-photos').upload(fileName, blob, { contentType: 'image/jpeg' });
+    const { data, error } = await supabase.storage
+      .from('time-tracking-photos')
+      .upload(fileName, blob, { contentType: 'image/jpeg' });
+    if (error) return null;
     return supabase.storage.from('time-tracking-photos').getPublicUrl(data?.path || '').data.publicUrl;
   };
 
@@ -141,9 +229,12 @@ export function TimeClockWidget() {
     if (!error) {
       setCurrentRecord(data);
       loadHistory();
+    } else {
+      console.error(error);
     }
   };
 
+  // === Flujo check-in/out ===
   const handleCheck = async (type: 'in' | 'out') => {
     if (!user) return;
     setLoading(true);
@@ -151,7 +242,8 @@ export function TimeClockWidget() {
       const loc = await getCurrentLocation();
       setLocation(loc);
       await startCamera();
-      setLoading(false);
+      setLoading(false); // habilita botón de capturar
+      toast({ title: type === 'in' ? '📸 Tome una foto' : '📸 Foto de salida', description: 'Posiciónese frente a la cámara' });
     } catch (e: any) {
       toast({ title: '❌ Error', description: e.message, variant: 'destructive' });
       setLoading(false);
@@ -160,31 +252,61 @@ export function TimeClockWidget() {
 
   const confirmCheck = async (type: 'in' | 'out') => {
     if (!location || !user) return;
-    let photoUrl = null;
+    let photoUrl: string | null = null;
     if (showCamera) {
       const photo = await capturePhoto();
-      if (photo) photoUrl = await uploadPhoto(photo);
+      if (photo) {
+        setCapturedPhoto(photo);
+        photoUrl = await uploadPhoto(photo);
+      }
     }
     stopCamera();
+
     const now = new Date();
-    const payload: any = type === 'in'
-      ? { employee_id: user.id, check_in_time: now.toISOString(), check_in_location: JSON.stringify(location), check_in_photo_url: photoUrl, work_date: now.toISOString().split('T')[0], status: 'checked_in' }
-      : { id: currentRecord?.id, check_out_time: now.toISOString(), check_out_location: JSON.stringify(location), check_out_photo_url: photoUrl, status: 'checked_out', total_hours: (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000 };
+    const payload: any =
+      type === 'in'
+        ? {
+            employee_id: user.id,
+            check_in_time: now.toISOString(),
+            check_in_location: JSON.stringify(location),
+            check_in_photo_url: photoUrl,
+            work_date: now.toISOString().split('T')[0],
+            status: 'checked_in',
+          }
+        : {
+            id: currentRecord?.id,
+            check_out_time: now.toISOString(),
+            check_out_location: JSON.stringify(location),
+            check_out_photo_url: photoUrl,
+            status: 'checked_out',
+            total_hours: (now.getTime() - new Date(currentRecord.check_in_time).getTime()) / 3600000,
+          };
+
     await saveRecord(payload);
     toast({ title: '✅ Registro guardado', description: `${type === 'in' ? 'Entrada' : 'Salida'} a las ${now.toLocaleTimeString('es-ES')}` });
+    setLocation(null);
   };
 
-  const formatTime = (time?: string) => time ? new Date(time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+  const formatTime = (time?: string) =>
+    time ? new Date(time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+  const getStatusBadge = () => {
+    if (!currentRecord) return <Badge variant="outline">Sin registrar</Badge>;
+    switch (currentRecord.status) {
+      case 'checked_in': return <Badge className="bg-green-500 text-white">Presente</Badge>;
+      case 'checked_out': return <Badge variant="secondary">Finalizado</Badge>;
+      default: return <Badge variant="outline">Incompleto</Badge>;
+    }
+  };
 
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            <CardTitle>Control de Horarios</CardTitle>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)}>Ver historial</Button>
+          <CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5" />Control de Horarios</CardTitle>
+          <Button variant="outline" size="sm" onClick={() => { setHistoryOpen(true); loadHistory(); }}>
+            Ver historial
+          </Button>
         </div>
         <CardDescription>Registra tu entrada y salida diaria</CardDescription>
       </CardHeader>
@@ -193,6 +315,14 @@ export function TimeClockWidget() {
           <div className="text-3xl font-mono font-bold">{currentTime.toLocaleTimeString('es-ES')}</div>
           <div className="text-sm text-muted-foreground">{currentTime.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
         </div>
+
+        {/* Estado actual */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">Estado:</span>
+          {getStatusBadge()}
+        </div>
+
+        {/* Registro del día */}
         {currentRecord && (
           <div className="space-y-2 p-3 bg-muted rounded-lg">
             <div className="flex justify-between"><span>Entrada:</span><span>{formatTime(currentRecord.check_in_time)}</span></div>
@@ -204,82 +334,179 @@ export function TimeClockWidget() {
             )}
           </div>
         )}
+
+        {/* Cámara */}
         {showCamera && (
           <div className="space-y-3 p-4 bg-muted rounded-lg">
             <video ref={videoRef} autoPlay playsInline muted className="rounded-lg w-full max-w-sm border" />
             <canvas ref={canvasRef} className="hidden" />
             <div className="flex gap-2">
-              <Button onClick={() => confirmCheck(!currentRecord || currentRecord.status === 'checked_out' ? 'in' : 'out')} className="flex-1"><Camera className="h-4 w-4 mr-2" />Capturar y {!currentRecord || currentRecord.status === 'checked_out' ? 'Entrar' : 'Salir'}</Button>
+              <Button onClick={() => confirmCheck(!currentRecord || currentRecord.status === 'checked_out' ? 'in' : 'out')} className="flex-1">
+                <Camera className="h-4 w-4 mr-2" />
+                Capturar y {!currentRecord || currentRecord.status === 'checked_out' ? 'Entrar' : 'Salir'}
+              </Button>
               <Button variant="outline" onClick={() => { stopCamera(); setLoading(false); setLocation(null); }}>Cancelar</Button>
             </div>
           </div>
         )}
+
+        {/* Botones principales */}
         {!showCamera && (
           <div className="space-y-2">
-            {(!currentRecord || currentRecord.status === 'checked_out') && <Button onClick={() => handleCheck('in')} disabled={loading} className="w-full" size="lg"><CheckCircle className="h-4 w-4 mr-2" />Registrar Entrada</Button>}
-            {currentRecord && currentRecord.status === 'checked_in' && <Button onClick={() => handleCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg"><MapPin className="h-4 w-4 mr-2" />Registrar Salida</Button>}
+            {(!currentRecord || currentRecord.status === 'checked_out') && (
+              <Button onClick={() => handleCheck('in')} disabled={loading} className="w-full" size="lg">
+                {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
+                Registrar Entrada
+              </Button>
+            )}
+            {currentRecord && currentRecord.status === 'checked_in' && (
+              <Button onClick={() => handleCheck('out')} disabled={loading} variant="outline" className="w-full" size="lg">
+                {loading ? <AlertCircle className="h-4 w-4 mr-2 animate-spin" /> : <MapPin className="h-4 w-4 mr-2" />}
+                Registrar Salida
+              </Button>
+            )}
           </div>
         )}
-        {capturedPhoto && <img src={capturedPhoto} alt="Foto de registro" className="rounded-lg w-32 h-24 object-cover mx-auto border" />}
-        {location && <div className="text-xs text-muted-foreground"><MapPin className="h-3 w-3 mr-1 inline" />{location.address}</div>}
-      </CardContent>
 
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Historial de registros</DialogTitle>
-            <DialogDescription>Consulta tus entradas y salidas recientes</DialogDescription>
-          </DialogHeader>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Entrada</TableHead>
-                  <TableHead>Salida</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Ubicación</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {history.length === 0 ? (
-                  <TableRow><TableCell colSpan={5}>Sin registros</TableCell></TableRow>
-                ) : (
-                  history.map((r) => (
-                    <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(r)}>
-                      <TableCell>{new Date(r.work_date || r.check_in_time).toLocaleDateString('es-ES')}</TableCell>
-                      <TableCell>{formatTime(r.check_in_time)}</TableCell>
-                      <TableCell>{formatTime(r.check_out_time)}</TableCell>
-                      <TableCell>{r.total_hours ? formatHoursAndMinutes(r.total_hours) : '—'}</TableCell>
-                      <TableCell className="max-w-[220px] truncate" title={formatAddress(r.check_in_location)}>{formatAddress(r.check_in_location)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+        {/* Preview instantánea */}
+        {capturedPhoto && <img src={capturedPhoto} alt="Foto de registro" className="rounded-lg w-32 h-24 object-cover mx-auto border" />}
+
+        {/* Ubicación reciente */}
+        {location && (
+          <div className="text-xs text-muted-foreground flex items-start gap-1">
+            <MapPin className="h-3 w-3 mt-0.5" />
+            <span>{location.address || `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`}</span>
           </div>
-          {selectedRecord && (
-            <div className="mt-4 space-y-2 rounded-lg border p-3">
-              <div className="text-sm font-medium">Detalle del registro</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                <div><span className="text-muted-foreground">Entrada:</span> {formatTime(selectedRecord.check_in_time)}</div>
-                <div><span className="text-muted-foreground">Salida:</span> {formatTime(selectedRecord.check_out_time)}</div>
-                <div><span className="text-muted-foreground">Total:</span> {selectedRecord.total_hours ? formatHoursAndMinutes(selectedRecord.total_hours) : '—'}</div>
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 mt-0.5" />
-                  <div>
-                    <div className="truncate" title={formatAddress(selectedRecord.check_in_location)}>{formatAddress(selectedRecord.check_in_location)}</div>
-                  </div>
-                </div>
-              </div>
+        )}
+
+        {/* Diálogo de Historial */}
+        <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+          <DialogContent className="max-w-3xl">
+            <DialogHeader>
+              <DialogTitle>Historial de registros</DialogTitle>
+              <DialogDescription>Consulta tus entradas y salidas recientes</DialogDescription>
+            </DialogHeader>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Entrada</TableHead>
+                    <TableHead>Salida</TableHead>
+                    <TableHead>Total</TableHead>
+                    <TableHead>Ubicación</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {historyLoading ? (
+                    <TableRow><TableCell colSpan={5}>Cargando…</TableCell></TableRow>
+                  ) : history.length === 0 ? (
+                    <TableRow><TableCell colSpan={5}>Sin registros</TableCell></TableRow>
+                  ) : (
+                    history.map((r) => (
+                      <TableRow key={r.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedRecord(r)}>
+                        <TableCell>{new Date(r.work_date || r.check_in_time).toLocaleDateString('es-ES')}</TableCell>
+                        <TableCell>{r.check_in_time ? new Date(r.check_in_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
+                        <TableCell>{r.check_out_time ? new Date(r.check_out_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '—'}</TableCell>
+                        <TableCell>{r.total_hours ? formatHoursAndMinutes(r.total_hours) : '—'}</TableCell>
+                        <TableCell className="max-w-[240px] truncate" title={formatAddress(r.check_in_location)}>
+                          {formatAddress(r.check_in_location)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setSelectedRecord(null); loadHistory(); }}>Actualizar</Button>
-            <Button onClick={() => setHistoryOpen(false)}>Cerrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+            {selectedRecord && (
+              <div className="mt-4 space-y-2 rounded-lg border p-3">
+                <div className="text-sm font-medium">Detalle del registro</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div><span className="text-muted-foreground">Entrada:</span> {formatTime(selectedRecord.check_in_time)}</div>
+                  <div><span className="text-muted-foreground">Salida:</span> {formatTime(selectedRecord.check_out_time)}</div>
+                  <div><span className="text-muted-foreground">Total:</span> {selectedRecord.total_hours ? formatHoursAndMinutes(selectedRecord.total_hours) : '—'}</div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 mt-0.5" />
+                    <div>
+                      <div className="truncate" title={formatAddress(selectedRecord.check_in_location)}>
+                        {formatAddress(selectedRecord.check_in_location)}
+                      </div>
+                      {mapLink(selectedRecord.check_in_location) && (
+                        <a className="text-xs underline" href={mapLink(selectedRecord.check_in_location)} target="_blank" rel="noreferrer">Ver entrada en mapas</a>
+                      )}
+                    </div>
+                  </div>
+                  {selectedRecord.check_out_location && (
+                    <div className="flex items-start gap-2 sm:col-span-2">
+                      <MapPin className="h-4 w-4 mt-0.5" />
+                      <div>
+                        <div className="truncate" title={formatAddress(selectedRecord.check_out_location)}>
+                          {formatAddress(selectedRecord.check_out_location)}
+                        </div>
+                        {mapLink(selectedRecord.check_out_location) && (
+                          <a className="text-xs underline" href={mapLink(selectedRecord.check_out_location)} target="_blank" rel="noreferrer">Ver salida en mapas</a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {(selectedRecord.check_in_photo_url || selectedRecord.check_out_photo_url) && (
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    {selectedRecord.check_in_photo_url && (
+                      <div className="rounded border p-2">
+                        <div className="text-xs mb-1">Foto de entrada</div>
+                        <img src={selectedRecord.check_in_photo_url} alt="Entrada" className="w-full h-32 object-cover rounded" />
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => setPhotoPreviewUrl(selectedRecord.check_in_photo_url)}>
+                            <Eye className="h-4 w-4 mr-1" /> Ver grande
+                          </Button>
+                          <a className="text-xs underline self-center" href={selectedRecord.check_in_photo_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                        </div>
+                      </div>
+                    )}
+                    {selectedRecord.check_out_photo_url && (
+                      <div className="rounded border p-2">
+                        <div className="text-xs mb-1">Foto de salida</div>
+                        <img src={selectedRecord.check_out_photo_url} alt="Salida" className="w-full h-32 object-cover rounded" />
+                        <div className="mt-2 flex gap-2">
+                          <Button size="sm" variant="secondary" onClick={() => setPhotoPreviewUrl(selectedRecord.check_out_photo_url)}>
+                            <Eye className="h-4 w-4 mr-1" /> Ver grande
+                          </Button>
+                          <a className="text-xs underline self-center" href={selectedRecord.check_out_photo_url} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setSelectedRecord(null); loadHistory(); }}>Actualizar</Button>
+              <Button onClick={() => setHistoryOpen(false)}>Cerrar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialogo de vista previa de foto */}
+        {photoPreviewUrl && (
+          <Dialog open={true} onOpenChange={(o) => { if (!o) setPhotoPreviewUrl(null); }}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Vista de foto</DialogTitle>
+              </DialogHeader>
+              <img src={photoPreviewUrl} alt="Foto" className="w-full h-auto rounded" />
+              <DialogFooter>
+                <Button onClick={() => setPhotoPreviewUrl(null)}>Cerrar</Button>
+                <a className="text-sm underline" href={photoPreviewUrl} target="_blank" rel="noreferrer">Abrir en nueva pestaña</a>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </CardContent>
     </Card>
   );
 }
