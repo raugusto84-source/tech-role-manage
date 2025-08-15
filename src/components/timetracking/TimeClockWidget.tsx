@@ -137,38 +137,21 @@ export function TimeClockWidget() {
       const constraints = {
         video: {
           facingMode: 'user',
-          width: { ideal: 320, max: 640 },
-          height: { ideal: 240, max: 480 }
+          width: { ideal: 640, max: 1280 },
+          height: { ideal: 480, max: 720 }
         }
       };
 
       console.log('Solicitando acceso a la cámara...');
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       
-      console.log('Stream obtenido:', stream);
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
-        // Asegurar que el video se reproduce automáticamente
-        videoRef.current.addEventListener('loadedmetadata', () => {
-          console.log('Metadata cargada, reproduciendo video...');
-          videoRef.current?.play().then(() => {
-            console.log('Video iniciado correctamente');
-            setShowCamera(true);
-          }).catch(e => {
-            console.error('Error reproduciendo video:', e);
-            setShowCamera(true); // Mostrar de todas formas
-          });
-        });
-        
-        // Fallback inmediato
-        setTimeout(() => {
-          if (!showCamera) {
-            console.log('Activando cámara por timeout');
-            setShowCamera(true);
-          }
-        }, 1000);
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play();
+          setShowCamera(true);
+          console.log('Cámara iniciada correctamente');
+        };
       }
     } catch (error: any) {
       console.error('Error accediendo a la cámara:', error);
@@ -176,7 +159,7 @@ export function TimeClockWidget() {
       let errorMessage = "No se pudo acceder a la cámara";
       
       if (error.name === 'NotAllowedError') {
-        errorMessage = "Permisos de cámara denegados. Por favor, permita el acceso a la cámara cuando su navegador lo solicite.";
+        errorMessage = "Permisos de cámara denegados. Por favor, habilite los permisos en su navegador.";
       } else if (error.name === 'NotFoundError') {
         errorMessage = "No se encontró cámara en el dispositivo.";
       } else if (error.name === 'NotSupportedError') {
@@ -531,23 +514,21 @@ export function TimeClockWidget() {
         {/* Cámara para captura de foto */}
         {showCamera && (
           <div className="space-y-3 p-4 bg-muted rounded-lg">
-              <div className="text-center">
-                <p className="text-sm font-medium mb-2">Tome una foto para completar el registro</p>
-                <div className="relative inline-block">
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline
-                    muted
-                    className="rounded-lg w-full max-w-sm"
-                    style={{ maxWidth: '320px', height: 'auto' }}
-                  />
-                  <canvas 
-                    ref={canvasRef} 
-                    className="hidden"
-                  />
-                </div>
+            <div className="text-center">
+              <p className="text-sm font-medium mb-2">Tome una foto para completar el registro</p>
+              <div className="relative inline-block">
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline
+                  className="rounded-lg w-full max-w-sm"
+                />
+                <canvas 
+                  ref={canvasRef} 
+                  className="hidden"
+                />
               </div>
+            </div>
             <div className="flex gap-2 justify-center">
               <Button 
                 onClick={canCheckIn ? confirmCheckIn : confirmCheckOut}
