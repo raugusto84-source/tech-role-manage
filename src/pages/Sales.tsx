@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
-// ⛔ QUITAMOS ServicesList para evitar depender de una tabla 'services' que no existe
-// import { ServicesList } from '@/components/sales/ServicesList';
+// import { ServicesList } from '@/components/sales/ServicesList'; // ← ya no se usa
 import { ServiceForm } from '@/components/sales/ServiceForm';
 import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,34 +13,39 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 
-/**
- * Función utilitaria (tu snippet). Si la categoría no tiene icono en DB, usamos este mapa.
- */
+const MAIN_CATEGORIES = [
+  'Computadoras',
+  'Cámaras de Seguridad',
+  'Control de Acceso',
+  'Fraccionamientos',
+  'Cercas Eléctricas',
+  'Alarmas',
+] as const;
+
+// Emojis fallback si no hay icono en DB
 const getCategoryIcon = (categoryName: string): string => {
   const iconMap: Record<string, string> = {
+    'computadoras': '💻',
+    'cámaras de seguridad': '📹',
+    'camaras de seguridad': '📹',
+    'control de acceso': '🚪',
+    'fraccionamientos': '🏘️',
+    'cercas eléctricas': '⚡',
+    'cercas electricas': '⚡',
+    'alarmas': '🚨',
     'general': '🔧',
-    'mantenimiento': '🛠️',
-    'reparacion': '🔨',
-    'instalacion': '📦',
-    'consultoria': '💡',
-    'soporte': '🆘',
-    'desarrollo': '💻',
-    'formacion': '📚',
-    'formateo': '💾',
-    'otros': '📋'
+    'otros': '📋',
   };
   return iconMap[categoryName.toLowerCase()] || '🔧';
 };
 
-// Tablas reales según tu schema
+// Tablas
 const SERVICES_TABLE = 'service_types' as const;
-const CATEGORIES_TABLE = 'service_categories' as const;
 
-// Selects mínimos para evitar errores por columnas inexistentes
-const SERVICE_SELECT = 'id, name, description, base_price, unit, vat_rate, category';
-const CATEGORY_SELECT = 'id, name, icon, is_active';
+// Campos a leer (incluye item_type para subcategorías)
+const SERVICE_SELECT =
+  'id, name, description, base_price, unit, vat_rate, category, item_type';
 
-type Category = { id: string; name: string; icon?: string | null; is_active?: boolean | null };
 type Service = {
   id: string;
   name: string;
@@ -49,7 +53,8 @@ type Service = {
   base_price?: number | null;
   unit?: string | null;
   vat_rate?: number | null;
-  category?: string | null; // en service_types es STRING (nombre), no id
+  category?: string | null;
+  item_type?: string | null; // ← subcategoría
 };
 
 export default function Sales() {
@@ -60,43 +65,41 @@ export default function Sales() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Categorías / selección
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  // Categoría principal seleccionada (string exacto) y subcategoría
+  const [activeMainCategory, setActiveMainCategory] = useState<string | null>(null);
+  const [activeSubCategory, setActiveSubCategory] = useState<string | null>(null);
 
-  // Ítems (service_types)
+  // Mapa de iconos por nombre (si existen en service_categories)
+  const [iconByName, setIconByName] = useState<Record<string, string>>({});
+
+  // Ítems cargados para la categoría principal (o todo si null)
   const [services, setServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
 
-  // Cargar categorías
+  // Cargar iconos de categorías (opcional)
   useEffect(() => {
     let mounted = true;
     (async () => {
-      setCategoriesLoading(true);
       const { data, error } = await supabase
-        .from(CATEGORIES_TABLE)
-        .select(CATEGORY_SELECT)
-        .order('name', { ascending: true });
-
+        .from('service_categories')
+        .select('name, icon');
       if (!mounted) return;
       if (error) {
-        toast({ title: 'Error cargando categorías', description: error.message, variant: 'destructive' });
-        setCategories([]);
-      } else {
-        setCategories((data ?? []) as Category[]);
+        // silencioso; usamos fallback
+        return;
       }
-      setCategoriesLoading(false);
+      const map: Record<string, string> = {};
+      (data ?? []).forEach((c: { name: string; icon: string | null }) => {
+        if (c.name && c.icon) map[c.name] = c.icon;
+      });
+      setIconByName(map);
     })();
-    return () => { mounted = false; };
-  }, [toast, refreshTrigger]);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const activeCategory = useMemo(
-    () => categories.find(c => c.id === activeCategoryId) || null,
-    [categories, activeCategoryId]
-  );
-
-  // Cargar servicios (si hay categoría, filtra por nombre)
+  // Cargar servicios por categoría principal
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -107,35 +110,66 @@ export default function Sales() {
         .select(SERVICE_SELECT)
         .order('name', { ascending: true });
 
-      // OJO: service_types.category es string con el NOMBRE de la categoría
-      const catName = activeCategory?.name;
-      if (catName) query = query.eq('category', catName);
+      if (activeMainCategory) {
+        query = query.eq('category', activeMainCategory);
+      }
 
       const { data, error } = await query;
 
       if (!mounted) return;
       if (error) {
-        toast({ title: 'Error cargando ítems', description: error.message, variant: 'destructive' });
+        toast({
+          title: 'Error cargando artículos',
+          description: error.message,
+          variant: 'destructive',
+        });
         setServices([]);
       } else {
         setServices((data ?? []) as Service[]);
       }
       setServicesLoading(false);
     })();
-    return () => { mounted = false; };
-  }, [activeCategory?.name, toast, refreshTrigger]);
+
+    return () => {
+      mounted = false;
+    };
+  }, [activeMainCategory, toast, refreshTrigger]);
+
+  // Subcategorías (únicas) derivadas de los servicios cargados
+  const subcategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of services) {
+      const val = (s.item_type ?? '').trim();
+      if (val) set.add(val);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [services]);
+
+  // Servicios mostrados según subcategoría activa
+  const displayedServices = useMemo(() => {
+    if (!activeSubCategory) return services;
+    return services.filter(
+      s => (s.item_type ?? '').trim() === activeSubCategory
+    );
+  }, [services, activeSubCategory]);
 
   const handleServiceCreated = () => {
     setRefreshTrigger(prev => prev + 1);
     setActiveTab('list');
-    toast({ title: "Servicio creado", description: "El servicio ha sido agregado exitosamente." });
+    toast({
+      title: 'Servicio creado',
+      description: 'El servicio ha sido agregado exitosamente.',
+    });
   };
 
   const handleServiceUpdated = () => {
     setRefreshTrigger(prev => prev + 1);
     setSelectedService(null);
     setActiveTab('list');
-    toast({ title: "Servicio actualizado", description: "Los cambios han sido guardados exitosamente." });
+    toast({
+      title: 'Servicio actualizado',
+      description: 'Los cambios han sido guardados exitosamente.',
+    });
   };
 
   const handleEditService = (serviceId: string) => {
@@ -160,7 +194,10 @@ export default function Sales() {
             </p>
           </div>
           <Button
-            onClick={() => { setSelectedService(null); setActiveTab('form'); }}
+            onClick={() => {
+              setSelectedService(null);
+              setActiveTab('form');
+            }}
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -190,58 +227,108 @@ export default function Sales() {
 
           {/* LISTA */}
           <TabsContent value="list" className="space-y-6">
-            {/* Botones de categorías */}
+            {/* Botones de categoría principal */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle>Categorías</CardTitle>
-                <CardDescription>Elige una categoría para ver sus artículos</CardDescription>
+                <CardTitle>Categorías principales</CardTitle>
+                <CardDescription>Elige una categoría y luego una subcategoría</CardDescription>
               </CardHeader>
               <CardContent>
-                {categoriesLoading ? (
-                  <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="h-9 w-28 rounded-full bg-muted animate-pulse" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                  <Button
+                    type="button"
+                    variant={activeMainCategory === null ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      setActiveMainCategory(null);
+                      setActiveSubCategory(null);
+                    }}
+                    className="rounded-full"
+                    title="Todas las categorías"
+                  >
+                    ☆ Todas
+                  </Button>
+
+                  {MAIN_CATEGORIES.map((name) => (
                     <Button
+                      key={name}
                       type="button"
-                      variant={activeCategoryId === null ? 'default' : 'outline'}
+                      variant={activeMainCategory === name ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setActiveCategoryId(null)}
+                      onClick={() => {
+                        setActiveMainCategory(name);
+                        setActiveSubCategory(null); // reset subcategoría al cambiar principal
+                      }}
                       className="rounded-full"
-                      title="Todas las categorías"
+                      title={name}
                     >
-                      ☆ Todas
+                      <span className="mr-1">{iconByName[name] || getCategoryIcon(name)}</span>
+                      {name}
                     </Button>
-                    {categories.map((cat) => (
-                      <Button
-                        key={cat.id}
-                        type="button"
-                        variant={activeCategoryId === cat.id ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setActiveCategoryId(cat.id)}
-                        className="rounded-full"
-                        title={cat.name}
-                      >
-                        <span className="mr-1">{cat.icon || getCategoryIcon(cat.name)}</span>
-                        {cat.name}
-                      </Button>
-                    ))}
-                  </div>
-                )}
+                  ))}
+                </div>
               </CardContent>
             </Card>
 
-            {/* Grid de ítems (service_types) */}
+            {/* Botones de subcategoría (solo cuando hay categoría principal seleccionada) */}
+            {activeMainCategory && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle>Subcategorías</CardTitle>
+                  <CardDescription>
+                    Derivadas de <code>service_types.item_type</code> para “{activeMainCategory}”
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                    <Button
+                      type="button"
+                      variant={activeSubCategory === null ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setActiveSubCategory(null)}
+                      className="rounded-full"
+                      title="Todas las subcategorías"
+                    >
+                      Todas
+                    </Button>
+                    {subcategories.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">No hay subcategorías detectadas.</span>
+                    ) : (
+                      subcategories.map((sc) => (
+                        <Button
+                          key={sc}
+                          type="button"
+                          variant={activeSubCategory === sc ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setActiveSubCategory(sc)}
+                          className="rounded-full"
+                          title={sc}
+                        >
+                          {sc}
+                        </Button>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Grid de ítems */}
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {activeCategory ? `Artículos de: ${activeCategory.name}` : 'Todos los artículos'}
+                  {activeMainCategory
+                    ? activeSubCategory
+                      ? `Artículos: ${activeMainCategory} • ${activeSubCategory}`
+                      : `Artículos de: ${activeMainCategory}`
+                    : 'Todos los artículos'}
                 </CardTitle>
                 <CardDescription>
-                  {activeCategory ? 'Ítems de la categoría seleccionada' : 'Catálogo completo desde public.service_types'}
+                  {activeMainCategory
+                    ? activeSubCategory
+                      ? `Filtrando por categoría y subcategoría`
+                      : `Filtrando por categoría principal`
+                    : 'Catálogo completo desde public.service_types'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -259,26 +346,33 @@ export default function Sales() {
                       </Card>
                     ))}
                   </div>
-                ) : services.length === 0 ? (
+                ) : displayedServices.length === 0 ? (
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Sin ítems</CardTitle>
                       <CardDescription>
-                        {activeCategory ? 'No hay servicios en esta categoría.' : 'No hay artículos registrados.'}
+                        {activeMainCategory
+                          ? 'No hay servicios que coincidan con la selección.'
+                          : 'No hay artículos registrados.'}
                       </CardDescription>
                     </CardHeader>
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {services.map((svc) => (
+                    {displayedServices.map((svc) => (
                       <Card key={svc.id} className="hover:shadow-md transition-shadow">
                         <CardHeader>
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <CardTitle className="text-lg">{svc.name}</CardTitle>
-                              {typeof svc.vat_rate === 'number' && (
-                                <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>
-                              )}
+                              <div className="flex items-center gap-2 mt-1">
+                                {typeof svc.vat_rate === 'number' && (
+                                  <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>
+                                )}
+                                {svc.item_type && (
+                                  <Badge variant="outline">{svc.item_type}</Badge>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </CardHeader>
@@ -302,7 +396,7 @@ export default function Sales() {
             </Card>
           </TabsContent>
 
-          {/* FORMULARIO (no modificado) */}
+          {/* FORMULARIO (sin cambios) */}
           <TabsContent value="form" className="space-y-6">
             <Card>
               <CardHeader>
@@ -323,7 +417,7 @@ export default function Sales() {
             </Card>
           </TabsContent>
 
-          {/* MÁRGENES (sin cambios) */}
+          {/* MÁRGENES */}
           <TabsContent value="margins" className="space-y-6">
             <Card>
               <CardHeader>
@@ -337,7 +431,6 @@ export default function Sales() {
               </CardContent>
             </Card>
           </TabsContent>
-
         </Tabs>
       </div>
     </AppLayout>
