@@ -11,9 +11,12 @@ import { useToast } from '@/hooks/use-toast';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 
-// NUEVO
+// ✅ Usa tu cliente actual
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+
+// 👇 Cambia esto si tu tabla no se llama 'services'
+const SERVICES_TABLE = 'services';
 
 type Category = { id: string; name: string; color?: string | null };
 type Service = {
@@ -35,23 +38,22 @@ export default function Sales() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // NUEVO: categorías y selección
+  // Estado de categorías e ítems por categoría
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-  // NUEVO: ítems de la categoría seleccionada
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [categoryServices, setCategoryServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState<boolean>(false);
 
-  // Cargar categorías
+  // Cargar categorías (❗️QUITAMOS 'color' del select)
   useEffect(() => {
     let mounted = true;
     (async () => {
       setCategoriesLoading(true);
       const { data, error } = await supabase
         .from('service_categories')
-        .select('id, name, color')
+        .select('id, name') // <-- sin 'color'
         .order('name', { ascending: true });
 
       if (!mounted) return;
@@ -63,14 +65,17 @@ export default function Sales() {
         });
         setCategories([]);
       } else {
-        setCategories(data || []);
+        // aunque no seleccionamos 'color', el tipo lo permite opcionalmente
+        setCategories((data || []) as Category[]);
       }
       setCategoriesLoading(false);
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [toast, refreshTrigger]);
 
-  // Cargar servicios al cambiar de categoría
+  // Cargar servicios de la categoría seleccionada
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -79,8 +84,10 @@ export default function Sales() {
         return;
       }
       setServicesLoading(true);
-      const { data, error } = await supabase
-        .from('services')
+
+      // ❗️Consulta NO tipada para evitar TS2589/TS2769 si la tabla no está en los tipos generados
+      const { data, error } = await (supabase as any)
+        .from(SERVICES_TABLE)
         .select('id, name, description, price, unit, iva_rate, sku, category_id')
         .eq('category_id', activeCategoryId)
         .order('name', { ascending: true });
@@ -94,11 +101,13 @@ export default function Sales() {
         });
         setCategoryServices([]);
       } else {
-        setCategoryServices(data || []);
+        setCategoryServices((data ?? []) as Service[]);
       }
       setServicesLoading(false);
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, [activeCategoryId, toast, refreshTrigger]);
 
   const activeCategory = useMemo(
@@ -199,8 +208,7 @@ export default function Sales() {
                         variant={activeCategoryId === cat.id ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setActiveCategoryId(cat.id)}
-                        className="rounded-full border-2"
-                        style={cat.color ? { borderColor: cat.color } : undefined}
+                        className="rounded-full"
                         title={cat.name}
                       >
                         {cat.name}
