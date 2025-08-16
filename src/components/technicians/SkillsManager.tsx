@@ -375,7 +375,7 @@ export function SkillsManager({ technicianId, readonly = false }: SkillsManagerP
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">Órdenes completadas:</span>
+                                    <span className="text-xs text-muted-foreground">Completado:</span>
                                     <Badge variant="secondary" className="text-xs">
                                       {ordersCount[service.id] || 0} veces
                                     </Badge>
