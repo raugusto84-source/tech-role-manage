@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { WarrantyConfigForm } from '@/components/warranty/WarrantyConfigForm';
 
 /**
  * Schema de validación para servicios
@@ -695,6 +696,19 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Configuración de Garantía */}
+          {serviceId && (
+            <WarrantyConfigForm 
+              serviceTypeId={serviceId}
+              onSave={() => {
+                toast({
+                  title: "Éxito",
+                  description: "Configuración de garantía actualizada"
+                });
+              }}
+            />
           )}
 
           {/* Botones de acción */}

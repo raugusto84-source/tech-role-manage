@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin } from 'lucide-react';
+import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -18,6 +18,7 @@ import { ClientOrderApproval } from './ClientOrderApproval';
 import { DeliverySignature } from './DeliverySignature';
 import { SimpleSatisfactionSurvey } from './SimpleSatisfactionSurvey';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
+import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 
 interface OrderDetailsProps {
   order: {
@@ -668,6 +669,34 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                       </p>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Garantías de Servicios */}
+            {orderItems.length > 0 && orderStatus === 'finalizada' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-primary" />
+                    Garantías
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {orderItems.map((item) => (
+                    <WarrantyCard
+                      key={item.id}
+                      orderItem={{
+                        ...item,
+                        orders: {
+                          order_number: order.order_number,
+                          client_id: order.client_id
+                        }
+                      }}
+                      clientId={order.client_id}
+                      showClaimButton={profile?.role === 'cliente'}
+                    />
+                  ))}
                 </CardContent>
               </Card>
             )}

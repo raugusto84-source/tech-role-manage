@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -1341,6 +1341,9 @@ export type Database = {
           updated_at: string
           vat_amount: number
           vat_rate: number
+          warranty_conditions: string | null
+          warranty_end_date: string | null
+          warranty_start_date: string | null
         }
         Insert: {
           created_at?: string
@@ -1360,6 +1363,9 @@ export type Database = {
           updated_at?: string
           vat_amount?: number
           vat_rate?: number
+          warranty_conditions?: string | null
+          warranty_end_date?: string | null
+          warranty_start_date?: string | null
         }
         Update: {
           created_at?: string
@@ -1379,6 +1385,9 @@ export type Database = {
           updated_at?: string
           vat_amount?: number
           vat_rate?: number
+          warranty_conditions?: string | null
+          warranty_end_date?: string | null
+          warranty_start_date?: string | null
         }
         Relationships: [
           {
@@ -2947,6 +2956,8 @@ export type Database = {
           unit: string | null
           updated_at: string
           vat_rate: number | null
+          warranty_conditions: string | null
+          warranty_duration_days: number | null
         }
         Insert: {
           base_price?: number | null
@@ -2967,6 +2978,8 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           vat_rate?: number | null
+          warranty_conditions?: string | null
+          warranty_duration_days?: number | null
         }
         Update: {
           base_price?: number | null
@@ -2987,6 +3000,8 @@ export type Database = {
           unit?: string | null
           updated_at?: string
           vat_rate?: number | null
+          warranty_conditions?: string | null
+          warranty_duration_days?: number | null
         }
         Relationships: []
       }
@@ -3888,6 +3903,59 @@ export type Database = {
           },
         ]
       }
+      warranty_claims: {
+        Row: {
+          claim_description: string
+          claim_type: string
+          client_id: string
+          created_at: string
+          id: string
+          order_item_id: string
+          replacement_order_id: string | null
+          resolution_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          claim_description: string
+          claim_type?: string
+          client_id: string
+          created_at?: string
+          id?: string
+          order_item_id: string
+          replacement_order_id?: string | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          claim_description?: string
+          claim_type?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          order_item_id?: string
+          replacement_order_id?: string | null
+          resolution_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranty_claims_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_reports: {
         Row: {
           created_at: string
@@ -4101,35 +4169,35 @@ export type Database = {
         Returns: undefined
       }
       calculate_order_item_pricing: {
-        Args: { p_service_type_id: string; p_quantity?: number }
+        Args: { p_quantity?: number; p_service_type_id: string }
         Returns: {
-          unit_cost_price: number
-          unit_base_price: number
+          item_type: string
           profit_margin_rate: number
           subtotal: number
-          vat_rate: number
-          vat_amount: number
           total_amount: number
-          item_type: string
+          unit_base_price: number
+          unit_cost_price: number
+          vat_amount: number
+          vat_rate: number
         }[]
       }
       calculate_schedule_weekly_hours: {
         Args: {
-          work_days: number[]
-          start_time: string
-          end_time: string
           break_duration_minutes: number
+          end_time: string
+          start_time: string
+          work_days: number[]
         }
         Returns: number
       }
       calculate_service_price: {
-        Args: { p_service_id: string; p_quantity?: number }
+        Args: { p_quantity?: number; p_service_id: string }
         Returns: {
           cost_price: number
-          profit_margin: number
-          vat_amount: number
           final_price: number
+          profit_margin: number
           unit_price: number
+          vat_amount: number
         }[]
       }
       calculate_weekly_payroll_date: {
@@ -4137,7 +4205,7 @@ export type Database = {
         Returns: string
       }
       change_user_password: {
-        Args: { p_user_id: string; p_new_password: string }
+        Args: { p_new_password: string; p_user_id: string }
         Returns: Json
       }
       check_and_award_achievements: {
@@ -4203,21 +4271,21 @@ export type Database = {
       generate_weekly_report: {
         Args: {
           p_employee_id: string
-          p_week_start: string
           p_week_end: string
+          p_week_start: string
         }
         Returns: string
       }
       get_attendance_summary: {
-        Args: { employee_uuid: string; start_date: string; end_date: string }
+        Args: { employee_uuid: string; end_date: string; start_date: string }
         Returns: {
-          total_days: number
-          present_days: number
-          late_days: number
           absent_days: number
-          total_hours: number
-          overtime_hours: number
           attendance_rate: number
+          late_days: number
+          overtime_hours: number
+          present_days: number
+          total_days: number
+          total_hours: number
         }[]
       }
       get_current_user_role: {
@@ -4231,12 +4299,12 @@ export type Database = {
       get_upcoming_reminders: {
         Args: { days_ahead?: number }
         Returns: {
-          vehicle_model: string
-          license_plate: string
-          reminder_type: Database["public"]["Enums"]["reminder_type"]
+          days_until_due: number
           description: string
           due_date: string
-          days_until_due: number
+          license_plate: string
+          reminder_type: Database["public"]["Enums"]["reminder_type"]
+          vehicle_model: string
         }[]
       }
       get_user_role_safe: {
@@ -4245,37 +4313,37 @@ export type Database = {
       }
       log_financial_operation: {
         Args: {
-          p_operation_type: string
-          p_table_name: string
-          p_record_id: string
-          p_record_data: Json
-          p_operation_description: string
-          p_amount: number
           p_account_type?: string
+          p_amount: number
           p_operation_date?: string
+          p_operation_description: string
+          p_operation_type: string
+          p_record_data: Json
+          p_record_id: string
+          p_table_name: string
         }
         Returns: string
       }
       send_whatsapp_notification: {
         Args: {
           p_client_email: string
+          p_message_content: string
           p_message_type: string
           p_related_id: string
           p_related_type: string
-          p_message_content: string
         }
         Returns: undefined
       }
       suggest_optimal_technician: {
-        Args: { p_service_type_id: string; p_delivery_date?: string }
+        Args: { p_delivery_date?: string; p_service_type_id: string }
         Returns: {
-          technician_id: string
-          full_name: string
           current_workload: number
-          skill_level: number
-          years_experience: number
+          full_name: string
           score: number
+          skill_level: number
           suggestion_reason: string
+          technician_id: string
+          years_experience: number
         }[]
       }
     }
