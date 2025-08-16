@@ -30,7 +30,8 @@ import { TechnicianOrderCard } from '@/components/orders/TechnicianOrderCard';
 import { OrderForm } from '@/components/orders/OrderForm';
 import { OrderStatusUpdate } from '@/components/orders/OrderStatusUpdate';
 import { OrderNoteForm } from '@/components/orders/OrderNoteForm';
-import { Plus, RefreshCw, CheckCircle, ArrowLeft } from 'lucide-react';
+import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
+import { Plus, RefreshCw, CheckCircle, ArrowLeft, Clock } from 'lucide-react';
 
 // Interfaz para órdenes del técnico con nuevos campos
 interface TechnicianOrder {
@@ -457,6 +458,9 @@ export default function TechnicianDashboard() {
             </Button>
           </div>
         </div>
+
+        {/* Control de Tiempo Personal */}
+        <PersonalTimeClockPanel />
 
         {/* Estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

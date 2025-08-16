@@ -5,9 +5,11 @@ import { ServiceForm } from '@/components/sales/ServiceForm';
 import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calculator, Package, Settings } from 'lucide-react';
+import { Plus, Calculator, Package, Settings, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Página principal de gestión de ventas y servicios
@@ -31,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
  */
 export default function Sales() {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -100,6 +103,11 @@ export default function Sales() {
             Nuevo Servicio
           </Button>
         </div>
+
+        {/* Control de Tiempo Personal - Solo para vendedores */}
+        {profile?.role === 'vendedor' && (
+          <PersonalTimeClockPanel />
+        )}
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
