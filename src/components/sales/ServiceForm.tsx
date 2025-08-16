@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,46 +11,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calculator } from 'lucide-react';
+import { Plus, Trash2, Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { WarrantyConfigForm } from '@/components/warranty/WarrantyConfigForm';
 
-/** ============================
- *  CATEGORÍAS / SUBCATEGORÍAS
- *  ============================ */
-const MAIN_CATEGORIES = [
-  'Computadoras',
-  'Cámaras de Seguridad',
-  'Control de Acceso',
-  'Fraccionamientos',
-  'Cercas Eléctricas',
-  'Alarmas',
-] as const;
-type MainCategory = typeof MAIN_CATEGORIES[number];
-
-const SUBCATEGORY_MAP: Record<MainCategory, string[]> = {
-  'Computadoras': ['Programas', 'Antivirus', 'Mtto Fisico', 'Formateo con Respaldo', 'Formateo sin Respaldo'],
-  'Cámaras de Seguridad': ['Kit 4 Camaras', 'Mtto General'],
-  'Control de Acceso': [],
-  'Fraccionamientos': [],
-  'Cercas Eléctricas': [],
-  'Alarmas': [],
-};
-
-/** ============================
- *  SCHEMA DE VALIDACIÓN
- *  ============================ */
-// NOTA: usamos `kind` para el modo de precio (servicio|articulo) y
-// guardamos en DB: category = principal, item_type = subcategoría.
+/**
+ * Schema de validación para servicios
+ * Define reglas de negocio y validaciones
+ */
 const serviceSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   description: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
-  main_category: z.string().min(1, 'Selecciona una categoría'),
-  subcategory: z.string().min(1, 'Selecciona o escribe una subcategoría'),
-  kind: z.enum(['servicio', 'articulo'], { required_error: 'Selecciona el tipo' }), // ← reemplaza al antiguo item_type
+  category: z.string().min(1, 'Selecciona una categoría'),
+  item_type: z.enum(['servicio', 'articulo'], { required_error: 'Selecciona el tipo' }),
   cost_price: z.number().min(0, 'El precio de costo debe ser mayor a 0'),
   base_price: z.number().min(0, 'El precio fijo debe ser mayor a 0'),
-  profit_margin: z.number().min(0).max(1000, 'El margen debe estar entre 0 y 1000%'),
+  profit_margin: z.number().min(0).max(100, 'El margen debe estar entre 0 y 100%'),
   vat_rate: z.number().min(0).max(100, 'El IVA debe estar entre 0 y 100%'),
   unit: z.string().min(1, 'Especifica la unidad de medida'),
   min_quantity: z.number().min(1, 'La cantidad mínima debe ser mayor a 0'),
@@ -63,12 +39,29 @@ const serviceSchema = z.object({
   path: ['max_quantity'],
 });
 
+
 interface ServiceFormProps {
   serviceId?: string | null;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
+/**
+ * Formulario para crear/editar servicios
+ * 
+ * FUNCIONALIDADES:
+ * - Validación completa de datos con Zod
+ * - Configuración de márgenes por niveles de cantidad
+ * - Preview de precios en tiempo real
+ * - Gestión de categorías dinámicas
+ * - Autoguardado de borradores (localStorage)
+ * 
+ * COMPONENTE REUTILIZABLE:
+ * Este formulario puede ser reutilizado para:
+ * - Modal de creación rápida en cotizaciones
+ * - Importación masiva de servicios
+ * - Duplicación de servicios existentes
+ */
 export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -80,9 +73,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     defaultValues: {
       name: '',
       description: '',
-      main_category: 'Computadoras',
-      subcategory: '',
-      kind: 'servicio',
+      category: 'general',
+      item_type: 'servicio',
       cost_price: 0,
       base_price: 0,
       profit_margin: 30,
@@ -96,30 +88,18 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     },
   });
 
-  const watchedKind = form.watch('kind');
+  const watchedItemType = form.watch('item_type');
   const watchedCostPrice = form.watch('cost_price');
   const watchedBasePrice = form.watch('base_price');
   const watchedProfitMargin = form.watch('profit_margin');
   const watchedVatRate = form.watch('vat_rate');
-  const watchedMainCategory = form.watch('main_category');
 
-  /** Si la categoría principal cambia, proponemos la primera subcategoría disponible */
-  useEffect(() => {
-    const subs = SUBCATEGORY_MAP[watchedMainCategory as MainCategory] || [];
-    const current = form.getValues('subcategory');
-    if (subs.length > 0 && !subs.includes(current)) {
-      form.setValue('subcategory', subs[0]);
-    }
-    if (subs.length === 0 && current === '') {
-      // sin catálogo predefinido, dejar editable
-      form.setValue('subcategory', '');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedMainCategory]);
-
-  /** Carga datos para edición */
+  /**
+   * Carga datos del servicio para edición
+   */
   const loadServiceData = async () => {
     if (!serviceId) return;
+
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -130,21 +110,23 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
 
       if (error) {
         console.error('Error loading service:', error);
-        toast({ title: "Error", description: "No se pudo cargar el servicio.", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "No se pudo cargar el servicio.",
+          variant: "destructive",
+        });
         return;
       }
 
-      const hasTiers = Array.isArray(data.profit_margin_tiers) && (data.profit_margin_tiers as any[]).length > 0;
-
+      // Poblar formulario con datos existentes
       form.reset({
         name: data.name,
-        description: data.description || '',
-        main_category: (data.category as string) || 'Computadoras',
-        subcategory: (data.item_type as string) || '',
-        kind: hasTiers ? 'articulo' : 'servicio',
+        description: data.description,
+        category: data.category || 'general',
+        item_type: (data.item_type === 'articulo' ? 'articulo' : 'servicio') as 'servicio' | 'articulo',
         cost_price: data.cost_price || 0,
         base_price: data.base_price || 0,
-        profit_margin: hasTiers ? (data.profit_margin_tiers as any[])[0]?.margin ?? 30 : 30,
+        profit_margin: (data as any).profit_margin || 30,
         vat_rate: data.vat_rate || 19,
         unit: data.unit || 'unidad',
         min_quantity: data.min_quantity || 1,
@@ -153,39 +135,51 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         shared_time: (data as any).shared_time || false,
         is_active: data.is_active,
       });
+
     } catch (error) {
       console.error('Error loading service:', error);
-      toast({ title: "Error", description: "Error inesperado al cargar el servicio.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Error inesperado al cargar el servicio.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  /** Preview de precio */
+  /**
+   * Calcula el precio final
+   */
   const calculatePreviewPrice = (): number => {
-    if (watchedKind === 'servicio') {
+    if (watchedItemType === 'servicio') {
+      // Para servicios: precio base + IVA
       return watchedBasePrice * (1 + watchedVatRate / 100);
     } else {
+      // Para artículos: precio base + margen + IVA
       const priceWithMargin = watchedBasePrice * (1 + watchedProfitMargin / 100);
       return priceWithMargin * (1 + watchedVatRate / 100);
     }
   };
 
-  /** Guardar */
+  /**
+   * Maneja el envío del formulario
+   */
   const onSubmit = async (values: z.infer<typeof serviceSchema>) => {
+
     try {
       setLoading(true);
 
       const serviceData: any = {
         name: values.name,
         description: values.description,
-        category: values.main_category,       // ← Categoría principal
-        item_type: values.subcategory,        // ← Subcategoría
+        category: values.category,
+        item_type: values.item_type,
         cost_price: values.cost_price,
         base_price: values.base_price,
-        profit_margin_tiers: values.kind === 'articulo'
-          ? [{ min_qty: 1, max_qty: 999, margin: values.profit_margin }]
-          : [],
+        profit_margin_tiers: values.item_type === 'articulo' ? [
+          { min_qty: 1, max_qty: 999, margin: values.profit_margin }
+        ] : [],
         vat_rate: values.vat_rate,
         unit: values.unit,
         min_quantity: values.min_quantity,
@@ -196,17 +190,34 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       };
 
       if (serviceId) {
-        const { error } = await supabase.from('service_types').update(serviceData).eq('id', serviceId);
+        // Actualizar servicio existente
+        const { error } = await supabase
+          .from('service_types')
+          .update(serviceData)
+          .eq('id', serviceId);
+
         if (error) {
           console.error('Error updating service:', error);
-          toast({ title: "Error", description: "No se pudo actualizar el servicio.", variant: "destructive" });
+          toast({
+            title: "Error",
+            description: "No se pudo actualizar el servicio.",
+            variant: "destructive",
+          });
           return;
         }
       } else {
-        const { error } = await supabase.from('service_types').insert(serviceData);
+        // Crear nuevo servicio
+        const { error } = await supabase
+          .from('service_types')
+          .insert(serviceData);
+
         if (error) {
           console.error('Error creating service:', error);
-          toast({ title: "Error", description: "No se pudo crear el servicio.", variant: "destructive" });
+          toast({
+            title: "Error",
+            description: "No se pudo crear el servicio.",
+            variant: "destructive",
+          });
           return;
         }
       }
@@ -214,17 +225,29 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       onSuccess();
     } catch (error) {
       console.error('Error saving service:', error);
-      toast({ title: "Error", description: "Error inesperado al guardar el servicio.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Error inesperado al guardar el servicio.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  /** Moneda */
-  const formatCurrency = (amount: number): string =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+  /**
+   * Formatea números como moneda
+   */
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
-  /** Margen automático por rangos */
+  // Load margin configurations
   useEffect(() => {
     const loadMarginConfigs = async () => {
       try {
@@ -233,21 +256,26 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           .select("*")
           .eq("is_active", true)
           .order("min_price", { ascending: true });
+        
         setMarginConfigs(data || []);
       } catch (error) {
         console.error("Error loading margin configs:", error);
       }
     };
+
     loadMarginConfigs();
   }, []);
 
+  // Calculate automatic margin based on base price  
   useEffect(() => {
     const basePrice = form.watch("base_price");
-    const kind = form.watch("kind");
-    if (kind === "articulo" && basePrice > 0 && marginConfigs.length > 0) {
+    const itemType = form.watch("item_type");
+    
+    if (itemType === "articulo" && basePrice > 0 && marginConfigs.length > 0) {
       const applicableConfig = marginConfigs.find(
-        (config: any) => basePrice >= config.min_price && basePrice <= config.max_price
+        config => basePrice >= config.min_price && basePrice <= config.max_price
       );
+      
       if (applicableConfig) {
         setAutoMargin(applicableConfig.margin_percentage);
         form.setValue("profit_margin", applicableConfig.margin_percentage);
@@ -257,18 +285,13 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     } else {
       setAutoMargin(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.watch("base_price"), form.watch("kind"), marginConfigs]);
+  }, [form.watch("base_price"), form.watch("item_type"), marginConfigs]);
 
   useEffect(() => {
-    if (serviceId) loadServiceData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (serviceId) {
+      loadServiceData();
+    }
   }, [serviceId]);
-
-  const subcategoriesForSelected = useMemo(
-    () => SUBCATEGORY_MAP[watchedMainCategory as MainCategory] || [],
-    [watchedMainCategory]
-  );
 
   return (
     <div className="space-y-6">
@@ -278,10 +301,12 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           <Card>
             <CardHeader>
               <CardTitle>Información Básica</CardTitle>
-              <CardDescription>Datos principales del servicio o artículo</CardDescription>
+              <CardDescription>
+                Datos principales del servicio o artículo
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -296,10 +321,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   )}
                 />
 
-                {/* Tipo de precio (servicio / artículo) */}
                 <FormField
                   control={form.control}
-                  name="kind"
+                  name="item_type"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo *</FormLabel>
@@ -315,70 +339,38 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {form.watch('kind') === 'servicio'
+                        {watchedItemType === 'servicio' 
                           ? 'Precio fijo establecido manualmente'
-                          : 'Costo base + margen de ganancia'}
+                          : 'Costo base + margen de ganancia'
+                        }
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Categoría Principal */}
                 <FormField
                   control={form.control}
-                  name="main_category"
+                  name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Categoría Principal *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Categoría *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona categoría" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {MAIN_CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
+                          <SelectItem value="general">General</SelectItem>
+                          <SelectItem value="hardware">Hardware</SelectItem>
+                          <SelectItem value="software">Software</SelectItem>
+                          <SelectItem value="redes">Redes</SelectItem>
+                          <SelectItem value="mantenimiento">Mantenimiento</SelectItem>
+                          <SelectItem value="consultoria">Consultoría</SelectItem>
+                          <SelectItem value="productos">Productos</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Subcategoría */}
-                <FormField
-                  control={form.control}
-                  name="subcategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Subcategoría *</FormLabel>
-                      {subcategoriesForSelected.length > 0 ? (
-                        <>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Subcategoría" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {subcategoriesForSelected.map((s) => (
-                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>Catálogo para {watchedMainCategory}</FormDescription>
-                        </>
-                      ) : (
-                        <>
-                          <FormControl>
-                            <Input placeholder="Escribe la subcategoría…" {...field} />
-                          </FormControl>
-                          <FormDescription>Subcategoría libre</FormDescription>
-                        </>
-                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -392,7 +384,11 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   <FormItem>
                     <FormLabel>Descripción *</FormLabel>
                     <FormControl>
-                      <Textarea placeholder="Describe detalladamente el servicio o artículo..." className="min-h-[100px]" {...field} />
+                      <Textarea
+                        placeholder="Describe detalladamente el servicio o artículo..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -406,7 +402,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Unidad de Medida *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Unidad" />
@@ -441,7 +437,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
-                      <FormDescription>Tiempo estimado para completar el servicio</FormDescription>
+                      <FormDescription>
+                        Tiempo estimado para completar el servicio
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -455,13 +453,17 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                       <div className="space-y-0.5">
                         <FormLabel className="text-base font-semibold text-blue-900">Tiempo Compartido</FormLabel>
                         <FormDescription className="text-blue-700">
-                          ✓ Se aplica automáticamente al agregar a órdenes<br />
-                          ✓ Múltiples artículos optimizan el tiempo total de servicio<br />
+                          ✓ Se aplica automáticamente al agregar a órdenes<br/>
+                          ✓ Múltiples artículos optimizan el tiempo total de servicio<br/>
                           ✓ Configurable individualmente en cada orden si es necesario
                         </FormDescription>
                       </div>
                       <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} className="data-[state=checked]:bg-blue-600" />
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          className="data-[state=checked]:bg-blue-600"
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -474,10 +476,15 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                       <div className="space-y-0.5">
                         <FormLabel className="text-base">Activo</FormLabel>
-                        <FormDescription>Disponible para cotizaciones</FormDescription>
+                        <FormDescription>
+                          Disponible para cotizaciones
+                        </FormDescription>
                       </div>
                       <FormControl>
-                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -490,11 +497,13 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           <Card>
             <CardHeader>
               <CardTitle>Configuración de Precios</CardTitle>
-              <CardDescription>Define costos, IVA y cantidades permitidas</CardDescription>
+              <CardDescription>
+                Define costos, IVA y cantidades permitidas
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {watchedKind === 'servicio' ? (
+                {watchedItemType === 'servicio' ? (
                   <FormField
                     control={form.control}
                     name="base_price"
@@ -510,7 +519,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
-                        <FormDescription>Precio establecido manualmente (sin costo base)</FormDescription>
+                        <FormDescription>
+                          Precio establecido manualmente (sin costo base)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -532,12 +543,14 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
-                          <FormDescription>Precio base del artículo (sin margen ni IVA)</FormDescription>
+                          <FormDescription>
+                            Precio base del artículo (sin margen ni IVA)
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
+                     <FormField
                       control={form.control}
                       name="profit_margin"
                       render={({ field }) => (
@@ -545,7 +558,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           <FormLabel>
                             Margen de Ganancia (%)
                             {autoMargin !== null && (
-                              <span className="text-sm text-muted-foreground ml-2">(Auto: {autoMargin}%)</span>
+                              <span className="text-sm text-muted-foreground ml-2">
+                                (Auto: {autoMargin}%)
+                              </span>
                             )}
                           </FormLabel>
                           <FormControl>
@@ -586,7 +601,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>
-                      <FormDescription>Porcentaje de IVA aplicable</FormDescription>
+                      <FormDescription>
+                        Porcentaje de IVA aplicable
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -632,21 +649,26 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                       )}
                     />
                   </div>
-                  <FormDescription>Rangos de cantidad permitidos</FormDescription>
+                  <FormDescription>
+                    Rangos de cantidad permitidos
+                  </FormDescription>
                 </div>
               </div>
             </CardContent>
           </Card>
 
+
           {/* Preview de precios */}
-          {watchedBasePrice > 0 && (
+          {(watchedBasePrice > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calculator className="h-4 w-4" />
                   Preview de Precios
                 </CardTitle>
-                <CardDescription>Visualiza cómo se calculan los precios finales</CardDescription>
+                <CardDescription>
+                  Visualiza cómo se calculan los precios finales
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-muted rounded-lg">
@@ -655,7 +677,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                       <span>Precio Base:</span>
                       <span>{formatCurrency(watchedBasePrice)}</span>
                     </div>
-                    {watchedKind === 'articulo' && (
+                    {watchedItemType === 'articulo' && (
                       <div className="flex justify-between text-green-600">
                         <span>+ Margen ({watchedProfitMargin}%):</span>
                         <span>{formatCurrency(watchedBasePrice * watchedProfitMargin / 100)}</span>
@@ -663,7 +685,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                     )}
                     <div className="flex justify-between text-blue-600">
                       <span>+ IVA ({watchedVatRate}%):</span>
-                      <span>{formatCurrency((watchedKind === 'articulo' ? watchedBasePrice * (1 + watchedProfitMargin / 100) : watchedBasePrice) * watchedVatRate / 100)}</span>
+                      <span>{formatCurrency((watchedItemType === 'articulo' ? watchedBasePrice * (1 + watchedProfitMargin / 100) : watchedBasePrice) * watchedVatRate / 100)}</span>
                     </div>
                     <hr />
                     <div className="flex justify-between text-lg font-bold text-green-600">
@@ -676,19 +698,27 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
             </Card>
           )}
 
-          {/* Garantía */}
+          {/* Configuración de Garantía */}
           {serviceId && (
-            <WarrantyConfigForm
+            <WarrantyConfigForm 
               serviceTypeId={serviceId}
               onSave={() => {
-                toast({ title: "Éxito", description: "Configuración de garantía actualizada" });
+                toast({
+                  title: "Éxito",
+                  description: "Configuración de garantía actualizada"
+                });
               }}
             />
           )}
 
-          {/* Acciones */}
+          {/* Botones de acción */}
           <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={loading}
+            >
               Cancelar
             </Button>
             <Button type="submit" disabled={loading}>
