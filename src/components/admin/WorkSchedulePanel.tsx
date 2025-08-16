@@ -417,7 +417,7 @@ export function WorkSchedulePanel({ selectedUserId, selectedUserRole }: WorkSche
                     value={formData.overtime_rate_multiplier}
                     onChange={(e) => setFormData(prev => ({ 
                       ...prev, 
-                      overtime_rate_multiplier: parseFloat(e.target.value) || 1.5 
+                      overtime_rate_multiplier: parseFloat(e.target.value) || 1 
                     }))}
                     required
                   />
