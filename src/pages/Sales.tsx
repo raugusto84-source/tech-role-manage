@@ -11,23 +11,36 @@ import { useToast } from '@/hooks/use-toast';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 
-// ✅ Usa tu cliente actual
+// Supabase
 import { supabase } from '@/integrations/supabase/client';
+// Opcional si muestras IVA (puede quedarse)
 import { Badge } from '@/components/ui/badge';
 
-// 👇 Cambia esto si tu tabla no se llama 'services'
-const SERVICES_TABLE = 'services';
+/** 
+ * 🔧 Config: si ya sabes cómo se llama tu tabla de ítems,
+ * cambia esta constante y se usará directamente.
+ * Si la dejas en null, el código intentará resolverla automáticamente.
+ */
+const EXPLICIT_SERVICES_TABLE: string | null = null; // p.ej. 'sales_services' | 'products' | 'items'
 
+/** Candidatos comunes para autodetección */
+const SERVICE_TABLE_CANDIDATES = ['services', 'sales_services', 'products', 'items', 'catalog_items'] as const;
+
+/** Selección minimal para evitar errores por columnas inexistentes */
+const SERVICE_SELECT = 'id, name, description, price, category_id';
+
+/** Tipos locales */
 type Category = { id: string; name: string; color?: string | null };
 type Service = {
   id: string;
   name: string;
   description?: string | null;
   price?: number | null;
+  category_id?: string | null;
+  // Campos opcionales, muestra si existen
   unit?: string | null;
   iva_rate?: number | null;
   sku?: string | null;
-  category_id?: string | null;
 };
 
 export default function Sales() {
@@ -38,22 +51,27 @@ export default function Sales() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Estado de categorías e ítems por categoría
+  // Categorías
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
-
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+
+  // Tabla de servicios resuelta
+  const [servicesTable, setServicesTable] = useState<string | null>(EXPLICIT_SERVICES_TABLE);
+  const [servicesTableError, setServicesTableError] = useState<string | null>(null);
+
+  // Ítems de la categoría
   const [categoryServices, setCategoryServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState<boolean>(false);
 
-  // Cargar categorías (❗️QUITAMOS 'color' del select)
+  // Cargar categorías (sin 'color' para evitar error si no existe)
   useEffect(() => {
     let mounted = true;
     (async () => {
       setCategoriesLoading(true);
       const { data, error } = await supabase
-        .from('service_categories')
-        .select('id, name') // <-- sin 'color'
+        .from('service_categories') // si tu tabla se llama distinto, cámbiala aquí
+        .select('id, name')
         .order('name', { ascending: true });
 
       if (!mounted) return;
@@ -65,17 +83,42 @@ export default function Sales() {
         });
         setCategories([]);
       } else {
-        // aunque no seleccionamos 'color', el tipo lo permite opcionalmente
         setCategories((data || []) as Category[]);
       }
       setCategoriesLoading(false);
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [toast, refreshTrigger]);
 
-  // Cargar servicios de la categoría seleccionada
+  // Resolver tabla de servicios si no fue fijada explícitamente
+  useEffect(() => {
+    let mounted = true;
+    if (EXPLICIT_SERVICES_TABLE) {
+      setServicesTable(EXPLICIT_SERVICES_TABLE);
+      setServicesTableError(null);
+      return;
+    }
+    (async () => {
+      setServicesTableError(null);
+      for (const candidate of SERVICE_TABLE_CANDIDATES) {
+        const { error } = await (supabase as any).from(candidate).select('id').limit(1);
+        if (!error) {
+          if (!mounted) return;
+          setServicesTable(candidate);
+          return;
+        }
+      }
+      if (!mounted) return;
+      setServicesTable(null);
+      setServicesTableError(
+        `No encontré una tabla de ítems entre: ${SERVICE_TABLE_CANDIDATES.join(', ')}. ` +
+        `Define EXPLICIT_SERVICES_TABLE con el nombre correcto.`
+      );
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  // Cargar servicios al cambiar de categoría y cuando ya sabemos la tabla
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -83,12 +126,15 @@ export default function Sales() {
         setCategoryServices([]);
         return;
       }
+      if (!servicesTable) {
+        setCategoryServices([]);
+        return;
+      }
       setServicesLoading(true);
 
-      // ❗️Consulta NO tipada para evitar TS2589/TS2769 si la tabla no está en los tipos generados
       const { data, error } = await (supabase as any)
-        .from(SERVICES_TABLE)
-        .select('id, name, description, price, unit, iva_rate, sku, category_id')
+        .from(servicesTable)
+        .select(SERVICE_SELECT)
         .eq('category_id', activeCategoryId)
         .order('name', { ascending: true });
 
@@ -105,10 +151,8 @@ export default function Sales() {
       }
       setServicesLoading(false);
     })();
-    return () => {
-      mounted = false;
-    };
-  }, [activeCategoryId, toast, refreshTrigger]);
+    return () => { mounted = false; };
+  }, [activeCategoryId, servicesTable, toast, refreshTrigger]);
 
   const activeCategory = useMemo(
     () => categories.find(c => c.id === activeCategoryId) || null,
@@ -158,10 +202,9 @@ export default function Sales() {
           </Button>
         </div>
 
-        {/* Control de Tiempo Personal - Solo para vendedores */}
+        {/* Reloj personal solo vendedores */}
         {profile?.role === 'vendedor' && <PersonalTimeClockPanel />}
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="list" className="flex items-center gap-2">
@@ -177,7 +220,7 @@ export default function Sales() {
 
           {/* LISTA */}
           <TabsContent value="list" className="space-y-6">
-            {/* Categorías como botones */}
+            {/* Botones de categorías */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Categorías</CardTitle>
@@ -219,7 +262,7 @@ export default function Sales() {
               </CardContent>
             </Card>
 
-            {/* Si hay categoría seleccionada, mostramos sus ítems; si no, la lista completa existente */}
+            {/* Si hay categoría seleccionada, mostrar ítems de esa categoría; si no, la lista completa existente */}
             {activeCategoryId ? (
               <Card>
                 <CardHeader>
@@ -227,6 +270,18 @@ export default function Sales() {
                   <CardDescription>Ítems de la categoría seleccionada</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Mensaje si no resolvimos tabla */}
+                  {!servicesTable && (
+                    <Card className="mb-4">
+                      <CardHeader>
+                        <CardTitle className="text-base">No se encontró la tabla de ítems</CardTitle>
+                        <CardDescription>
+                          {servicesTableError ?? 'Define EXPLICIT_SERVICES_TABLE con el nombre de tu tabla.'}
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  )}
+
                   {servicesLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {Array.from({ length: 6 }).map((_, i) => (
@@ -256,10 +311,11 @@ export default function Sales() {
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <CardTitle className="text-lg">{svc.name}</CardTitle>
-                                {svc.sku && <CardDescription>SKU: {svc.sku}</CardDescription>}
+                                {/* Muestra SKU/IVA/Unidad si existen en tu tabla y luego los agregas al select */}
+                                {/* {svc.sku && <CardDescription>SKU: {svc.sku}</CardDescription>} */}
                               </div>
-                              {typeof svc.iva_rate === 'number' && (
-                                <Badge variant="secondary">IVA {svc.iva_rate}%</Badge>
+                              {typeof (svc as any).iva_rate === 'number' && (
+                                <Badge variant="secondary">IVA {(svc as any).iva_rate}%</Badge>
                               )}
                             </div>
                           </CardHeader>
@@ -270,7 +326,9 @@ export default function Sales() {
                             <div className="flex items-center justify-between">
                               <div className="text-xl font-bold">
                                 {typeof svc.price === 'number' ? `$${svc.price.toFixed(2)}` : '—'}
-                                {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
+                                {(svc as any).unit ? (
+                                  <span className="text-sm text-muted-foreground ml-1">/{(svc as any).unit}</span>
+                                ) : null}
                               </div>
                               <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
                             </div>
@@ -317,7 +375,7 @@ export default function Sales() {
             </Card>
           </TabsContent>
 
-          {/* MÁRGENES */}
+          {/* MARGINS */}
           <TabsContent value="margins" className="space-y-6">
             <Card>
               <CardHeader>
