@@ -11,11 +11,10 @@ import { useToast } from '@/hooks/use-toast';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 
-// NUEVO: imports para cargar desde Supabase y mostrar IVA como badge
+// NUEVO
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 
-// Tipos locales simples
 type Category = { id: string; name: string; color?: string | null };
 type Service = {
   id: string;
@@ -36,11 +35,12 @@ export default function Sales() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // NUEVO: estado de categorías e ítems por categoría
+  // NUEVO: categorías y selección
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
-
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+
+  // NUEVO: ítems de la categoría seleccionada
   const [categoryServices, setCategoryServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState<boolean>(false);
 
@@ -67,12 +67,10 @@ export default function Sales() {
       }
       setCategoriesLoading(false);
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [toast, refreshTrigger]);
 
-  // Cargar servicios de la categoría seleccionada
+  // Cargar servicios al cambiar de categoría
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -100,9 +98,7 @@ export default function Sales() {
       }
       setServicesLoading(false);
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [activeCategoryId, toast, refreshTrigger]);
 
   const activeCategory = useMemo(
@@ -113,20 +109,14 @@ export default function Sales() {
   const handleServiceCreated = () => {
     setRefreshTrigger(prev => prev + 1);
     setActiveTab('list');
-    toast({
-      title: "Servicio creado",
-      description: "El servicio ha sido agregado exitosamente.",
-    });
+    toast({ title: "Servicio creado", description: "El servicio ha sido agregado exitosamente." });
   };
 
   const handleServiceUpdated = () => {
     setRefreshTrigger(prev => prev + 1);
     setSelectedService(null);
     setActiveTab('list');
-    toast({
-      title: "Servicio actualizado",
-      description: "Los cambios han sido guardados exitosamente.",
-    });
+    toast({ title: "Servicio actualizado", description: "Los cambios han sido guardados exitosamente." });
   };
 
   const handleEditService = (serviceId: string) => {
@@ -142,7 +132,7 @@ export default function Sales() {
   return (
     <AppLayout>
       <div className="container mx-auto py-6 space-y-6">
-        {/* Header de la página */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Gestión de Ventas y Servicios</h1>
@@ -151,10 +141,7 @@ export default function Sales() {
             </p>
           </div>
           <Button
-            onClick={() => {
-              setSelectedService(null);
-              setActiveTab('form');
-            }}
+            onClick={() => { setSelectedService(null); setActiveTab('form'); }}
             className="flex items-center gap-2"
           >
             <Plus className="h-4 w-4" />
@@ -163,37 +150,31 @@ export default function Sales() {
         </div>
 
         {/* Control de Tiempo Personal - Solo para vendedores */}
-        {profile?.role === 'vendedor' && (
-          <PersonalTimeClockPanel />
-        )}
+        {profile?.role === 'vendedor' && <PersonalTimeClockPanel />}
 
-        {/* Tabs principales */}
+        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="list" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Servicios
+              <Package className="h-4 w-4" /> Servicios
             </TabsTrigger>
             <TabsTrigger value="form" className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              {selectedService ? 'Editar' : 'Nuevo'}
+              <Plus className="h-4 w-4" /> {selectedService ? 'Editar' : 'Nuevo'}
             </TabsTrigger>
             <TabsTrigger value="margins" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Márgenes
+              <Settings className="h-4 w-4" /> Márgenes
             </TabsTrigger>
           </TabsList>
 
-          {/* Lista de servicios */}
+          {/* LISTA */}
           <TabsContent value="list" className="space-y-6">
-            {/* BARRA DE CATEGORÍAS (botones) */}
+            {/* Categorías como botones */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle>Categorías</CardTitle>
-                <CardDescription>Filtra y explora por categoría</CardDescription>
+                <CardDescription>Elige una categoría para ver sus artículos</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Skeleton de categorías */}
                 {categoriesLoading ? (
                   <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -230,19 +211,14 @@ export default function Sales() {
               </CardContent>
             </Card>
 
-            {/* SI HAY CATEGORÍA SELECCIONADA: mostrar ítems de esa categoría aquí mismo */}
+            {/* Si hay categoría seleccionada, mostramos sus ítems; si no, la lista completa existente */}
             {activeCategoryId ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>
-                    Ítems de: {activeCategory ? activeCategory.name : '…'}
-                  </CardTitle>
-                  <CardDescription>
-                    Resultados filtrados por la categoría seleccionada
-                  </CardDescription>
+                  <CardTitle>Artículos de: {activeCategory ? activeCategory.name : '…'}</CardTitle>
+                  <CardDescription>Ítems de la categoría seleccionada</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Skeleton de ítems */}
                   {servicesLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {Array.from({ length: 6 }).map((_, i) => (
@@ -261,9 +237,7 @@ export default function Sales() {
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-base">Sin ítems</CardTitle>
-                        <CardDescription>
-                          No hay servicios registrados en esta categoría.
-                        </CardDescription>
+                        <CardDescription>No hay servicios registrados en esta categoría.</CardDescription>
                       </CardHeader>
                     </Card>
                   ) : (
@@ -274,9 +248,7 @@ export default function Sales() {
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <CardTitle className="text-lg">{svc.name}</CardTitle>
-                                {svc.sku && (
-                                  <CardDescription>SKU: {svc.sku}</CardDescription>
-                                )}
+                                {svc.sku && <CardDescription>SKU: {svc.sku}</CardDescription>}
                               </div>
                               {typeof svc.iva_rate === 'number' && (
                                 <Badge variant="secondary">IVA {svc.iva_rate}%</Badge>
@@ -285,20 +257,14 @@ export default function Sales() {
                           </CardHeader>
                           <CardContent className="space-y-3">
                             {svc.description && (
-                              <p className="text-sm text-muted-foreground line-clamp-2">
-                                {svc.description}
-                              </p>
+                              <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>
                             )}
                             <div className="flex items-center justify-between">
                               <div className="text-xl font-bold">
                                 {typeof svc.price === 'number' ? `$${svc.price.toFixed(2)}` : '—'}
-                                {svc.unit ? (
-                                  <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span>
-                                ) : null}
+                                {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
                               </div>
-                              <Button size="sm" onClick={() => handleEditService(svc.id)}>
-                                Editar
-                              </Button>
+                              <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
                             </div>
                           </CardContent>
                         </Card>
@@ -308,13 +274,10 @@ export default function Sales() {
                 </CardContent>
               </Card>
             ) : (
-              // SI NO HAY CATEGORÍA SELECCIONADA: mostramos la lista completa existente
               <Card>
                 <CardHeader>
                   <CardTitle>Servicios y Artículos</CardTitle>
-                  <CardDescription>
-                    Lista completa de servicios disponibles con precios configurados
-                  </CardDescription>
+                  <CardDescription>Lista completa de servicios disponibles con precios configurados</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ServicesList
@@ -327,18 +290,13 @@ export default function Sales() {
             )}
           </TabsContent>
 
-          {/* Formulario de servicio */}
+          {/* FORM */}
           <TabsContent value="form" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>
-                  {selectedService ? 'Editar Servicio' : 'Nuevo Servicio'}
-                </CardTitle>
+                <CardTitle>{selectedService ? 'Editar Servicio' : 'Nuevo Servicio'}</CardTitle>
                 <CardDescription>
-                  {selectedService
-                    ? 'Modifica los datos del servicio seleccionado'
-                    : 'Agrega un nuevo servicio o artículo al catálogo'
-                  }
+                  {selectedService ? 'Modifica los datos del servicio seleccionado' : 'Agrega un nuevo servicio o artículo al catálogo'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -351,14 +309,12 @@ export default function Sales() {
             </Card>
           </TabsContent>
 
-          {/* Configuración de márgenes */}
+          {/* MÁRGENES */}
           <TabsContent value="margins" className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Configuración de Márgenes</CardTitle>
-                <CardDescription>
-                  Define los porcentajes de ganancia automáticos por rangos de precio
-                </CardDescription>
+                <CardDescription>Define los porcentajes de ganancia automáticos por rangos de precio</CardDescription>
               </CardHeader>
               <CardContent>
                 <ProfitMarginConfig />
