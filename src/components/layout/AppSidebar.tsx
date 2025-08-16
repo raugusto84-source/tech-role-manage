@@ -43,7 +43,7 @@ export function AppSidebar() {
   // Elementos de navegación por rol
   const getNavigationItems = () => {
     const commonItems = [
-      { title: 'Dashboard', url: '/dashboard', icon: Home }
+      { title: 'Dashboard1', url: '/dashboard', icon: Home }
     ];
 
     switch (profile?.role) {
