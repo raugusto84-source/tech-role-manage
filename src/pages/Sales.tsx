@@ -1,47 +1,115 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ServicesList } from '@/components/sales/ServicesList';
 import { ServiceForm } from '@/components/sales/ServiceForm';
 import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calculator, Package, Settings, Clock } from 'lucide-react';
+import { Plus, Package, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 
-/**
- * Página principal de gestión de ventas y servicios
- * 
- * FUNCIONALIDADES:
- * - Listado de servicios/artículos con precios configurables
- * - Formulario para agregar/editar servicios
- * - Calculadora de precios con IVA y márgenes de ganancia
- * - Sistema de categorías para organización
- * 
- * COMPONENTES REUTILIZABLES:
- * - ServicesList: Lista principal de servicios (src/components/sales/ServicesList)
- * - ServiceForm: Formulario de edición/creación (src/components/sales/ServiceForm)
- * - PriceCalculator: Calculadora de precios (src/components/sales/PriceCalculator)
- * 
- * LÓGICA DE PRECIOS:
- * - Precio base (costo)
- * - Margen de ganancia configurable por niveles de cantidad
- * - IVA configurable por servicio
- * - Cálculo automático del precio final
- */
+// NUEVO: imports para cargar desde Supabase y mostrar IVA como badge
+import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
+
+// Tipos locales simples
+type Category = { id: string; name: string; color?: string | null };
+type Service = {
+  id: string;
+  name: string;
+  description?: string | null;
+  price?: number | null;
+  unit?: string | null;
+  iva_rate?: number | null;
+  sku?: string | null;
+  category_id?: string | null;
+};
+
 export default function Sales() {
   const { toast } = useToast();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState('list');
+
+  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins'>('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  /**
-   * Maneja la creación exitosa de un servicio
-   * Actualiza la lista y muestra confirmación
-   */
+  // NUEVO: estado de categorías e ítems por categoría
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState<boolean>(true);
+
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [categoryServices, setCategoryServices] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState<boolean>(false);
+
+  // Cargar categorías
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setCategoriesLoading(true);
+      const { data, error } = await supabase
+        .from('service_categories')
+        .select('id, name, color')
+        .order('name', { ascending: true });
+
+      if (!mounted) return;
+      if (error) {
+        toast({
+          title: 'Error cargando categorías',
+          description: error.message,
+          variant: 'destructive',
+        });
+        setCategories([]);
+      } else {
+        setCategories(data || []);
+      }
+      setCategoriesLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [toast, refreshTrigger]);
+
+  // Cargar servicios de la categoría seleccionada
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!activeCategoryId) {
+        setCategoryServices([]);
+        return;
+      }
+      setServicesLoading(true);
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, name, description, price, unit, iva_rate, sku, category_id')
+        .eq('category_id', activeCategoryId)
+        .order('name', { ascending: true });
+
+      if (!mounted) return;
+      if (error) {
+        toast({
+          title: 'Error cargando servicios',
+          description: error.message,
+          variant: 'destructive',
+        });
+        setCategoryServices([]);
+      } else {
+        setCategoryServices(data || []);
+      }
+      setServicesLoading(false);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [activeCategoryId, toast, refreshTrigger]);
+
+  const activeCategory = useMemo(
+    () => categories.find(c => c.id === activeCategoryId) || null,
+    [categories, activeCategoryId]
+  );
+
   const handleServiceCreated = () => {
     setRefreshTrigger(prev => prev + 1);
     setActiveTab('list');
@@ -51,10 +119,6 @@ export default function Sales() {
     });
   };
 
-  /**
-   * Maneja la actualización exitosa de un servicio
-   * Actualiza la lista y muestra confirmación
-   */
   const handleServiceUpdated = () => {
     setRefreshTrigger(prev => prev + 1);
     setSelectedService(null);
@@ -65,17 +129,11 @@ export default function Sales() {
     });
   };
 
-  /**
-   * Maneja la selección de un servicio para editar
-   */
   const handleEditService = (serviceId: string) => {
     setSelectedService(serviceId);
     setActiveTab('form');
   };
 
-  /**
-   * Cancela la edición y vuelve a la lista
-   */
   const handleCancelEdit = () => {
     setSelectedService(null);
     setActiveTab('list');
@@ -110,7 +168,7 @@ export default function Sales() {
         )}
 
         {/* Tabs principales */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
@@ -128,21 +186,145 @@ export default function Sales() {
 
           {/* Lista de servicios */}
           <TabsContent value="list" className="space-y-6">
+            {/* BARRA DE CATEGORÍAS (botones) */}
             <Card>
-              <CardHeader>
-                <CardTitle>Servicios y Artículos</CardTitle>
-                <CardDescription>
-                  Lista completa de servicios disponibles con precios configurados
-                </CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle>Categorías</CardTitle>
+                <CardDescription>Filtra y explora por categoría</CardDescription>
               </CardHeader>
               <CardContent>
-                <ServicesList
-                  key={refreshTrigger}
-                  onEdit={handleEditService}
-                  onRefresh={() => setRefreshTrigger(prev => prev + 1)}
-                />
+                {/* Skeleton de categorías */}
+                {categoriesLoading ? (
+                  <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="h-9 w-28 rounded-full bg-muted animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                    <Button
+                      type="button"
+                      variant={activeCategoryId === null ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setActiveCategoryId(null)}
+                      className="rounded-full"
+                    >
+                      Todas
+                    </Button>
+                    {categories.map((cat) => (
+                      <Button
+                        key={cat.id}
+                        type="button"
+                        variant={activeCategoryId === cat.id ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setActiveCategoryId(cat.id)}
+                        className="rounded-full border-2"
+                        style={cat.color ? { borderColor: cat.color } : undefined}
+                        title={cat.name}
+                      >
+                        {cat.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* SI HAY CATEGORÍA SELECCIONADA: mostrar ítems de esa categoría aquí mismo */}
+            {activeCategoryId ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    Ítems de: {activeCategory ? activeCategory.name : '…'}
+                  </CardTitle>
+                  <CardDescription>
+                    Resultados filtrados por la categoría seleccionada
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Skeleton de ítems */}
+                  {servicesLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <Card key={i} className="animate-pulse">
+                          <CardHeader>
+                            <div className="h-5 w-40 bg-muted rounded" />
+                            <div className="h-4 w-28 bg-muted rounded mt-2" />
+                          </CardHeader>
+                          <CardContent>
+                            <div className="h-8 w-24 bg-muted rounded" />
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : categoryServices.length === 0 ? (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-base">Sin ítems</CardTitle>
+                        <CardDescription>
+                          No hay servicios registrados en esta categoría.
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {categoryServices.map((svc) => (
+                        <Card key={svc.id} className="hover:shadow-md transition-shadow">
+                          <CardHeader>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <CardTitle className="text-lg">{svc.name}</CardTitle>
+                                {svc.sku && (
+                                  <CardDescription>SKU: {svc.sku}</CardDescription>
+                                )}
+                              </div>
+                              {typeof svc.iva_rate === 'number' && (
+                                <Badge variant="secondary">IVA {svc.iva_rate}%</Badge>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {svc.description && (
+                              <p className="text-sm text-muted-foreground line-clamp-2">
+                                {svc.description}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <div className="text-xl font-bold">
+                                {typeof svc.price === 'number' ? `$${svc.price.toFixed(2)}` : '—'}
+                                {svc.unit ? (
+                                  <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span>
+                                ) : null}
+                              </div>
+                              <Button size="sm" onClick={() => handleEditService(svc.id)}>
+                                Editar
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              // SI NO HAY CATEGORÍA SELECCIONADA: mostramos la lista completa existente
+              <Card>
+                <CardHeader>
+                  <CardTitle>Servicios y Artículos</CardTitle>
+                  <CardDescription>
+                    Lista completa de servicios disponibles con precios configurados
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ServicesList
+                    key={refreshTrigger}
+                    onEdit={handleEditService}
+                    onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           {/* Formulario de servicio */}
@@ -153,7 +335,7 @@ export default function Sales() {
                   {selectedService ? 'Editar Servicio' : 'Nuevo Servicio'}
                 </CardTitle>
                 <CardDescription>
-                  {selectedService 
+                  {selectedService
                     ? 'Modifica los datos del servicio seleccionado'
                     : 'Agrega un nuevo servicio o artículo al catálogo'
                   }
@@ -183,7 +365,6 @@ export default function Sales() {
               </CardContent>
             </Card>
           </TabsContent>
-
         </Tabs>
       </div>
     </AppLayout>
