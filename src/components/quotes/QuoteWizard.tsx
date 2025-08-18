@@ -3,6 +3,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { CategoryServiceSelection } from './CategoryServiceSelection';
+import { ProblemSelector } from './ProblemSelector';
+import { DiagnosticChecklist } from './DiagnosticChecklist';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +46,7 @@ interface QuoteWizardProps {
   onCancel: () => void;
 }
 
-type WizardStep = 'client' | 'items' | 'details' | 'review';
+type WizardStep = 'client' | 'problem' | 'checklist' | 'items' | 'details' | 'review';
 
 /**
  * Wizard para crear cotizaciones paso a paso
@@ -68,6 +70,11 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     marketing_channel: 'web' as const,
     sale_type: 'servicio' as const,
   });
+
+  // Nuevo flujo: categoría principal, problema seleccionado y respuestas del checklist
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
+  const [checklistAnswers, setChecklistAnswers] = useState<Record<string, boolean>>({});
 
   // Cargar clientes
   useEffect(() => {
@@ -124,41 +131,101 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   };
 
   // Navegar entre pasos
-  const nextStep = () => {
+  const nextStep = async () => {
     switch (currentStep) {
-      case 'client':
+      case 'client': {
         if (!selectedClient) {
-          toast({
-            title: "Error",
-            description: "Por favor selecciona un cliente",
-            variant: "destructive",
-          });
+          toast({ title: 'Error', description: 'Por favor selecciona un cliente', variant: 'destructive' });
           return;
+        }
+        setCurrentStep('problem');
+        break;
+      }
+      case 'problem': {
+        if (!selectedProblemId) {
+          toast({ title: 'Error', description: 'Selecciona un problema', variant: 'destructive' });
+          return;
+        }
+        setCurrentStep('checklist');
+        break;
+      }
+      case 'checklist': {
+        // Obtener servicios recomendados según reglas
+        try {
+          const { data: rules } = await (supabase as any)
+            .from('diagnostic_rules')
+            .select('id, conditions, recommended_services')
+            .eq('is_active', true)
+            .eq('problem_id', selectedProblemId)
+            .order('priority', { ascending: true });
+
+          let recommendedIds: string[] = [];
+          if (rules && rules.length > 0) {
+            for (const r of rules) {
+              const conds: Array<{ question_id: string; expected: boolean }> = r.conditions || [];
+              const matches = conds.every((c) => (checklistAnswers as any)[c.question_id] === c.expected);
+              if (matches) {
+                recommendedIds = (r.recommended_services || []) as string[];
+                break;
+              }
+            }
+          }
+
+          if (recommendedIds.length > 0) {
+            const { data: services } = await (supabase as any)
+              .from('service_types')
+              .select('id, name, description, base_price, vat_rate')
+              .in('id', recommendedIds)
+              .eq('is_active', true);
+
+            if (services && services.length > 0) {
+              const newItems = services.map((s: any) => {
+                const unit = s.base_price || 0;
+                const subtotal = unit * 1;
+                const vatRate = s.vat_rate || 0;
+                const vat = (subtotal * vatRate) / 100;
+                return {
+                  id: `rec-${s.id}-${Date.now()}`,
+                  service_type_id: s.id,
+                  name: s.name,
+                  description: s.description || '',
+                  quantity: 1,
+                  unit_price: unit,
+                  subtotal,
+                  vat_rate: vatRate,
+                  vat_amount: vat,
+                  withholding_rate: 0,
+                  withholding_amount: 0,
+                  withholding_type: '',
+                  total: subtotal + vat,
+                  is_custom: false,
+                } as QuoteItem;
+              });
+              setQuoteItems((prev) => [...prev, ...newItems]);
+            }
+          }
+        } catch (e) {
+          console.error('Error calculando soluciones:', e);
         }
         setCurrentStep('items');
         break;
-      case 'items':
+      }
+      case 'items': {
         if (quoteItems.length === 0) {
-          toast({
-            title: "Error",
-            description: "Por favor agrega al menos un artículo",
-            variant: "destructive",
-          });
+          toast({ title: 'Error', description: 'Por favor agrega al menos un artículo', variant: 'destructive' });
           return;
         }
         setCurrentStep('details');
         break;
-      case 'details':
+      }
+      case 'details': {
         if (!quoteDetails.service_description) {
-          toast({
-            title: "Error",
-            description: "Por favor ingresa una descripción del servicio",
-            variant: "destructive",
-          });
+          toast({ title: 'Error', description: 'Por favor ingresa una descripción del servicio', variant: 'destructive' });
           return;
         }
         setCurrentStep('review');
         break;
+      }
     }
   };
 
@@ -325,6 +392,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const stepTitles = {
     client: 'Seleccionar Cliente',
+    problem: 'Problema',
+    checklist: 'Diagnóstico',
     items: 'Artículos y Servicios',
     details: 'Detalles de la Cotización',
     review: 'Revisar y Confirmar',
