@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, Check, Plus, X, User, FileText, Package, DollarSign } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Plus, X, User, FileText, Package, DollarSign, AlertCircle, CheckSquare } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -231,8 +231,14 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const prevStep = () => {
     switch (currentStep) {
-      case 'items':
+      case 'problem':
         setCurrentStep('client');
+        break;
+      case 'checklist':
+        setCurrentStep('problem');
+        break;
+      case 'items':
+        setCurrentStep('checklist');
         break;
       case 'details':
         setCurrentStep('items');
@@ -401,6 +407,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const stepIcons = {
     client: User,
+    problem: AlertCircle,
+    checklist: CheckSquare,
     items: Package,
     details: FileText,
     review: Check,
@@ -427,7 +435,9 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           const isActive = currentStep === step;
           const isCompleted = 
             (step === 'client' && selectedClient) ||
-            (step === 'items' && quoteItems.length > 0 && currentStep !== 'client') ||
+            (step === 'problem' && selectedProblemId && !['client'].includes(currentStep)) ||
+            (step === 'checklist' && Object.keys(checklistAnswers).length > 0 && !['client', 'problem'].includes(currentStep)) ||
+            (step === 'items' && quoteItems.length > 0 && !['client', 'problem', 'checklist'].includes(currentStep)) ||
             (step === 'details' && quoteDetails.service_description && 
              ['review'].includes(currentStep)) ||
             (step === 'review' && currentStep === 'review');
@@ -520,18 +530,50 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
             </div>
           )}
 
-          {/* Paso 2: Artículos */}
-          {currentStep === 'items' && (
-            <CategoryServiceSelection 
-              selectedItems={quoteItems}
-              onItemsChange={(items) => {
-                console.log('Items changed in QuoteWizard:', items);
-                setQuoteItems(items);
+          {/* Paso 2: Problema */}
+          {currentStep === 'problem' && (
+            <ProblemSelector
+              selectedCategoryId={selectedCategoryId}
+              selectedProblemId={selectedProblemId}
+              onSelectCategory={setSelectedCategoryId}
+              onSelectProblem={setSelectedProblemId}
+            />
+          )}
+
+          {/* Paso 3: Checklist de diagnóstico */}
+          {currentStep === 'checklist' && selectedProblemId && (
+            <DiagnosticChecklist
+              problemId={selectedProblemId}
+              onComplete={(answers) => {
+                setChecklistAnswers(answers);
+                nextStep();
               }}
             />
           )}
 
-          {/* Paso 3: Detalles */}
+          {/* Paso 4: Artículos */}
+          {currentStep === 'items' && (
+            <div className="space-y-4">
+              {quoteItems.length > 0 && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-medium text-green-800 mb-2">✓ Servicios recomendados agregados</h4>
+                  <p className="text-sm text-green-700">
+                    Basado en el diagnóstico, se han agregado {quoteItems.length} servicio(s) recomendado(s).
+                    Puedes agregar más servicios o productos adicionales si es necesario.
+                  </p>
+                </div>
+              )}
+              <CategoryServiceSelection 
+                selectedItems={quoteItems}
+                onItemsChange={(items) => {
+                  console.log('Items changed in QuoteWizard:', items);
+                  setQuoteItems(items);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Paso 5: Detalles */}
           {currentStep === 'details' && (
             <div className="space-y-4">
               <div>
@@ -579,7 +621,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
             </div>
           )}
 
-          {/* Paso 4: Revisión */}
+          {/* Paso 6: Revisión */}
           {currentStep === 'review' && (
             <div className="space-y-6">
               {/* Información del cliente */}

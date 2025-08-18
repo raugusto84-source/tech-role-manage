@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
   id: string;
-  question: string; // existing column in table
+  question_text: string;
 }
 
 interface DiagnosticChecklistProps {
@@ -23,7 +23,7 @@ export function DiagnosticChecklist({ problemId, onComplete }: DiagnosticCheckli
       // Use existing table and fields; we added problem_id via migration
       const { data } = await (supabase as any)
         .from('diagnostic_questions')
-        .select('id, question')
+        .select('id, question_text')
         .eq('is_active', true)
         .eq('problem_id', problemId)
         .order('question_order');
@@ -48,7 +48,7 @@ export function DiagnosticChecklist({ problemId, onComplete }: DiagnosticCheckli
                   setAnswers((prev) => ({ ...prev, [q.id]: checked === true }))
                 }
               />
-              <span>{q.question}</span>
+              <span>{q.question_text}</span>
             </label>
           ))}
           {questions.length === 0 && (

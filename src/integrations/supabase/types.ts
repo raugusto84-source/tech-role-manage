@@ -713,27 +713,139 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
-          question: string
+          problem_id: string | null
           question_order: number
+          question_text: string
           service_type: Database["public"]["Enums"]["service_type"]
         }
         Insert: {
           created_at?: string
           id?: string
           is_active?: boolean
-          question: string
+          problem_id?: string | null
           question_order: number
+          question_text: string
           service_type: Database["public"]["Enums"]["service_type"]
         }
         Update: {
           created_at?: string
           id?: string
           is_active?: boolean
-          question?: string
+          problem_id?: string | null
           question_order?: number
+          question_text?: string
           service_type?: Database["public"]["Enums"]["service_type"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_questions_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_rules: {
+        Row: {
+          conditions: Json
+          confidence_score: number | null
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          priority: number | null
+          problem_id: string | null
+          recommended_services: Json | null
+          updated_at: string
+        }
+        Insert: {
+          conditions: Json
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number | null
+          problem_id?: string | null
+          recommended_services?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          conditions?: Json
+          confidence_score?: number | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          priority?: number | null
+          problem_id?: string | null
+          recommended_services?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_rules_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      diagnostic_sessions: {
+        Row: {
+          answers: Json
+          client_email: string | null
+          confidence_score: number | null
+          created_at: string
+          id: string
+          problem_id: string | null
+          quote_id: string | null
+          recommended_services: Json | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          client_email?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          problem_id?: string | null
+          quote_id?: string | null
+          recommended_services?: Json | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          client_email?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          problem_id?: string | null
+          quote_id?: string | null
+          recommended_services?: Json | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_sessions_problem_id_fkey"
+            columns: ["problem_id"]
+            isOneToOne: false
+            referencedRelation: "problems"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diagnostic_sessions_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       diagnostic_trees: {
         Row: {
