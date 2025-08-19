@@ -67,12 +67,12 @@ export function ProblemSelector({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label>Categoría principal</Label>
-            <Select value={selectedCategoryId || ''} onValueChange={(v) => onSelectCategory(v || null)}>
+            <Select value={selectedCategoryId || 'all'} onValueChange={(v) => onSelectCategory(v === 'all' ? null : v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todas</SelectItem>
+                <SelectItem value="all">Todas</SelectItem>
                 {categories.map((c) => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
