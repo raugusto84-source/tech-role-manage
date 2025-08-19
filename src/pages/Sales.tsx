@@ -4,9 +4,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceForm } from '@/components/sales/ServiceForm';
 import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { ProblemsAndSolutionsManager } from '@/components/sales/ProblemsAndSolutionsManager';
+import { DiagnosticChecklistManager } from '@/components/sales/DiagnosticChecklistManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Package, Settings, AlertCircle } from 'lucide-react';
+import { Plus, Package, Settings, AlertCircle, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
@@ -62,7 +63,7 @@ export default function Sales() {
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'problems'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'problems' | 'checklist'>('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -211,7 +212,7 @@ export default function Sales() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Servicios
@@ -227,6 +228,10 @@ export default function Sales() {
             <TabsTrigger value="problems" className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               Problemas
+            </TabsTrigger>
+            <TabsTrigger value="checklist" className="flex items-center gap-2">
+              <CheckSquare className="h-4 w-4" />
+              Checklist
             </TabsTrigger>
           </TabsList>
 
@@ -440,6 +445,11 @@ export default function Sales() {
           {/* PROBLEMAS Y SOLUCIONES */}
           <TabsContent value="problems" className="space-y-6">
             <ProblemsAndSolutionsManager />
+          </TabsContent>
+
+          {/* CHECKLIST DE DIAGNÓSTICO */}
+          <TabsContent value="checklist" className="space-y-6">
+            <DiagnosticChecklistManager />
           </TabsContent>
         </Tabs>
       </div>
