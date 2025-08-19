@@ -716,7 +716,6 @@ export type Database = {
           problem_id: string | null
           question_order: number
           question_text: string
-          service_type: Database["public"]["Enums"]["service_type"]
         }
         Insert: {
           created_at?: string
@@ -725,7 +724,6 @@ export type Database = {
           problem_id?: string | null
           question_order: number
           question_text: string
-          service_type: Database["public"]["Enums"]["service_type"]
         }
         Update: {
           created_at?: string
@@ -734,7 +732,6 @@ export type Database = {
           problem_id?: string | null
           question_order?: number
           question_text?: string
-          service_type?: Database["public"]["Enums"]["service_type"]
         }
         Relationships: [
           {
