@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 interface Question {
   id: string;
   question_text: string;
+  image_url?: string | null;
 }
 
 interface DiagnosticChecklistProps {
@@ -23,7 +24,7 @@ export function DiagnosticChecklist({ problemId, onComplete }: DiagnosticCheckli
       // Use existing table and fields; we added problem_id via migration
       const { data } = await (supabase as any)
         .from('diagnostic_questions')
-        .select('id, question_text')
+        .select('id, question_text, image_url')
         .eq('is_active', true)
         .eq('problem_id', problemId)
         .order('question_order');
@@ -41,14 +42,26 @@ export function DiagnosticChecklist({ problemId, onComplete }: DiagnosticCheckli
       <CardContent className="space-y-4">
         <div className="space-y-3">
           {questions.map((q) => (
-            <label key={q.id} className="flex items-center gap-3">
+            <label key={q.id} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
               <Checkbox
                 checked={!!answers[q.id]}
                 onCheckedChange={(checked: any) =>
                   setAnswers((prev) => ({ ...prev, [q.id]: checked === true }))
                 }
+                className="mt-1"
               />
-              <span>{q.question_text}</span>
+              <div className="flex-1 space-y-2">
+                <span className="text-sm font-medium">{q.question_text}</span>
+                {q.image_url && (
+                  <div className="mt-2">
+                    <img 
+                      src={q.image_url} 
+                      alt="Imagen de ayuda para la pregunta" 
+                      className="max-w-xs max-h-32 rounded-lg object-cover border"
+                    />
+                  </div>
+                )}
+              </div>
             </label>
           ))}
           {questions.length === 0 && (

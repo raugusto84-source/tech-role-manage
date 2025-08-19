@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Edit2, Save, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Save, X, Upload, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,6 +22,7 @@ interface DiagnosticQuestion {
   question_order: number;
   problem_id: string;
   is_active: boolean;
+  image_url?: string | null;
   problem?: Problem;
 }
 
@@ -33,6 +34,7 @@ export function DiagnosticChecklistManager() {
   const [editingQuestion, setEditingQuestion] = useState<string | null>(null);
   const [newQuestion, setNewQuestion] = useState({ text: '', order: 1 });
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load problems
   useEffect(() => {
@@ -63,6 +65,7 @@ export function DiagnosticChecklistManager() {
           question_order,
           problem_id,
           is_active,
+          image_url,
           problems (id, name, category_id)
         `)
         .eq('problem_id', selectedProblemId)
@@ -76,7 +79,40 @@ export function DiagnosticChecklistManager() {
     loadQuestions();
   }, [selectedProblemId]);
 
-  const handleAddQuestion = async () => {
+  const uploadImage = async (file: File): Promise<string | null> => {
+    if (!file) return null;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      const filePath = `questions/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('diagnostic-images')
+        .upload(filePath, file);
+
+      if (error) {
+        console.error('Error uploading image:', error);
+        toast({
+          title: 'Error',
+          description: 'Error al subir la imagen: ' + error.message,
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('diagnostic-images')
+        .getPublicUrl(data.path);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
+
+  const handleAddQuestion = async (imageFile?: File) => {
     if (!selectedProblemId || !newQuestion.text.trim()) {
       toast({
         title: 'Error',
@@ -87,6 +123,12 @@ export function DiagnosticChecklistManager() {
     }
 
     setLoading(true);
+    
+    let imageUrl = null;
+    if (imageFile) {
+      imageUrl = await uploadImage(imageFile);
+    }
+
     const { error } = await supabase
       .from('diagnostic_questions')
       .insert({
@@ -94,6 +136,7 @@ export function DiagnosticChecklistManager() {
         question_order: newQuestion.order,
         problem_id: selectedProblemId,
         is_active: true,
+        image_url: imageUrl,
       });
 
     if (error) {
@@ -117,6 +160,7 @@ export function DiagnosticChecklistManager() {
           question_order,
           problem_id,
           is_active,
+          image_url,
           problems (id, name, category_id)
         `)
         .eq('problem_id', selectedProblemId)
@@ -130,14 +174,17 @@ export function DiagnosticChecklistManager() {
     setLoading(false);
   };
 
-  const handleUpdateQuestion = async (questionId: string, text: string, order: number) => {
+  const handleUpdateQuestion = async (questionId: string, text: string, order: number, imageUrl?: string) => {
     setLoading(true);
+    
+    const updateData: any = {};
+    if (text) updateData.question_text = text.trim();
+    if (order) updateData.question_order = order;
+    if (imageUrl !== undefined) updateData.image_url = imageUrl;
+
     const { error } = await supabase
       .from('diagnostic_questions')
-      .update({
-        question_text: text.trim(),
-        question_order: order,
-      })
+      .update(updateData)
       .eq('id', questionId);
 
     if (error) {
@@ -161,6 +208,7 @@ export function DiagnosticChecklistManager() {
           question_order,
           problem_id,
           is_active,
+          image_url,
           problems (id, name, category_id)
         `)
         .eq('problem_id', selectedProblemId)
@@ -270,10 +318,38 @@ export function DiagnosticChecklistManager() {
                   />
                 </div>
               </div>
-              <Button onClick={handleAddQuestion} disabled={loading} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Agregar Pregunta
-              </Button>
+              
+              <div className="flex items-center gap-2">
+                <Button onClick={() => handleAddQuestion()} disabled={loading} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Agregar Pregunta
+                </Button>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      await handleAddQuestion(file);
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
+                    }
+                  }}
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                  className="flex items-center gap-2"
+                >
+                  <ImageIcon className="h-4 w-4" />
+                  Agregar con Imagen
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
@@ -312,7 +388,7 @@ interface QuestionCardProps {
   isEditing: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
-  onUpdate: (id: string, text: string, order: number) => void;
+  onUpdate: (id: string, text: string, order: number, imageUrl?: string) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, currentStatus: boolean) => void;
   loading: boolean;
@@ -330,9 +406,51 @@ function QuestionCard({
 }: QuestionCardProps) {
   const [editText, setEditText] = useState(question.question_text);
   const [editOrder, setEditOrder] = useState(question.question_order);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const uploadImage = async (file: File): Promise<string | null> => {
+    if (!file) return null;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random()}.${fileExt}`;
+      const filePath = `questions/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('diagnostic-images')
+        .upload(filePath, file);
+
+      if (error) {
+        console.error('Error uploading image:', error);
+        toast({
+          title: 'Error',
+          description: 'Error al subir la imagen: ' + error.message,
+          variant: 'destructive',
+        });
+        return null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('diagnostic-images')
+        .getPublicUrl(data.path);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
 
   const handleSave = () => {
     onUpdate(question.id, editText, editOrder);
+  };
+
+  const handleImageUpload = async (file: File) => {
+    const imageUrl = await uploadImage(file);
+    if (imageUrl) {
+      onUpdate(question.id, editText, editOrder, imageUrl);
+    }
   };
 
   return (
@@ -360,9 +478,47 @@ function QuestionCard({
                   onChange={(e) => setEditOrder(parseInt(e.target.value) || 1)}
                   className="w-32"
                 />
+                
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        await handleImageUpload(file);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }
+                    }}
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {question.image_url ? 'Cambiar imagen' : 'Agregar imagen'}
+                  </Button>
+                </div>
               </div>
             ) : (
-              <p className="text-sm">{question.question_text}</p>
+              <div className="space-y-2">
+                <p className="text-sm">{question.question_text}</p>
+                {question.image_url && (
+                  <div className="mt-2">
+                    <img 
+                      src={question.image_url} 
+                      alt="Imagen de ayuda" 
+                      className="max-w-xs max-h-40 rounded-lg object-cover border"
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
