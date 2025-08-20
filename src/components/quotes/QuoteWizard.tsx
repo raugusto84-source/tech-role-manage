@@ -62,6 +62,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  const [diagnosticSolution, setDiagnosticSolution] = useState<any>(null);
   const [quoteDetails, setQuoteDetails] = useState({
     notes: '',
     marketing_channel: 'web' as const,
@@ -439,6 +440,15 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
               <SimpleDiagnosticFlow
                 onDiagnosisComplete={(result) => {
                   console.log('Diagnosis completed:', result);
+                  
+                  // Store the diagnostic solution
+                  setDiagnosticSolution({
+                    problem_title: result.problem_title,
+                    recommended_solution: result.recommended_solution,
+                    flow_id: result.flow_id,
+                    answers: result.answers
+                  });
+                  
                   // Agregar los servicios recomendados a la cotización
                   if (result.recommended_services && result.recommended_services.length > 0) {
                     const newItems = result.recommended_services.map(service => ({
@@ -504,6 +514,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                       console.log('Items changed in QuoteWizard:', items);
                       setQuoteItems(items);
                     }}
+                    simplifiedView={true}
                   />
                 </div>
               )}
@@ -532,6 +543,35 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Diagnóstico realizado */}
+              {diagnosticSolution && (
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <CheckSquare className="h-4 w-4" />
+                    Diagnóstico y Solución Recomendada
+                  </h4>
+                  <Card className="bg-muted/50">
+                    <CardContent className="pt-4 space-y-3">
+                      <div>
+                        <p className="text-sm font-medium">Problema identificado:</p>
+                        <p className="text-sm">{diagnosticSolution.problem_title}</p>
+                      </div>
+                      {diagnosticSolution.recommended_solution && (
+                        <div>
+                          <p className="text-sm font-medium">Solución recomendada:</p>
+                          <p className="text-sm">{diagnosticSolution.recommended_solution.title}</p>
+                          {diagnosticSolution.recommended_solution.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {diagnosticSolution.recommended_solution.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Artículos y Servicios - solo si hay artículos */}
               {quoteItems.length > 0 && (
