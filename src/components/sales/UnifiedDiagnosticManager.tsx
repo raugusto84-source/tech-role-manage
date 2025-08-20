@@ -25,6 +25,7 @@ interface DiagnosticStep {
   next_step_yes?: string;
   next_step_no?: string;
   next_steps?: { [key: string]: string };
+  solution_mapping?: { [key: string]: string }; // mapea respuesta a solution_id
   image_url?: string;
 }
 
@@ -135,15 +136,16 @@ export function UnifiedDiagnosticManager() {
     setLoading(true);
     
     const defaultFlowData = {
-      steps: [
-        {
-          id: 'step-1',
-          question: '¿Cuál es el síntoma principal que presenta?',
-          type: 'multiple_choice' as const,
-          options: ['No enciende', 'Va lento', 'Se congela', 'Virus', 'Otro'],
-          next_steps: {}
-        }
-      ],
+        steps: [
+          {
+            id: 'step-1',
+            question: '¿Cuál es el síntoma principal que presenta?',
+            type: 'multiple_choice' as const,
+            options: ['No enciende', 'Va lento', 'Se congela', 'Virus', 'Otro'],
+            next_steps: {},
+            solution_mapping: {}
+          }
+        ],
       solutions: [
         {
           id: 'solution-1',
@@ -444,7 +446,8 @@ function VisualFlowEditor({ flow, isOpen, onClose, onSave, serviceTypes }: Visua
       question: '',
       type: 'multiple_choice',
       options: ['Opción 1', 'Opción 2'],
-      next_steps: {}
+      next_steps: {},
+      solution_mapping: {}
     };
 
     setEditingFlow({
@@ -635,7 +638,87 @@ function VisualFlowEditor({ flow, isOpen, onClose, onSave, serviceTypes }: Visua
                           rows={3}
                         />
                       </div>
-                    )}
+                      )}
+
+                      {/* Solution Mapping */}
+                      <div>
+                        <Label className="text-xs">Mapeo de Respuestas a Soluciones</Label>
+                        <div className="space-y-2">
+                          {step.type === 'yes_no' ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs w-12">Sí:</span>
+                                <Select 
+                                  value={step.solution_mapping?.['Sí'] || ''} 
+                                  onValueChange={(solutionId) => updateStep(step.id, {
+                                    solution_mapping: { ...step.solution_mapping, 'Sí': solutionId }
+                                  })}
+                                >
+                                  <SelectTrigger className="text-xs flex-1">
+                                    <SelectValue placeholder="Seleccionar solución" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {editingFlow?.flow_data.solutions.map((solution) => (
+                                      <SelectItem key={solution.id} value={solution.id}>
+                                        {solution.title || `Solución ${solution.id}`}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs w-12">No:</span>
+                                <Select 
+                                  value={step.solution_mapping?.['No'] || ''} 
+                                  onValueChange={(solutionId) => updateStep(step.id, {
+                                    solution_mapping: { ...step.solution_mapping, 'No': solutionId }
+                                  })}
+                                >
+                                  <SelectTrigger className="text-xs flex-1">
+                                    <SelectValue placeholder="Seleccionar solución" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {editingFlow?.flow_data.solutions.map((solution) => (
+                                      <SelectItem key={solution.id} value={solution.id}>
+                                        {solution.title || `Solución ${solution.id}`}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                          ) : step.type === 'multiple_choice' && step.options ? (
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                              {step.options.map((option) => (
+                                <div key={option} className="flex items-center gap-2">
+                                  <span className="text-xs w-20 truncate" title={option}>{option}:</span>
+                                  <Select 
+                                    value={step.solution_mapping?.[option] || ''} 
+                                    onValueChange={(solutionId) => updateStep(step.id, {
+                                      solution_mapping: { ...step.solution_mapping, [option]: solutionId }
+                                    })}
+                                  >
+                                    <SelectTrigger className="text-xs flex-1">
+                                      <SelectValue placeholder="Solución" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {editingFlow?.flow_data.solutions.map((solution) => (
+                                        <SelectItem key={solution.id} value={solution.id}>
+                                          {solution.title || `Solución ${solution.id}`}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">
+                              Para preguntas de texto libre, se utilizará la primera solución por defecto
+                            </div>
+                          )}
+                        </div>
+                      </div>
                   </CardContent>
                 </Card>
               ))}

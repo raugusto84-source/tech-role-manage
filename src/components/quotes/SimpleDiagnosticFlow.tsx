@@ -32,6 +32,7 @@ interface DiagnosticStep {
   next_step_yes?: string;
   next_step_no?: string;
   next_steps?: { [key: string]: string };
+  solution_mapping?: { [key: string]: string }; // mapea respuesta a solution_id
   image_url?: string;
 }
 
@@ -157,23 +158,38 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
   const completeDiagnosis = async (finalAnswers: { [key: string]: string }) => {
     if (!selectedFlow) return;
 
-    // For now, return the first solution (could be enhanced with logic)
-    const solution = selectedFlow.flow_data.solutions[0] || {
-      id: 'default',
-      title: 'Diagnóstico requerido',
-      description: 'Se necesita evaluación técnica para determinar la solución',
-      recommended_services: [],
-      confidence_score: 70
-    };
+    // Encuentra la solución basada en las respuestas y el mapeo
+    let selectedSolution: Solution | null = null;
+    
+    // Recorre las respuestas para encontrar una solución mapeada
+    for (const [stepId, answer] of Object.entries(finalAnswers)) {
+      const step = selectedFlow.flow_data.steps.find(s => s.id === stepId);
+      if (step?.solution_mapping?.[answer]) {
+        const solutionId = step.solution_mapping[answer];
+        selectedSolution = selectedFlow.flow_data.solutions.find(s => s.id === solutionId) || null;
+        if (selectedSolution) break; // Usar la primera solución encontrada
+      }
+    }
 
-    setSelectedSolution(solution);
+    // Si no se encuentra una solución mapeada, usar la primera disponible
+    if (!selectedSolution) {
+      selectedSolution = selectedFlow.flow_data.solutions[0] || {
+        id: 'default',
+        title: 'Diagnóstico requerido',
+        description: 'Se necesita evaluación técnica para determinar la solución',
+        recommended_services: [],
+        confidence_score: 70
+      };
+    }
+
+    setSelectedSolution(selectedSolution);
 
     // Load recommended services
-    if (solution.recommended_services.length > 0) {
+    if (selectedSolution.recommended_services.length > 0) {
       const { data: services } = await supabase
         .from('service_types')
         .select('id, name, description, base_price, unit, vat_rate, category')
-        .in('id', solution.recommended_services)
+        .in('id', selectedSolution.recommended_services)
         .eq('is_active', true);
       
       setRecommendedServices(services || []);
@@ -183,7 +199,7 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
 
     toast({
       title: 'Diagnóstico completado',
-      description: 'Hemos identificado una solución y servicios recomendados.',
+      description: `Solución encontrada: ${selectedSolution.title}`,
     });
   };
 
