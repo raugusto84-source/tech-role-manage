@@ -3,17 +3,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { CategoryServiceSelection } from './CategoryServiceSelection';
-import { ProblemSelector } from './ProblemSelector';
-import { DiagnosticChecklist } from './DiagnosticChecklist';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, Check, Plus, X, User, FileText, Package, DollarSign, AlertCircle, CheckSquare } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, User, Package } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -46,7 +42,7 @@ interface QuoteWizardProps {
   onCancel: () => void;
 }
 
-type WizardStep = 'client' | 'problem' | 'checklist' | 'items' | 'details' | 'review';
+type WizardStep = 'client' | 'items' | 'review';
 
 /**
  * Wizard para crear cotizaciones paso a paso
@@ -57,6 +53,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const { profile } = useAuth();
   const [currentStep, setCurrentStep] = useState<WizardStep>('client');
   const [loading, setLoading] = useState(false);
+  const [showServiceSelection, setShowServiceSelection] = useState(false);
   
   // Estado del formulario
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -65,16 +62,10 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [quoteDetails, setQuoteDetails] = useState({
-    service_description: '',
     notes: '',
     marketing_channel: 'web' as const,
     sale_type: 'servicio' as const,
   });
-
-  // Nuevo flujo: categoría principal, problema seleccionado y respuestas del checklist
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
-  const [checklistAnswers, setChecklistAnswers] = useState<{ [key: string]: string }>({});
 
   // Cargar clientes
   useEffect(() => {
@@ -138,91 +129,10 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           toast({ title: 'Error', description: 'Por favor selecciona un cliente', variant: 'destructive' });
           return;
         }
-        setCurrentStep('problem');
-        break;
-      }
-      case 'problem': {
-        if (!selectedProblemId) {
-          toast({ title: 'Error', description: 'Selecciona un problema', variant: 'destructive' });
-          return;
-        }
-        setCurrentStep('checklist');
-        break;
-      }
-      case 'checklist': {
-        // Obtener servicios recomendados según reglas
-        try {
-          const { data: rules } = await (supabase as any)
-            .from('diagnostic_rules')
-            .select('id, conditions, recommended_services')
-            .eq('is_active', true)
-            .eq('problem_id', selectedProblemId)
-            .order('priority', { ascending: true });
-
-          let recommendedIds: string[] = [];
-          if (rules && rules.length > 0) {
-            for (const r of rules) {
-              const conds: Array<{ question_id: string; expected: boolean }> = r.conditions || [];
-              const matches = conds.every((c) => (checklistAnswers as any)[c.question_id] === c.expected);
-              if (matches) {
-                recommendedIds = (r.recommended_services || []) as string[];
-                break;
-              }
-            }
-          }
-
-          if (recommendedIds.length > 0) {
-            const { data: services } = await (supabase as any)
-              .from('service_types')
-              .select('id, name, description, base_price, vat_rate')
-              .in('id', recommendedIds)
-              .eq('is_active', true);
-
-            if (services && services.length > 0) {
-              const newItems = services.map((s: any) => {
-                const unit = s.base_price || 0;
-                const subtotal = unit * 1;
-                const vatRate = s.vat_rate || 0;
-                const vat = (subtotal * vatRate) / 100;
-                return {
-                  id: `rec-${s.id}-${Date.now()}`,
-                  service_type_id: s.id,
-                  name: s.name,
-                  description: s.description || '',
-                  quantity: 1,
-                  unit_price: unit,
-                  subtotal,
-                  vat_rate: vatRate,
-                  vat_amount: vat,
-                  withholding_rate: 0,
-                  withholding_amount: 0,
-                  withholding_type: '',
-                  total: subtotal + vat,
-                  is_custom: false,
-                } as QuoteItem;
-              });
-              setQuoteItems((prev) => [...prev, ...newItems]);
-            }
-          }
-        } catch (e) {
-          console.error('Error calculando soluciones:', e);
-        }
         setCurrentStep('items');
         break;
       }
       case 'items': {
-        if (quoteItems.length === 0) {
-          toast({ title: 'Error', description: 'Por favor agrega al menos un artículo', variant: 'destructive' });
-          return;
-        }
-        setCurrentStep('details');
-        break;
-      }
-      case 'details': {
-        if (!quoteDetails.service_description) {
-          toast({ title: 'Error', description: 'Por favor ingresa una descripción del servicio', variant: 'destructive' });
-          return;
-        }
         setCurrentStep('review');
         break;
       }
@@ -231,20 +141,11 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const prevStep = () => {
     switch (currentStep) {
-      case 'problem':
+      case 'items':
         setCurrentStep('client');
         break;
-      case 'checklist':
-        setCurrentStep('problem');
-        break;
-      case 'items':
-        setCurrentStep('checklist');
-        break;
-      case 'details':
-        setCurrentStep('items');
-        break;
       case 'review':
-        setCurrentStep('details');
+        setCurrentStep('items');
         break;
     }
   };
@@ -266,7 +167,9 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         client_name: selectedClient.name,
         client_email: selectedClient.email,
         client_phone: selectedClient.phone,
-        service_description: quoteDetails.service_description,
+        service_description: quoteItems.length > 0 ? 
+          `Cotización para ${quoteItems.map(item => item.name).join(', ')}` : 
+          'Cotización personalizada',
         estimated_amount: calculateTotal(),
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
@@ -398,19 +301,13 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const stepTitles = {
     client: 'Seleccionar Cliente',
-    problem: 'Problema',
-    checklist: 'Diagnóstico',
-    items: 'Artículos y Servicios',
-    details: 'Detalles de la Cotización',
+    items: '¿Desea agregar servicios o productos?',
     review: 'Revisar y Confirmar',
   };
 
   const stepIcons = {
     client: User,
-    problem: AlertCircle,
-    checklist: CheckSquare,
     items: Package,
-    details: FileText,
     review: Check,
   };
 
@@ -435,11 +332,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           const isActive = currentStep === step;
           const isCompleted = 
             (step === 'client' && selectedClient) ||
-            (step === 'problem' && selectedProblemId && !['client'].includes(currentStep)) ||
-            (step === 'checklist' && Object.keys(checklistAnswers).length > 0 && !['client', 'problem'].includes(currentStep)) ||
-            (step === 'items' && quoteItems.length > 0 && !['client', 'problem', 'checklist'].includes(currentStep)) ||
-            (step === 'details' && quoteDetails.service_description && 
-             ['review'].includes(currentStep)) ||
+            (step === 'items' && !['client'].includes(currentStep)) ||
             (step === 'review' && currentStep === 'review');
 
           return (
@@ -498,151 +391,72 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                       placeholder="Buscar por nombre o email..."
                       value={clientSearchTerm}
                       onChange={(e) => setClientSearchTerm(e.target.value)}
-                      className="mb-2"
+                      className="mb-4"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="client-select">Cliente</Label>
-                    <Select 
-                      value={selectedClient?.id || ''} 
-                      onValueChange={(value) => {
-                        const client = clients.find(c => c.id === value);
-                        setSelectedClient(client || null);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona un cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredClients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            <div>
-                              <div className="font-medium">{client.name}</div>
-                              <div className="text-sm text-muted-foreground">{client.email}</div>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {filteredClients.map((client) => (
+                      <Button
+                        key={client.id}
+                        variant={selectedClient?.id === client.id ? "default" : "outline"}
+                        className="h-auto p-4 text-left justify-start"
+                        onClick={() => setSelectedClient(client)}
+                      >
+                        <div className="w-full">
+                          <div className="font-medium">{client.name}</div>
+                          <div className="text-sm opacity-70">{client.email}</div>
+                          {client.address && (
+                            <div className="text-xs opacity-60 mt-1">{client.address}</div>
+                          )}
+                        </div>
+                      </Button>
+                    ))}
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Paso 2: Problema */}
-          {currentStep === 'problem' && (
-            <ProblemSelector
-              selectedCategoryId={selectedCategoryId}
-              selectedProblemId={selectedProblemId}
-              onSelectCategory={setSelectedCategoryId}
-              onSelectProblem={setSelectedProblemId}
-            />
-          )}
-
-          {/* Paso 3: Diagnóstico interactivo */}
-          {currentStep === 'checklist' && (
-            <DiagnosticChecklist
-              onDiagnosisComplete={(result) => {
-                console.log('Diagnosis completed:', result);
-                // Aquí podemos procesar el resultado y continuar al siguiente paso
-                setChecklistAnswers(result.answers);
-                // Agregar los servicios recomendados a la cotización
-                if (result.recommended_services.length > 0) {
-                  const newItems = result.recommended_services.map(service => ({
-                    id: `rec-${service.id}-${Date.now()}`,
-                    service_type_id: service.id,
-                    name: service.name,
-                    description: service.description || '',
-                    quantity: 1,
-                    unit_price: service.base_price || 0,
-                    subtotal: service.base_price || 0,
-                    vat_rate: service.vat_rate || 0,
-                    vat_amount: ((service.base_price || 0) * (service.vat_rate || 0)) / 100,
-                    withholding_rate: 0,
-                    withholding_amount: 0,
-                    withholding_type: '',
-                    total: (service.base_price || 0) + (((service.base_price || 0) * (service.vat_rate || 0)) / 100),
-                    is_custom: false
-                  }));
-                  setQuoteItems(prev => [...prev, ...newItems]);
-                }
-                nextStep();
-              }}
-            />
-          )}
-
-          {/* Paso 4: Artículos */}
           {currentStep === 'items' && (
-            <div className="space-y-4">
-              {quoteItems.length > 0 && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h4 className="font-medium text-green-800 mb-2">✓ Servicios recomendados agregados</h4>
-                  <p className="text-sm text-green-700">
-                    Basado en el diagnóstico, se han agregado {quoteItems.length} servicio(s) recomendado(s).
-                    Puedes agregar más servicios o productos adicionales si es necesario.
+            <div className="space-y-6">
+              {!showServiceSelection ? (
+                <div className="text-center space-y-4">
+                  <h3 className="text-lg font-medium">¿Desea agregar servicios o productos a esta cotización?</h3>
+                  <p className="text-muted-foreground">
+                    Puede agregar servicios específicos o crear una cotización básica sin artículos detallados.
                   </p>
+                  <div className="flex gap-4 justify-center">
+                    <Button onClick={() => setCurrentStep('review')} variant="outline">
+                      No, crear cotización básica
+                    </Button>
+                    <Button onClick={() => setShowServiceSelection(true)}>
+                      Sí, agregar servicios/productos
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium">Seleccionar servicios y productos</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowServiceSelection(false)}
+                    >
+                      Volver
+                    </Button>
+                  </div>
+                  <CategoryServiceSelection 
+                    selectedItems={quoteItems}
+                    onItemsChange={(items) => {
+                      console.log('Items changed in QuoteWizard:', items);
+                      setQuoteItems(items);
+                    }}
+                  />
                 </div>
               )}
-              <CategoryServiceSelection 
-                selectedItems={quoteItems}
-                onItemsChange={(items) => {
-                  console.log('Items changed in QuoteWizard:', items);
-                  setQuoteItems(items);
-                }}
-              />
             </div>
           )}
-
-          {/* Paso 5: Detalles */}
-          {currentStep === 'details' && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="service-description">Descripción del Servicio *</Label>
-                <Textarea
-                  id="service-description"
-                  value={quoteDetails.service_description}
-                  onChange={(e) => setQuoteDetails({...quoteDetails, service_description: e.target.value})}
-                  placeholder="Describe el servicio que se cotiza..."
-                  rows={4}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="marketing-channel">¿Dónde supo de este servicio?</Label>
-                <Select 
-                  value={quoteDetails.marketing_channel} 
-                  onValueChange={(value: any) => setQuoteDetails({...quoteDetails, marketing_channel: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una opción" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="web">Página Web</SelectItem>
-                    <SelectItem value="social">Redes Sociales (Facebook, Instagram, etc.)</SelectItem>
-                    <SelectItem value="google">Google / Búsqueda en Internet</SelectItem>
-                    <SelectItem value="referral">Referido por alguien</SelectItem>
-                    <SelectItem value="direct">Contacto directo</SelectItem>
-                    <SelectItem value="advertising">Publicidad</SelectItem>
-                    <SelectItem value="other">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Notas Adicionales</Label>
-                <Textarea
-                  id="notes"
-                  value={quoteDetails.notes}
-                  onChange={(e) => setQuoteDetails({...quoteDetails, notes: e.target.value})}
-                  placeholder="Notas adicionales, términos y condiciones..."
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Paso 6: Revisión */}
           {currentStep === 'review' && (
             <div className="space-y-6">
               {/* Información del cliente */}
@@ -667,138 +481,129 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                 </Card>
               </div>
 
-              {/* Artículos y Servicios - Desglose detallado */}
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <Package className="h-4 w-4" />
-                  Artículos y Servicios
-                </h4>
-                <div className="space-y-3">
-                  {quoteItems.map((item) => (
-                    <Card key={item.id} className="bg-muted/50">
-                      <CardContent className="pt-4">
-                        {/* Header del artículo */}
-                        <div className="flex justify-between items-start mb-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h5 className="font-medium">{item.name}</h5>
-                              {item.is_custom && (
-                                <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+              {/* Artículos y Servicios - solo si hay artículos */}
+              {quoteItems.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Artículos y Servicios
+                  </h4>
+                  <div className="space-y-3">
+                    {quoteItems.map((item) => (
+                      <Card key={item.id} className="bg-muted/50">
+                        <CardContent className="pt-4">
+                          {/* Header del artículo */}
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h5 className="font-medium">{item.name}</h5>
+                                {item.is_custom && (
+                                  <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+                                )}
+                              </div>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
                               )}
                             </div>
-                            {item.description && (
-                              <p className="text-sm text-muted-foreground">{item.description}</p>
+                            <div className="text-right">
+                              <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                            </div>
+                          </div>
+
+                          {/* Desglose de precios */}
+                          <div className="space-y-1 text-sm bg-background/50 p-3 rounded">
+                            <div className="flex justify-between">
+                              <span>Subtotal:</span>
+                              <span>{formatCurrency(item.subtotal)}</span>
+                            </div>
+                            
+                            {/* Mostrar impuestos */}
+                            {item.taxes && item.taxes.length > 0 ? (
+                              item.taxes.map((tax, index) => (
+                                <div key={index} className="flex justify-between">
+                                  <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
+                                    {tax.tax_name} ({tax.tax_rate}%):
+                                  </span>
+                                  <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
+                                    {tax.tax_type === 'iva' ? '+' : '-'}{formatCurrency(tax.tax_amount)}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <>
+                                {item.vat_amount > 0 && (
+                                  <div className="flex justify-between text-green-600">
+                                    <span>IVA ({item.vat_rate}%):</span>
+                                    <span>+{formatCurrency(item.vat_amount)}</span>
+                                  </div>
+                                )}
+                                {item.withholding_amount > 0 && (
+                                  <div className="flex justify-between text-red-600">
+                                    <span>{item.withholding_type} ({item.withholding_rate}%):</span>
+                                    <span>-{formatCurrency(item.withholding_amount)}</span>
+                                  </div>
+                                )}
+                              </>
                             )}
+                            
+                            <Separator className="my-2" />
+                            <div className="flex justify-between font-medium">
+                              <span>Total artículo:</span>
+                              <span className="text-primary">{formatCurrency(item.total)}</span>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
-                          </div>
-                        </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
-                        {/* Desglose de precios */}
-                        <div className="space-y-1 text-sm bg-background/50 p-3 rounded">
-                          <div className="flex justify-between">
-                            <span>Subtotal:</span>
-                            <span>{formatCurrency(item.subtotal)}</span>
-                          </div>
-                          
-                          {/* Mostrar impuestos */}
-                          {item.taxes && item.taxes.length > 0 ? (
-                            item.taxes.map((tax, index) => (
-                              <div key={index} className="flex justify-between">
-                                <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
-                                  {tax.tax_name} ({tax.tax_rate}%):
-                                </span>
-                                <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
-                                  {tax.tax_type === 'iva' ? '+' : '-'}{formatCurrency(tax.tax_amount)}
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            <>
-                              {item.vat_amount > 0 && (
-                                <div className="flex justify-between text-green-600">
-                                  <span>IVA ({item.vat_rate}%):</span>
-                                  <span>+{formatCurrency(item.vat_amount)}</span>
-                                </div>
-                              )}
-                              {item.withholding_amount > 0 && (
-                                <div className="flex justify-between text-red-600">
-                                  <span>{item.withholding_type} ({item.withholding_rate}%):</span>
-                                  <span>-{formatCurrency(item.withholding_amount)}</span>
-                                </div>
-                              )}
-                            </>
-                          )}
-                          
-                          <Separator className="my-2" />
-                          <div className="flex justify-between font-medium">
-                            <span>Total artículo:</span>
-                            <span className="text-primary">{formatCurrency(item.total)}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-
-                {/* Totales generales */}
-                <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal General:</span>
-                    <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-green-600">
-                    <span>Total IVAs:</span>
-                    <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
-                      if (item.taxes && item.taxes.length > 0) {
-                        return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                      }
-                      return sum + item.vat_amount;
-                    }, 0))}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-red-600">
-                    <span>Total Retenciones:</span>
-                    <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
-                      if (item.taxes && item.taxes.length > 0) {
-                        return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                      }
-                      return sum + item.withholding_amount;
-                    }, 0))}</span>
-                  </div>
-                  
-                  <Separator className="my-2" />
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-medium">Total Final:</span>
-                    <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detalles */}
-              <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Detalles
-                </h4>
-                <Card className="bg-muted/50">
-                  <CardContent className="pt-4 space-y-2">
-                    <div>
-                      <p className="text-sm font-medium">Descripción del Servicio:</p>
-                      <p className="text-sm">{quoteDetails.service_description}</p>
+                  {/* Totales generales */}
+                  <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal General:</span>
+                      <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
                     </div>
-                    {quoteDetails.notes && (
-                      <div>
-                        <p className="text-sm font-medium">Notas:</p>
-                        <p className="text-sm">{quoteDetails.notes}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                    
+                    <div className="flex justify-between text-green-600">
+                      <span>Total IVAs:</span>
+                      <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
+                        if (item.taxes && item.taxes.length > 0) {
+                          return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
+                        }
+                        return sum + item.vat_amount;
+                      }, 0))}</span>
+                    </div>
+                    
+                    <div className="flex justify-between text-red-600">
+                      <span>Total Retenciones:</span>
+                      <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
+                        if (item.taxes && item.taxes.length > 0) {
+                          return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
+                        }
+                        return sum + item.withholding_amount;
+                      }, 0))}</span>
+                    </div>
+                    
+                    <Separator className="my-2" />
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-medium">Total Final:</span>
+                      <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Mensaje cuando no hay artículos */}
+              {quoteItems.length === 0 && (
+                <div className="text-center py-8">
+                  <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h4 className="font-medium mb-2">Cotización básica</h4>
+                  <p className="text-muted-foreground">
+                    Esta cotización se creará sin artículos específicos. Puede agregar detalles posteriormente.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
