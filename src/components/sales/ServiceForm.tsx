@@ -135,13 +135,17 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       }
 
       const hasTiers = Array.isArray(data.profit_margin_tiers) && (data.profit_margin_tiers as any[]).length > 0;
+      const rawItemType = (data.item_type as string) || '';
+      const resolvedKind: 'servicio' | 'articulo' = (rawItemType === 'servicio' || rawItemType === 'articulo')
+        ? (rawItemType as 'servicio' | 'articulo')
+        : (hasTiers ? 'articulo' : 'servicio');
 
       form.reset({
         name: data.name,
         description: data.description || '',
         main_category: (data.category as string) || 'Computadoras',
-        subcategory: '', // La subcategoría ya no se guarda en item_type
-        kind: (data.item_type as 'servicio' | 'articulo') || (hasTiers ? 'articulo' : 'servicio'),
+        subcategory: (data.subcategory as string) || '', // Leer desde nueva columna
+        kind: resolvedKind,
         cost_price: data.cost_price || 0,
         base_price: data.base_price || 0,
         profit_margin: hasTiers ? (data.profit_margin_tiers as any[])[0]?.margin ?? 30 : 30,
@@ -180,7 +184,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         name: values.name,
         description: values.description,
         category: values.main_category,       // ← Categoría principal
-        item_type: values.kind,               // ← Usar 'servicio' o 'articulo' en lugar de subcategoría
+        item_type: values.kind,               // ← Usar 'servicio' o 'articulo'
+        subcategory: values.subcategory,      // ← Guardar subcategoría en su propia columna
         cost_price: values.cost_price,
         base_price: values.base_price,
         profit_margin_tiers: values.kind === 'articulo'

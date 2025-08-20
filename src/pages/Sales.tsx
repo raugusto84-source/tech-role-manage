@@ -43,9 +43,9 @@ const getCategoryIcon = (categoryName: string): string => {
 // Tablas
 const SERVICES_TABLE = 'service_types' as const;
 
-// Campos a leer (incluye item_type para subcategorías)
+// Campos a leer (incluye subcategory e item_type para compatibilidad)
 const SERVICE_SELECT =
-  'id, name, description, base_price, unit, vat_rate, category, item_type';
+  'id, name, description, base_price, unit, vat_rate, category, item_type, subcategory';
 
 type Service = {
   id: string;
@@ -55,7 +55,8 @@ type Service = {
   unit?: string | null;
   vat_rate?: number | null;
   category?: string | null;
-  item_type?: string | null; // ← subcategoría
+  item_type?: string | null; // tipo ('servicio' | 'articulo') o legado
+  subcategory?: string | null; // nueva subcategoría
 };
 
 export default function Sales() {
@@ -140,7 +141,7 @@ export default function Sales() {
   const subcategories = useMemo(() => {
     const set = new Set<string>();
     for (const s of services) {
-      const val = (s.item_type ?? '').trim();
+      const val = ((s.subcategory ?? s.item_type) ?? '').trim();
       if (val) set.add(val);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -150,7 +151,7 @@ export default function Sales() {
   const displayedServices = useMemo(() => {
     if (!activeSubCategory) return services;
     return services.filter(
-      s => (s.item_type ?? '').trim() === activeSubCategory
+      s => ((s.subcategory ?? s.item_type) ?? '').trim() === activeSubCategory
     );
   }, [services, activeSubCategory]);
 

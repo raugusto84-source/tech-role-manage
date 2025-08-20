@@ -3180,6 +3180,7 @@ export type Database = {
           name: string
           profit_margin_tiers: Json | null
           shared_time: boolean
+          subcategory: string | null
           unit: string | null
           updated_at: string
           vat_rate: number | null
@@ -3202,6 +3203,7 @@ export type Database = {
           name: string
           profit_margin_tiers?: Json | null
           shared_time?: boolean
+          subcategory?: string | null
           unit?: string | null
           updated_at?: string
           vat_rate?: number | null
@@ -3224,6 +3226,7 @@ export type Database = {
           name?: string
           profit_margin_tiers?: Json | null
           shared_time?: boolean
+          subcategory?: string | null
           unit?: string | null
           updated_at?: string
           vat_rate?: number | null

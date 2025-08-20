@@ -38,7 +38,8 @@ interface Service {
   name: string;
   description: string;
   category: string;      // principal
-  item_type: string;     // subcategoría (o antiguos 'servicio'|'articulo')
+  item_type: string;     // tipo ('servicio' | 'articulo') o legado subcategoría
+  subcategory?: string | null; // nueva subcategoría
   cost_price: number;
   base_price: number;
   vat_rate: number;
@@ -93,7 +94,8 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
         query = query.eq('category', mainCategory);
       }
       if (subCategory !== 'all') {
-        query = query.eq('item_type', subCategory);
+        // Compatibilidad: buscar por subcategory o por item_type legado
+        query = query.or(`subcategory.eq.${subCategory},item_type.eq.${subCategory}`);
       }
       if (searchTerm.trim()) {
         query = query.ilike('name', `%${searchTerm}%`);
