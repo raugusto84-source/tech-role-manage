@@ -1,18 +1,17 @@
-import { ClientDiagnosticFlow } from './ClientDiagnosticFlow';
+import { SimpleDiagnosticFlow } from './SimpleDiagnosticFlow';
 
 interface DiagnosticChecklistProps {
-  problemId?: string;
-  onComplete?: (answers: Record<string, boolean>) => void;
   onDiagnosisComplete?: (result: {
     flow_id: string;
     problem_title: string;
     answers: { [key: string]: string };
     recommended_solution: any;
+    recommended_services: any[];
   }) => void;
 }
 
 export function DiagnosticChecklist({ onDiagnosisComplete }: DiagnosticChecklistProps) {
   return (
-    <ClientDiagnosticFlow onDiagnosisComplete={onDiagnosisComplete} />
+    <SimpleDiagnosticFlow onDiagnosisComplete={onDiagnosisComplete} />
   );
 }

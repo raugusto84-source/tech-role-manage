@@ -3,11 +3,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 // import { ServicesList } from '@/components/sales/ServicesList'; // ← ya no se usa
 import { ServiceForm } from '@/components/sales/ServiceForm';
 import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
-import { ProblemsAndSolutionsManager } from '@/components/sales/ProblemsAndSolutionsManager';
-import { DiagnosticFlowManager } from '@/components/sales/DiagnosticFlowManager';
+import { UnifiedDiagnosticManager } from '@/components/sales/UnifiedDiagnosticManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Package, Settings, AlertCircle, CheckSquare } from 'lucide-react';
+import { Plus, Package, Settings, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
@@ -63,7 +62,7 @@ export default function Sales() {
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'problems' | 'checklist'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics'>('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -212,7 +211,7 @@ export default function Sales() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Servicios
@@ -225,13 +224,9 @@ export default function Sales() {
               <Settings className="h-4 w-4" />
               Márgenes
             </TabsTrigger>
-            <TabsTrigger value="problems" className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              Problemas
-            </TabsTrigger>
-            <TabsTrigger value="checklist" className="flex items-center gap-2">
-              <CheckSquare className="h-4 w-4" />
-              Checklist
+            <TabsTrigger value="diagnostics" className="flex items-center gap-2">
+              <Workflow className="h-4 w-4" />
+              Problemas y Diagnósticos
             </TabsTrigger>
           </TabsList>
 
@@ -442,14 +437,9 @@ export default function Sales() {
             </Card>
           </TabsContent>
 
-          {/* PROBLEMAS Y SOLUCIONES */}
-          <TabsContent value="problems" className="space-y-6">
-            <ProblemsAndSolutionsManager />
-          </TabsContent>
-
-          {/* CHECKLIST DE DIAGNÓSTICO */}
-          <TabsContent value="checklist" className="space-y-6">
-            <DiagnosticFlowManager />
+          {/* PROBLEMAS Y DIAGNÓSTICOS UNIFICADO */}
+          <TabsContent value="diagnostics" className="space-y-6">
+            <UnifiedDiagnosticManager />
           </TabsContent>
         </Tabs>
       </div>

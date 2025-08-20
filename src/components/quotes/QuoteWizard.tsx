@@ -74,7 +74,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   // Nuevo flujo: categoría principal, problema seleccionado y respuestas del checklist
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [selectedProblemId, setSelectedProblemId] = useState<string | null>(null);
-  const [checklistAnswers, setChecklistAnswers] = useState<Record<string, boolean>>({});
+  const [checklistAnswers, setChecklistAnswers] = useState<{ [key: string]: string }>({});
 
   // Cargar clientes
   useEffect(() => {
@@ -540,12 +540,33 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
             />
           )}
 
-          {/* Paso 3: Checklist de diagnóstico */}
-          {currentStep === 'checklist' && selectedProblemId && (
+          {/* Paso 3: Diagnóstico interactivo */}
+          {currentStep === 'checklist' && (
             <DiagnosticChecklist
-              problemId={selectedProblemId}
-              onComplete={(answers) => {
-                setChecklistAnswers(answers);
+              onDiagnosisComplete={(result) => {
+                console.log('Diagnosis completed:', result);
+                // Aquí podemos procesar el resultado y continuar al siguiente paso
+                setChecklistAnswers(result.answers);
+                // Agregar los servicios recomendados a la cotización
+                if (result.recommended_services.length > 0) {
+                  const newItems = result.recommended_services.map(service => ({
+                    id: `rec-${service.id}-${Date.now()}`,
+                    service_type_id: service.id,
+                    name: service.name,
+                    description: service.description || '',
+                    quantity: 1,
+                    unit_price: service.base_price || 0,
+                    subtotal: service.base_price || 0,
+                    vat_rate: service.vat_rate || 0,
+                    vat_amount: ((service.base_price || 0) * (service.vat_rate || 0)) / 100,
+                    withholding_rate: 0,
+                    withholding_amount: 0,
+                    withholding_type: '',
+                    total: (service.base_price || 0) + (((service.base_price || 0) * (service.vat_rate || 0)) / 100),
+                    is_custom: false
+                  }));
+                  setQuoteItems(prev => [...prev, ...newItems]);
+                }
                 nextStep();
               }}
             />
