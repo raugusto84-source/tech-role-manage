@@ -26,6 +26,7 @@ interface DiagnosticStep {
   next_step_no?: string;
   next_steps?: { [key: string]: string };
   solution_mapping?: { [key: string]: string }; // mapea respuesta a solution_id
+  next_step_mapping?: { [key: string]: string }; // mapea respuesta a step_id
   image_url?: string;
 }
 
@@ -143,7 +144,8 @@ export function UnifiedDiagnosticManager() {
             type: 'multiple_choice' as const,
             options: ['No enciende', 'Va lento', 'Se congela', 'Virus', 'Otro'],
             next_steps: {},
-            solution_mapping: {}
+            solution_mapping: {},
+            next_step_mapping: {}
           }
         ],
       solutions: [
@@ -447,7 +449,8 @@ function VisualFlowEditor({ flow, isOpen, onClose, onSave, serviceTypes }: Visua
       type: 'multiple_choice',
       options: ['Opción 1', 'Opción 2'],
       next_steps: {},
-      solution_mapping: {}
+      solution_mapping: {},
+      next_step_mapping: {}
     };
 
     setEditingFlow({
@@ -642,64 +645,44 @@ function VisualFlowEditor({ flow, isOpen, onClose, onSave, serviceTypes }: Visua
 
                       {/* Solution Mapping */}
                       <div>
-                        <Label className="text-xs">Mapeo de Respuestas a Soluciones</Label>
-                        <div className="space-y-2">
+                        <Label className="text-xs">Mapeo de Respuestas</Label>
+                        <div className="space-y-3">
                           {step.type === 'yes_no' ? (
                             <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs w-12">Sí:</span>
-                                <Select 
-                                  value={step.solution_mapping?.['Sí'] || ''} 
-                                  onValueChange={(solutionId) => updateStep(step.id, {
-                                    solution_mapping: { ...step.solution_mapping, 'Sí': solutionId }
-                                  })}
-                                >
-                                  <SelectTrigger className="text-xs flex-1">
-                                    <SelectValue placeholder="Seleccionar solución" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {editingFlow?.flow_data.solutions.map((solution) => (
-                                      <SelectItem key={solution.id} value={solution.id}>
-                                        {solution.title || `Solución ${solution.id}`}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs w-12">No:</span>
-                                <Select 
-                                  value={step.solution_mapping?.['No'] || ''} 
-                                  onValueChange={(solutionId) => updateStep(step.id, {
-                                    solution_mapping: { ...step.solution_mapping, 'No': solutionId }
-                                  })}
-                                >
-                                  <SelectTrigger className="text-xs flex-1">
-                                    <SelectValue placeholder="Seleccionar solución" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {editingFlow?.flow_data.solutions.map((solution) => (
-                                      <SelectItem key={solution.id} value={solution.id}>
-                                        {solution.title || `Solución ${solution.id}`}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          ) : step.type === 'multiple_choice' && step.options ? (
-                            <div className="space-y-2 max-h-32 overflow-y-auto">
-                              {step.options.map((option) => (
-                                <div key={option} className="flex items-center gap-2">
-                                  <span className="text-xs w-20 truncate" title={option}>{option}:</span>
+                              <div className="text-xs font-medium">Respuesta: Sí</div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-xs">Ir a pregunta:</Label>
                                   <Select 
-                                    value={step.solution_mapping?.[option] || ''} 
-                                    onValueChange={(solutionId) => updateStep(step.id, {
-                                      solution_mapping: { ...step.solution_mapping, [option]: solutionId }
+                                    value={step.next_step_mapping?.['Sí'] || ''} 
+                                    onValueChange={(stepId) => updateStep(step.id, {
+                                      next_step_mapping: { ...step.next_step_mapping, 'Sí': stepId }
                                     })}
                                   >
-                                    <SelectTrigger className="text-xs flex-1">
-                                      <SelectValue placeholder="Solución" />
+                                    <SelectTrigger className="text-xs">
+                                      <SelectValue placeholder="Siguiente pregunta" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {editingFlow?.flow_data.steps
+                                        .filter(s => s.id !== step.id)
+                                        .map((otherStep) => (
+                                        <SelectItem key={otherStep.id} value={otherStep.id}>
+                                          {otherStep.question || `Pregunta ${otherStep.id}`}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">O ir a solución:</Label>
+                                  <Select 
+                                    value={step.solution_mapping?.['Sí'] || ''} 
+                                    onValueChange={(solutionId) => updateStep(step.id, {
+                                      solution_mapping: { ...step.solution_mapping, 'Sí': solutionId }
+                                    })}
+                                  >
+                                    <SelectTrigger className="text-xs">
+                                      <SelectValue placeholder="Solución final" />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {editingFlow?.flow_data.solutions.map((solution) => (
@@ -709,6 +692,102 @@ function VisualFlowEditor({ flow, isOpen, onClose, onSave, serviceTypes }: Visua
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                </div>
+                              </div>
+                              
+                              <div className="text-xs font-medium">Respuesta: No</div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label className="text-xs">Ir a pregunta:</Label>
+                                  <Select 
+                                    value={step.next_step_mapping?.['No'] || ''} 
+                                    onValueChange={(stepId) => updateStep(step.id, {
+                                      next_step_mapping: { ...step.next_step_mapping, 'No': stepId }
+                                    })}
+                                  >
+                                    <SelectTrigger className="text-xs">
+                                      <SelectValue placeholder="Siguiente pregunta" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {editingFlow?.flow_data.steps
+                                        .filter(s => s.id !== step.id)
+                                        .map((otherStep) => (
+                                        <SelectItem key={otherStep.id} value={otherStep.id}>
+                                          {otherStep.question || `Pregunta ${otherStep.id}`}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">O ir a solución:</Label>
+                                  <Select 
+                                    value={step.solution_mapping?.['No'] || ''} 
+                                    onValueChange={(solutionId) => updateStep(step.id, {
+                                      solution_mapping: { ...step.solution_mapping, 'No': solutionId }
+                                    })}
+                                  >
+                                    <SelectTrigger className="text-xs">
+                                      <SelectValue placeholder="Solución final" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {editingFlow?.flow_data.solutions.map((solution) => (
+                                        <SelectItem key={solution.id} value={solution.id}>
+                                          {solution.title || `Solución ${solution.id}`}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </div>
+                          ) : step.type === 'multiple_choice' && step.options ? (
+                            <div className="space-y-2 max-h-40 overflow-y-auto">
+                              {step.options.map((option) => (
+                                <div key={option} className="border-b pb-2">
+                                  <div className="text-xs font-medium mb-1">{option}:</div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <Select 
+                                        value={step.next_step_mapping?.[option] || ''} 
+                                        onValueChange={(stepId) => updateStep(step.id, {
+                                          next_step_mapping: { ...step.next_step_mapping, [option]: stepId }
+                                        })}
+                                      >
+                                        <SelectTrigger className="text-xs">
+                                          <SelectValue placeholder="→ Pregunta" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {editingFlow?.flow_data.steps
+                                            .filter(s => s.id !== step.id)
+                                            .map((otherStep) => (
+                                            <SelectItem key={otherStep.id} value={otherStep.id}>
+                                              {otherStep.question || `Pregunta ${otherStep.id}`}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div>
+                                      <Select 
+                                        value={step.solution_mapping?.[option] || ''} 
+                                        onValueChange={(solutionId) => updateStep(step.id, {
+                                          solution_mapping: { ...step.solution_mapping, [option]: solutionId }
+                                        })}
+                                      >
+                                        <SelectTrigger className="text-xs">
+                                          <SelectValue placeholder="✓ Solución" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {editingFlow?.flow_data.solutions.map((solution) => (
+                                            <SelectItem key={solution.id} value={solution.id}>
+                                              {solution.title || `Solución ${solution.id}`}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
                                 </div>
                               ))}
                             </div>

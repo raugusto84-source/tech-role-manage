@@ -33,6 +33,7 @@ interface DiagnosticStep {
   next_step_no?: string;
   next_steps?: { [key: string]: string };
   solution_mapping?: { [key: string]: string }; // mapea respuesta a solution_id
+  next_step_mapping?: { [key: string]: string }; // mapea respuesta a step_id
   image_url?: string;
 }
 
@@ -146,11 +147,28 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
     const newAnswers = { ...answers, [step.id]: answer };
     setAnswers(newAnswers);
 
-    // Check if we have more steps
+    // Check if this answer maps to another step first
+    if (step.next_step_mapping?.[answer]) {
+      const nextStepId = step.next_step_mapping[answer];
+      const nextStepIndex = selectedFlow.flow_data.steps.findIndex(s => s.id === nextStepId);
+      
+      if (nextStepIndex !== -1) {
+        setCurrentStep(nextStepIndex);
+        return;
+      }
+    }
+
+    // Check if this answer maps to a solution
+    if (step.solution_mapping?.[answer]) {
+      completeDiagnosis(newAnswers);
+      return;
+    }
+
+    // If no specific mapping, continue to next step or complete
     if (currentStep < selectedFlow.flow_data.steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
-      // Complete diagnosis
+      // Complete diagnosis with default logic
       completeDiagnosis(newAnswers);
     }
   };
