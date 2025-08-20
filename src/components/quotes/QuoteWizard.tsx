@@ -573,115 +573,160 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                 </div>
               )}
 
-              {/* Artículos y Servicios - solo si hay artículos */}
-              {quoteItems.length > 0 && (
-                <div>
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Package className="h-4 w-4" />
-                    Artículos y Servicios
-                  </h4>
-                  <div className="space-y-3">
-                    {quoteItems.map((item) => (
-                      <Card key={item.id} className="bg-muted/50">
-                        <CardContent className="pt-4">
-                          {/* Header del artículo */}
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h5 className="font-medium">{item.name}</h5>
-                                {item.is_custom && (
-                                  <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+              {/* Servicios del Diagnóstico */}
+              {(() => {
+                const diagnosticServices = quoteItems.filter(item => item.id.startsWith('rec-'));
+                return diagnosticServices.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <CheckSquare className="h-4 w-4" />
+                      Servicios Recomendados del Diagnóstico
+                    </h4>
+                    <div className="space-y-3">
+                      {diagnosticServices.map((item) => (
+                        <Card key={item.id} className="bg-blue-50/50 border-blue-200">
+                          <CardContent className="pt-4">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h5 className="font-medium">{item.name}</h5>
+                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                                    Del Diagnóstico
+                                  </Badge>
+                                </div>
+                                {item.description && (
+                                  <p className="text-sm text-muted-foreground">{item.description}</p>
                                 )}
                               </div>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
-                              )}
+                              <div className="text-right">
+                                <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                              </div>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                              <span className="text-primary font-medium">{formatCurrency(item.total)}</span>
                             </div>
-                          </div>
-
-                          {/* Desglose de precios */}
-                          <div className="space-y-1 text-sm bg-background/50 p-3 rounded">
-                            <div className="flex justify-between">
-                              <span>Subtotal:</span>
-                              <span>{formatCurrency(item.subtotal)}</span>
-                            </div>
-                            
-                            {/* Mostrar impuestos */}
-                            {item.taxes && item.taxes.length > 0 ? (
-                              item.taxes.map((tax, index) => (
-                                <div key={index} className="flex justify-between">
-                                  <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
-                                    {tax.tax_name} ({tax.tax_rate}%):
-                                  </span>
-                                  <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
-                                    {tax.tax_type === 'iva' ? '+' : '-'}{formatCurrency(tax.tax_amount)}
-                                  </span>
-                                </div>
-                              ))
-                            ) : (
-                              <>
-                                {item.vat_amount > 0 && (
-                                  <div className="flex justify-between text-green-600">
-                                    <span>IVA ({item.vat_rate}%):</span>
-                                    <span>+{formatCurrency(item.vat_amount)}</span>
-                                  </div>
-                                )}
-                                {item.withholding_amount > 0 && (
-                                  <div className="flex justify-between text-red-600">
-                                    <span>{item.withholding_type} ({item.withholding_rate}%):</span>
-                                    <span>-{formatCurrency(item.withholding_amount)}</span>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                            
-                            <Separator className="my-2" />
-                            <div className="flex justify-between font-medium">
-                              <span>Total artículo:</span>
-                              <span className="text-primary">{formatCurrency(item.total)}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
                   </div>
+                );
+              })()}
 
-                  {/* Totales generales */}
-                  <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span>Subtotal General:</span>
-                      <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
+              {/* Servicios y Productos Adicionales */}
+              {(() => {
+                const additionalServices = quoteItems.filter(item => !item.id.startsWith('rec-'));
+                return additionalServices.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3 flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Servicios y Productos Adicionales
+                    </h4>
+                    <div className="space-y-3">
+                      {additionalServices.map((item) => (
+                        <Card key={item.id} className="bg-muted/50">
+                          <CardContent className="pt-4">
+                            {/* Header del artículo */}
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h5 className="font-medium">{item.name}</h5>
+                                  {item.is_custom && (
+                                    <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+                                  )}
+                                </div>
+                                {item.description && (
+                                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                              </div>
+                            </div>
+
+                            {/* Desglose de precios */}
+                            <div className="space-y-1 text-sm bg-background/50 p-3 rounded">
+                              <div className="flex justify-between">
+                                <span>Subtotal:</span>
+                                <span>{formatCurrency(item.subtotal)}</span>
+                              </div>
+                              
+                              {/* Mostrar impuestos */}
+                              {item.taxes && item.taxes.length > 0 ? (
+                                item.taxes.map((tax, index) => (
+                                  <div key={index} className="flex justify-between">
+                                    <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
+                                      {tax.tax_name} ({tax.tax_rate}%):
+                                    </span>
+                                    <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
+                                      {tax.tax_type === 'iva' ? '+' : '-'}{formatCurrency(tax.tax_amount)}
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <>
+                                  {item.vat_amount > 0 && (
+                                    <div className="flex justify-between text-green-600">
+                                      <span>IVA ({item.vat_rate}%):</span>
+                                      <span>+{formatCurrency(item.vat_amount)}</span>
+                                    </div>
+                                  )}
+                                  {item.withholding_amount > 0 && (
+                                    <div className="flex justify-between text-red-600">
+                                      <span>{item.withholding_type} ({item.withholding_rate}%):</span>
+                                      <span>-{formatCurrency(item.withholding_amount)}</span>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                              
+                              <Separator className="my-2" />
+                              <div className="flex justify-between font-medium">
+                                <span>Total artículo:</span>
+                                <span className="text-primary">{formatCurrency(item.total)}</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
                     </div>
-                    
-                    <div className="flex justify-between text-green-600">
-                      <span>Total IVAs:</span>
-                      <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
-                        if (item.taxes && item.taxes.length > 0) {
-                          return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                        }
-                        return sum + item.vat_amount;
-                      }, 0))}</span>
-                    </div>
-                    
-                    <div className="flex justify-between text-red-600">
-                      <span>Total Retenciones:</span>
-                      <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
-                        if (item.taxes && item.taxes.length > 0) {
-                          return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                        }
-                        return sum + item.withholding_amount;
-                      }, 0))}</span>
-                    </div>
-                    
-                    <Separator className="my-2" />
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-medium">Total Final:</span>
-                      <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
-                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Totales generales - solo si hay artículos */}
+              {quoteItems.length > 0 && (
+                <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal General:</span>
+                    <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-green-600">
+                    <span>Total IVAs:</span>
+                    <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
+                      if (item.taxes && item.taxes.length > 0) {
+                        return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
+                      }
+                      return sum + item.vat_amount;
+                    }, 0))}</span>
+                  </div>
+                  
+                  <div className="flex justify-between text-red-600">
+                    <span>Total Retenciones:</span>
+                    <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
+                      if (item.taxes && item.taxes.length > 0) {
+                        return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
+                      }
+                      return sum + item.withholding_amount;
+                    }, 0))}</span>
+                  </div>
+                  
+                  <Separator className="my-2" />
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium">Total Final:</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
                   </div>
                 </div>
               )}
