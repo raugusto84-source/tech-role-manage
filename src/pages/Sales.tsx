@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ServiceForm } from '@/components/sales/ServiceForm';
 import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { ProblemsAndSolutionsManager } from '@/components/sales/ProblemsAndSolutionsManager';
-import { DiagnosticChecklistManager } from '@/components/sales/DiagnosticChecklistManager';
+import { DiagnosticFlowManager } from '@/components/sales/DiagnosticFlowManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Package, Settings, AlertCircle, CheckSquare } from 'lucide-react';
@@ -449,7 +449,7 @@ export default function Sales() {
 
           {/* CHECKLIST DE DIAGNÓSTICO */}
           <TabsContent value="checklist" className="space-y-6">
-            <DiagnosticChecklistManager />
+            <DiagnosticFlowManager />
           </TabsContent>
         </Tabs>
       </div>

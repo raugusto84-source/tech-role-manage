@@ -708,6 +708,50 @@ export type Database = {
           },
         ]
       }
+      diagnostic_flow: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          flow_data: Json
+          id: string
+          is_active: boolean
+          problem_title: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          flow_data?: Json
+          id?: string
+          is_active?: boolean
+          problem_title: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          flow_data?: Json
+          id?: string
+          is_active?: boolean
+          problem_title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diagnostic_flow_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "main_service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       diagnostic_questions: {
         Row: {
           created_at: string
