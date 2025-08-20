@@ -3,13 +3,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { CategoryServiceSelection } from './CategoryServiceSelection';
+import { SimpleDiagnosticFlow } from './SimpleDiagnosticFlow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, Check, X, User, Package } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -42,7 +43,7 @@ interface QuoteWizardProps {
   onCancel: () => void;
 }
 
-type WizardStep = 'client' | 'items' | 'review';
+type WizardStep = 'client' | 'diagnostic' | 'items' | 'review';
 
 /**
  * Wizard para crear cotizaciones paso a paso
@@ -129,6 +130,10 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           toast({ title: 'Error', description: 'Por favor selecciona un cliente', variant: 'destructive' });
           return;
         }
+        setCurrentStep('diagnostic');
+        break;
+      }
+      case 'diagnostic': {
         setCurrentStep('items');
         break;
       }
@@ -141,8 +146,11 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const prevStep = () => {
     switch (currentStep) {
-      case 'items':
+      case 'diagnostic':
         setCurrentStep('client');
+        break;
+      case 'items':
+        setCurrentStep('diagnostic');
         break;
       case 'review':
         setCurrentStep('items');
@@ -301,12 +309,14 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   const stepTitles = {
     client: 'Seleccionar Cliente',
+    diagnostic: 'Diagnóstico',
     items: '¿Desea agregar servicios o productos?',
     review: 'Revisar y Confirmar',
   };
 
   const stepIcons = {
     client: User,
+    diagnostic: CheckSquare,
     items: Package,
     review: Check,
   };
@@ -332,7 +342,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           const isActive = currentStep === step;
           const isCompleted = 
             (step === 'client' && selectedClient) ||
-            (step === 'items' && !['client'].includes(currentStep)) ||
+            (step === 'diagnostic' && !['client'].includes(currentStep)) ||
+            (step === 'items' && !['client', 'diagnostic'].includes(currentStep)) ||
             (step === 'review' && currentStep === 'review');
 
           return (
@@ -414,6 +425,47 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {currentStep === 'diagnostic' && (
+            <div className="space-y-4">
+              <div className="text-center mb-6">
+                <h3 className="text-lg font-medium mb-2">Diagnóstico del problema</h3>
+                <p className="text-muted-foreground">
+                  Responda algunas preguntas para que podamos recomendar los mejores servicios para su situación.
+                </p>
+              </div>
+              <SimpleDiagnosticFlow
+                onDiagnosisComplete={(result) => {
+                  console.log('Diagnosis completed:', result);
+                  // Agregar los servicios recomendados a la cotización
+                  if (result.recommended_services && result.recommended_services.length > 0) {
+                    const newItems = result.recommended_services.map(service => ({
+                      id: `rec-${service.id}-${Date.now()}`,
+                      service_type_id: service.id,
+                      name: service.name,
+                      description: service.description || '',
+                      quantity: 1,
+                      unit_price: service.base_price || 0,
+                      subtotal: service.base_price || 0,
+                      vat_rate: service.vat_rate || 0,
+                      vat_amount: ((service.base_price || 0) * (service.vat_rate || 0)) / 100,
+                      withholding_rate: 0,
+                      withholding_amount: 0,
+                      withholding_type: '',
+                      total: (service.base_price || 0) + (((service.base_price || 0) * (service.vat_rate || 0)) / 100),
+                      is_custom: false
+                    }));
+                    setQuoteItems(prev => [...prev, ...newItems]);
+                    toast({
+                      title: "Servicios agregados",
+                      description: `Se agregaron ${newItems.length} servicio(s) recomendado(s) basado en el diagnóstico.`,
+                    });
+                  }
+                  nextStep();
+                }}
+              />
             </div>
           )}
 
