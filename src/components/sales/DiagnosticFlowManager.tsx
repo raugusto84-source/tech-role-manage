@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Edit2, Save, X, Settings } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DiagnosticFlowEditor } from './DiagnosticFlowEditor';
 
 interface Category {
   id: string;
@@ -53,7 +54,8 @@ export function DiagnosticFlowManager() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [flows, setFlows] = useState<DiagnosticFlow[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-  const [editingFlow, setEditingFlow] = useState<string | null>(null);
+  const [editingFlow, setEditingFlow] = useState<DiagnosticFlow | null>(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [newFlow, setNewFlow] = useState({
     problem_title: '',
     description: '',
@@ -211,6 +213,40 @@ export function DiagnosticFlowManager() {
     setLoading(false);
   };
 
+  const handleConfigureFlow = (flow: DiagnosticFlow) => {
+    setEditingFlow(flow);
+    setIsEditorOpen(true);
+  };
+
+  const handleEditorSave = () => {
+    // Reload flows after saving
+    if (selectedCategoryId) {
+      const loadFlows = async () => {
+        const { data } = await supabase
+          .from('diagnostic_flow')
+          .select(`
+            id,
+            category_id,
+            problem_title,
+            description,
+            flow_data,
+            is_active,
+            main_service_categories (id, name, icon)
+          `)
+          .eq('category_id', selectedCategoryId)
+          .eq('is_active', true)
+          .order('problem_title');
+        
+        setFlows(data?.map(f => ({
+          ...f,
+          flow_data: (f.flow_data as any) || { steps: [], solutions: [] },
+          category: f.main_service_categories as Category
+        })) || []);
+      };
+      loadFlows();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -288,7 +324,12 @@ export function DiagnosticFlowManager() {
                     <span className="font-medium">Soluciones:</span> {flow.flow_data.solutions.length}
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleConfigureFlow(flow)}
+                    >
                       <Settings className="h-4 w-4 mr-1" />
                       Configurar
                     </Button>
@@ -317,6 +358,16 @@ export function DiagnosticFlowManager() {
           </CardContent>
         </Card>
       )}
+
+      <DiagnosticFlowEditor
+        flow={editingFlow}
+        isOpen={isEditorOpen}
+        onClose={() => {
+          setIsEditorOpen(false);
+          setEditingFlow(null);
+        }}
+        onSave={handleEditorSave}
+      />
     </div>
   );
 }
