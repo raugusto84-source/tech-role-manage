@@ -345,15 +345,9 @@ export function ProblemsAndSolutionsManager() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h4 className="font-medium">{problem.name}</h4>
-                    {(() => {
-                      const IconComponent = getIconComponent((problem as any).category_icon);
-                      return (
-                        <Badge variant="outline" className="text-xs mt-1 flex items-center gap-1 w-fit">
-                          <IconComponent className="h-3 w-3" />
-                          {problem.category_name}
-                        </Badge>
-                      );
-                    })()}
+                    <Badge variant="outline" className="text-xs mt-1 w-fit">
+                      {problem.category_name}
+                    </Badge>
                   </div>
                   <div className="flex gap-1">
                     <Button

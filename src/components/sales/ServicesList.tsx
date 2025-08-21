@@ -359,16 +359,9 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                       <div className="flex justify-between items-center">
                         <div className="space-y-1">
                           <div className="flex gap-2">
-                            {(() => {
-                              const categoryData = getCategoryData(service.category);
-                              const IconComponent = getIconComponent(categoryData.icon);
-                              return (
-                                <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
-                                  <IconComponent className="h-3 w-3" />
-                                  {service.category}
-                                </Badge>
-                              );
-                            })()}
+                            <Badge variant="outline" className="bg-blue-50">
+                              {service.category}
+                            </Badge>
                             {/* Mostrar subcategoría si no es 'servicio'/'articulo' (compatibilidad con datos viejos) */}
                             {service.item_type && !['servicio', 'articulo'].includes(service.item_type) && (
                               <Badge variant="outline">{service.item_type}</Badge>
@@ -461,16 +454,9 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <div className="flex gap-2">
-                            {(() => {
-                              const categoryData = getCategoryData(service.category);
-                              const IconComponent = getIconComponent(categoryData.icon);
-                              return (
-                                <Badge variant="outline" className="bg-green-50 flex items-center gap-1">
-                                  <IconComponent className="h-3 w-3" />
-                                  {service.category}
-                                </Badge>
-                              );
-                            })()}
+                            <Badge variant="outline" className="bg-green-50">
+                              {service.category}
+                            </Badge>
                             {service.item_type && !['servicio', 'articulo'].includes(service.item_type) && (
                               <Badge variant="outline">{service.item_type}</Badge>
                             )}
