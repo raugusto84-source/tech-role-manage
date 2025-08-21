@@ -41,7 +41,6 @@ interface Order {
   created_at: string;
   unread_messages_count?: number; // Nuevo campo para mensajes no leídos
   estimated_delivery_date?: string | null;
-  initial_signature_url?: string | null;
   service_types?: {
     name: string;
     description?: string;
@@ -318,16 +317,16 @@ export default function Orders() {
     }
   };
 
-// Group orders by status (si ya tiene firma inicial, trátala como 'pendiente')
-const groupedOrders = {
-  pendiente_aprobacion: filteredOrders.filter(order => order.status === 'pendiente_aprobacion' && !order.initial_signature_url),
-  pendiente: filteredOrders.filter(order => order.status === 'pendiente' || (order.status === 'pendiente_aprobacion' && !!order.initial_signature_url)),
-  en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
-  en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
-  pendiente_entrega: filteredOrders.filter(order => order.status === 'pendiente_entrega'),
-  finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
-  cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
-};
+  // Group orders by status
+  const groupedOrders = {
+    pendiente_aprobacion: filteredOrders.filter(order => order.status === 'pendiente_aprobacion'),
+    pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
+    en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
+    en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
+    pendiente_entrega: filteredOrders.filter(order => order.status === 'pendiente_entrega'),
+    finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
+    cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {

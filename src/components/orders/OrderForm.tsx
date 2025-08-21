@@ -34,7 +34,6 @@ interface ServiceType {
   vat_rate: number;
   item_type: string;
   category: string;
-  profit_margin_tiers?: any; // JSON data from Supabase
 }
 
 interface Technician {
@@ -344,32 +343,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         description: `Se aumentó la cantidad de ${service.name} a ${newQuantity}`,
       });
     } else {
-      // Agregar nuevo item - calcular precio correcto según tipo
-      let unitPrice = 0;
-      let subtotal = 0;
-      
-      if (service.item_type === 'servicio') {
-        // SERVICIOS: Usar base_price (precio fijo)
-        unitPrice = service.base_price || 0;
-      } else {
-        // ARTÍCULOS: Calcular precio usando cost_price + margen
-        const costPrice = service.cost_price || 0;
-        if (costPrice > 0 && Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0) {
-          // Buscar el tier de margen correcto para la cantidad
-          const tier = service.profit_margin_tiers.find((t: any) => 
-            quantity >= (t.min_qty || 1) && 
-            quantity <= (t.max_qty || 999)
-          );
-          const margin = tier?.margin || 80; // Default margin
-          unitPrice = costPrice * (1 + margin / 100);
-        } else if (service.base_price && service.base_price > 0) {
-          // Fallback a base_price si no hay cost_price
-          unitPrice = service.base_price;
-        }
-      }
-      
-      subtotal = quantity * unitPrice;
-      const vatRate = service.vat_rate || 16;
+      // Agregar nuevo item
+      const subtotal = quantity * (service.base_price || 0);
+      const vatRate = 16; // Fixed 16% VAT for all orders
       const vatAmount = subtotal * (vatRate / 100);
       const total = subtotal + vatAmount;
       const estimatedHours = quantity * (service.estimated_hours || 0);
@@ -380,15 +356,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         name: service.name,
         description: service.description || '',
         quantity,
-        unit_price: unitPrice,
+        unit_price: service.base_price || 0,
         estimated_hours: estimatedHours,
         subtotal,
         vat_rate: vatRate,
         vat_amount: vatAmount,
         total,
         item_type: service.item_type,
-        shared_time: (service as any).shared_time || false,
-        status: 'pendiente'
+        shared_time: (service as any).shared_time || false, // Usar valor del servicio
+        status: 'pendiente' // Estado inicial
       };
       
       updatedItems = [...orderItems, newItem];
@@ -679,8 +655,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
       
-      // Always require client authorization first
-      const initialStatus = 'pendiente_aprobacion';
+      // Set initial status based on user role
+      const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'pendiente';
 
       // Crear la orden principal - explicitly set correct status
       const orderData = {
@@ -709,54 +685,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       if (orderError) throw orderError;
 
-      // Crear los items de la orden con precios calculados correctamente
-      const orderItemsData = [];
-      
-      for (const item of orderItems) {
-        // Usar la función de Supabase para calcular precios correctos
-        const { data: pricingData, error: pricingError } = await supabase
-          .rpc('calculate_order_item_pricing', {
-            p_service_type_id: item.service_type_id,
-            p_quantity: item.quantity
-          });
-
-        if (pricingError) {
-          console.error('Error calculating pricing:', pricingError);
-          // Fallback a valores por defecto si hay error
-          orderItemsData.push({
-            order_id: orderResult.id,
-            service_type_id: item.service_type_id,
-            service_name: item.name,
-            service_description: item.description,
-            quantity: item.quantity,
-            unit_cost_price: 0,
-            unit_base_price: 0,
-            profit_margin_rate: 0,
-            subtotal: 0,
-            vat_rate: item.vat_rate || 0,
-            vat_amount: 0,
-            total_amount: 0,
-            item_type: item.item_type || 'servicio'
-          });
-        } else {
-          const pricing = pricingData[0];
-          orderItemsData.push({
-            order_id: orderResult.id,
-            service_type_id: item.service_type_id,
-            service_name: item.name,
-            service_description: item.description,
-            quantity: item.quantity,
-            unit_cost_price: pricing.unit_cost_price,
-            unit_base_price: pricing.unit_base_price,
-            profit_margin_rate: pricing.profit_margin_rate,
-            subtotal: pricing.subtotal,
-            vat_rate: pricing.vat_rate,
-            vat_amount: pricing.vat_amount,
-            total_amount: pricing.total_amount,
-            item_type: pricing.item_type
-          });
-        }
-      }
+      // Crear los items de la orden
+      const orderItemsData = orderItems.map(item => ({
+        order_id: orderResult.id,
+        service_type_id: item.service_type_id,
+        service_name: item.name,
+        service_description: item.description,
+        quantity: item.quantity,
+        unit_cost_price: item.unit_price,
+        unit_base_price: item.unit_price,
+        profit_margin_rate: 0,
+        subtotal: item.subtotal,
+        vat_rate: item.vat_rate,
+        vat_amount: item.vat_amount,
+        total_amount: item.total,
+        item_type: item.item_type
+      }));
 
       const { error: itemsError } = await supabase
         .from('order_items')

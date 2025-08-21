@@ -19,7 +19,6 @@ interface ServiceType {
   item_type: string;
   category: string;
   estimated_hours?: number | null;
-  profit_margin_tiers?: any; // JSON data from Supabase
 }
 
 interface ServiceCategory {
@@ -109,37 +108,6 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(amount);
-  };
-
-  // Función para calcular el precio correcto de un servicio/artículo (incluye IVA)
-  const calculateDisplayPrice = (service: any): number => {
-    let basePrice = 0;
-    
-    if (service.item_type === 'servicio') {
-      // SERVICIOS: Usar base_price (precio fijo)
-      basePrice = service.base_price || 0;
-    } else {
-      // ARTÍCULOS: Calcular precio usando cost_price + margen
-      const costPrice = service.cost_price || 0;
-      if (costPrice > 0 && Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0) {
-        // Usar el primer tier para mostrar precio base (cantidad 1)
-        const tier = service.profit_margin_tiers.find((t: any) => 
-          1 >= (t.min_qty || 1) && 
-          1 <= (t.max_qty || 999)
-        );
-        const margin = tier?.margin || 80; // Default margin
-        basePrice = costPrice * (1 + margin / 100);
-      } else if (service.base_price && service.base_price > 0) {
-        // Fallback a base_price si no hay cost_price
-        basePrice = service.base_price;
-      }
-    }
-    
-    // Agregar IVA al precio final
-    const vatRate = service.vat_rate || 16;
-    const finalPrice = basePrice * (1 + vatRate / 100);
-    
-    return finalPrice;
   };
 
   const formatEstimatedTime = (hours: number | null) => {
@@ -290,12 +258,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                           )}
                           
                           <div className="flex flex-wrap gap-4 text-sm">
-                             <div className="flex items-center gap-1">
-                               <Package className="h-4 w-4 text-green-600" />
-                               <span className="font-medium text-green-600">
-                                 {formatCurrency(calculateDisplayPrice(service))}
-                               </span>
-                             </div>
+                            <div className="flex items-center gap-1">
+                              <Package className="h-4 w-4 text-green-600" />
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(service.base_price || 0)}
+                              </span>
+                            </div>
                             
                             {service.estimated_hours && (
                               <div className="flex items-center gap-1">
@@ -390,12 +358,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                         )}
                         
                         <div className="flex flex-wrap gap-4 text-sm">
-                           <div className="flex items-center gap-1">
-                             <Package className="h-4 w-4 text-green-600" />
-                             <span className="font-medium text-green-600">
-                               {formatCurrency(calculateDisplayPrice(service))}
-                             </span>
-                           </div>
+                          <div className="flex items-center gap-1">
+                            <Package className="h-4 w-4 text-green-600" />
+                            <span className="font-medium text-green-600">
+                              {formatCurrency(service.base_price || 0)}
+                            </span>
+                          </div>
                           
                           {service.estimated_hours && (
                             <div className="flex items-center gap-1">
