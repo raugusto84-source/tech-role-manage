@@ -373,16 +373,22 @@ export function ProblemsAndSolutionsManager() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <IconComponent className="h-5 w-5 text-primary flex-shrink-0" />
-                         <h4 
-                           className="font-semibold text-foreground group-hover:text-primary transition-colors truncate cursor-pointer hover:underline"
-                           onClick={(e) => {
-                             e.stopPropagation();
-                             handleEditProblem(problem);
-                           }}
-                           title="Haz clic para editar el nombre del problema"
-                         >
-                           {problem.name}
-                         </h4>
+                        <button 
+                          className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-left p-1 hover:bg-muted rounded"
+                          onClick={() => {
+                            alert(`Intentando editar: ${problem.name}`);
+                            setProblemForm({
+                              id: problem.id,
+                              name: problem.name,
+                              description: problem.description || '',
+                              category_id: problem.category_id || '',
+                            });
+                            setShowProblemDialog(true);
+                          }}
+                          type="button"
+                        >
+                          {problem.name}
+                        </button>
                       </div>
                       {problem.description && (
                         <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
