@@ -602,35 +602,49 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {category.services.filter(service => service.item_type === 'servicio').map(service => (
-                        <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                          <CardContent className="p-4">
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between">
-                                <h4 className="font-medium text-sm">{service.name}</h4>
-                                <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
-                                  Servicio
-                                </Badge>
-                              </div>
-                              {service.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {service.description}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">
-                                  {formatCurrency(service.base_price || 0)}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  onClick={() => addService(service)}
-                                  className="h-7 px-2"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                         <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                           <CardContent className="p-4">
+                             <div className="space-y-2">
+                               {/* Imagen del servicio si existe */}
+                               {(service as any).image_url && (
+                                 <div className="w-full h-24 mb-2">
+                                   <img 
+                                     src={(service as any).image_url} 
+                                     alt={service.name}
+                                     className="w-full h-full object-cover rounded-md border"
+                                     onError={(e) => {
+                                       const target = e.target as HTMLImageElement;
+                                       target.style.display = 'none';
+                                     }}
+                                   />
+                                 </div>
+                               )}
+                               <div className="flex items-start justify-between">
+                                 <h4 className="font-medium text-sm">{service.name}</h4>
+                                 <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                                   Servicio
+                                 </Badge>
+                               </div>
+                               {service.description && (
+                                 <p className="text-xs text-muted-foreground line-clamp-2">
+                                   {service.description}
+                                 </p>
+                               )}
+                               <div className="flex items-center justify-between">
+                                 <span className="font-medium text-sm">
+                                   {formatCurrency(service.base_price || 0)}
+                                 </span>
+                                 <Button
+                                   size="sm"
+                                   onClick={() => addService(service)}
+                                   className="h-7 px-2"
+                                 >
+                                   <Plus className="h-3 w-3" />
+                                 </Button>
+                               </div>
+                             </div>
+                           </CardContent>
+                         </Card>
                       ))}
                     </div>
                   </CardContent>
@@ -648,35 +662,49 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorizedServices.filter(service => service.item_type === 'servicio').map(service => (
-                      <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-medium text-sm">{service.name}</h4>
-                              <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
-                                Servicio
-                              </Badge>
-                            </div>
-                            {service.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {service.description}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm">
-                                {formatCurrency(service.base_price || 0)}
-                              </span>
-                              <Button
-                                size="sm"
-                                onClick={() => addService(service)}
-                                className="h-7 px-2"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                       <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                         <CardContent className="p-4">
+                           <div className="space-y-2">
+                             {/* Imagen del servicio si existe */}
+                             {(service as any).image_url && (
+                               <div className="w-full h-24 mb-2">
+                                 <img 
+                                   src={(service as any).image_url} 
+                                   alt={service.name}
+                                   className="w-full h-full object-cover rounded-md border"
+                                   onError={(e) => {
+                                     const target = e.target as HTMLImageElement;
+                                     target.style.display = 'none';
+                                   }}
+                                 />
+                               </div>
+                             )}
+                             <div className="flex items-start justify-between">
+                               <h4 className="font-medium text-sm">{service.name}</h4>
+                               <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
+                                 Servicio
+                               </Badge>
+                             </div>
+                             {service.description && (
+                               <p className="text-xs text-muted-foreground line-clamp-2">
+                                 {service.description}
+                               </p>
+                             )}
+                             <div className="flex items-center justify-between">
+                               <span className="font-medium text-sm">
+                                 {formatCurrency(service.base_price || 0)}
+                               </span>
+                               <Button
+                                 size="sm"
+                                 onClick={() => addService(service)}
+                                 className="h-7 px-2"
+                               >
+                                 <Plus className="h-3 w-3" />
+                               </Button>
+                             </div>
+                           </div>
+                         </CardContent>
+                       </Card>
                     ))}
                   </div>
                 </CardContent>
@@ -730,35 +758,49 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {category.services.filter(service => service.item_type === 'articulo').map(service => (
-                        <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                          <CardContent className="p-4">
-                            <div className="space-y-2">
-                              <div className="flex items-start justify-between">
-                                <h4 className="font-medium text-sm">{service.name}</h4>
-                                <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                  Producto
-                                </Badge>
-                              </div>
-                              {service.description && (
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {service.description}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">
-                                  {formatCurrency(service.cost_price || 0)}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  onClick={() => addService(service)}
-                                  className="h-7 px-2"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
+                         <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                           <CardContent className="p-4">
+                             <div className="space-y-2">
+                               {/* Imagen del producto si existe */}
+                               {(service as any).image_url && (
+                                 <div className="w-full h-24 mb-2">
+                                   <img 
+                                     src={(service as any).image_url} 
+                                     alt={service.name}
+                                     className="w-full h-full object-cover rounded-md border"
+                                     onError={(e) => {
+                                       const target = e.target as HTMLImageElement;
+                                       target.style.display = 'none';
+                                     }}
+                                   />
+                                 </div>
+                               )}
+                               <div className="flex items-start justify-between">
+                                 <h4 className="font-medium text-sm">{service.name}</h4>
+                                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                   Producto
+                                 </Badge>
+                               </div>
+                               {service.description && (
+                                 <p className="text-xs text-muted-foreground line-clamp-2">
+                                   {service.description}
+                                 </p>
+                               )}
+                               <div className="flex items-center justify-between">
+                                 <span className="font-medium text-sm">
+                                   {formatCurrency(service.cost_price || 0)}
+                                 </span>
+                                 <Button
+                                   size="sm"
+                                   onClick={() => addService(service)}
+                                   className="h-7 px-2"
+                                 >
+                                   <Plus className="h-3 w-3" />
+                                 </Button>
+                               </div>
+                             </div>
+                           </CardContent>
+                         </Card>
                       ))}
                     </div>
                   </CardContent>
@@ -776,35 +818,49 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {uncategorizedServices.filter(service => service.item_type === 'articulo').map(service => (
-                      <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                        <CardContent className="p-4">
-                          <div className="space-y-2">
-                            <div className="flex items-start justify-between">
-                              <h4 className="font-medium text-sm">{service.name}</h4>
-                              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                Producto
-                              </Badge>
-                            </div>
-                            {service.description && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">
-                                {service.description}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-sm">
-                                {formatCurrency(service.cost_price || 0)}
-                              </span>
-                              <Button
-                                size="sm"
-                                onClick={() => addService(service)}
-                                className="h-7 px-2"
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                       <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                         <CardContent className="p-4">
+                           <div className="space-y-2">
+                             {/* Imagen del producto si existe */}
+                             {(service as any).image_url && (
+                               <div className="w-full h-24 mb-2">
+                                 <img 
+                                   src={(service as any).image_url} 
+                                   alt={service.name}
+                                   className="w-full h-full object-cover rounded-md border"
+                                   onError={(e) => {
+                                     const target = e.target as HTMLImageElement;
+                                     target.style.display = 'none';
+                                   }}
+                                 />
+                               </div>
+                             )}
+                             <div className="flex items-start justify-between">
+                               <h4 className="font-medium text-sm">{service.name}</h4>
+                               <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                                 Producto
+                               </Badge>
+                             </div>
+                             {service.description && (
+                               <p className="text-xs text-muted-foreground line-clamp-2">
+                                 {service.description}
+                               </p>
+                             )}
+                             <div className="flex items-center justify-between">
+                               <span className="font-medium text-sm">
+                                 {formatCurrency(service.cost_price || 0)}
+                               </span>
+                               <Button
+                                 size="sm"
+                                 onClick={() => addService(service)}
+                                 className="h-7 px-2"
+                               >
+                                 <Plus className="h-3 w-3" />
+                               </Button>
+                             </div>
+                           </div>
+                         </CardContent>
+                       </Card>
                     ))}
                   </div>
                 </CardContent>

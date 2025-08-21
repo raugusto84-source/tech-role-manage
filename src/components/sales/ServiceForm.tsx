@@ -62,7 +62,6 @@ const serviceSchema = z.object({
   warranty_duration_days: z.number().min(0, 'Los días de garantía deben ser 0 o más'),
   warranty_conditions: z.string().optional(),
   image_url: z.string().optional(),
-  stock_quantity: z.number().min(0, 'La cantidad debe ser mayor o igual a 0'),
 }).refine(data => data.max_quantity >= data.min_quantity, {
   message: 'La cantidad máxima debe ser mayor o igual a la mínima',
   path: ['max_quantity'],
@@ -103,7 +102,6 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       warranty_duration_days: 0,
       warranty_conditions: '',
       image_url: '',
-      stock_quantity: 1,
     },
   });
 
@@ -170,7 +168,6 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         warranty_duration_days: data.warranty_duration_days || 0,
         warranty_conditions: data.warranty_conditions || '',
         image_url: (data as any).image_url || '',
-        stock_quantity: (data as any).stock_quantity || 1,
       });
 
       // Cargar imagen si existe
@@ -268,7 +265,6 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         warranty_duration_days: values.warranty_duration_days,
         warranty_conditions: values.warranty_conditions || 'Sin garantía específica',
         image_url: values.image_url || null,
-        stock_quantity: values.stock_quantity,
       };
 
       if (serviceId) {
@@ -576,7 +572,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="unit"
@@ -598,29 +594,6 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           <SelectItem value="licencia">Licencia</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="stock_quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cantidad Sugerida</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          step="1"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Cantidad por defecto que se sugiere al agregar este {watchedKind} a una orden
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
