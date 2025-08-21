@@ -303,7 +303,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }} />;
   }
 
-  // Si es cliente y la orden está pendiente de entrega, mostrar el flujo de entrega
+  // Si es cliente y la orden está pendiente de entrega, mostrar solo firma
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
     if (deliveryPhase === 'signature' && !hasDeliverySignature) {
       return (
@@ -312,19 +312,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           clientName={order.clients?.name || ''}
           onSignatureComplete={() => {
             setHasDeliverySignature(true);
-            setDeliveryPhase('survey');
-          }}
-        />
-      );
-    }
-
-    if (deliveryPhase === 'survey' && !hasCompletedSurvey) {
-      return (
-        <SimpleSatisfactionSurvey
-          orderId={order.id}
-          clientId={user?.id || ''}
-          onComplete={() => {
-            setHasCompletedSurvey(true);
             setDeliveryPhase('completed');
             setOrderStatus('finalizada');
             onUpdate();
@@ -332,22 +319,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         />
       );
     }
-  }
-
-  // Si se debe mostrar la encuesta, mostrarla en lugar del detalle
-  if (showSurvey && canSeeSurvey) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <SatisfactionSurvey
-          orderId={order.id}
-          onComplete={() => {
-            setSurveyCompleted(true);
-            setShowSurvey(false);
-          }}
-          onCancel={() => setShowSurvey(false)}
-        />
-      </div>
-    );
   }
 
   return (
@@ -370,16 +341,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               {orderStatus.replace('_', ' ').toUpperCase()}
             </Badge>
             
-            {canSeeSurvey && (
-              <Button 
-                onClick={() => setShowSurvey(true)}
-                className="flex items-center gap-2 animate-pulse bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg shadow-primary/25"
-                variant="default"
-              >
-                <Star size={16} className="animate-bounce" />
-                Evaluar Servicio
-              </Button>
-            )}
             
             {isEarlyCompletion && (
               <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-md animate-bounce">

@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Star, Calendar } from 'lucide-react';
+import { SurveyConfigurationManager } from '@/components/surveys/SurveyConfigurationManager';
 
 interface OrderSatisfactionSurvey {
   id: string;
@@ -185,8 +187,20 @@ export default function Surveys() {
       <div className="space-y-6">
         <header>
           <h1 className="text-3xl font-bold">Panel de Encuestas de Satisfacción</h1>
-          <p className="text-muted-foreground">Encuestas de órdenes completadas</p>
+          <p className="text-muted-foreground">Gestión de encuestas y configuraciones</p>
         </header>
+
+        <Tabs defaultValue="results" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="results">Resultados de Encuestas</TabsTrigger>
+            <TabsTrigger value="configuration">Configuración de Encuestas</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="configuration" className="space-y-6">
+            <SurveyConfigurationManager />
+          </TabsContent>
+
+          <TabsContent value="results" className="space-y-6">
 
         {/* Statistics by Technician */}
         <div className="mb-6">
@@ -404,6 +418,8 @@ export default function Surveys() {
             </div>
           )}
         </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );

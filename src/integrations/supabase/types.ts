@@ -3147,6 +3147,73 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_surveys: {
+        Row: {
+          client_email: string
+          client_name: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          order_id: string
+          scheduled_date: string
+          sent_at: string | null
+          status: string
+          survey_config_id: string
+          survey_token: string
+          updated_at: string
+        }
+        Insert: {
+          client_email: string
+          client_name: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          scheduled_date: string
+          sent_at?: string | null
+          status?: string
+          survey_config_id: string
+          survey_token: string
+          updated_at?: string
+        }
+        Update: {
+          client_email?: string
+          client_name?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          scheduled_date?: string
+          sent_at?: string | null
+          status?: string
+          survey_config_id?: string
+          survey_token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_surveys_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_surveys_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_surveys_survey_config_id_fkey"
+            columns: ["survey_config_id"]
+            isOneToOne: false
+            referencedRelation: "survey_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_categories: {
         Row: {
           created_at: string | null
@@ -3296,6 +3363,45 @@ export type Database = {
           status?: string
           supplier_name?: string
           tax_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      survey_configurations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          delay_days: number
+          delay_hours: number
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          survey_questions: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          delay_days?: number
+          delay_hours?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          survey_questions?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          delay_days?: number
+          delay_hours?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          survey_questions?: Json
           updated_at?: string
         }
         Relationships: []
@@ -4625,6 +4731,10 @@ export type Database = {
           p_table_name: string
         }
         Returns: string
+      }
+      process_scheduled_surveys: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       send_whatsapp_notification: {
         Args: {
