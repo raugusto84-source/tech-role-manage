@@ -140,6 +140,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
           vat_rate: service.vat_rate || 0,
           item_type: service.item_type || 'servicio',
           category_name: service.category || 'Sin categoría',
+          image_url: service.image_url,
           profit_margin_tiers: Array.isArray(service.profit_margin_tiers) 
             ? service.profit_margin_tiers 
             : []
