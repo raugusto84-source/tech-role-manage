@@ -23,6 +23,7 @@ interface OrderItem {
     base_price: number;
     cost_price: number;
     item_type: string;
+    profit_margin_tiers?: any; // JSON data from Supabase
   };
 }
 
@@ -133,33 +134,56 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
             // Usar precio almacenado si existe y es válido
             finalUnitPrice = item.unit_base_price;
             finalTotal = item.total_amount || (finalUnitPrice * item.quantity);
-            console.log(`✅ Using stored price:`, { finalUnitPrice, finalTotal });
+            console.log(`✅ Using stored unit_base_price:`, { finalUnitPrice, finalTotal });
           } else {
-            // Calcular precio basado en cost_price
-            const costPrice = item.service_types?.cost_price || 0;
-            const basePrice = item.service_types?.base_price || 0;
+            // Calcular precio basado en cost_price del service_type
+            const serviceCostPrice = item.service_types?.cost_price || 0;
+            const serviceBasePrice = item.service_types?.base_price || 0;
+            const itemCostPrice = item.unit_cost_price || 0;
             
-            if (costPrice > 0) {
-              // Usar cost_price + 80% margen
-              const margin = 80;
-              finalUnitPrice = costPrice * (1 + margin / 100);
+            console.log(`🔍 Price sources for ${item.service_name}:`, {
+              service_cost_price: serviceCostPrice,
+              service_base_price: serviceBasePrice, 
+              item_cost_price: itemCostPrice,
+              item_base_price: item.unit_base_price
+            });
+            
+            // Usar cost_price del service_type (más confiable)
+            if (serviceCostPrice > 0) {
+              // Calcular usando profit_margin_tiers del service_type
+              const marginTiers = item.service_types?.profit_margin_tiers;
+              let margin = 80; // Default margin
+              
+              if (Array.isArray(marginTiers) && marginTiers.length > 0) {
+                const tier = marginTiers.find((t: any) => 
+                  item.quantity >= (t.min_qty || 1) && 
+                  item.quantity <= (t.max_qty || 999)
+                );
+                if (tier && typeof tier === 'object' && 'margin' in tier) {
+                  margin = (tier as any).margin || 80;
+                }
+              }
+              
+              finalUnitPrice = serviceCostPrice * (1 + margin / 100);
               finalTotal = finalUnitPrice * item.quantity;
-              console.log(`💰 Calculated from cost_price:`, {
-                cost_price: costPrice,
-                margin,
+              
+              console.log(`💰 Calculated from service cost_price:`, {
+                service_cost_price: serviceCostPrice,
+                margin_used: margin,
                 calculated_unit_price: finalUnitPrice,
+                quantity: item.quantity,
                 calculated_total: finalTotal
               });
-            } else if (basePrice > 0) {
-              // Usar base_price como fallback
-              finalUnitPrice = basePrice;
+            } else if (serviceBasePrice > 0) {
+              // Usar base_price del service_type como fallback
+              finalUnitPrice = serviceBasePrice;
               finalTotal = finalUnitPrice * item.quantity;
-              console.log(`🔄 Using base_price as fallback:`, { finalUnitPrice, finalTotal });
+              console.log(`🔄 Using service base_price:`, { finalUnitPrice, finalTotal });
             } else {
-              // Precio mínimo por defecto si no hay datos
+              // Precio mínimo por defecto
               finalUnitPrice = 50000; // 50,000 COP mínimo
               finalTotal = finalUnitPrice * item.quantity;
-              console.log(`⚠️ Using minimum default price for ${item.service_name}:`, { finalUnitPrice, finalTotal });
+              console.log(`⚠️ Using default price for ${item.service_name}:`, { finalUnitPrice, finalTotal });
             }
           }
         }
