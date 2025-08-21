@@ -35,6 +35,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  image_url?: string | null;
   taxes?: any[];
 }
 
@@ -479,22 +480,23 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                        const vatAmount = (calculatedPrice * (service.vat_rate || 0)) / 100;
                        const total = calculatedPrice + vatAmount;
                        
-                       return {
-                         id: `rec-${service.id}-${Date.now()}`,
-                         service_type_id: service.id,
-                         name: service.name,
-                         description: service.description || '',
-                         quantity: 1,
-                         unit_price: calculatedPrice,
-                         subtotal: calculatedPrice,
-                         vat_rate: service.vat_rate || 0,
-                         vat_amount: vatAmount,
-                         withholding_rate: 0,
-                         withholding_amount: 0,
-                         withholding_type: '',
-                         total: total,
-                         is_custom: false
-                       };
+                         return {
+                           id: `rec-${service.id}-${Date.now()}`,
+                           service_type_id: service.id,
+                           name: service.name,
+                           description: service.description || '',
+                           quantity: 1,
+                           unit_price: calculatedPrice,
+                           subtotal: calculatedPrice,
+                           vat_rate: service.vat_rate || 0,
+                           vat_amount: vatAmount,
+                           withholding_rate: 0,
+                           withholding_amount: 0,
+                           withholding_type: '',
+                           total: total,
+                           is_custom: false,
+                           image_url: (service as any).image_url || null
+                         };
                      });
                      setQuoteItems(prev => [...prev, ...newItems]);
                      toast({
@@ -611,33 +613,50 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                       <CheckSquare className="h-4 w-4" />
                       Servicios Recomendados del Diagnóstico
                     </h4>
-                    <div className="space-y-3">
-                      {diagnosticServices.map((item) => (
-                        <Card key={item.id} className="bg-blue-50/50 border-blue-200">
-                          <CardContent className="pt-4">
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h5 className="font-medium">{item.name}</h5>
-                                  <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
-                                    Del Diagnóstico
-                                  </Badge>
-                                </div>
-                                {item.description && (
-                                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-primary font-medium">{formatCurrency(item.total)}</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                     <div className="space-y-3">
+                       {diagnosticServices.map((item) => (
+                         <Card key={item.id} className="bg-blue-50/50 border-blue-200">
+                           <CardContent className="pt-4">
+                             <div className="flex items-start gap-4 mb-3">
+                               {/* Imagen del servicio */}
+                               {item.image_url ? (
+                                 <div className="w-16 h-16 flex-shrink-0">
+                                   <img 
+                                     src={item.image_url} 
+                                     alt={item.name}
+                                     className="w-full h-full object-cover rounded-md border"
+                                     onError={(e) => {
+                                       const target = e.target as HTMLImageElement;
+                                       target.style.display = 'none';
+                                     }}
+                                   />
+                                 </div>
+                               ) : (
+                                 <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center">
+                                   <Package className="h-6 w-6 text-gray-400" />
+                                 </div>
+                               )}
+
+                               <div className="flex-1">
+                                 <div className="flex items-center gap-2 mb-1">
+                                   <h5 className="font-medium">{item.name}</h5>
+                                   <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                                     Del Diagnóstico
+                                   </Badge>
+                                 </div>
+                                 {item.description && (
+                                   <p className="text-sm text-muted-foreground">{item.description}</p>
+                                 )}
+                                 <div className="flex justify-between items-center mt-2">
+                                   <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                                   <span className="text-primary font-medium">{formatCurrency(item.total)}</span>
+                                 </div>
+                               </div>
+                             </div>
+                           </CardContent>
+                         </Card>
+                       ))}
+                     </div>
                   </div>
                 );
               })()}
@@ -651,27 +670,46 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                       <Package className="h-4 w-4" />
                       Servicios y Productos Adicionales
                     </h4>
-                    <div className="space-y-3">
-                      {additionalServices.map((item) => (
-                        <Card key={item.id} className="bg-muted/50">
-                          <CardContent className="pt-4">
-                            {/* Header del artículo */}
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h5 className="font-medium">{item.name}</h5>
-                                  {item.is_custom && (
-                                    <Badge variant="secondary" className="text-xs">Personalizado</Badge>
-                                  )}
-                                </div>
-                                {item.description && (
-                                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                                )}
-                              </div>
-                              <div className="text-right">
-                                <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
-                              </div>
-                            </div>
+                     <div className="space-y-3">
+                       {additionalServices.map((item) => (
+                         <Card key={item.id} className="bg-muted/50">
+                           <CardContent className="pt-4">
+                             {/* Header del artículo con imagen */}
+                             <div className="flex items-start gap-4 mb-3">
+                               {/* Imagen del servicio/producto */}
+                               {item.image_url ? (
+                                 <div className="w-16 h-16 flex-shrink-0">
+                                   <img 
+                                     src={item.image_url} 
+                                     alt={item.name}
+                                     className="w-full h-full object-cover rounded-md border"
+                                     onError={(e) => {
+                                       const target = e.target as HTMLImageElement;
+                                       target.style.display = 'none';
+                                     }}
+                                   />
+                                 </div>
+                               ) : (
+                                 <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded-md flex items-center justify-center">
+                                   <Package className="h-6 w-6 text-gray-400" />
+                                 </div>
+                               )}
+
+                               <div className="flex-1">
+                                 <div className="flex items-center gap-2 mb-1">
+                                   <h5 className="font-medium">{item.name}</h5>
+                                   {item.is_custom && (
+                                     <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+                                   )}
+                                 </div>
+                                 {item.description && (
+                                   <p className="text-sm text-muted-foreground">{item.description}</p>
+                                 )}
+                                 <div className="text-right mt-2">
+                                   <p className="text-sm font-medium">{item.quantity} x {formatCurrency(item.unit_price)}</p>
+                                 </div>
+                               </div>
+                             </div>
 
                             {/* Desglose de precios */}
                             <div className="space-y-1 text-sm bg-background/50 p-3 rounded">
