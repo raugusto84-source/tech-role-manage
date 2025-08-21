@@ -312,16 +312,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     })();
 
 
-  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de firma de autorización
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !authorizationSignature) {
+  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación de cliente
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
     return (
-      <AuthorizationSignature
-        orderId={order.id}
-        orderNumber={order.order_number}
-        clientName={order.clients?.name || ''}
-        onSignatureComplete={() => {
-          // Solo recargar datos, el trigger de DB se encarga del cambio de estado
+      <ClientOrderApproval
+        order={order}
+        onApprovalChange={() => {
           loadAuthorizationSignature();
+          setOrderStatus('pendiente');
           onUpdate();
         }}
       />
@@ -574,13 +572,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             </Card>
 
             {/* Lista detallada de servicios individuales */}
-            {orderItems.length > 0 && (
-              <OrderServicesList 
-                orderItems={orderItems} 
-                canEdit={canUpdateStatus}
-                onItemUpdate={loadOrderItems}
-              />
-            )}
+            <OrderServicesList 
+              orderItems={orderItems} 
+              canEdit={canUpdateStatus}
+              onItemUpdate={loadOrderItems}
+            />
 
             {/* Evidencia Fotográfica */}
             {order.evidence_photos && order.evidence_photos.length > 0 && (
