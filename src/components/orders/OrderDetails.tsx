@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield } from 'lucide-react';
+import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield, Plus } from 'lucide-react';
 import { TechnicianPhotoCapture } from './TechnicianPhotoCapture';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,6 +21,8 @@ import { DeliverySignature } from './DeliverySignature';
 import { SimpleSatisfactionSurvey } from './SimpleSatisfactionSurvey';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
+import { AddItemsToOrder } from './AddItemsToOrder';
+import { OrderModificationApproval } from './OrderModificationApproval';
 
 interface OrderDetailsProps {
   order: {
@@ -75,6 +77,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
   const [deliveryStatusChecked, setDeliveryStatusChecked] = useState(false);
   const [authorizationSignature, setAuthorizationSignature] = useState<any>(null);
+  const [showAddItems, setShowAddItems] = useState(false);
+  const [pendingModifications, setPendingModifications] = useState<any[]>([]);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -90,6 +94,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadOrderItems();
     loadAssignedTechnician();
     loadAuthorizationSignature();
+    loadPendingModifications();
     
     // Solo verificar estado de entrega si es cliente y está pendiente de entrega
     if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
@@ -158,6 +163,19 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     } catch (error) {
       console.error('Error loading authorization signature:', error);
     }
+  };
+
+  const loadPendingModifications = async () => {
+    if (!order?.id) return;
+    
+    const { data } = await supabase
+      .from('order_modifications')
+      .select('*')
+      .eq('order_id', order.id)
+      .is('client_approved', null)
+      .order('created_at', { ascending: false });
+    
+    setPendingModifications(data || []);
   };
 
   const loadOrderItems = async () => {
@@ -313,7 +331,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     })();
 
 
-  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de firma de autorización
+  // Si es cliente y la orden está pendiente de aprobación por modificaciones, mostrar aprobación de modificaciones
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && pendingModifications.length > 0) {
+    return (
+      <OrderModificationApproval
+        orderId={order.id}
+        clientName={order.clients?.name || ''}
+        onApprovalComplete={() => {
+          loadPendingModifications();
+          onUpdate();
+        }}
+      />
+    );
+  }
+
+  // Si es cliente y la orden está pendiente de aprobación inicial, mostrar el componente de firma de autorización
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !authorizationSignature) {
     return (
       <AuthorizationSignature
@@ -352,31 +384,62 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Button variant="ghost" onClick={onBack} className="mr-4">
-              <ArrowLeft className="h-4 w-4" />
+          <div className="flex items-center gap-4">
+            <Button onClick={onBack} variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
             </Button>
+
+            {/* Botón para agregar artículos (solo para staff en órdenes activas) */}
+            {profile && ['administrador', 'vendedor'].includes(profile.role) && 
+             ['pendiente', 'en_proceso', 'en_camino'].includes(orderStatus) && (
+              <Button 
+                onClick={() => setShowAddItems(true)} 
+                variant="outline" 
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar artículos
+              </Button>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground">{order.order_number}</h1>
               <p className="text-muted-foreground">Orden de Servicio</p>
             </div>
-          </div>
           
-          <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(orderStatus)} variant="outline">
-              {orderStatus.replace('_', ' ').toUpperCase()}
-            </Badge>
-            
-            
-            {isEarlyCompletion && (
-              <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-md animate-bounce">
-                <Clock size={16} className="text-green-600" />
-                <span className="text-sm font-medium">¡Completado antes de tiempo!</span>
-              </div>
-            )}
-            
+            <div className="flex items-center gap-2">
+              <Badge className={getStatusColor(orderStatus)} variant="outline">
+                {orderStatus.replace('_', ' ').toUpperCase()}
+              </Badge>
+              
+              
+              {isEarlyCompletion && (
+                <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-md animate-bounce">
+                  <Clock size={16} className="text-green-600" />
+                  <span className="text-sm font-medium">¡Completado antes de tiempo!</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Componente para agregar artículos */}
+        {showAddItems && (
+          <div className="mb-6">
+            <AddItemsToOrder
+              orderId={order.id}
+              onItemsAdded={() => {
+                setShowAddItems(false);
+                onUpdate();
+                loadPendingModifications();
+              }}
+              onCancel={() => setShowAddItems(false)}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Información Principal */}
