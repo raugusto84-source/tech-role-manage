@@ -29,6 +29,7 @@ interface OrderDetailsProps {
     failure_description: string;
     requested_date?: string;
     delivery_date: string;
+    estimated_delivery_date?: string | null;
     estimated_cost?: number;
     average_service_time?: number;
     status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega';
@@ -535,34 +536,13 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     Fecha de Entrega Estimada
                   </Label>
                   <p className="text-foreground font-medium text-lg text-orange-600">
-                    {formatDate(order.delivery_date)}
+                    {order.estimated_delivery_date 
+                      ? formatDateTime(order.estimated_delivery_date)
+                      : formatDate(order.delivery_date)}
                   </p>
-                  {order.average_service_time && order.created_at && (
-                    <p className="text-sm text-blue-600 font-medium flex items-center">
-                      <Clock className="h-4 w-4 mr-1" />
-                      Hora estimada: {(() => {
-                        const primarySchedule = {
-                          work_days: [1, 2, 3, 4, 5],
-                          start_time: '08:00',
-                          end_time: '17:00',
-                          break_duration_minutes: 60
-                        };
-                        
-                        // Simular items de orden para el cálculo
-                        const mockOrderItems = [{
-                          id: 'mock',
-                          estimated_hours: order.average_service_time,
-                          shared_time: false,
-                          status: 'pendiente' as const
-                        }];
-                        
-                        const { deliveryTime, breakdown } = calculateAdvancedDeliveryDate({
-                          orderItems: mockOrderItems,
-                          primaryTechnicianSchedule: primarySchedule,
-                          creationDate: new Date(order.created_at)
-                        });
-                        return `${deliveryTime} (${breakdown})`;
-                      })()}
+                  {order.estimated_delivery_date && (
+                    <p className="text-sm text-muted-foreground">
+                      Calculado automáticamente basado en servicios y disponibilidad de técnicos
                     </p>
                   )}
                 </div>
@@ -635,8 +615,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 )}
 
                 <div>
-                  <Label className="text-sm font-medium text-muted-foreground">Fecha de Entrega</Label>
-                  <p className="text-foreground">{formatDate(order.delivery_date)}</p>
+                  <Label className="text-sm font-medium text-muted-foreground">Fecha de Entrega Estimada</Label>
+                  <p className="text-foreground">
+                    {order.estimated_delivery_date 
+                      ? formatDateTime(order.estimated_delivery_date)
+                      : formatDate(order.delivery_date)}
+                  </p>
                 </div>
               </CardContent>
             </Card>
