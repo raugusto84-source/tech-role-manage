@@ -275,13 +275,18 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                             <div className="flex items-center gap-1">
                               <Package className="h-4 w-4 text-green-600" />
                               <span className="font-medium text-green-600">
-                                {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
+                                Total: {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
                                 {service.item_type === 'articulo' && (
                                   <span className="text-xs text-muted-foreground ml-1">
                                     (inc. IVA {service.vat_rate}%)
                                   </span>
                                 )}
                               </span>
+                              {(quantities[service.id] || 1) > 1 && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({formatCurrency(calculateDisplayPrice(service, 1))} c/u)
+                                </span>
+                              )}
                             </div>
                             
                             {service.estimated_hours && (
@@ -380,13 +385,18 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                           <div className="flex items-center gap-1">
                             <Package className="h-4 w-4 text-green-600" />
                             <span className="font-medium text-green-600">
-                              {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
+                              Total: {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
                               {service.item_type === 'articulo' && (
                                 <span className="text-xs text-muted-foreground ml-1">
                                   (inc. IVA {service.vat_rate}%)
                                 </span>
                               )}
                             </span>
+                            {(quantities[service.id] || 1) > 1 && (
+                              <span className="text-xs text-muted-foreground">
+                                ({formatCurrency(calculateDisplayPrice(service, 1))} c/u)
+                              </span>
+                            )}
                           </div>
                           
                           {service.estimated_hours && (
