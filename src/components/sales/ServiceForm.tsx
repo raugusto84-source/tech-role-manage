@@ -169,17 +169,17 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         is_active: data.is_active,
         warranty_duration_days: data.warranty_duration_days || 0,
         warranty_conditions: data.warranty_conditions || '',
-        image_url: data.image_url || '',
-        stock_quantity: data.stock_quantity || 0,
+        image_url: (data as any).image_url || '',
+        stock_quantity: (data as any).stock_quantity || 0,
       });
 
       // Cargar imagen si existe
-      if (data.image_url) {
-        setImagePreview(data.image_url);
+      if ((data as any).image_url) {
+        setImagePreview((data as any).image_url);
       }
     } catch (error) {
       console.error('Error loading service:', error);
-      toast({ title: "Error", description: "Error inesperado al cargar el servicio.", variant: "descriptive" });
+      toast({ title: "Error", description: "Error inesperado al cargar el servicio.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

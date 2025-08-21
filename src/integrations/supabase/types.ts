@@ -3173,6 +3173,7 @@ export type Database = {
           description: string | null
           estimated_hours: number | null
           id: string
+          image_url: string | null
           is_active: boolean
           item_type: string | null
           max_quantity: number | null
@@ -3180,6 +3181,7 @@ export type Database = {
           name: string
           profit_margin_tiers: Json | null
           shared_time: boolean
+          stock_quantity: number | null
           subcategory: string | null
           unit: string | null
           updated_at: string
@@ -3196,6 +3198,7 @@ export type Database = {
           description?: string | null
           estimated_hours?: number | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           item_type?: string | null
           max_quantity?: number | null
@@ -3203,6 +3206,7 @@ export type Database = {
           name: string
           profit_margin_tiers?: Json | null
           shared_time?: boolean
+          stock_quantity?: number | null
           subcategory?: string | null
           unit?: string | null
           updated_at?: string
@@ -3219,6 +3223,7 @@ export type Database = {
           description?: string | null
           estimated_hours?: number | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           item_type?: string | null
           max_quantity?: number | null
@@ -3226,6 +3231,7 @@ export type Database = {
           name?: string
           profit_margin_tiers?: Json | null
           shared_time?: boolean
+          stock_quantity?: number | null
           subcategory?: string | null
           unit?: string | null
           updated_at?: string
