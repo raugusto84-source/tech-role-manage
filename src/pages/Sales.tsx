@@ -18,11 +18,11 @@ import { Trash2 } from 'lucide-react';
 
 const MAIN_CATEGORIES = [
   'Computadoras',
-  'Cámaras de Seguridad',
+  'Cámaras de Seguridad', 
   'Control de Acceso',
   'Fraccionamientos',
   'Cercas Eléctricas',
-  'Alarmas',
+  'Servicio Técnico',
 ] as const;
 
 // Emojis fallback si no hay icono en DB
