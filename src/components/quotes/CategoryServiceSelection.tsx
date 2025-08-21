@@ -23,6 +23,11 @@ interface ServiceType {
   item_type: string;
   category_id?: string;
   category_name?: string;
+  profit_margin_tiers?: Array<{
+    margin: number;
+    min_qty: number;
+    max_qty: number;
+  }>;
 }
 
 interface ServiceCategory {
@@ -124,9 +129,18 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
         .order('tax_type, tax_rate');
 
       if (servicesData) {
-        setServices(servicesData.map(service => ({
-          ...service,
-          category_name: service.category || 'Sin categoría'
+        setServices(servicesData.map((service: any) => ({
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          cost_price: service.cost_price,
+          base_price: service.base_price,
+          vat_rate: service.vat_rate || 0,
+          item_type: service.item_type || 'servicio',
+          category_name: service.category || 'Sin categoría',
+          profit_margin_tiers: Array.isArray(service.profit_margin_tiers) 
+            ? service.profit_margin_tiers 
+            : []
         })));
       }
       
@@ -179,6 +193,29 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
     return iconMap[categoryName.toLowerCase()] || '🔧';
   };
 
+  // Función para calcular el precio correcto según el tipo de servicio
+  const calculateServicePrice = (service: ServiceType): number => {
+    if (service.item_type === 'servicio') {
+      // Para servicios, usar base_price directamente
+      return service.base_price || 0;
+    } else {
+      // Para artículos, calcular precio basado en cost_price + margen
+      const costPrice = service.cost_price || 0;
+      if (costPrice === 0) return 0;
+      
+      // Obtener el margen de ganancia del primer tier (por defecto)
+      const profitMarginTiers = (service as any).profit_margin_tiers;
+      let margin = 30; // margen por defecto
+      
+      if (Array.isArray(profitMarginTiers) && profitMarginTiers.length > 0) {
+        margin = profitMarginTiers[0].margin || 30;
+      }
+      
+      // Calcular precio con margen
+      return costPrice * (1 + margin / 100);
+    }
+  };
+
   const calculateItemTotals = (baseItem: Omit<QuoteItem, 'total' | 'subtotal' | 'vat_amount' | 'withholding_amount' | 'taxes'>) => {
     const subtotal = baseItem.quantity * baseItem.unit_price;
     
@@ -218,13 +255,15 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
   };
 
   const addService = (service: ServiceType) => {
+    const calculatedPrice = calculateServicePrice(service);
+    
     const baseItem = {
       id: `service-${Date.now()}-${Math.random()}`,
       service_type_id: service.id,
       name: service.name,
       description: service.description || '',
       quantity: 1,
-      unit_price: service.base_price || 0,
+      unit_price: calculatedPrice,
       vat_rate: service.vat_rate,
       withholding_rate: 0,
       withholding_type: '',
@@ -297,7 +336,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
   return (
     <div className="space-y-6">
       <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 gap-1 p-1">
+        <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
           <TabsTrigger value="services" className="text-xs md:text-sm">
             <span className="md:hidden">Serv.</span>
             <span className="hidden md:inline">Servicios</span>
@@ -306,6 +345,12 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
             <span className="md:hidden">Prod.</span>
             <span className="hidden md:inline">Productos</span>
           </TabsTrigger>
+          {!simplifiedView && !isClient && (
+            <TabsTrigger value="taxes" className="text-xs md:text-sm">
+              <span className="md:hidden">Imp.</span>
+              <span className="hidden md:inline">Impuestos</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Global Tax Configuration */}
@@ -786,18 +831,18 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                                    {service.description}
                                  </p>
                                )}
-                               <div className="flex items-center justify-between">
-                                 <span className="font-medium text-sm">
-                                   {formatCurrency(service.cost_price || 0)}
-                                 </span>
-                                 <Button
-                                   size="sm"
-                                   onClick={() => addService(service)}
-                                   className="h-7 px-2"
-                                 >
-                                   <Plus className="h-3 w-3" />
-                                 </Button>
-                               </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm">
+                                    {formatCurrency(calculateServicePrice(service))}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => addService(service)}
+                                    className="h-7 px-2"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
                              </div>
                            </CardContent>
                          </Card>
@@ -847,9 +892,9 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                                </p>
                              )}
                              <div className="flex items-center justify-between">
-                               <span className="font-medium text-sm">
-                                 {formatCurrency(service.cost_price || 0)}
-                               </span>
+                                <span className="font-medium text-sm">
+                                  {formatCurrency(calculateServicePrice(service))}
+                                </span>
                                <Button
                                  size="sm"
                                  onClick={() => addService(service)}

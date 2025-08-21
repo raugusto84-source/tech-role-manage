@@ -308,6 +308,29 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     }).format(amount);
   };
 
+  // Función para calcular el precio correcto según el tipo de servicio
+  const calculateServicePrice = (service: any): number => {
+    if (service.item_type === 'servicio') {
+      // Para servicios, usar base_price directamente
+      return service.base_price || 0;
+    } else {
+      // Para artículos, calcular precio basado en cost_price + margen
+      const costPrice = service.cost_price || 0;
+      if (costPrice === 0) return 0;
+      
+      // Obtener el margen de ganancia del primer tier (por defecto)
+      const profitMarginTiers = service.profit_margin_tiers;
+      let margin = 30; // margen por defecto
+      
+      if (Array.isArray(profitMarginTiers) && profitMarginTiers.length > 0) {
+        margin = profitMarginTiers[0].margin || 30;
+      }
+      
+      // Calcular precio con margen
+      return costPrice * (1 + margin / 100);
+    }
+  };
+
   const stepTitles = {
     client: 'Seleccionar Cliente',
     diagnostic: 'Diagnóstico',
@@ -449,30 +472,36 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                     answers: result.answers
                   });
                   
-                  // Agregar los servicios recomendados a la cotización
-                  if (result.recommended_services && result.recommended_services.length > 0) {
-                    const newItems = result.recommended_services.map(service => ({
-                      id: `rec-${service.id}-${Date.now()}`,
-                      service_type_id: service.id,
-                      name: service.name,
-                      description: service.description || '',
-                      quantity: 1,
-                      unit_price: service.base_price || 0,
-                      subtotal: service.base_price || 0,
-                      vat_rate: service.vat_rate || 0,
-                      vat_amount: ((service.base_price || 0) * (service.vat_rate || 0)) / 100,
-                      withholding_rate: 0,
-                      withholding_amount: 0,
-                      withholding_type: '',
-                      total: (service.base_price || 0) + (((service.base_price || 0) * (service.vat_rate || 0)) / 100),
-                      is_custom: false
-                    }));
-                    setQuoteItems(prev => [...prev, ...newItems]);
-                    toast({
-                      title: "Servicios agregados",
-                      description: `Se agregaron ${newItems.length} servicio(s) recomendado(s) basado en el diagnóstico.`,
-                    });
-                  }
+                   // Agregar los servicios recomendados a la cotización
+                   if (result.recommended_services && result.recommended_services.length > 0) {
+                     const newItems = result.recommended_services.map(service => {
+                       const calculatedPrice = calculateServicePrice(service);
+                       const vatAmount = (calculatedPrice * (service.vat_rate || 0)) / 100;
+                       const total = calculatedPrice + vatAmount;
+                       
+                       return {
+                         id: `rec-${service.id}-${Date.now()}`,
+                         service_type_id: service.id,
+                         name: service.name,
+                         description: service.description || '',
+                         quantity: 1,
+                         unit_price: calculatedPrice,
+                         subtotal: calculatedPrice,
+                         vat_rate: service.vat_rate || 0,
+                         vat_amount: vatAmount,
+                         withholding_rate: 0,
+                         withholding_amount: 0,
+                         withholding_type: '',
+                         total: total,
+                         is_custom: false
+                       };
+                     });
+                     setQuoteItems(prev => [...prev, ...newItems]);
+                     toast({
+                       title: "Servicios agregados",
+                       description: `Se agregaron ${newItems.length} servicio(s) recomendado(s) basado en el diagnóstico.`,
+                     });
+                   }
                   nextStep();
                 }}
               />
