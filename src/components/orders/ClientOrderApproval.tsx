@@ -31,6 +31,7 @@ interface ClientOrderApprovalProps {
       name: string;
       description?: string;
     };
+    estimated_delivery_date?: string | null;
   };
   onApprovalChange?: () => void;
 }
@@ -78,10 +79,20 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         .eq("id", order.id);
 
       if (error) throw error;
+      // Obtener fecha estimada de entrega calculada por el servidor
+      const { data: updated, error: fetchError } = await supabase
+        .from('orders')
+        .select('estimated_delivery_date')
+        .eq('id', order.id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
 
       toast({
         title: "Orden Aprobada",
-        description: "La orden ha sido aprobada y enviada a los técnicos.",
+        description: updated?.estimated_delivery_date
+          ? `Entrega estimada: ${format(new Date(updated.estimated_delivery_date), 'dd/MM/yyyy HH:mm', { locale: es })}`
+          : "La orden ha sido aprobada y enviada a los técnicos.",
         variant: "default"
       });
 
@@ -135,10 +146,20 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         .eq("id", order.id);
 
       if (error) throw error;
+      // Obtener fecha estimada de entrega calculada por el servidor
+      const { data: updated, error: fetchError } = await supabase
+        .from('orders')
+        .select('estimated_delivery_date')
+        .eq('id', order.id)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
 
       toast({
         title: "Orden Aprobada",
-        description: "La orden ha sido aprobada y enviada a los técnicos.",
+        description: updated?.estimated_delivery_date
+          ? `Entrega estimada: ${format(new Date(updated.estimated_delivery_date), 'dd/MM/yyyy HH:mm', { locale: es })}`
+          : "La orden ha sido aprobada y enviada a los técnicos.",
         variant: "default"
       });
 
@@ -328,6 +349,11 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
               <p className="text-sm text-muted-foreground">
                 Aprobada el {order.client_approved_at && format(new Date(order.client_approved_at), 'dd/MM/yyyy HH:mm', { locale: es })}
               </p>
+              {order.estimated_delivery_date && (
+                <p className="text-sm font-medium mt-1">
+                  Entrega estimada: {format(new Date(order.estimated_delivery_date), 'dd/MM/yyyy HH:mm', { locale: es })}
+                </p>
+              )}
               {order.client_approval_notes && (
                 <div className="mt-2">
                   <p className="text-sm font-medium">Comentarios:</p>

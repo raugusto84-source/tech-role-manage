@@ -1942,6 +1942,7 @@ export type Database = {
           delivery_date: string
           diagnosis_completed: boolean
           estimated_cost: number | null
+          estimated_delivery_date: string | null
           evidence_photos: string[] | null
           failure_description: string
           final_signature_url: string | null
@@ -1970,6 +1971,7 @@ export type Database = {
           delivery_date: string
           diagnosis_completed?: boolean
           estimated_cost?: number | null
+          estimated_delivery_date?: string | null
           evidence_photos?: string[] | null
           failure_description: string
           final_signature_url?: string | null
@@ -1998,6 +2000,7 @@ export type Database = {
           delivery_date?: string
           diagnosis_completed?: boolean
           estimated_cost?: number | null
+          estimated_delivery_date?: string | null
           evidence_photos?: string[] | null
           failure_description?: string
           final_signature_url?: string | null
@@ -4403,6 +4406,10 @@ export type Database = {
       auto_assign_cleaning_tasks: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      calculate_estimated_delivery_time: {
+        Args: { p_order_id: string }
+        Returns: string
       }
       calculate_order_item_pricing: {
         Args: { p_quantity?: number; p_service_type_id: string }
