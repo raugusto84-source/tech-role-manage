@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, RefreshCw, Gift, FileText, ClipboardList } from "lucide-react";
+import { Plus, RefreshCw, Gift, FileText, ClipboardList, Shield } from "lucide-react";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 import { ClientRewardsCard } from "@/components/rewards/ClientRewardsCard";
 
@@ -319,9 +319,9 @@ export default function ClientDashboard() {
               orders.map((o) => (
                 <div 
                   key={o.id} 
-                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
+                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md cursor-pointer ${
                     o.status === 'pendiente_aprobacion' 
-                      ? 'bg-warning-light/50 border-warning-border shadow-sm' 
+                      ? 'bg-warning/10 border-warning shadow-lg animate-pulse' 
                       : 'bg-card hover:bg-accent/50 border-border'
                   }`}
                 >
@@ -333,11 +333,16 @@ export default function ClientDashboard() {
                     {o.failure_description || "Sin descripción"}
                   </p>
                   {o.status === 'pendiente_aprobacion' && (
-                    <div className="flex items-center gap-2 p-2 bg-warning-light rounded-md border border-warning-border">
-                      <span className="text-lg">⚠️</span>
-                      <p className="text-xs text-warning-foreground font-medium">
-                        Requiere tu firma y aprobación
-                      </p>
+                    <div className="flex items-center gap-2 p-3 bg-warning/10 rounded-lg border border-warning shadow-sm">
+                      <Shield className="h-5 w-5 text-warning animate-bounce" />
+                      <div>
+                        <span className="text-sm font-semibold text-warning block">
+                          ⚠️ REQUIERE SU AUTORIZACIÓN
+                        </span>
+                        <span className="text-xs text-warning/80">
+                          Haga clic para revisar y aprobar los cambios
+                        </span>
+                      </div>
                     </div>
                   )}
                   {o.technician_profile && (

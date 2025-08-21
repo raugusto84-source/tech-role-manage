@@ -390,9 +390,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               Volver
             </Button>
 
-            {/* Botón para agregar artículos (solo para staff en órdenes activas) */}
-            {profile && ['administrador', 'vendedor'].includes(profile.role) && 
-             ['pendiente', 'en_proceso', 'en_camino'].includes(orderStatus) && (
+            {/* Botón para agregar artículos (para staff y técnicos asignados en órdenes activas) */}
+            {profile && (
+              (['administrador', 'vendedor'].includes(profile.role) || 
+               (profile.role === 'tecnico' && order.assigned_technician === profile.user_id)) && 
+              ['pendiente', 'en_proceso', 'en_camino'].includes(orderStatus)
+            ) && (
               <Button 
                 onClick={() => setShowAddItems(true)} 
                 variant="outline" 

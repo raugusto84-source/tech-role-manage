@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, XCircle, AlertTriangle, Package } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Package, PenTool } from 'lucide-react';
+import { AuthorizationSignature } from './AuthorizationSignature';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -27,6 +28,7 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
   const [modifications, setModifications] = useState<OrderModification[]>([]);
   const [loading, setLoading] = useState(false);
   const [orderTotal, setOrderTotal] = useState<number>(0);
+  const [showSignature, setShowSignature] = useState(false);
 
   useEffect(() => {
     loadPendingModifications();
@@ -60,15 +62,23 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
     }
   };
 
-  const handleApproval = async (approved: boolean) => {
+  const handleApproval = (approved: boolean) => {
+    if (approved) {
+      setShowSignature(true);
+    } else {
+      handleRejection();
+    }
+  };
+
+  const handleRejection = async () => {
     setLoading(true);
 
     try {
-      // Update all pending modifications
+      // Update all pending modifications as rejected
       const { error: updateError } = await supabase
         .from('order_modifications')
         .update({
-          client_approved: approved,
+          client_approved: false,
           approved_at: new Date().toISOString()
         })
         .eq('order_id', orderId)
@@ -76,55 +86,82 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
 
       if (updateError) throw updateError;
 
-      if (approved) {
-        // Update order status to approved
-        const { error: orderError } = await supabase
-          .from('orders')
-          .update({
-            status: 'pendiente',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', orderId);
+      // Remove the added items and restore order status
+      const { error: deleteError } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('order_id', orderId)
+        .gte('created_at', modifications[0]?.created_at);
 
-        if (orderError) throw orderError;
+      if (deleteError) throw deleteError;
 
-        toast({
-          title: "Modificaciones aprobadas",
-          description: "Los cambios han sido aprobados. La orden continuará su proceso.",
-        });
-      } else {
-        // If rejected, remove the added items and restore order status
-        const { error: deleteError } = await supabase
-          .from('order_items')
-          .delete()
-          .eq('order_id', orderId)
-          .gte('created_at', modifications[0]?.created_at);
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'en_proceso',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
 
-        if (deleteError) throw deleteError;
+      if (orderError) throw orderError;
 
-        const { error: orderError } = await supabase
-          .from('orders')
-          .update({
-            status: 'pendiente',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', orderId);
-
-        if (orderError) throw orderError;
-
-        toast({
-          title: "Modificaciones rechazadas",
-          description: "Los cambios han sido rechazados y los artículos removidos.",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Modificaciones rechazadas",
+        description: "Los cambios han sido rechazados y los artículos removidos.",
+        variant: "destructive"
+      });
 
       onApprovalComplete();
     } catch (error) {
-      console.error('Error processing approval:', error);
+      console.error('Error processing rejection:', error);
       toast({
         title: "Error",
-        description: "No se pudo procesar la respuesta",
+        description: "No se pudo procesar el rechazo",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignatureComplete = async () => {
+    setLoading(true);
+
+    try {
+      // Update all pending modifications as approved
+      const { error: updateError } = await supabase
+        .from('order_modifications')
+        .update({
+          client_approved: true,
+          approved_at: new Date().toISOString()
+        })
+        .eq('order_id', orderId)
+        .is('client_approved', null);
+
+      if (updateError) throw updateError;
+
+      // Update order status back to in process
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'en_proceso',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId);
+
+      if (orderError) throw orderError;
+
+      toast({
+        title: "Modificaciones aprobadas",
+        description: "Los cambios han sido aprobados con su firma. La orden continuará su proceso.",
+      });
+
+      onApprovalComplete();
+    } catch (error) {
+      console.error('Error completing approval:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo completar la aprobación",
         variant: "destructive"
       });
     } finally {
@@ -134,6 +171,18 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
 
   if (modifications.length === 0) {
     return null;
+  }
+
+  // Show signature component if approval was confirmed
+  if (showSignature) {
+    return (
+      <AuthorizationSignature
+        orderId={orderId}
+        orderNumber={`Modificación - ${orderId.slice(0, 8)}`}
+        clientName={clientName}
+        onSignatureComplete={handleSignatureComplete}
+      />
+    );
   }
 
   return (
