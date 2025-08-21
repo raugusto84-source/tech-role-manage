@@ -144,7 +144,7 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
       return service.base_price * (1 + service.vat_rate / 100);
     } else {
       const profitMargin = marginFromTiers(service);
-      const priceWithMargin = service.base_price * (1 + profitMargin / 100);
+      const priceWithMargin = service.cost_price * (1 + profitMargin / 100);
       return priceWithMargin * (1 + service.vat_rate / 100);
     }
   };
@@ -428,16 +428,16 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                           )}
                         </div>
                         <div className="space-y-1 text-right text-sm">
-                          <div><span className="font-medium">Precio Base:</span> {formatCurrency(service.base_price)}</div>
+                          <div><span className="font-medium">Costo:</span> {formatCurrency(service.cost_price)}</div>
                           <div><span className="font-medium">Margen:</span> {getMarginText(service)}</div>
                           <div><span className="font-medium">IVA:</span> {service.vat_rate}%</div>
                         </div>
                       </div>
                       <div className="p-3 bg-green-50 rounded text-center">
                         <div className="text-sm font-medium text-green-800">
-                          Precio Venta: {formatCurrency(getDisplayPrice(service))}
+                          Precio Final: {formatCurrency(getDisplayPrice(service))}
                         </div>
-                        <div className="text-xs text-green-600">(Con margen + IVA)</div>
+                        <div className="text-xs text-green-600">(Costo + Ganancia + IVA)</div>
                       </div>
                     </div>
                   </CardContent>
