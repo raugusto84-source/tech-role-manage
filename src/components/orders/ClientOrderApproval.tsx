@@ -66,11 +66,11 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
 
   useEffect(() => {
     loadOrderItems();
-  }, [order.id]);
+  }, [order.id]); // Solo recargar si realmente cambia el ID
 
   const loadOrderItems = async () => {
     try {
-      console.log('Loading order items for order:', order.id);
+      setLoading(true);
       const { data, error } = await supabase
         .from('order_items')
         .select(`
@@ -203,7 +203,6 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         return result;
       }) || [];
       
-      console.log('Processed items with correct prices:', processedItems);
       setOrderItems(processedItems);
     } catch (error) {
       console.error('Error loading order items:', error);
@@ -302,14 +301,6 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
 
   const isPendingApproval = order.status === "pendiente_aprobacion";
   const isAlreadyApproved = order.client_approval;
-
-  console.log("ClientOrderApproval - Debug Info:", {
-    orderStatus: order.status,
-    isPendingApproval,
-    isAlreadyApproved,
-    clientApproval: order.client_approval,
-    orderId: order.id
-  });
 
   return (
     <div className="space-y-6">
