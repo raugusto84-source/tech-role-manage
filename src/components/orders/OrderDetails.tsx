@@ -326,22 +326,37 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     );
   }
 
-  // Si es cliente y la orden está pendiente de entrega, mostrar solo firma
+  // Si es cliente y la orden está pendiente de entrega, marcar como finalizada automáticamente
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
-    if (deliveryPhase === 'signature' && !hasDeliverySignature) {
-      return (
-        <DeliverySignature
-          orderId={order.id}
-          clientName={order.clients?.name || ''}
-          onSignatureComplete={() => {
-            setHasDeliverySignature(true);
-            setDeliveryPhase('completed');
-            setOrderStatus('finalizada');
-            onUpdate();
-          }}
-        />
-      );
-    }
+    // Auto-complete delivery without requiring signature
+    useEffect(() => {
+      const autoCompleteDelivery = async () => {
+        try {
+          const { error } = await supabase
+            .from('orders')
+            .update({ 
+              status: 'finalizada',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', order.id);
+
+          if (error) throw error;
+          
+          setOrderStatus('finalizada');
+          onUpdate();
+          
+          toast({
+            title: "Orden completada",
+            description: "La orden ha sido marcada como finalizada automáticamente",
+            variant: "default"
+          });
+        } catch (error) {
+          console.error('Error completing order:', error);
+        }
+      };
+
+      autoCompleteDelivery();
+    }, []);
   }
 
   return (
