@@ -437,7 +437,7 @@ export type Database = {
           created_at: string
           diagnosis_result: Json | null
           id: string
-          question_id: string
+          question_id: string | null
           question_text: string
           service_type_id: string | null
           session_id: string
@@ -448,7 +448,7 @@ export type Database = {
           created_at?: string
           diagnosis_result?: Json | null
           id?: string
-          question_id: string
+          question_id?: string | null
           question_text: string
           service_type_id?: string | null
           session_id?: string
@@ -459,7 +459,7 @@ export type Database = {
           created_at?: string
           diagnosis_result?: Json | null
           id?: string
-          question_id?: string
+          question_id?: string | null
           question_text?: string
           service_type_id?: string | null
           session_id?: string
