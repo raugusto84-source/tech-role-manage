@@ -237,37 +237,16 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
       return;
     }
 
-    const signatureDataURL = signatureRef.current?.toDataURL();
-    setSignatureData(signatureDataURL || "");
-    setShowSignature(false);
-    
-    toast({
-      title: "Firma capturada",
-      description: "Ahora puedes aprobar la orden.",
-      variant: "default"
-    });
-  };
-
-  const clearSignature = () => {
-    signatureRef.current?.clear();
-  };
-
-  const handleApproval = async () => {
     if (hasStartedApproval || approving) {
       console.log("Approval already in progress, ignoring");
       return;
     }
 
-    if (!signatureData) {
-      toast({
-        title: "Firma requerida",
-        description: "Debes firmar antes de aprobar la orden.",
-        variant: "destructive"
-      });
-      setShowSignature(true);
-      return;
-    }
-
+    const signatureDataURL = signatureRef.current?.toDataURL();
+    setSignatureData(signatureDataURL || "");
+    setShowSignature(false);
+    
+    // Proceder automáticamente con la aprobación después de capturar la firma
     setHasStartedApproval(true);
     setApproving(true);
     
@@ -277,13 +256,14 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         .update({
           client_approval: true,
           client_approval_notes: approvalNotes || "Orden aprobada sin comentarios adicionales",
-          initial_signature_url: signatureData,
+          initial_signature_url: signatureDataURL,
           status: "pendiente",
           client_approved_at: new Date().toISOString()
         })
         .eq("id", order.id);
 
       if (error) throw error;
+      
       // Obtener fecha estimada de entrega calculada por el servidor
       const { data: updated, error: fetchError } = await supabase
         .from('orders')
@@ -309,10 +289,15 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         description: "No se pudo aprobar la orden. Intenta nuevamente.",
         variant: "destructive"
       });
-      setHasStartedApproval(false); // Reset on error
+      setHasStartedApproval(false);
+      setSignatureData(""); // Limpiar firma en caso de error
     } finally {
       setApproving(false);
     }
+  };
+
+  const clearSignature = () => {
+    signatureRef.current?.clear();
   };
 
   const isPendingApproval = order.status === "pendiente_aprobacion";
@@ -521,15 +506,30 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
                   />
                 </div>
                 
-                {/* Botón de aprobación */}
-                <Button 
-                  onClick={handleApproval}
-                  disabled={approving || !signatureData || hasStartedApproval}
-                  className="w-full"
-                  size="lg"
-                >
-                  {approving ? "Aprobando..." : hasStartedApproval ? "Procesando..." : "✓ Firmar y Aprobar Orden"}
-                </Button>
+                {/* Estado después de firmar */}
+                {signatureData && !approving && !hasStartedApproval && (
+                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                    <p className="text-success font-medium">
+                      ✓ Orden firmada y aprobada exitosamente
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      La orden ha sido enviada a los técnicos para su procesamiento.
+                    </p>
+                  </div>
+                )}
+                
+                {/* Indicador de procesamiento */}
+                {(approving || hasStartedApproval) && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-blue-800 font-medium flex items-center gap-2">
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-800 border-t-transparent rounded-full"></div>
+                      Procesando aprobación...
+                    </p>
+                    <p className="text-sm text-blue-600 mt-1">
+                      Por favor espera mientras se procesa la orden.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
