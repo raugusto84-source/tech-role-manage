@@ -70,27 +70,40 @@ export function EmployeeHistoryPanel() {
     try {
       const { data, error } = await supabase
         .from('time_records')
-        .select(`
-          *,
-          profiles!time_records_employee_id_fkey (
-            full_name,
-            email,
-            role
-          )
-        `)
+        .select('*')
         .order('work_date', { ascending: false })
         .order('check_in_time', { ascending: false })
         .limit(1000);
 
       if (error) throw error;
+
+      // Get profiles separately and match them
+      const employeeIds = [...new Set((data || []).map(record => record.employee_id))];
       
-      // Transform the data to match our interface
-      const transformedRecords = (data || [])
-        .filter(record => record.profiles && typeof record.profiles === 'object' && !('error' in record.profiles))
-        .map(record => ({
+      let profilesData: any[] = [];
+      if (employeeIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, full_name, email, role')
+          .in('user_id', employeeIds);
+        
+        if (!profilesError) {
+          profilesData = profiles || [];
+        }
+      }
+
+      // Transform and match records with profiles
+      const transformedRecords = (data || []).map(record => {
+        const matchingProfile = profilesData.find(p => p.user_id === record.employee_id);
+        return {
           ...record,
-          profiles: record.profiles as { full_name: string; email: string; role: string; }
-        })) as TimeRecord[];
+          profiles: matchingProfile ? {
+            full_name: matchingProfile.full_name,
+            email: matchingProfile.email,
+            role: matchingProfile.role
+          } : null
+        };
+      }) as TimeRecord[];
       
       setRecords(transformedRecords);
     } catch (error) {
