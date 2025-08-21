@@ -119,7 +119,7 @@ export default function Orders() {
             const { data: techProfileData } = await supabase
               .from('profiles')
               .select('full_name')
-              .eq('id', order.assigned_technician)
+              .eq('user_id', order.assigned_technician)
               .maybeSingle();
             techProfile = techProfileData;
           }
