@@ -8,6 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -365,32 +368,71 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   control={form.control}
                   name="subcategory"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Subcategoría *</FormLabel>
-                      {subcategoriesForSelected.length > 0 ? (
-                        <>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Subcategoría" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {subcategoriesForSelected.map((s) => (
-                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>Catálogo para {watchedMainCategory}</FormDescription>
-                        </>
-                      ) : (
-                        <>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <FormControl>
-                            <Input placeholder="Escribe la subcategoría…" {...field} />
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={`w-full justify-between ${!field.value && "text-muted-foreground"}`}
+                            >
+                              {field.value || "Selecciona o escribe subcategoría"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
                           </FormControl>
-                          <FormDescription>Subcategoría libre</FormDescription>
-                        </>
-                      )}
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput 
+                              placeholder="Buscar o escribir subcategoría..." 
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
+                            />
+                            <CommandList>
+                              {subcategoriesForSelected.length > 0 && (
+                                <>
+                                  <CommandEmpty>
+                                    Presiona Enter para crear "{field.value}"
+                                  </CommandEmpty>
+                                  <CommandGroup heading={`Subcategorías de ${watchedMainCategory}`}>
+                                    {subcategoriesForSelected.map((subcategory) => (
+                                      <CommandItem
+                                        key={subcategory}
+                                        value={subcategory}
+                                        onSelect={() => {
+                                          field.onChange(subcategory);
+                                        }}
+                                      >
+                                        <Check
+                                          className={`mr-2 h-4 w-4 ${
+                                            field.value === subcategory ? "opacity-100" : "opacity-0"
+                                          }`}
+                                        />
+                                        {subcategory}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </>
+                              )}
+                              {subcategoriesForSelected.length === 0 && (
+                                <CommandEmpty>
+                                  Escribe para crear una nueva subcategoría
+                                </CommandEmpty>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormDescription>
+                        {subcategoriesForSelected.length > 0 
+                          ? `Selecciona del catálogo de ${watchedMainCategory} o escribe una nueva`
+                          : 'Escribe una subcategoría personalizada'
+                        }
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
