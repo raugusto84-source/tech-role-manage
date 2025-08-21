@@ -23,6 +23,7 @@ interface ServiceType {
   item_type: string;
   category_id?: string;
   category_name?: string;
+  image_url?: string | null;
   profit_margin_tiers?: Array<{
     margin: number;
     min_qty: number;
@@ -60,6 +61,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  image_url?: string | null;
   taxes?: Tax[];
 }
 
@@ -281,7 +283,8 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
       vat_rate: service.vat_rate,
       withholding_rate: 0,
       withholding_type: '',
-      is_custom: false
+      is_custom: false,
+      image_url: service.image_url
     };
 
     const newItem = calculateItemTotals(baseItem);
@@ -942,26 +945,43 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
             <div className="space-y-3">
               {selectedItems.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium">{item.name}</h4>
-                      {item.is_custom && (
-                        <Badge variant="secondary" className="text-xs">Personalizado</Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.total)}
-                    </p>
-                    {/* Solo mostrar detalles de impuestos si no es cliente */}
-                    {!isClient && item.taxes && item.taxes.length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {item.taxes.map((tax, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {tax.tax_type === 'iva' ? 'IVA' : 'RET'} {tax.tax_rate}%
-                          </Badge>
-                        ))}
+                  <div className="flex items-center gap-3 flex-1">
+                    {/* Mostrar imagen del artículo si existe */}
+                    {item.image_url && (
+                      <div className="w-16 h-16 flex-shrink-0">
+                        <img 
+                          src={item.image_url} 
+                          alt={item.name}
+                          className="w-full h-full object-cover rounded-md border"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
                       </div>
                     )}
+                    
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium">{item.name}</h4>
+                        {item.is_custom && (
+                          <Badge variant="secondary" className="text-xs">Personalizado</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.total)}
+                      </p>
+                      {/* Solo mostrar detalles de impuestos si no es cliente */}
+                      {!isClient && item.taxes && item.taxes.length > 0 && (
+                        <div className="flex gap-1 mt-1">
+                          {item.taxes.map((tax, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {tax.tax_type === 'iva' ? 'IVA' : 'RET'} {tax.tax_rate}%
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Solo mostrar configuración de impuestos si no es cliente */}
