@@ -86,6 +86,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const [showNewSubcategoryDialog, setShowNewSubcategoryDialog] = useState(false);
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [dynamicSubcategories, setDynamicSubcategories] = useState(SUBCATEGORY_MAP);
+  const [loadingSubcategories, setLoadingSubcategories] = useState(false);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -234,19 +235,32 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     if (!newSubcategoryName.trim()) return;
     
     const mainCategory = watchedMainCategory as MainCategory;
+    const subcategoryName = newSubcategoryName.trim();
+    
+    // Verificar que no exista ya
+    const existingSubcategories = dynamicSubcategories[mainCategory] || [];
+    if (existingSubcategories.includes(subcategoryName)) {
+      toast({
+        title: "Subcategoría ya existe",
+        description: `"${subcategoryName}" ya existe en ${mainCategory}`,
+        variant: "destructive"
+      });
+      return;
+    }
+    
     const updatedSubcategories = {
       ...dynamicSubcategories,
-      [mainCategory]: [...(dynamicSubcategories[mainCategory] || []), newSubcategoryName.trim()]
+      [mainCategory]: [...existingSubcategories, subcategoryName].sort()
     };
     
     setDynamicSubcategories(updatedSubcategories);
-    form.setValue('subcategory', newSubcategoryName.trim());
+    form.setValue('subcategory', subcategoryName);
     setNewSubcategoryName('');
     setShowNewSubcategoryDialog(false);
     
     toast({
       title: "Subcategoría agregada temporalmente",
-      description: `"${newSubcategoryName.trim()}" se guardará cuando guardes el servicio`,
+      description: `"${subcategoryName}" se guardará cuando guardes el servicio`,
     });
   };
 
@@ -304,6 +318,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         }
       }
 
+      // Recargar subcategorías después de guardar para reflejar la nueva
+      await loadExistingSubcategories();
       onSuccess();
     } catch (error) {
       console.error('Error saving service:', error);
@@ -352,6 +368,59 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.watch("cost_price"), form.watch("kind"), marginConfigs]);
+
+  /** Cargar subcategorías existentes de la base de datos */
+  const loadExistingSubcategories = async () => {
+    try {
+      setLoadingSubcategories(true);
+      
+      // Obtener todos los servicios activos con sus subcategorías
+      const { data: services, error } = await supabase
+        .from('service_types')
+        .select('category, subcategory')
+        .eq('is_active', true)
+        .not('subcategory', 'is', null);
+      
+      if (error) {
+        console.error('Error loading subcategories:', error);
+        return;
+      }
+      
+      // Procesar subcategorías por categoría
+      const subcategoriesMap = { ...SUBCATEGORY_MAP }; // Empezar con las predefinidas
+      
+      services?.forEach(service => {
+        const category = service.category as MainCategory;
+        const subcategory = service.subcategory;
+        
+        if (category && subcategory && subcategory.trim()) {
+          if (!subcategoriesMap[category]) {
+            subcategoriesMap[category] = [];
+          }
+          
+          // Agregar subcategoría si no existe ya
+          if (!subcategoriesMap[category].includes(subcategory.trim())) {
+            subcategoriesMap[category].push(subcategory.trim());
+          }
+        }
+      });
+      
+      // Ordenar subcategorías alfabéticamente
+      Object.keys(subcategoriesMap).forEach(category => {
+        subcategoriesMap[category as MainCategory].sort();
+      });
+      
+      setDynamicSubcategories(subcategoriesMap);
+    } catch (error) {
+      console.error('Error loading existing subcategories:', error);
+    } finally {
+      setLoadingSubcategories(false);
+    }
+  };
+
+  useEffect(() => {
+    loadExistingSubcategories();
+  }, []);
 
   useEffect(() => {
     if (serviceId) loadServiceData();
