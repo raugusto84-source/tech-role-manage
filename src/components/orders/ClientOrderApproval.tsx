@@ -82,10 +82,15 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
           total_amount, 
           status,
           item_type,
+          profit_margin_rate,
+          subtotal,
+          vat_amount,
+          service_type_id,
           service_types!inner(
             base_price,
             cost_price,
-            item_type
+            item_type,
+            profit_margin_tiers
           )
         `)
         .eq('order_id', order.id)
@@ -96,17 +101,56 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         throw error;
       }
       
-      console.log('Order items loaded:', data);
+      console.log('Order items raw data:', data);
       
-      // Procesar los items para asegurar que tengan precios correctos
-      const processedItems = data?.map(item => ({
-        ...item,
-        // Usar el precio base del item o del service_type como fallback
-        unit_base_price: item.unit_base_price || item.service_types?.base_price || item.service_types?.cost_price || 0,
-        total_amount: item.total_amount || (item.quantity * (item.unit_base_price || item.service_types?.base_price || item.service_types?.cost_price || 0))
-      })) || [];
+      // Procesar los items para asegurar precios correctos según tipo
+      const processedItems = data?.map(item => {
+        let finalUnitPrice = 0;
+        let finalTotal = 0;
+
+        console.log(`Processing item ${item.service_name}:`, {
+          stored_unit_base_price: item.unit_base_price,
+          stored_total_amount: item.total_amount,
+          item_type: item.item_type,
+          service_type_item_type: item.service_types?.item_type,
+          service_cost_price: item.service_types?.cost_price,
+          service_base_price: item.service_types?.base_price
+        });
+
+        if (item.item_type === 'servicio' || item.service_types?.item_type === 'servicio') {
+          // SERVICIOS: Usar base_price (precio fijo)
+          finalUnitPrice = item.unit_base_price || item.service_types?.base_price || 0;
+          finalTotal = item.total_amount || (finalUnitPrice * item.quantity);
+        } else {
+          // ARTÍCULOS: Si unit_base_price es 0, calcularlo usando cost_price + margen básico
+          if (item.unit_base_price > 0) {
+            finalUnitPrice = item.unit_base_price;
+            finalTotal = item.total_amount;
+          } else {
+            // Cálculo temporal usando cost_price + margen de 80% (como en los tiers)
+            const costPrice = item.service_types?.cost_price || 0;
+            const margin = 80; // Margen por defecto para artículos
+            finalUnitPrice = costPrice + (costPrice * margin / 100);
+            finalTotal = finalUnitPrice * item.quantity;
+            
+            console.log(`Calculated price for ${item.service_name}:`, {
+              cost_price: costPrice,
+              margin: margin,
+              calculated_unit_price: finalUnitPrice,
+              quantity: item.quantity,
+              calculated_total: finalTotal
+            });
+          }
+        }
+
+        return {
+          ...item,
+          unit_base_price: finalUnitPrice,
+          total_amount: finalTotal
+        };
+      }) || [];
       
-      console.log('Processed items with prices:', processedItems);
+      console.log('Processed items with correct prices:', processedItems);
       setOrderItems(processedItems);
     } catch (error) {
       console.error('Error loading order items:', error);
