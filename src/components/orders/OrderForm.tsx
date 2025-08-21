@@ -688,8 +688,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
       
-      // Set initial status based on user role
-      const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'pendiente';
+      // All orders start as pending authorization
+      const initialStatus = 'pendiente_aprobacion';
 
       // Crear la orden principal - explicitly set correct status
       const orderData = {
