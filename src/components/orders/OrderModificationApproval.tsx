@@ -27,12 +27,14 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
   const { toast } = useToast();
   const [modifications, setModifications] = useState<OrderModification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [previousTotal, setPreviousTotal] = useState<number>(0);
+  const [newItemsTotal, setNewItemsTotal] = useState<number>(0);
   const [orderTotal, setOrderTotal] = useState<number>(0);
   const [showSignature, setShowSignature] = useState(false);
 
   useEffect(() => {
     loadPendingModifications();
-    calculateOrderTotal();
+    calculateTotals();
   }, [orderId]);
 
   const loadPendingModifications = async () => {
@@ -50,15 +52,26 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
     }
   };
 
-  const calculateOrderTotal = async () => {
-    const { data, error } = await supabase
+  const calculateTotals = async () => {
+    // Get all order items
+    const { data: allItems, error } = await supabase
       .from('order_items')
-      .select('total_amount')
+      .select('total_amount, status, created_at')
       .eq('order_id', orderId);
 
-    if (!error && data) {
-      const total = data.reduce((sum, item) => sum + (item.total_amount || 0), 0);
-      setOrderTotal(total);
+    if (!error && allItems) {
+      const totalAmount = allItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+      setOrderTotal(totalAmount);
+
+      // Calculate items added before modifications (approved items)
+      const approvedItems = allItems.filter(item => item.status !== 'pausa');
+      const previousAmount = approvedItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+      setPreviousTotal(previousAmount);
+
+      // Calculate new items in pause
+      const newItems = allItems.filter(item => item.status === 'pausa');
+      const newAmount = newItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+      setNewItemsTotal(newAmount);
     }
   };
 
@@ -86,12 +99,12 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
 
       if (updateError) throw updateError;
 
-      // Remove the added items and restore order status
+      // Remove items in pause status
       const { error: deleteError } = await supabase
         .from('order_items')
         .delete()
         .eq('order_id', orderId)
-        .gte('created_at', modifications[0]?.created_at);
+        .eq('status', 'pausa');
 
       if (deleteError) throw deleteError;
 
@@ -140,7 +153,15 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
 
       if (updateError) throw updateError;
 
-      // Update order status back to in process
+      // Update items status from pause to pending and order status back to in process
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .update({ status: 'pendiente' })
+        .eq('order_id', orderId)
+        .eq('status', 'pausa');
+
+      if (itemsError) throw itemsError;
+
       const { error: orderError } = await supabase
         .from('orders')
         .update({
@@ -213,9 +234,33 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
             </div>
           </div>
 
+          {/* Resumen financiero */}
+          <div className="space-y-4">
+            <h3 className="font-semibold">Resumen de costos:</h3>
+            
+            <div className="bg-muted/30 rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Total previamente autorizado:</span>
+                <span className="font-medium">${previousTotal.toLocaleString()}</span>
+              </div>
+              
+              <div className="flex justify-between items-center text-primary">
+                <span className="font-medium">Nuevos artículos:</span>
+                <span className="font-semibold">+${newItemsTotal.toLocaleString()}</span>
+              </div>
+              
+              <hr className="border-border" />
+              
+              <div className="flex justify-between items-center text-lg font-bold">
+                <span>Nuevo total de la orden:</span>
+                <span className="text-primary">${orderTotal.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
           {/* Lista de modificaciones */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Artículos agregados recientemente:</h3>
+            <h3 className="font-semibold">Nuevos artículos agregados:</h3>
             
             {modifications.map((mod) => (
               <div key={mod.id} className="border border-border rounded-lg p-4 space-y-2">
@@ -233,14 +278,6 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Total de la orden */}
-          <div className="bg-muted/50 rounded-lg p-4">
-            <div className="flex justify-between items-center text-lg font-semibold">
-              <span>Total de la orden:</span>
-              <span>${orderTotal.toLocaleString()}</span>
-            </div>
           </div>
 
           {/* Botones de acción */}
