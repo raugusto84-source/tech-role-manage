@@ -74,12 +74,12 @@ export default function ClientDashboard() {
   // Cargar cotizaciones del cliente usando user_id
   const loadQuotes = async () => {
     if (!profile?.user_id) return;
-    const { data, error } = await supabase
-      .from("quotes")
-      .select("*")
-      .eq("user_id", profile.user_id)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("*")
+        .eq("client_email", profile.email)
+        .order("created_at", { ascending: false })
+        .limit(5);
     if (error) {
       console.error("Error loading quotes:", error);
       toast({ title: "Error", description: "No se pudieron cargar cotizaciones", variant: "destructive" });
