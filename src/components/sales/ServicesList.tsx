@@ -336,8 +336,8 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium text-muted-foreground">Precio Fijo</div>
-                          <div className="text-xl font-bold text-blue-600">{formatCurrency(service.base_price)}</div>
+                          <div className="text-sm font-medium text-muted-foreground">Precio Final</div>
+                          <div className="text-xl font-bold text-blue-600">{formatCurrency(getDisplayPrice(service))}</div>
                         </div>
                       </div>
                       <div className="p-3 bg-blue-50 rounded text-center">
@@ -427,17 +427,17 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                             </div>
                           )}
                         </div>
-                        <div className="space-y-1 text-right text-sm">
+                        <div className="space-y-1 text-right">
+                          <div className="text-sm font-medium text-muted-foreground">Precio Final</div>
+                          <div className="text-xl font-bold text-green-600">{formatCurrency(getDisplayPrice(service))}</div>
+                        </div>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded">
+                        <div className="grid grid-cols-3 gap-2 text-xs">
                           <div><span className="font-medium">Costo:</span> {formatCurrency(service.cost_price)}</div>
                           <div><span className="font-medium">Margen:</span> {getMarginText(service)}</div>
                           <div><span className="font-medium">IVA:</span> {service.vat_rate}%</div>
                         </div>
-                      </div>
-                      <div className="p-3 bg-green-50 rounded text-center">
-                        <div className="text-sm font-medium text-green-800">
-                          Precio Final: {formatCurrency(getDisplayPrice(service))}
-                        </div>
-                        <div className="text-xs text-green-600">(Costo + Ganancia + IVA)</div>
                       </div>
                     </div>
                   </CardContent>
