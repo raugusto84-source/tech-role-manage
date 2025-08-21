@@ -280,7 +280,10 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         variant: "default"
       });
 
-      onApprovalChange?.();
+      // Dar tiempo para que se muestre el toast antes de actualizar
+      setTimeout(() => {
+        onApprovalChange?.();
+      }, 2000);
     } catch (error) {
       console.error("Error approving order:", error);
       toast({
