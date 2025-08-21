@@ -200,13 +200,8 @@ export function ProblemsAndSolutionsManager() {
   };
 
   const handleEditProblem = (problem: Problem) => {
-    console.log('Editando problema:', problem);
-    
-    // Toast temporal para debugging
-    toast({ 
-      title: 'Debug', 
-      description: `Intentando editar: ${problem.name}` 
-    });
+    // Debugging más simple
+    alert(`Editando: ${problem.name}`);
     
     setProblemForm({
       id: problem.id,
