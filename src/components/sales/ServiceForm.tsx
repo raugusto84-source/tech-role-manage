@@ -87,7 +87,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       cost_price: 0,
       base_price: 0,
       profit_margin: 30,
-      vat_rate: 19,
+      vat_rate: 16,
       unit: 'unidad',
       min_quantity: 1,
       max_quantity: 999,
@@ -152,7 +152,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         cost_price: data.cost_price || 0,
         base_price: data.base_price || 0,
         profit_margin: hasTiers ? (data.profit_margin_tiers as any[])[0]?.margin ?? 30 : 30,
-        vat_rate: data.vat_rate || 19,
+        vat_rate: data.vat_rate || 16,
         unit: data.unit || 'unidad',
         min_quantity: data.min_quantity || 1,
         max_quantity: data.max_quantity || 999,
@@ -254,11 +254,11 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   }, []);
 
   useEffect(() => {
-    const basePrice = form.watch("base_price");
+    const costPrice = form.watch("cost_price");
     const kind = form.watch("kind");
-    if (kind === "articulo" && basePrice > 0 && marginConfigs.length > 0) {
+    if (kind === "articulo" && costPrice > 0 && marginConfigs.length > 0) {
       const applicableConfig = marginConfigs.find(
-        (config: any) => basePrice >= config.min_price && basePrice <= config.max_price
+        (config: any) => costPrice >= config.min_price && costPrice <= config.max_price
       );
       if (applicableConfig) {
         setAutoMargin(applicableConfig.margin_percentage);
@@ -270,7 +270,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       setAutoMargin(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.watch("base_price"), form.watch("kind"), marginConfigs]);
+  }, [form.watch("cost_price"), form.watch("kind"), marginConfigs]);
 
   useEffect(() => {
     if (serviceId) loadServiceData();
