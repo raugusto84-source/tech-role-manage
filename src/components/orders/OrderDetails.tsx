@@ -15,6 +15,7 @@ import { OrderChat } from '@/components/orders/OrderChat';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { ClientOrderApproval } from './ClientOrderApproval';
+import { AuthorizationSignature } from './AuthorizationSignature';
 import { DeliverySignature } from './DeliverySignature';
 import { SimpleSatisfactionSurvey } from './SimpleSatisfactionSurvey';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
@@ -72,6 +73,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [hasDeliverySignature, setHasDeliverySignature] = useState(false);
   const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
   const [deliveryStatusChecked, setDeliveryStatusChecked] = useState(false);
+  const [authorizationSignature, setAuthorizationSignature] = useState<any>(null);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -86,6 +88,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   useEffect(() => {
     loadOrderItems();
     loadAssignedTechnician();
+    loadAuthorizationSignature();
     
     // Solo verificar estado de entrega si es cliente y está pendiente de entrega
     if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
@@ -138,6 +141,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         .maybeSingle();
       
       setAssignedTechnician(data);
+    }
+  };
+
+  const loadAuthorizationSignature = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_authorization_signatures')
+        .select('*')
+        .eq('order_id', order.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setAuthorizationSignature(data);
+    } catch (error) {
+      console.error('Error loading authorization signature:', error);
     }
   };
 
@@ -294,13 +312,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     })();
 
 
-  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación
+  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de firma de autorización
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
-    return <ClientOrderApproval order={order} onApprovalChange={() => {
-      console.log('Order approved, navigating back to orders list');
-      onBack(); // Navegar de vuelta a la lista de órdenes
-      onUpdate(); // Actualizar la lista de órdenes
-    }} />;
+    return (
+      <AuthorizationSignature
+        orderId={order.id}
+        orderNumber={order.order_number}
+        clientName={order.clients?.name || ''}
+        estimatedCost={order.estimated_cost || 0}
+        onSignatureComplete={() => {
+          setOrderStatus('pendiente');
+          onUpdate();
+        }}
+      />
+    );
   }
 
   // Si es cliente y la orden está pendiente de entrega, mostrar solo firma
@@ -420,9 +445,47 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                    </div>
                  )}
                </CardContent>
-             </Card>
+            </Card>
 
-             {/* Descripción del Problema */}
+            {/* Firma de Autorización */}
+            {authorizationSignature && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Shield className="h-5 w-5 mr-2 text-success" />
+                    Orden Autorizada
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="h-5 w-5 text-success" />
+                      <span className="font-medium text-success">Autorizada por: {authorizationSignature.client_name}</span>
+                    </div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p><strong>Fecha de autorización:</strong> {formatDateTime(authorizationSignature.signed_at)}</p>
+                      {authorizationSignature.authorization_notes && (
+                        <p><strong>Notas:</strong> {authorizationSignature.authorization_notes}</p>
+                      )}
+                    </div>
+                    {authorizationSignature.client_signature_data && (
+                      <div className="mt-4">
+                        <Label className="text-sm font-medium">Firma de autorización:</Label>
+                        <div className="mt-2 border rounded-lg bg-white p-2 inline-block">
+                          <img 
+                            src={authorizationSignature.client_signature_data} 
+                            alt="Firma de autorización" 
+                            className="max-h-24 max-w-48"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Descripción del Problema */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">

@@ -1427,6 +1427,39 @@ export type Database = {
           },
         ]
       }
+      order_authorization_signatures: {
+        Row: {
+          authorization_notes: string | null
+          client_name: string
+          client_signature_data: string
+          created_at: string
+          id: string
+          order_id: string
+          signed_at: string
+          updated_at: string
+        }
+        Insert: {
+          authorization_notes?: string | null
+          client_name: string
+          client_signature_data: string
+          created_at?: string
+          id?: string
+          order_id: string
+          signed_at?: string
+          updated_at?: string
+        }
+        Update: {
+          authorization_notes?: string | null
+          client_name?: string
+          client_signature_data?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          signed_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_chat_messages: {
         Row: {
           created_at: string

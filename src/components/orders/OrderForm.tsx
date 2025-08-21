@@ -655,6 +655,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
       
+      // Set initial status based on user role
+      const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'pendiente';
+
       // Crear la orden principal - explicitly set correct status
       const orderData = {
         client_id: formData.client_id,
@@ -666,7 +669,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
         created_by: user?.id,
-        status: 'pendiente_aprobacion' as const, // Explicitly set the correct enum value
+        status: initialStatus,
         is_home_service: formData.is_home_service,
         service_location: formData.service_location,
         travel_time_hours: formData.is_home_service ? 1 : 0
@@ -737,9 +740,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }
       }
 
+      const statusMessage = profile?.role === 'cliente' 
+        ? "Orden creada. Debe firmar para autorizar el servicio."
+        : "Orden creada exitosamente";
+
       toast({
         title: "Orden creada",
-        description: `Orden creada exitosamente con ${orderItems.length} artículo(s) por un total de ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalAmount)}`,
+        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalAmount)}`,
       });
 
       onSuccess();
