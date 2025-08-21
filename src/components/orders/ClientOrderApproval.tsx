@@ -63,13 +63,19 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
 
   const loadOrderItems = async () => {
     try {
+      console.log('Loading order items for order:', order.id);
       const { data, error } = await supabase
         .from('order_items')
         .select('id, service_name, service_description, quantity, unit_base_price, total_amount, status')
         .eq('order_id', order.id)
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error loading order items:', error);
+        throw error;
+      }
+      
+      console.log('Order items loaded:', data);
       setOrderItems(data || []);
     } catch (error) {
       console.error('Error loading order items:', error);
@@ -103,59 +109,15 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
       return;
     }
 
-    if (hasStartedApproval || approving) {
-      console.log("Approval already in progress, ignoring");
-      return;
-    }
-
     const signatureDataURL = signatureRef.current?.toDataURL();
     setSignatureData(signatureDataURL || "");
     setShowSignature(false);
-    setHasStartedApproval(true);
-    setApproving(true);
     
-    try {
-      const { error } = await supabase
-        .from("orders")
-        .update({
-          client_approval: true,
-          client_approval_notes: approvalNotes || "Orden aprobada sin comentarios adicionales",
-          initial_signature_url: signatureDataURL,
-          status: "pendiente",
-          client_approved_at: new Date().toISOString()
-        })
-        .eq("id", order.id);
-
-      if (error) throw error;
-      // Obtener fecha estimada de entrega calculada por el servidor
-      const { data: updated, error: fetchError } = await supabase
-        .from('orders')
-        .select('estimated_delivery_date')
-        .eq('id', order.id)
-        .maybeSingle();
-
-      if (fetchError) throw fetchError;
-
-      toast({
-        title: "Orden Aprobada",
-        description: updated?.estimated_delivery_date
-          ? `Entrega estimada: ${format(new Date(updated.estimated_delivery_date), 'dd/MM/yyyy HH:mm', { locale: es })}`
-          : "La orden ha sido aprobada y enviada a los técnicos.",
-        variant: "default"
-      });
-
-      onApprovalChange?.();
-    } catch (error) {
-      console.error("Error approving order:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo aprobar la orden. Intenta nuevamente.",
-        variant: "destructive"
-      });
-      setHasStartedApproval(false);
-    } finally {
-      setApproving(false);
-    }
+    toast({
+      title: "Firma capturada",
+      description: "Ahora puedes aprobar la orden.",
+      variant: "default"
+    });
   };
 
   const clearSignature = () => {
@@ -303,7 +265,14 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
           </div>
 
           {/* Artículos de la orden */}
-          {orderItems.length > 0 && (
+          {loading ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                <h4 className="font-medium">Cargando artículos...</h4>
+              </div>
+            </div>
+          ) : orderItems.length > 0 ? (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />
@@ -322,11 +291,11 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
                           )}
                           <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                             <span>Cantidad: {item.quantity}</span>
-                            <span>Precio unitario: {formatCurrency(item.unit_base_price)}</span>
+                            <span>Precio unitario: {formatCurrency(item.unit_base_price || 0)}</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-lg text-primary">{formatCurrency(item.total_amount)}</p>
+                          <p className="font-bold text-lg text-primary">{formatCurrency(item.total_amount || 0)}</p>
                         </div>
                       </div>
                     </CardContent>
@@ -340,6 +309,13 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
                   <span className="text-lg font-medium">Total de la orden:</span>
                   <span className="text-2xl font-bold text-primary">{formatCurrency(totalAmount)}</span>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-muted-foreground" />
+                <h4 className="font-medium text-muted-foreground">No se encontraron artículos para esta orden</h4>
               </div>
             </div>
           )}
