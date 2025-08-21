@@ -137,6 +137,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
       }
       case 'diagnostic': {
         setCurrentStep('items');
+        // Automaticamente mostrar selección de productos
+        setShowServiceSelection(true);
         break;
       }
       case 'items': {
@@ -335,7 +337,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const stepTitles = {
     client: 'Seleccionar Cliente',
     diagnostic: 'Diagnóstico',
-    items: '¿Desea agregar servicios o productos?',
+    items: 'Seleccionar Servicios y Productos',
     review: 'Revisar y Confirmar',
   };
 
@@ -511,44 +513,25 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           )}
 
           {currentStep === 'items' && (
-            <div className="space-y-6">
-              {!showServiceSelection ? (
-                <div className="text-center space-y-4">
-                  <h3 className="text-lg font-medium">¿Desea agregar servicios o productos a esta cotización?</h3>
-                  <p className="text-muted-foreground">
-                    Puede agregar servicios específicos o crear una cotización básica sin artículos detallados.
-                  </p>
-                  <div className="flex gap-4 justify-center">
-                    <Button onClick={() => setCurrentStep('review')} variant="outline">
-                      No, crear cotización básica
-                    </Button>
-                    <Button onClick={() => setShowServiceSelection(true)}>
-                      Sí, agregar servicios/productos
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium">Seleccionar servicios y productos</h3>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowServiceSelection(false)}
-                    >
-                      Volver
-                    </Button>
-                  </div>
-                  <CategoryServiceSelection 
-                    selectedItems={quoteItems}
-                    onItemsChange={(items) => {
-                      console.log('Items changed in QuoteWizard:', items);
-                      setQuoteItems(items);
-                    }}
-                    simplifiedView={true}
-                  />
-                </div>
-              )}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium">Seleccionar servicios y productos</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setCurrentStep('review')}
+                >
+                  Crear sin productos
+                </Button>
+              </div>
+              <CategoryServiceSelection 
+                selectedItems={quoteItems}
+                onItemsChange={(items) => {
+                  console.log('Items changed in QuoteWizard:', items);
+                  setQuoteItems(items);
+                }}
+                simplifiedView={true}
+              />
             </div>
           )}
           {currentStep === 'review' && (
