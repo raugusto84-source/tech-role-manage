@@ -319,9 +319,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         orderId={order.id}
         orderNumber={order.order_number}
         clientName={order.clients?.name || ''}
-        estimatedCost={order.estimated_cost || 0}
         onSignatureComplete={() => {
           setOrderStatus('pendiente');
+          loadAuthorizationSignature(); // Reload to show signature in details
           onUpdate();
         }}
       />

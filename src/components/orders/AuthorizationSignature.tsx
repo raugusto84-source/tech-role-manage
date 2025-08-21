@@ -6,24 +6,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle, PenTool, FileSignature } from 'lucide-react';
+import { CheckCircle, PenTool, FileText } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 
 interface AuthorizationSignatureProps {
   orderId: string;
-  orderNumber: string;
   clientName: string;
-  estimatedCost: number;
+  orderNumber: string;
   onSignatureComplete: () => void;
 }
 
-export function AuthorizationSignature({ 
-  orderId, 
-  orderNumber, 
-  clientName, 
-  estimatedCost, 
-  onSignatureComplete 
-}: AuthorizationSignatureProps) {
+export function AuthorizationSignature({ orderId, clientName, orderNumber, onSignatureComplete }: AuthorizationSignatureProps) {
   const { toast } = useToast();
   const signatureRef = useRef<SignatureCanvas>(null);
   const [authorizationNotes, setAuthorizationNotes] = useState('');
@@ -64,14 +57,15 @@ export function AuthorizationSignature({
           order_id: orderId,
           client_signature_data: signatureData,
           client_name: clientNameInput.trim(),
-          authorization_notes: authorizationNotes.trim() || null
+          authorization_notes: authorizationNotes.trim() || null,
+          signed_at: new Date().toISOString()
         });
 
       if (error) throw error;
 
       toast({
         title: "Orden Autorizada",
-        description: "Su orden ha sido autorizada exitosamente. Ahora será procesada por nuestro equipo.",
+        description: "Su orden ha sido autorizada exitosamente y será procesada por nuestro equipo.",
         variant: "default"
       });
 
@@ -80,7 +74,7 @@ export function AuthorizationSignature({
       console.error('Error saving authorization signature:', error);
       toast({
         title: "Error",
-        description: "No se pudo registrar la autorización. Intente nuevamente.",
+        description: "No se pudo autorizar la orden. Intente nuevamente.",
         variant: "destructive"
       });
     } finally {
@@ -93,21 +87,30 @@ export function AuthorizationSignature({
       <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
           <CardTitle className="flex items-center justify-center gap-2 text-2xl">
-            <FileSignature className="h-6 w-6 text-primary" />
+            <FileText className="h-6 w-6 text-primary" />
             Autorización de Orden de Servicio
           </CardTitle>
           <p className="text-muted-foreground">
-            Orden #{orderNumber} - Costo Estimado: ${estimatedCost?.toFixed(2)}
+            Orden #{orderNumber}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Para procesar su orden de servicio, necesitamos su autorización mediante firma digital
           </p>
         </CardHeader>
         
         <CardContent className="space-y-6">
           <div className="bg-info/10 border border-info/20 rounded-lg p-4">
-            <h3 className="font-semibold text-info mb-2">¿Por qué necesito firmar?</h3>
-            <p className="text-sm text-muted-foreground">
-              Su firma autoriza el inicio del servicio y confirma su acuerdo con el costo estimado. 
-              Sin esta autorización, la orden no podrá ser procesada por nuestros técnicos.
-            </p>
+            <div className="flex items-start gap-3">
+              <PenTool className="h-5 w-5 text-info mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-info mb-1">¿Por qué necesitamos su autorización?</p>
+                <ul className="text-info/80 space-y-1 list-disc list-inside">
+                  <li>Confirma que acepta los términos del servicio</li>
+                  <li>Autoriza el inicio de los trabajos técnicos</li>
+                  <li>Valida los costos estimados presentados</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           {/* Nombre del cliente */}
@@ -124,12 +127,12 @@ export function AuthorizationSignature({
 
           {/* Notas de autorización */}
           <div className="space-y-2">
-            <Label htmlFor="authorizationNotes">Notas adicionales (opcional)</Label>
+            <Label htmlFor="authorizationNotes">Comentarios adicionales (opcional)</Label>
             <Textarea
               id="authorizationNotes"
               value={authorizationNotes}
               onChange={(e) => setAuthorizationNotes(e.target.value)}
-              placeholder="Comentarios o instrucciones especiales para el servicio..."
+              placeholder="Instrucciones especiales, horarios preferidos, etc..."
               rows={3}
             />
           </div>
@@ -185,7 +188,12 @@ export function AuthorizationSignature({
           </div>
 
           <div className="text-center text-sm text-muted-foreground">
-            Al firmar, autoriza el inicio del servicio según los términos acordados
+            <p className="mb-2">Al firmar, usted autoriza:</p>
+            <ul className="text-xs space-y-1">
+              <li>• El inicio de los trabajos según lo descrito en la orden</li>
+              <li>• Los costos estimados presentados</li>
+              <li>• Las condiciones de servicio establecidas</li>
+            </ul>
           </div>
         </CardContent>
       </Card>
