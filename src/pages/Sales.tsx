@@ -13,6 +13,8 @@ import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeCl
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Trash2 } from 'lucide-react';
 
 const MAIN_CATEGORIES = [
   'Computadoras',
@@ -206,6 +208,22 @@ export default function Sales() {
   const handleCancelEdit = () => {
     setSelectedService(null);
     setActiveTab('list');
+  };
+
+  const handleDeleteService = async (serviceId: string, serviceName: string) => {
+    try {
+      const { error } = await supabase.from('service_types').delete().eq('id', serviceId);
+      if (error) {
+        console.error('Error deleting service:', error);
+        toast({ title: "Error", description: "No se pudo eliminar el servicio.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Servicio eliminado", description: `${serviceName} ha sido eliminado exitosamente.` });
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast({ title: "Error", description: "Error inesperado al eliminar el servicio.", variant: "destructive" });
+    }
   };
 
   return (
@@ -415,7 +433,30 @@ export default function Sales() {
                               {formatCurrency(getDisplayPrice(svc))}
                               {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
                             </div>
-                            <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="outline" size="sm">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
