@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, ArrowLeft, CheckCircle, Package } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ArrowRight, ArrowLeft, CheckCircle, Package, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -101,6 +102,8 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
   const [isCompleted, setIsCompleted] = useState(false);
   const [recommendedServices, setRecommendedServices] = useState<ServiceType[]>([]);
   const [selectedSolution, setSelectedSolution] = useState<Solution | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
   // Load categories
   useEffect(() => {
@@ -165,8 +168,17 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
     setSelectedSolution(null);
   };
 
-  const handleAnswer = (answer: string) => {
-    if (!selectedFlow) return;
+  const handleAnswer = async (answer: string) => {
+    if (!selectedFlow || isTransitioning) return;
+
+    // Mostrar respuesta seleccionada
+    setSelectedAnswer(answer);
+    
+    // Iniciar transición visual
+    setIsTransitioning(true);
+    
+    // Breve delay para mostrar el feedback visual
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     const step = selectedFlow.flow_data.steps[currentStep];
     const newAnswers = { ...answers, [step.id]: answer };
@@ -178,23 +190,35 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
       const nextStepIndex = selectedFlow.flow_data.steps.findIndex(s => s.id === nextStepId);
       
       if (nextStepIndex !== -1) {
+        // Delay adicional para la transición
+        await new Promise(resolve => setTimeout(resolve, 500));
         setCurrentStep(nextStepIndex);
+        setIsTransitioning(false);
+        setSelectedAnswer(null);
         return;
       }
     }
 
     // Check if this answer maps to a solution
     if (step.solution_mapping?.[answer]) {
-      completeDiagnosis(newAnswers);
+      await completeDiagnosis(newAnswers);
+      setIsTransitioning(false);
+      setSelectedAnswer(null);
       return;
     }
 
     // If no specific mapping, continue to next step or complete
     if (currentStep < selectedFlow.flow_data.steps.length - 1) {
+      // Delay adicional para la transición
+      await new Promise(resolve => setTimeout(resolve, 500));
       setCurrentStep(currentStep + 1);
+      setIsTransitioning(false);
+      setSelectedAnswer(null);
     } else {
       // Complete diagnosis with default logic
-      completeDiagnosis(newAnswers);
+      await completeDiagnosis(newAnswers);
+      setIsTransitioning(false);
+      setSelectedAnswer(null);
     }
   };
 
@@ -477,7 +501,7 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
   if (!step) return null;
 
   return (
-    <Card>
+    <Card className="relative overflow-hidden">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
@@ -485,50 +509,114 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
             <p className="text-sm text-muted-foreground">
               Pregunta {currentStep + 1} de {selectedFlow.flow_data.steps.length}
             </p>
+            {/* Indicador de progreso visual */}
+            <div className="mt-4">
+              <Progress 
+                value={((currentStep + 1) / selectedFlow.flow_data.steps.length) * 100} 
+                className="h-2"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Progreso: {Math.round(((currentStep + 1) / selectedFlow.flow_data.steps.length) * 100)}%
+              </p>
+            </div>
           </div>
           <div className="flex gap-2">
             {currentStep > 0 && (
-              <Button variant="outline" size="sm" onClick={handleBack}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleBack} 
+                disabled={isTransitioning}
+              >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={handleRestart}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleRestart}
+              disabled={isTransitioning}
+            >
               Reiniciar
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      
+      {/* Overlay de transición */}
+      {isTransitioning && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-lg font-medium">Procesando respuesta...</p>
+            {selectedAnswer && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Respuesta: "{selectedAnswer}"
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <CardContent 
+        className={`space-y-6 transition-all duration-500 ${
+          isTransitioning ? 'scale-95 opacity-50' : 'scale-100 opacity-100'
+        }`}
+      >
         <div>
-          <h3 className="text-xl font-medium mb-6 text-center">{step.question}</h3>
+          <h3 
+            className={`text-xl font-medium mb-6 text-center transition-all duration-700 ${
+              isTransitioning ? 'translate-y-2 opacity-0' : 'translate-y-0 opacity-100'
+            }`}
+          >
+            {step.question}
+          </h3>
           
           {step.image_url && (
             <div className="mb-6">
               <img 
                 src={step.image_url} 
                 alt="Imagen de ayuda" 
-                className="max-w-md max-h-60 rounded-lg object-cover border mx-auto"
+                className={`max-w-md max-h-60 rounded-lg object-cover border mx-auto transition-all duration-500 ${
+                  isTransitioning ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
+                }`}
               />
             </div>
           )}
 
-          <div className="space-y-3">
+          <div 
+            className={`space-y-3 transition-all duration-500 delay-200 ${
+              isTransitioning ? 'translate-y-4 opacity-0' : 'translate-y-0 opacity-100'
+            }`}
+          >
             {step.type === 'yes_no' ? (
               <div className="grid grid-cols-2 gap-4">
                 <Button 
                   size="lg"
-                  className="h-16 text-lg" 
+                  className={`h-16 text-lg transition-all duration-300 transform hover:scale-105 ${
+                    selectedAnswer === 'Sí' ? 'bg-green-500 text-white scale-105' : ''
+                  }`}
                   onClick={() => handleAnswer('Sí')}
+                  disabled={isTransitioning}
                 >
                   ✓ Sí
+                  {selectedAnswer === 'Sí' && (
+                    <CheckCircle className="h-5 w-5 ml-2 animate-pulse" />
+                  )}
                 </Button>
                 <Button 
                   variant="outline" 
                   size="lg"
-                  className="h-16 text-lg" 
+                  className={`h-16 text-lg transition-all duration-300 transform hover:scale-105 ${
+                    selectedAnswer === 'No' ? 'bg-red-500 text-white scale-105' : ''
+                  }`}
                   onClick={() => handleAnswer('No')}
+                  disabled={isTransitioning}
                 >
                   ✗ No
+                  {selectedAnswer === 'No' && (
+                    <CheckCircle className="h-5 w-5 ml-2 animate-pulse" />
+                  )}
                 </Button>
               </div>
             ) : step.type === 'multiple_choice' && step.options ? (
@@ -538,22 +626,32 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
                     key={index}
                     variant="outline"
                     size="lg"
-                    className="h-16 text-left justify-start hover:bg-primary hover:text-primary-foreground transition-colors"
+                    className={`h-16 text-left justify-start transition-all duration-300 transform hover:scale-105 hover:bg-primary hover:text-primary-foreground ${
+                      selectedAnswer === option ? 'bg-primary text-primary-foreground scale-105' : ''
+                    }`}
                     onClick={() => handleAnswer(option)}
+                    disabled={isTransitioning}
                   >
                     <span className="text-lg">{option}</span>
-                    <ArrowRight className="h-5 w-5 ml-auto" />
+                    {selectedAnswer === option ? (
+                      <CheckCircle className="h-5 w-5 ml-auto animate-pulse" />
+                    ) : (
+                      <ArrowRight className="h-5 w-5 ml-auto" />
+                    )}
                   </Button>
                 ))}
               </div>
             ) : (
               <div className="space-y-4">
                 <textarea
-                  className="w-full p-4 border rounded-lg resize-none text-lg"
+                  className={`w-full p-4 border rounded-lg resize-none text-lg transition-all duration-300 ${
+                    isTransitioning ? 'opacity-50' : 'opacity-100'
+                  }`}
                   rows={4}
                   placeholder="Describe tu respuesta con detalle..."
+                  disabled={isTransitioning}
                   onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
+                    if (e.key === 'Enter' && !e.shiftKey && !isTransitioning) {
                       e.preventDefault();
                       const value = (e.target as HTMLTextAreaElement).value.trim();
                       if (value) handleAnswer(value);
@@ -562,14 +660,24 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
                 />
                 <Button 
                   size="lg"
-                  className="w-full"
+                  className="w-full transition-all duration-300 transform hover:scale-105"
+                  disabled={isTransitioning}
                   onClick={() => {
                     const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
                     const value = textarea?.value.trim();
                     if (value) handleAnswer(value);
                   }}
                 >
-                  Continuar <ArrowRight className="h-5 w-5 ml-2" />
+                  {isTransitioning ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      Continuar <ArrowRight className="h-5 w-5 ml-2" />
+                    </>
+                  )}
                 </Button>
               </div>
             )}
