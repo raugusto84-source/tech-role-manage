@@ -331,21 +331,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     })();
 
 
-  // Si es cliente y la orden está pendiente de aprobación por modificaciones, mostrar aprobación de modificaciones
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && pendingModifications.length > 0) {
-    return (
-      <OrderModificationApproval
-        orderId={order.id}
-        clientName={order.clients?.name || ''}
-        onApprovalComplete={() => {
-          loadPendingModifications();
-          onUpdate();
-        }}
-      />
-    );
-  }
-
-  // Si es cliente y la orden está pendiente de aprobación inicial, mostrar aprobación de orden completa
+  // Si es cliente y la orden está pendiente de aprobación inicial, mostrar aprobación de orden completa (PRIORIDAD ALTA)
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !authorizationSignature) {
     return (
       <ClientOrderApproval
@@ -353,6 +339,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         onApprovalChange={() => {
           // Solo recargar datos, el trigger de DB se encarga del cambio de estado
           loadAuthorizationSignature();
+          onUpdate();
+        }}
+      />
+    );
+  }
+
+  // Si es cliente y la orden YA FUE APROBADA inicialmente pero tiene modificaciones pendientes
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && authorizationSignature && pendingModifications.length > 0) {
+    return (
+      <OrderModificationApproval
+        orderId={order.id}
+        clientName={order.clients?.name || ''}
+        onApprovalComplete={() => {
+          loadPendingModifications();
           onUpdate();
         }}
       />
