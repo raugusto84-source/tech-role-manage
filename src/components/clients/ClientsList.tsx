@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Mail, Phone, MapPin, Users } from 'lucide-react';
+import { Search, Plus, Mail, Phone, MapPin, Users, Gift, Star, Users as UsersIcon } from 'lucide-react';
 import { ClientForm } from '@/components/ClientForm';
 
 interface Client {
@@ -20,6 +20,13 @@ interface Client {
   orders_count?: number;
   quotes_count?: number;
   total_spent?: number;
+  // Recompensas
+  total_cashback?: number;
+  is_new_client?: boolean;
+  new_client_discount_used?: boolean;
+  referral_code?: string;
+  referral_count?: number;
+  active_rewards?: number;
 }
 
 /**
@@ -134,11 +141,67 @@ export function ClientsList() {
             quotes_count = quotesDataByEmail?.length || 0;
           }
 
+          // Cargar datos de recompensas si tiene client_id
+          let rewardsData = {
+            total_cashback: 0,
+            is_new_client: false,
+            new_client_discount_used: false,
+            referral_code: null,
+            referral_count: 0,
+            active_rewards: 0
+          };
+
+          if (client.client_id) {
+            // Datos de client_rewards
+            const { data: clientRewards } = await supabase
+              .from('client_rewards')
+              .select('total_cashback, is_new_client, new_client_discount_used')
+              .eq('client_id', client.client_id)
+              .single();
+
+            if (clientRewards) {
+              rewardsData.total_cashback = clientRewards.total_cashback || 0;
+              rewardsData.is_new_client = clientRewards.is_new_client || false;
+              rewardsData.new_client_discount_used = clientRewards.new_client_discount_used || false;
+            }
+
+            // Datos de referidos
+            const { data: referralData } = await supabase
+              .from('client_referrals')
+              .select('referral_code')
+              .eq('referrer_client_id', client.client_id)
+              .single();
+
+            if (referralData) {
+              rewardsData.referral_code = referralData.referral_code;
+            }
+
+            // Contar referidos activos
+            const { data: referredClients } = await supabase
+              .from('client_referrals')
+              .select('id')
+              .eq('referrer_client_id', client.client_id)
+              .eq('status', 'active');
+
+            rewardsData.referral_count = referredClients?.length || 0;
+
+            // Contar transacciones de recompensas activas (no expiradas)
+            const { data: activeTransactions } = await supabase
+              .from('reward_transactions')
+              .select('amount')
+              .eq('client_id', client.client_id)
+              .in('transaction_type', ['earned', 'referral_bonus'])
+              .or('expires_at.is.null,expires_at.gt.now()');
+
+            rewardsData.active_rewards = activeTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+          }
+
           return {
             ...client,
             orders_count,
             quotes_count,
-            total_spent: totalSpent
+            total_spent: totalSpent,
+            ...rewardsData
           };
         })
       );
@@ -215,13 +278,19 @@ export function ClientsList() {
         <div className="grid gap-4">
           {filteredClients.map((client) => (
             <Card key={client.user_id} className="p-4">
-              <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between">
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-lg">{client.full_name}</h3>
                     <Badge variant="outline">
                       Cliente desde {new Date(client.created_at).toLocaleDateString()}
                     </Badge>
+                    {client.is_new_client && !client.new_client_discount_used && (
+                      <Badge className="bg-green-100 text-green-800">
+                        <Gift className="h-3 w-3 mr-1" />
+                        Nuevo cliente
+                      </Badge>
+                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -238,9 +307,73 @@ export function ClientsList() {
                       </div>
                     )}
                   </div>
+
+                  {/* Sección de Recompensas */}
+                  {client.client_id && (
+                    <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border">
+                      <h4 className="font-medium text-sm text-purple-800 mb-2 flex items-center gap-1">
+                        <Gift className="h-4 w-4" />
+                        Programa de Recompensas
+                      </h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div className="text-center">
+                          <div className="font-bold text-green-600 text-lg">
+                            {formatCurrency(client.total_cashback || 0)}
+                          </div>
+                          <div className="text-green-700">Cashback Total</div>
+                        </div>
+                        
+                        <div className="text-center">
+                          <div className="font-bold text-blue-600 text-lg">
+                            {formatCurrency(client.active_rewards || 0)}
+                          </div>
+                          <div className="text-blue-700">Disponible</div>
+                        </div>
+                        
+                        <div className="text-center">
+                          <div className="font-bold text-orange-600 text-lg">
+                            {client.referral_count || 0}
+                          </div>
+                          <div className="text-orange-700">Referidos</div>
+                        </div>
+                        
+                        <div className="text-center">
+                          <div className="flex items-center justify-center">
+                            {client.referral_code ? (
+                              <Badge variant="outline" className="text-xs">
+                                {client.referral_code}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">Sin código</span>
+                            )}
+                          </div>
+                          <div className="text-gray-700">Cód. Referido</div>
+                        </div>
+                      </div>
+
+                      {/* Beneficios activos */}
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {client.is_new_client && !client.new_client_discount_used && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                            10% Descuento nuevo cliente
+                          </Badge>
+                        )}
+                        {(client.total_cashback || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                            Cashback 2% en servicios
+                          </Badge>
+                        )}
+                        {(client.referral_count || 0) > 0 && (
+                          <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                            Bono 5% por referidos
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 
-                <div className="flex flex-col items-end gap-2">
+                <div className="text-right space-y-2">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
                       <div className="text-lg font-bold text-primary">{client.quotes_count}</div>
