@@ -44,6 +44,8 @@ interface OrderDetailsProps {
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
+    client_approval?: boolean;
+    initial_signature_url?: string;
     service_types?: {
       name: string;
       description?: string;
@@ -332,13 +334,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
 
   // Si es cliente y la orden está pendiente de aprobación inicial, mostrar aprobación de orden completa (PRIORIDAD ALTA)
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !authorizationSignature) {
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !order.initial_signature_url) {
     return (
       <ClientOrderApproval
         order={order}
         onApprovalChange={() => {
           // Solo recargar datos, el trigger de DB se encarga del cambio de estado
-          loadAuthorizationSignature();
           onUpdate();
         }}
       />
@@ -346,7 +347,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   }
 
   // Si es cliente y la orden YA FUE APROBADA inicialmente pero tiene modificaciones pendientes
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && authorizationSignature && pendingModifications.length > 0) {
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && order.initial_signature_url && pendingModifications.length > 0) {
     return (
       <OrderModificationApproval
         orderId={order.id}
