@@ -106,7 +106,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           filter: `id=eq.${order.id}` 
         },
         (payload) => {
-          console.log('Order status changed via realtime:', payload);
+          // Realtime: actualizar estado en silencio
           if (payload.new.status !== orderStatus) {
             setOrderStatus(payload.new.status);
           }

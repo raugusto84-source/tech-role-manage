@@ -193,7 +193,7 @@ export default function Orders() {
           table: 'orders'
         },
         (payload) => {
-          console.log('Orders table changed:', payload);
+          // Realtime change recibido: recargar si aplica
           // Solo recargar órdenes cuando haya cambios importantes
           if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE' || 
               (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
