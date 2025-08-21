@@ -40,6 +40,7 @@ interface Order {
   evidence_photos?: string[];
   created_at: string;
   unread_messages_count?: number; // Nuevo campo para mensajes no leídos
+  estimated_delivery_date?: string | null;
   service_types?: {
     name: string;
     description?: string;
@@ -288,7 +289,12 @@ export default function Orders() {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
     return matchesSearch && matchesStatus;
-  }).sort((a, b) => new Date(a.delivery_date).getTime() - new Date(b.delivery_date).getTime()); // Ordenar por fecha de entrega
+  }).sort((a, b) => {
+    // Usar estimated_delivery_date si está disponible, sino delivery_date
+    const dateA = new Date(a.estimated_delivery_date || a.delivery_date);
+    const dateB = new Date(b.estimated_delivery_date || b.delivery_date);
+    return dateA.getTime() - dateB.getTime();
+  }); // Ordenar por fecha de entrega estimada
 
   // Función para calcular tiempo restante
   const getTimeRemaining = (deliveryDate: string) => {

@@ -21,6 +21,7 @@ interface OrderCardProps {
     assigned_technician?: string;
     created_at: string;
     unread_messages_count?: number; // Nuevo campo para mensajes no leídos
+    estimated_delivery_date?: string | null;
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
@@ -142,7 +143,11 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
           <div className="flex items-center">
             <Calendar className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
-            <span className="truncate">{formatDate(order.delivery_date)}</span>
+            <span className="truncate">
+              {order.estimated_delivery_date 
+                ? formatDate(order.estimated_delivery_date) 
+                : formatDate(order.delivery_date)}
+            </span>
           </div>
           
           {order.clients?.client_number && (
