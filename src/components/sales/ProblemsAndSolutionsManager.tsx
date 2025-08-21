@@ -280,6 +280,11 @@ export function ProblemsAndSolutionsManager() {
               <DialogTitle>
                 {problemForm.id ? 'Editar Problema' : 'Nuevo Problema'}
               </DialogTitle>
+              {problemForm.id && (
+                <p className="text-sm text-muted-foreground">
+                  Modifica el nombre y descripción del problema. Los cambios se aplicarán a todas las configuraciones existentes.
+                </p>
+              )}
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -330,7 +335,12 @@ export function ProblemsAndSolutionsManager() {
         {/* Lista de problemas */}
         <Card>
           <CardHeader>
-            <CardTitle>Problemas ({problems.length})</CardTitle>
+            <CardTitle className="flex items-center justify-between">
+              <span>Problemas ({problems.length})</span>
+              <span className="text-sm font-normal text-muted-foreground">
+                Haz clic para editar
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-96 overflow-auto">
             {problems.map((problem) => {
@@ -339,26 +349,35 @@ export function ProblemsAndSolutionsManager() {
               return (
                 <div
                   key={problem.id}
-                  className={`p-3 border rounded cursor-pointer transition-colors ${
-                    selectedProblemId === problem.id ? 'border-primary bg-primary/10' : 'border-muted'
+                  className={`group p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    selectedProblemId === problem.id 
+                      ? 'border-primary bg-primary/10 shadow-sm' 
+                      : 'border-muted hover:border-primary/50 hover:bg-muted/50'
                   }`}
                   onClick={() => setSelectedProblemId(problem.id)}
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <IconComponent className="h-4 w-4 text-primary" />
-                        <h4 className="font-medium">{problem.name}</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <IconComponent className="h-5 w-5 text-primary flex-shrink-0" />
+                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                          {problem.name}
+                        </h4>
                       </div>
-                      <Badge variant="outline" className="text-xs mt-1 w-fit">
+                      {problem.description && (
+                        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                          {problem.description}
+                        </p>
+                      )}
+                      <Badge variant="outline" className="text-xs w-fit">
                         {problem.category_name}
                       </Badge>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
                         onClick={(e) => {
                           e.stopPropagation();
                           setProblemForm({
@@ -369,7 +388,7 @@ export function ProblemsAndSolutionsManager() {
                           });
                           setShowProblemDialog(true);
                         }}
-                        title="Editar problema"
+                        title="Editar nombre y descripción del problema"
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
