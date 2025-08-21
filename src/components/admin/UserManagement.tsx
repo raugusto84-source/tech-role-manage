@@ -246,6 +246,50 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   };
 
   /**
+   * Elimina completamente al usuario (perfil + auth)
+   */
+  const handleDeleteUserFully = async (user: User) => {
+    try {
+      setLoading(true);
+
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        throw new Error('No hay sesión activa');
+      }
+
+      const response = await fetch('https://exunjybsermnxvrvyxnj.supabase.co/functions/v1/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.session.access_token}`,
+        },
+        body: JSON.stringify({ userId: user.user_id })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'No se pudo eliminar el usuario');
+      }
+
+      await loadUsers();
+      toast({
+        title: 'Usuario eliminado',
+        description: `Se eliminó ${user.full_name} (perfil y acceso)`
+      });
+
+    } catch (error: any) {
+      console.error('Error deleting user fully:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'No se pudo eliminar el usuario',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
    * Maneja el cambio de contraseña de un usuario
    */
    const handleChangePassword = async () => {
@@ -618,8 +662,8 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                                </AlertDialogHeader>
                                <AlertDialogFooter>
                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                 <AlertDialogAction onClick={() => handleDeleteUser(user.id)}>
-                                   Eliminar
+                                  <AlertDialogAction onClick={() => handleDeleteUserFully(user)}>
+                                    Eliminar
                                  </AlertDialogAction>
                                </AlertDialogFooter>
                              </AlertDialogContent>
