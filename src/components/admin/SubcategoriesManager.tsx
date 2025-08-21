@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -215,7 +215,7 @@ export function SubcategoriesManager() {
         <CardHeader>
           <CardTitle>Administrador de Subcategorías</CardTitle>
           <CardDescription>
-            Gestiona las subcategorías de servicios. Las subcategorías predefinidas no se pueden eliminar.
+            Gestiona las subcategorías de servicios. Puedes eliminar cualquier subcategoría; los servicios afectados quedarán sin subcategoría.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -248,11 +248,6 @@ export function SubcategoriesManager() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{subcategory.name}</span>
-                          {subcategory.isPredefined ? (
-                            <Badge variant="secondary">Predefinida</Badge>
-                          ) : (
-                            <Badge variant="outline">Personalizada</Badge>
-                          )}
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {subcategory.servicesCount} servicio{subcategory.servicesCount !== 1 ? 's' : ''}
@@ -266,45 +261,43 @@ export function SubcategoriesManager() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {!subcategory.isPredefined && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar subcategoría?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Estás a punto de eliminar la subcategoría "{subcategory.name}".
-                                {subcategory.servicesCount > 0 && (
-                                  <>
-                                    <br /><br />
-                                    <strong>Atención:</strong> Esta subcategoría está siendo usada por {subcategory.servicesCount} servicio{subcategory.servicesCount !== 1 ? 's' : ''}:
-                                    <ul className="list-disc list-inside mt-2">
-                                      {subcategory.services.map(service => (
-                                        <li key={service.id} className="text-sm">{service.name}</li>
-                                      ))}
-                                    </ul>
-                                    <br />
-                                    Estos servicios serán actualizados para no tener subcategoría específica.
-                                  </>
-                                )}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteSubcategory(subcategory)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar subcategoría?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Estás a punto de eliminar la subcategoría "{subcategory.name}".
+                              {subcategory.servicesCount > 0 && (
+                                <>
+                                  <br /><br />
+                                  <strong>Atención:</strong> Esta subcategoría está siendo usada por {subcategory.servicesCount} servicio{subcategory.servicesCount !== 1 ? 's' : ''}:
+                                  <ul className="list-disc list-inside mt-2">
+                                    {subcategory.services.map(service => (
+                                      <li key={service.id} className="text-sm">{service.name}</li>
+                                    ))}
+                                  </ul>
+                                  <br />
+                                  Estos servicios serán actualizados para no tener subcategoría específica.
+                                </>
+                              )}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteSubcategory(subcategory)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                   {index < subs.length - 1 && <Separator className="mt-3" />}
@@ -325,7 +318,7 @@ export function SubcategoriesManager() {
                 Para crear subcategorías, ve a <strong>Servicios &gt; Nuevo</strong> y especifica una subcategoría en el formulario de creación de servicios.
               </p>
               <p className="text-muted-foreground text-sm mt-2">
-                Las subcategorías personalizadas aparecerán aquí y podrás eliminarlas. Las subcategorías predefinidas no se pueden eliminar.
+                Todas las subcategorías que aparezcan aquí podrán eliminarse sin restricciones.
               </p>
             </div>
           </CardContent>
