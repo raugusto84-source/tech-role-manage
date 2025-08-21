@@ -4879,6 +4879,7 @@ export type Database = {
         | "en_camino"
         | "pendiente_aprobacion"
         | "pendiente_entrega"
+        | "pausa"
       quote_status:
         | "solicitud"
         | "enviada"
@@ -5086,6 +5087,7 @@ export const Constants = {
         "en_camino",
         "pendiente_aprobacion",
         "pendiente_entrega",
+        "pausa",
       ],
       quote_status: [
         "solicitud",

@@ -157,7 +157,7 @@ export function AddItemsToOrder({ orderId, onItemsAdded, onCancel }: AddItemsToO
             vat_amount: pricing.vat_amount,
             total_amount: pricing.total_amount,
             item_type: pricing.item_type,
-            status: 'pausa'
+            status: 'pausa' as any
           });
 
         if (error) throw error;

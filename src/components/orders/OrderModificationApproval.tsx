@@ -64,12 +64,12 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
       setOrderTotal(totalAmount);
 
       // Calculate items added before modifications (approved items)
-      const approvedItems = allItems.filter(item => item.status !== 'pausa');
+      const approvedItems = allItems.filter(item => item.status !== ('pausa' as any));
       const previousAmount = approvedItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
       setPreviousTotal(previousAmount);
 
       // Calculate new items in pause
-      const newItems = allItems.filter(item => item.status === 'pausa');
+      const newItems = allItems.filter(item => item.status === ('pausa' as any));
       const newAmount = newItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
       setNewItemsTotal(newAmount);
     }
@@ -104,7 +104,7 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
         .from('order_items')
         .delete()
         .eq('order_id', orderId)
-        .eq('status', 'pausa');
+        .eq('status', 'pausa' as any);
 
       if (deleteError) throw deleteError;
 
@@ -158,7 +158,7 @@ export function OrderModificationApproval({ orderId, clientName, onApprovalCompl
         .from('order_items')
         .update({ status: 'pendiente' })
         .eq('order_id', orderId)
-        .eq('status', 'pausa');
+        .eq('status', 'pausa' as any);
 
       if (itemsError) throw itemsError;
 
