@@ -108,46 +108,75 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         let finalUnitPrice = 0;
         let finalTotal = 0;
 
-        console.log(`Processing item ${item.service_name}:`, {
+        console.log(`🔍 Processing item ${item.service_name}:`, {
           stored_unit_base_price: item.unit_base_price,
           stored_total_amount: item.total_amount,
           item_type: item.item_type,
           service_type_item_type: item.service_types?.item_type,
           service_cost_price: item.service_types?.cost_price,
-          service_base_price: item.service_types?.base_price
+          service_base_price: item.service_types?.base_price,
+          service_type_id: item.service_type_id
         });
 
-        if (item.item_type === 'servicio' || item.service_types?.item_type === 'servicio') {
+        const isService = item.item_type === 'servicio' || item.service_types?.item_type === 'servicio';
+        
+        if (isService) {
           // SERVICIOS: Usar base_price (precio fijo)
           finalUnitPrice = item.unit_base_price || item.service_types?.base_price || 0;
           finalTotal = item.total_amount || (finalUnitPrice * item.quantity);
+          console.log(`💼 Service pricing for ${item.service_name}:`, { finalUnitPrice, finalTotal });
         } else {
-          // ARTÍCULOS: Si unit_base_price es 0, calcularlo usando cost_price + margen básico
-          if (item.unit_base_price > 0) {
+          // ARTÍCULOS: Prioridad de precios
+          console.log(`📦 Processing article ${item.service_name}`);
+          
+          if (item.unit_base_price && item.unit_base_price > 0) {
+            // Usar precio almacenado si existe y es válido
             finalUnitPrice = item.unit_base_price;
-            finalTotal = item.total_amount;
+            finalTotal = item.total_amount || (finalUnitPrice * item.quantity);
+            console.log(`✅ Using stored price:`, { finalUnitPrice, finalTotal });
           } else {
-            // Cálculo temporal usando cost_price + margen de 80% (como en los tiers)
+            // Calcular precio basado en cost_price
             const costPrice = item.service_types?.cost_price || 0;
-            const margin = 80; // Margen por defecto para artículos
-            finalUnitPrice = costPrice + (costPrice * margin / 100);
-            finalTotal = finalUnitPrice * item.quantity;
+            const basePrice = item.service_types?.base_price || 0;
             
-            console.log(`Calculated price for ${item.service_name}:`, {
-              cost_price: costPrice,
-              margin: margin,
-              calculated_unit_price: finalUnitPrice,
-              quantity: item.quantity,
-              calculated_total: finalTotal
-            });
+            if (costPrice > 0) {
+              // Usar cost_price + 80% margen
+              const margin = 80;
+              finalUnitPrice = costPrice * (1 + margin / 100);
+              finalTotal = finalUnitPrice * item.quantity;
+              console.log(`💰 Calculated from cost_price:`, {
+                cost_price: costPrice,
+                margin,
+                calculated_unit_price: finalUnitPrice,
+                calculated_total: finalTotal
+              });
+            } else if (basePrice > 0) {
+              // Usar base_price como fallback
+              finalUnitPrice = basePrice;
+              finalTotal = finalUnitPrice * item.quantity;
+              console.log(`🔄 Using base_price as fallback:`, { finalUnitPrice, finalTotal });
+            } else {
+              // Precio mínimo por defecto si no hay datos
+              finalUnitPrice = 50000; // 50,000 COP mínimo
+              finalTotal = finalUnitPrice * item.quantity;
+              console.log(`⚠️ Using minimum default price for ${item.service_name}:`, { finalUnitPrice, finalTotal });
+            }
           }
         }
 
-        return {
+        const result = {
           ...item,
           unit_base_price: finalUnitPrice,
           total_amount: finalTotal
         };
+
+        console.log(`✨ Final result for ${item.service_name}:`, {
+          unit_price: result.unit_base_price,
+          total: result.total_amount,
+          quantity: result.quantity
+        });
+
+        return result;
       }) || [];
       
       console.log('Processed items with correct prices:', processedItems);
