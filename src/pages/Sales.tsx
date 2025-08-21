@@ -14,7 +14,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Folder } from 'lucide-react';
+import { MainCategoriesManager } from '@/components/admin/MainCategoriesManager';
 
 const MAIN_CATEGORIES = [
   'Computadoras',
@@ -102,7 +103,7 @@ export default function Sales() {
   const { toast } = useToast();
   const { profile } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics' | 'categories'>('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -278,7 +279,7 @@ export default function Sales() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Servicios
@@ -286,6 +287,10 @@ export default function Sales() {
             <TabsTrigger value="form" className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {selectedService ? 'Editar' : 'Nuevo'}
+            </TabsTrigger>
+            <TabsTrigger value="categories" className="flex items-center gap-2">
+              <Folder className="h-4 w-4" />
+              Categorías
             </TabsTrigger>
             <TabsTrigger value="margins" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -510,6 +515,11 @@ export default function Sales() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* CATEGORÍAS */}
+          <TabsContent value="categories" className="space-y-6">
+            <MainCategoriesManager />
           </TabsContent>
 
           {/* MÁRGENES */}
