@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield } from 'lucide-react';
+import { TechnicianPhotoCapture } from './TechnicianPhotoCapture';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -679,6 +680,19 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                   )}
                 </CardContent>
               </Card>
+            )}
+
+            {/* Documentación del Técnico - Fotos con Ubicación */}
+            {profile?.role === 'tecnico' && order.assigned_technician === user?.id && (
+              <TechnicianPhotoCapture
+                orderId={order.id}
+                orderNumber={order.order_number}
+                onPhotosUpdate={onUpdate}
+                onStatusUpdate={(newStatus) => {
+                  setOrderStatus(newStatus as any);
+                  onUpdate();
+                }}
+              />
             )}
 
             {/* Garantías de Servicios */}
