@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,7 @@ interface ClientOrderApprovalProps {
 }
 
 export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderApprovalProps) {
+  const navigate = useNavigate();
   const [approving, setApproving] = useState(false);
   const [approvalNotes, setApprovalNotes] = useState("");
   const [showSignature, setShowSignature] = useState(false);
@@ -280,10 +282,10 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
         variant: "default"
       });
 
-      // Dar tiempo para que se muestre el toast antes de actualizar
+      // Redirigir directamente a la página de órdenes después de la aprobación exitosa
       setTimeout(() => {
-        onApprovalChange?.();
-      }, 2000);
+        navigate('/orders');
+      }, 1500);
     } catch (error) {
       console.error("Error approving order:", error);
       toast({
