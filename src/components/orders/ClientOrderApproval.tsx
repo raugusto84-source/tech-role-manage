@@ -180,14 +180,6 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
   const isPendingApproval = order.status === "pendiente_aprobacion";
   const isAlreadyApproved = order.client_approval;
 
-  console.log("ClientOrderApproval - Debug Info:", {
-    orderStatus: order.status,
-    isPendingApproval,
-    isAlreadyApproved,
-    clientApproval: order.client_approval,
-    orderId: order.id
-  });
-
   return (
     <div className="space-y-6">
       {/* Estado de la orden */}
