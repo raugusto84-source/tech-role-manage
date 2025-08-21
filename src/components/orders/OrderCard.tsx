@@ -18,6 +18,7 @@ interface OrderCardProps {
     estimated_cost?: number;
     average_service_time?: number;
     status: string;
+    initial_signature_url?: string | null;
     assigned_technician?: string;
     created_at: string;
     unread_messages_count?: number; // Nuevo campo para mensajes no leídos
@@ -74,10 +75,12 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     }
   };
 
+  const displayStatus = order.status === 'pendiente_aprobacion' && order.initial_signature_url ? 'pendiente' : order.status;
+
   return (
     <Card 
       className={`hover:shadow-md transition-all cursor-pointer border-l-4 compact-card ${
-        order.status === 'pendiente_aprobacion' 
+        displayStatus === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
       }`}
@@ -102,10 +105,10 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             )}
           </div>
           <div className="flex items-center gap-1">
-            <Badge className={`${getStatusColor(order.status)} text-xs`}>
-              {order.status === 'pendiente_aprobacion' 
+            <Badge className={`${getStatusColor(displayStatus)} text-xs`}>
+              {displayStatus === 'pendiente_aprobacion' 
                 ? 'PENDIENTE APROBACIÓN' 
-                : order.status.replace('_', ' ').toUpperCase()}
+                : displayStatus.replace('_', ' ').toUpperCase()}
             </Badge>
             {canDelete && (
               <Button
