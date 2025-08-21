@@ -439,7 +439,7 @@ export type Database = {
           id: string
           question_id: string
           question_text: string
-          service_type_id: string
+          service_type_id: string | null
           session_id: string
         }
         Insert: {
@@ -450,7 +450,7 @@ export type Database = {
           id?: string
           question_id: string
           question_text: string
-          service_type_id: string
+          service_type_id?: string | null
           session_id?: string
         }
         Update: {
@@ -461,7 +461,7 @@ export type Database = {
           id?: string
           question_id?: string
           question_text?: string
-          service_type_id?: string
+          service_type_id?: string | null
           session_id?: string
         }
         Relationships: [
