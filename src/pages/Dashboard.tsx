@@ -1,11 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
-import { TechnicianPresencePanel } from '@/components/timetracking/TechnicianPresencePanel';
-import { WeeklyTimeReport } from '@/components/timetracking/WeeklyTimeReport';
-import { RewardsAdminPanel } from '@/components/rewards/RewardsAdminPanel';
 
 /**
  * Dashboard principal personalizado por rol
@@ -103,6 +99,7 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {/* Solo el widget personal de control de horarios */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Widget de control de horarios - Solo para empleados */}
           {showTimeTracking && (
@@ -165,48 +162,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Paneles administrativos con tabs - Solo para administradores */}
-        {profile?.role === 'administrador' && (
-          <div className="lg:col-span-full">
-            <Tabs defaultValue="presence" className="w-full">
-               <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
-                 <TabsTrigger value="presence" className="text-xs md:text-sm">
-                   <span className="md:hidden">Presencia</span>
-                   <span className="hidden md:inline">Presencia Empleados</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="reports" className="text-xs md:text-sm">
-                   <span className="md:hidden">Reportes</span>
-                   <span className="hidden md:inline">Reportes de Tiempo</span>
-                 </TabsTrigger>
-                 <TabsTrigger value="rewards" className="text-xs md:text-sm">
-                   <span className="md:hidden">Recompensas</span>
-                   <span className="hidden md:inline">Sistema de Recompensas</span>
-                 </TabsTrigger>
-               </TabsList>
-              
-              <TabsContent value="presence">
-                <TechnicianPresencePanel />
-              </TabsContent>
-              
-              <TabsContent value="reports">
-                <WeeklyTimeReport />
-              </TabsContent>
-              
-              <TabsContent value="rewards">
-                <RewardsAdminPanel />
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-
-        {/* Sección de reportes semanales - Para supervisores */}
-        {profile?.role === 'supervisor' && (
-          <div className="lg:col-span-full">
-            <h2 className="text-2xl font-semibold mb-4">Reportes de Tiempo</h2>
-            <WeeklyTimeReport />
-          </div>
-        )}
       </div>
     </AppLayout>
   );

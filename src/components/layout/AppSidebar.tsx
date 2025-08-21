@@ -51,6 +51,7 @@ export function AppSidebar() {
         return [
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
+          { title: 'Clientes', url: '/clientes', icon: UserCheck },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
