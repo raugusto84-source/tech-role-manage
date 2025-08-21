@@ -1629,6 +1629,13 @@ export type Database = {
             foreignKeyName: "fk_order_notes_user_id"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "admin_employee_overview"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fk_order_notes_user_id"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
           },
@@ -1918,6 +1925,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pending_collections"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_support_technicians_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "admin_employee_overview"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "order_support_technicians_technician_id_fkey"
@@ -4289,9 +4303,11 @@ export type Database = {
           created_by: string | null
           employee_id: string
           end_time: string
+          hourly_rate: number | null
           id: string
           is_active: boolean
           monthly_salary: number | null
+          overtime_rate: number | null
           overtime_rate_multiplier: number | null
           shift_type: Database["public"]["Enums"]["shift_type"]
           start_time: string
@@ -4304,9 +4320,11 @@ export type Database = {
           created_by?: string | null
           employee_id: string
           end_time: string
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           monthly_salary?: number | null
+          overtime_rate?: number | null
           overtime_rate_multiplier?: number | null
           shift_type?: Database["public"]["Enums"]["shift_type"]
           start_time: string
@@ -4319,9 +4337,11 @@ export type Database = {
           created_by?: string | null
           employee_id?: string
           end_time?: string
+          hourly_rate?: number | null
           id?: string
           is_active?: boolean
           monthly_salary?: number | null
+          overtime_rate?: number | null
           overtime_rate_multiplier?: number | null
           shift_type?: Database["public"]["Enums"]["shift_type"]
           start_time?: string
@@ -4332,6 +4352,28 @@ export type Database = {
       }
     }
     Views: {
+      admin_employee_overview: {
+        Row: {
+          current_month_days: number | null
+          current_month_hours: number | null
+          current_status: string | null
+          current_week_days: number | null
+          current_week_hours: number | null
+          current_week_overtime: number | null
+          email: string | null
+          end_time: string | null
+          full_name: string | null
+          hourly_rate: number | null
+          last_check_in: string | null
+          last_check_out: string | null
+          overtime_rate: number | null
+          role: Database["public"]["Enums"]["user_role"] | null
+          start_time: string | null
+          user_id: string | null
+          work_days: number[] | null
+        }
+        Relationships: []
+      }
       pending_collections: {
         Row: {
           client_email: string | null
@@ -4406,6 +4448,23 @@ export type Database = {
       auto_assign_cleaning_tasks: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      calculate_employee_weekly_payroll: {
+        Args: {
+          p_employee_id: string
+          p_week_end: string
+          p_week_start: string
+        }
+        Returns: {
+          days_worked: number
+          employee_id: string
+          employee_name: string
+          overtime_hours: number
+          overtime_pay: number
+          regular_hours: number
+          regular_pay: number
+          total_pay: number
+        }[]
       }
       calculate_estimated_delivery_time: {
         Args: { p_order_id: string }
