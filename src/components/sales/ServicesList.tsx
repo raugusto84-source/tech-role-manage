@@ -241,24 +241,54 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
         </div>
 
         {/* Botones de Categoría Principal */}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant={mainCategory === 'all' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => { setMainCategory('all'); setSubCategory('all'); }}
-          >
-            Todas
-          </Button>
-          {MAIN_CATEGORIES.map((cat) => (
-            <Button
-              key={cat}
-              variant={mainCategory === cat ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setMainCategory(cat); setSubCategory('all'); }}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground">Categorías Principales</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+            <Card 
+              className={`cursor-pointer transition-all hover:shadow-md ${
+                mainCategory === 'all' 
+                  ? 'ring-2 ring-primary bg-primary/5 border-primary' 
+                  : 'hover:border-primary/50'
+              }`}
+              onClick={() => { setMainCategory('all'); setSubCategory('all'); }}
             >
-              {cat}
-            </Button>
-          ))}
+              <CardContent className="p-4 text-center">
+                <div className="flex flex-col items-center space-y-2">
+                  <Package className="h-8 w-8 text-primary" />
+                  <p className="text-sm font-medium">Todas</p>
+                  <p className="text-xs text-muted-foreground">
+                    {services.length} items
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            {categories.map((cat) => {
+              const categoryServices = services.filter(s => s.category === cat.name);
+              const IconComponent = getIconComponent(cat.icon);
+              return (
+                <Card
+                  key={cat.id}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    mainCategory === cat.name 
+                      ? 'ring-2 ring-primary bg-primary/5 border-primary' 
+                      : 'hover:border-primary/50'
+                  }`}
+                  onClick={() => { setMainCategory(cat.name as MainCategory); setSubCategory('all'); }}
+                >
+                  <CardContent className="p-4 text-center">
+                    <div className="flex flex-col items-center space-y-2">
+                      <IconComponent className="h-8 w-8 text-primary" />
+                      <p className="text-sm font-medium line-clamp-1">{cat.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {categoryServices.length} items
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         {/* Chips de Subcategoría (cuando hay categoría seleccionada) */}
