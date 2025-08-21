@@ -191,12 +191,12 @@ export function PayrollDashboard() {
       headers.join(','),
       ...payrollData.map(data => [
         `"${data.employee_name}"`,
-        data.regular_hours.toFixed(2),
-        data.overtime_hours.toFixed(2),
-        data.regular_pay.toFixed(2),
-        data.overtime_pay.toFixed(2),
-        data.total_pay.toFixed(2),
-        data.days_worked
+        (data.regular_hours || 0).toFixed(2),
+        (data.overtime_hours || 0).toFixed(2),
+        (data.regular_pay || 0).toFixed(2),
+        (data.overtime_pay || 0).toFixed(2),
+        (data.total_pay || 0).toFixed(2),
+        data.days_worked || 0
       ].join(','))
     ].join('\n');
 
@@ -240,9 +240,9 @@ export function PayrollDashboard() {
     return options;
   };
 
-  const totalPayroll = payrollData.reduce((sum, data) => sum + data.total_pay, 0);
-  const totalHours = payrollData.reduce((sum, data) => sum + (data.regular_hours + data.overtime_hours), 0);
-  const totalOvertime = payrollData.reduce((sum, data) => sum + data.overtime_hours, 0);
+  const totalPayroll = payrollData.reduce((sum, data) => sum + (data.total_pay || 0), 0);
+  const totalHours = payrollData.reduce((sum, data) => sum + ((data.regular_hours || 0) + (data.overtime_hours || 0)), 0);
+  const totalOvertime = payrollData.reduce((sum, data) => sum + (data.overtime_hours || 0), 0);
 
   return (
     <Card>
@@ -361,12 +361,12 @@ export function PayrollDashboard() {
                   <div>
                     <h4 className="font-semibold">{data.employee_name}</h4>
                     <div className="text-sm text-muted-foreground">
-                      {data.days_worked} días trabajados
+                      {data.days_worked || 0} días trabajados
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-green-600">
-                      ${data.total_pay.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      ${(data.total_pay || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </div>
                     <div className="text-sm text-muted-foreground">Total a pagar</div>
                   </div>
@@ -374,22 +374,22 @@ export function PayrollDashboard() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold">{data.regular_hours.toFixed(1)}</div>
+                    <div className="text-2xl font-bold">{(data.regular_hours || 0).toFixed(1)}</div>
                     <div className="text-sm text-muted-foreground">Horas Regulares</div>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">{data.overtime_hours.toFixed(1)}</div>
+                    <div className="text-2xl font-bold text-orange-600">{(data.overtime_hours || 0).toFixed(1)}</div>
                     <div className="text-sm text-muted-foreground">Horas Extra</div>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <div className="text-2xl font-bold">
-                      ${data.regular_pay.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      ${(data.regular_pay || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </div>
                     <div className="text-sm text-muted-foreground">Pago Regular</div>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
                     <div className="text-2xl font-bold text-orange-600">
-                      ${data.overtime_pay.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      ${(data.overtime_pay || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </div>
                     <div className="text-sm text-muted-foreground">Pago Extra</div>
                   </div>
