@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Pencil, Trash2, Search, Package, Clock } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -75,6 +76,7 @@ const marginFromTiers = (service: Service): number =>
 export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -85,6 +87,14 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
   const loadServices = async () => {
     try {
       setLoading(true);
+      
+      // Load categories first
+      const { data: categoriesData } = await supabase
+        .from('main_service_categories')
+        .select('*')
+        .eq('is_active', true);
+      setCategories(categoriesData || []);
+
       let query = supabase
         .from('service_types')
         .select('*')
@@ -156,6 +166,18 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
 
   const formatCurrency = (amount: number): string =>
     new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+
+  // Helper to get icon component from icon name
+  const getIconComponent = (iconName: string | null) => {
+    if (!iconName) return Package;
+    const IconComponent = (LucideIcons as any)[iconName];
+    return IconComponent || Package;
+  };
+
+  // Helper to get category data
+  const getCategoryData = (categoryName: string) => {
+    return categories.find(cat => cat.name === categoryName) || { name: categoryName, icon: null };
+  };
 
   useEffect(() => {
     loadServices();
@@ -318,7 +340,16 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                       <div className="flex justify-between items-center">
                         <div className="space-y-1">
                           <div className="flex gap-2">
-                            <Badge variant="outline" className="bg-blue-50">{service.category}</Badge>
+                            {(() => {
+                              const categoryData = getCategoryData(service.category);
+                              const IconComponent = getIconComponent(categoryData.icon);
+                              return (
+                                <Badge variant="outline" className="bg-blue-50 flex items-center gap-1">
+                                  <IconComponent className="h-3 w-3" />
+                                  {service.category}
+                                </Badge>
+                              );
+                            })()}
                             {/* Mostrar subcategoría si no es 'servicio'/'articulo' (compatibilidad con datos viejos) */}
                             {service.item_type && !['servicio', 'articulo'].includes(service.item_type) && (
                               <Badge variant="outline">{service.item_type}</Badge>
@@ -411,7 +442,16 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                           <div className="flex gap-2">
-                            <Badge variant="outline" className="bg-green-50">{service.category}</Badge>
+                            {(() => {
+                              const categoryData = getCategoryData(service.category);
+                              const IconComponent = getIconComponent(categoryData.icon);
+                              return (
+                                <Badge variant="outline" className="bg-green-50 flex items-center gap-1">
+                                  <IconComponent className="h-3 w-3" />
+                                  {service.category}
+                                </Badge>
+                              );
+                            })()}
                             {service.item_type && !['servicio', 'articulo'].includes(service.item_type) && (
                               <Badge variant="outline">{service.item_type}</Badge>
                             )}

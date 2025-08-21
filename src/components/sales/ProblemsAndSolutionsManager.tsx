@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Package } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -17,6 +18,7 @@ interface MainCategory {
   id: string;
   name: string;
   description?: string;
+  icon?: string;
 }
 
 interface Problem {
@@ -102,7 +104,7 @@ export function ProblemsAndSolutionsManager() {
         (supabase as any).from('main_service_categories').select('*').eq('is_active', true).order('name'),
         (supabase as any).from('problems').select(`
           *,
-          main_service_categories!problems_category_id_fkey(name)
+          main_service_categories!problems_category_id_fkey(name, icon)
         `).order('name'),
         (supabase as any).from('service_types').select('id, name').eq('is_active', true).order('name'),
       ]);
@@ -111,7 +113,8 @@ export function ProblemsAndSolutionsManager() {
       if (problemsRes.data) {
         setProblems(problemsRes.data.map((p: any) => ({
           ...p,
-          category_name: p.main_service_categories?.name || 'Sin categoría'
+          category_name: p.main_service_categories?.name || 'Sin categoría',
+          category_icon: p.main_service_categories?.icon || null
         })));
       }
       if (servicesRes.data) setServices(servicesRes.data);
@@ -236,6 +239,13 @@ export function ProblemsAndSolutionsManager() {
     }
   };
 
+  // Helper to get icon component from icon name
+  const getIconComponent = (iconName: string | null) => {
+    if (!iconName) return Package;
+    const IconComponent = (LucideIcons as any)[iconName];
+    return IconComponent || Package;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -316,9 +326,15 @@ export function ProblemsAndSolutionsManager() {
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <h4 className="font-medium">{problem.name}</h4>
-                    <Badge variant="outline" className="text-xs mt-1">
-                      {problem.category_name}
-                    </Badge>
+                    {(() => {
+                      const IconComponent = getIconComponent((problem as any).category_icon);
+                      return (
+                        <Badge variant="outline" className="text-xs mt-1 flex items-center gap-1 w-fit">
+                          <IconComponent className="h-3 w-3" />
+                          {problem.category_name}
+                        </Badge>
+                      );
+                    })()}
                   </div>
                   <div className="flex gap-1">
                     <Button
