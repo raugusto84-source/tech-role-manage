@@ -685,22 +685,54 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       if (orderError) throw orderError;
 
-      // Crear los items de la orden
-      const orderItemsData = orderItems.map(item => ({
-        order_id: orderResult.id,
-        service_type_id: item.service_type_id,
-        service_name: item.name,
-        service_description: item.description,
-        quantity: item.quantity,
-        unit_cost_price: item.unit_price,
-        unit_base_price: item.unit_price,
-        profit_margin_rate: 0,
-        subtotal: item.subtotal,
-        vat_rate: item.vat_rate,
-        vat_amount: item.vat_amount,
-        total_amount: item.total,
-        item_type: item.item_type
-      }));
+      // Crear los items de la orden con precios calculados correctamente
+      const orderItemsData = [];
+      
+      for (const item of orderItems) {
+        // Usar la función de Supabase para calcular precios correctos
+        const { data: pricingData, error: pricingError } = await supabase
+          .rpc('calculate_order_item_pricing', {
+            p_service_type_id: item.service_type_id,
+            p_quantity: item.quantity
+          });
+
+        if (pricingError) {
+          console.error('Error calculating pricing:', pricingError);
+          // Fallback a valores por defecto si hay error
+          orderItemsData.push({
+            order_id: orderResult.id,
+            service_type_id: item.service_type_id,
+            service_name: item.name,
+            service_description: item.description,
+            quantity: item.quantity,
+            unit_cost_price: 0,
+            unit_base_price: 0,
+            profit_margin_rate: 0,
+            subtotal: 0,
+            vat_rate: item.vat_rate || 0,
+            vat_amount: 0,
+            total_amount: 0,
+            item_type: item.item_type || 'servicio'
+          });
+        } else {
+          const pricing = pricingData[0];
+          orderItemsData.push({
+            order_id: orderResult.id,
+            service_type_id: item.service_type_id,
+            service_name: item.name,
+            service_description: item.description,
+            quantity: item.quantity,
+            unit_cost_price: pricing.unit_cost_price,
+            unit_base_price: pricing.unit_base_price,
+            profit_margin_rate: pricing.profit_margin_rate,
+            subtotal: pricing.subtotal,
+            vat_rate: pricing.vat_rate,
+            vat_amount: pricing.vat_amount,
+            total_amount: pricing.total_amount,
+            item_type: pricing.item_type
+          });
+        }
+      }
 
       const { error: itemsError } = await supabase
         .from('order_items')
