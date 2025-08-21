@@ -512,11 +512,11 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
             {/* Indicador de progreso visual */}
             <div className="mt-4">
               <Progress 
-                value={((currentStep + 1) / selectedFlow.flow_data.steps.length) * 100} 
+                value={(Object.keys(answers).length / selectedFlow.flow_data.steps.length) * 100} 
                 className="h-2"
               />
               <p className="text-xs text-muted-foreground mt-2">
-                Progreso: {Math.round(((currentStep + 1) / selectedFlow.flow_data.steps.length) * 100)}%
+                Progreso: {Math.round((Object.keys(answers).length / selectedFlow.flow_data.steps.length) * 100)}% completado
               </p>
             </div>
           </div>
