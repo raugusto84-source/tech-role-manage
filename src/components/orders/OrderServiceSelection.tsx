@@ -110,19 +110,71 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
     }).format(amount);
   };
 
-  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
+  const calculateDisplayPrice = async (service: ServiceType, quantity: number = 1): Promise<number> => {
     if (service.item_type === 'servicio') {
       // Para servicios, usar el precio base establecido
       return (service.base_price || 0) * quantity;
     } else {
-      // Para artículos, calcular costo + margen + IVA
-      const costPrice = service.cost_price || 0;
-      const margin = 0.30; // 30% margen por defecto
-      const basePrice = costPrice + (costPrice * margin);
-      const vatAmount = basePrice * (service.vat_rate / 100);
-      return (basePrice + vatAmount) * quantity;
+      // Para artículos, usar la función de Supabase para calcular correctamente
+      try {
+        const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
+          p_service_type_id: service.id,
+          p_quantity: quantity
+        });
+
+        if (error) throw error;
+        return data && data.length > 0 ? data[0].total_amount : 0;
+      } catch (error) {
+        console.error('Error calculating pricing:', error);
+        // Fallback calculation
+        const costPrice = service.cost_price || 0;
+        const margin = 0.30; // 30% margen por defecto
+        const basePrice = costPrice + (costPrice * margin);
+        const vatAmount = basePrice * (service.vat_rate / 100);
+        return (basePrice + vatAmount) * quantity;
+      }
     }
   };
+
+  // Estado para almacenar precios calculados
+  const [calculatedPrices, setCalculatedPrices] = useState<Record<string, number>>({});
+
+  // Función para obtener precio con cache
+  const getDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
+    const key = `${service.id}-${quantity}`;
+    return calculatedPrices[key] || 0;
+  };
+
+  // Calcular precios cuando cambian servicios o cantidades
+  useEffect(() => {
+    const calculateAllPrices = async () => {
+      const pricePromises = services.map(async (service) => {
+        const quantity = quantities[service.id] || 1;
+        const key = `${service.id}-${quantity}`;
+        
+        if (!calculatedPrices[key]) {
+          const price = await calculateDisplayPrice(service, quantity);
+          return { key, price };
+        }
+        return null;
+      });
+
+      const results = await Promise.all(pricePromises);
+      const newPrices = { ...calculatedPrices };
+      
+      results.forEach(result => {
+        if (result) {
+          newPrices[result.key] = result.price;
+        }
+      });
+
+      setCalculatedPrices(newPrices);
+    };
+
+    if (services.length > 0) {
+      calculateAllPrices();
+    }
+  }, [services, quantities]);
 
   const formatEstimatedTime = (hours: number | null) => {
     if (!hours) return 'No especificado';
@@ -275,7 +327,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                             <div className="flex items-center gap-1">
                               <Package className="h-4 w-4 text-green-600" />
                               <span className="font-medium text-green-600">
-                                Total: {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
+                                Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
                                 {service.item_type === 'articulo' && (
                                   <span className="text-xs text-muted-foreground ml-1">
                                     (inc. IVA {service.vat_rate}%)
@@ -284,7 +336,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                               </span>
                               {(quantities[service.id] || 1) > 1 && (
                                 <span className="text-xs text-muted-foreground">
-                                  ({formatCurrency(calculateDisplayPrice(service, 1))} c/u)
+                                  ({formatCurrency(getDisplayPrice(service, 1))} c/u)
                                 </span>
                               )}
                             </div>
@@ -385,7 +437,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                           <div className="flex items-center gap-1">
                             <Package className="h-4 w-4 text-green-600" />
                             <span className="font-medium text-green-600">
-                              Total: {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
+                              Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
                               {service.item_type === 'articulo' && (
                                 <span className="text-xs text-muted-foreground ml-1">
                                   (inc. IVA {service.vat_rate}%)
@@ -394,7 +446,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                             </span>
                             {(quantities[service.id] || 1) > 1 && (
                               <span className="text-xs text-muted-foreground">
-                                ({formatCurrency(calculateDisplayPrice(service, 1))} c/u)
+                                ({formatCurrency(getDisplayPrice(service, 1))} c/u)
                               </span>
                             )}
                           </div>
