@@ -1,14 +1,24 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, AlertCircle, FileText, Calendar, User, PenTool, RotateCcw } from "lucide-react";
+import { CheckCircle, AlertCircle, FileText, Calendar, User, PenTool, RotateCcw, Package } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import SignatureCanvas from "react-signature-canvas";
+
+interface OrderItem {
+  id: string;
+  service_name: string;
+  service_description?: string;
+  quantity: number;
+  unit_base_price: number;
+  total_amount: number;
+  status: string;
+}
 
 interface ClientOrderApprovalProps {
   order: {
@@ -42,8 +52,46 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
   const [showSignature, setShowSignature] = useState(false);
   const [signatureData, setSignatureData] = useState<string>("");
   const [hasStartedApproval, setHasStartedApproval] = useState(false);
+  const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const signatureRef = useRef<SignatureCanvas>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    loadOrderItems();
+  }, [order.id]);
+
+  const loadOrderItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select('id, service_name, service_description, quantity, unit_base_price, total_amount, status')
+        .eq('order_id', order.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (error) {
+      console.error('Error loading order items:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los artículos de la orden.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  const totalAmount = orderItems.reduce((sum, item) => sum + item.total_amount, 0);
 
   const handleSignatureConfirm = async () => {
     if (signatureRef.current?.isEmpty()) {
@@ -253,6 +301,48 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
             <p className="text-sm font-medium text-primary">{order.service_types?.name}</p>
             <p className="text-sm text-muted-foreground">{order.failure_description}</p>
           </div>
+
+          {/* Artículos de la orden */}
+          {orderItems.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                <h4 className="font-medium">Artículos incluidos en esta orden:</h4>
+              </div>
+              
+              <div className="space-y-2">
+                {orderItems.map((item) => (
+                  <Card key={item.id} className="border border-border/50">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h5 className="font-medium text-foreground">{item.service_name}</h5>
+                          {item.service_description && (
+                            <p className="text-sm text-muted-foreground mt-1">{item.service_description}</p>
+                          )}
+                          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <span>Cantidad: {item.quantity}</span>
+                            <span>Precio unitario: {formatCurrency(item.unit_base_price)}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-lg text-primary">{formatCurrency(item.total_amount)}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Total de la orden */}
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-medium">Total de la orden:</span>
+                  <span className="text-2xl font-bold text-primary">{formatCurrency(totalAmount)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Estado de aprobación */}
           {isPendingApproval && (
