@@ -149,7 +149,9 @@ export function EmployeeHistoryPanel() {
 
   const formatLocation = (location: any) => {
     if (!location) return 'No disponible';
-    return `${location.latitude?.toFixed(6)}, ${location.longitude?.toFixed(6)}`;
+    if (location.address) return location.address;
+    if (location.lat && location.lng) return `${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`;
+    return 'Ubicación no disponible';
   };
 
   const paginatedRecords = filteredRecords.slice(
