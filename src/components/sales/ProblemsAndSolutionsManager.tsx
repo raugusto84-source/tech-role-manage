@@ -41,6 +41,32 @@ interface ServiceType {
   name: string;
 }
 
+// Icon mapping
+const ICON_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  camera: Camera,
+  monitor: Monitor,
+  computer: Computer,
+  zap: Zap,
+  'shield-check': ShieldCheck,
+  key: Key,
+  home: Home,
+  wrench: Wrench,
+  settings: Settings,
+  package: Package,
+  'shield-alert': Package, // fallback
+  phone: Phone,
+  wifi: Wifi,
+  lock: Lock,
+  users: Users,
+  building: Building,
+  car: Car,
+};
+
+const getIconComponent = (iconName: string | null) => {
+  if (!iconName) return Package;
+  return ICON_COMPONENTS[iconName] || Package;
+};
+
 interface DiagnosticRule {
   id: string;
   conditions: any[];
@@ -238,33 +264,6 @@ export function ProblemsAndSolutionsManager() {
     }
   };
 
-  // Icon mapping - same as MainCategoriesManager
-  const ICON_COMPONENTS: Record<string, React.ComponentType<any>> = {
-    camera: Camera,
-    monitor: Monitor,
-    computer: Computer,
-    zap: Zap,
-    'shield-check': ShieldCheck,
-    key: Key,
-    home: Home,
-    wrench: Wrench,
-    settings: Settings,
-    package: Package,
-    'shield-alert': Package, // fallback
-    phone: Phone,
-    wifi: Wifi,
-    lock: Lock,
-    users: Users,
-    building: Building,
-    car: Car,
-  };
-
-  // Helper to get icon component from icon name
-  const getIconComponent = (iconName: string | null) => {
-    if (!iconName) return Package;
-    return ICON_COMPONENTS[iconName] || Package;
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -334,67 +333,74 @@ export function ProblemsAndSolutionsManager() {
             <CardTitle>Problemas ({problems.length})</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 max-h-96 overflow-auto">
-            {problems.map((problem) => (
-              <div
-                key={problem.id}
-                className={`p-3 border rounded cursor-pointer transition-colors ${
-                  selectedProblemId === problem.id ? 'border-primary bg-primary/10' : 'border-muted'
-                }`}
-                onClick={() => setSelectedProblemId(problem.id)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <h4 className="font-medium">{problem.name}</h4>
-                    <Badge variant="outline" className="text-xs mt-1 w-fit">
-                      {problem.category_name}
-                    </Badge>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProblemForm({
-                          id: problem.id,
-                          name: problem.name,
-                          description: problem.description || '',
-                          category_id: problem.category_id || '',
-                        });
-                        setShowProblemDialog(true);
-                      }}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>¿Eliminar problema?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta acción desactivará el problema "{problem.name}".
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteProblem(problem.id)}>
-                            Eliminar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+            {problems.map((problem) => {
+              const category = categories.find(cat => cat.id === problem.category_id);
+              const IconComponent = getIconComponent(category?.icon || null);
+              return (
+                <div
+                  key={problem.id}
+                  className={`p-3 border rounded cursor-pointer transition-colors ${
+                    selectedProblemId === problem.id ? 'border-primary bg-primary/10' : 'border-muted'
+                  }`}
+                  onClick={() => setSelectedProblemId(problem.id)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <IconComponent className="h-4 w-4 text-primary" />
+                        <h4 className="font-medium">{problem.name}</h4>
+                      </div>
+                      <Badge variant="outline" className="text-xs mt-1 w-fit">
+                        {problem.category_name}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProblemForm({
+                            id: problem.id,
+                            name: problem.name,
+                            description: problem.description || '',
+                            category_id: problem.category_id || '',
+                          });
+                          setShowProblemDialog(true);
+                        }}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Eliminar problema?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción desactivará el problema "{problem.name}".
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deleteProblem(problem.id)}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
 

@@ -343,19 +343,22 @@ export function MainCategoriesManager() {
               {categories.map((category) => {
                 const IconComponent = getIconComponent(category.icon || 'package');
                 return (
-                  <Card key={category.id} className="hover:shadow-md transition-shadow">
-                    <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-base">{category.name}</CardTitle>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={category.is_active ? "default" : "secondary"}>
-                                {category.is_active ? 'Activa' : 'Inactiva'}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                    </CardHeader>
+                   <Card key={category.id} className="hover:shadow-md transition-shadow">
+                     <CardHeader>
+                         <div className="flex items-start justify-between">
+                           <div className="flex items-center gap-3">
+                             <IconComponent className="h-6 w-6 text-primary" />
+                             <div>
+                               <CardTitle className="text-base">{category.name}</CardTitle>
+                               <div className="flex items-center gap-2 mt-1">
+                                 <Badge variant={category.is_active ? "default" : "secondary"}>
+                                   {category.is_active ? 'Activa' : 'Inactiva'}
+                                 </Badge>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                     </CardHeader>
                     <CardContent className="space-y-3">
                       {category.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
