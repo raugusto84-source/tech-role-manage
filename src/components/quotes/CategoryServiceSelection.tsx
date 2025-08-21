@@ -219,7 +219,10 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
   const calculateItemTotals = (baseItem: Omit<QuoteItem, 'total' | 'subtotal' | 'vat_amount' | 'withholding_amount' | 'taxes'>) => {
     const subtotal = baseItem.quantity * baseItem.unit_price;
     
-    // Calculate taxes based on selected global taxes
+    // Aplicar IVA automáticamente basándose en vat_rate del servicio
+    const vatAmount = subtotal * (baseItem.vat_rate / 100);
+    
+    // Calculate taxes based on selected global taxes (solo si hay impuestos adicionales seleccionados)
     const appliedTaxes: Tax[] = selectedTaxes.map(taxId => {
       const taxDef = globalTaxes.find(t => t.id === taxId);
       if (!taxDef) return null;
@@ -232,6 +235,17 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
         tax_amount: subtotal * (taxDef.tax_rate / 100)
       };
     }).filter(Boolean) as Tax[];
+
+    // Agregar el IVA base del servicio si no está ya incluido en los impuestos seleccionados
+    if (baseItem.vat_rate > 0 && !appliedTaxes.some(tax => tax.tax_type === 'iva')) {
+      appliedTaxes.push({
+        id: `iva-base-${Date.now()}`,
+        tax_type: 'iva',
+        tax_name: `IVA ${baseItem.vat_rate}%`,
+        tax_rate: baseItem.vat_rate,
+        tax_amount: vatAmount
+      });
+    }
 
     const totalIva = appliedTaxes
       .filter(tax => tax.tax_type === 'iva')
