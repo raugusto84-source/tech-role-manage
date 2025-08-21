@@ -49,10 +49,15 @@ export function SubcategoriesManager() {
       // Cargar servicios con sus subcategorías
       const { data: services } = await supabase
         .from('service_types')
-        .select('id, name, category, subcategory')
+        .select('id, name, category, subcategory, item_type')
         .eq('is_active', true);
 
-      if (!services) return;
+      console.log('Loaded services:', services); // Debug
+
+      if (!services) {
+        setSubcategories([]);
+        return;
+      }
 
       // Procesar subcategorías
       const subcategoryMap = new Map<string, {
@@ -61,23 +66,29 @@ export function SubcategoriesManager() {
         isPredefined: boolean;
       }>();
 
-      // Agregar subcategorías predefinidas
-      Object.entries(PREDEFINED_SUBCATEGORIES).forEach(([category, subs]) => {
-        subs.forEach(sub => {
-          const key = `${category}-${sub}`;
-          subcategoryMap.set(key, {
-            category,
-            services: [],
-            isPredefined: true
-          });
-        });
-      });
+      // NO agregar subcategorías predefinidas vacías por defecto
+      // Solo mostrar las que realmente se usan
 
       // Agregar subcategorías de servicios existentes
       services.forEach(service => {
+        let subcategoryName = '';
+        
+        // Priorizar el campo subcategory, pero también revisar item_type por compatibilidad
         if (service.subcategory && service.subcategory.trim()) {
-          const key = `${service.category}-${service.subcategory}`;
+          subcategoryName = service.subcategory.trim();
+        } else if (service.item_type && service.item_type.trim() && 
+                   service.item_type !== 'servicio' && service.item_type !== 'articulo') {
+          // Si item_type no es 'servicio' o 'articulo', podría ser una subcategoría legacy
+          subcategoryName = service.item_type.trim();
+        }
+
+        if (subcategoryName) {
+          const key = `${service.category}-${subcategoryName}`;
           const existing = subcategoryMap.get(key);
+          
+          // Determinar si es predefinida
+          const categoryPredefined = PREDEFINED_SUBCATEGORIES[service.category] || [];
+          const isPredefined = categoryPredefined.includes(subcategoryName);
           
           if (existing) {
             existing.services.push({
@@ -85,14 +96,13 @@ export function SubcategoriesManager() {
               name: service.name
             });
           } else {
-            // Subcategoría personalizada
             subcategoryMap.set(key, {
               category: service.category,
               services: [{
                 id: service.id,
                 name: service.name
               }],
-              isPredefined: false
+              isPredefined
             });
           }
         }
@@ -100,7 +110,9 @@ export function SubcategoriesManager() {
 
       // Convertir a array ordenado
       const subcategoriesArray: SubcategoryData[] = Array.from(subcategoryMap.entries()).map(([key, data]) => {
-        const subcategoryName = key.split('-').slice(1).join('-'); // En caso de que el nombre tenga guiones
+        // Mejorar el parsing del nombre de subcategoría
+        const parts = key.split('-');
+        const subcategoryName = parts.slice(1).join('-'); // Todo después del primer guión
         return {
           name: subcategoryName,
           category: data.category,
@@ -116,6 +128,7 @@ export function SubcategoriesManager() {
         return a.name.localeCompare(b.name);
       });
 
+      console.log('Processed subcategories:', subcategoriesArray); // Debug
       setSubcategories(subcategoriesArray);
     } catch (error) {
       console.error('Error loading subcategories:', error);
@@ -304,8 +317,17 @@ export function SubcategoriesManager() {
 
       {subcategories.length === 0 && (
         <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">No se encontraron subcategorías.</p>
+          <CardContent className="p-6 text-center space-y-4">
+            <Package className="h-12 w-12 mx-auto text-muted-foreground" />
+            <div>
+              <h3 className="text-lg font-medium">No hay subcategorías en uso</h3>
+              <p className="text-muted-foreground mt-2">
+                Para crear subcategorías, ve a <strong>Servicios &gt; Nuevo</strong> y especifica una subcategoría en el formulario de creación de servicios.
+              </p>
+              <p className="text-muted-foreground text-sm mt-2">
+                Las subcategorías personalizadas aparecerán aquí y podrás eliminarlas. Las subcategorías predefinidas no se pueden eliminar.
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
