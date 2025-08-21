@@ -111,11 +111,13 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
     }).format(amount);
   };
 
-  // Función para calcular el precio correcto de un servicio/artículo
+  // Función para calcular el precio correcto de un servicio/artículo (incluye IVA)
   const calculateDisplayPrice = (service: any): number => {
+    let basePrice = 0;
+    
     if (service.item_type === 'servicio') {
       // SERVICIOS: Usar base_price (precio fijo)
-      return service.base_price || 0;
+      basePrice = service.base_price || 0;
     } else {
       // ARTÍCULOS: Calcular precio usando cost_price + margen
       const costPrice = service.cost_price || 0;
@@ -126,13 +128,18 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
           1 <= (t.max_qty || 999)
         );
         const margin = tier?.margin || 80; // Default margin
-        return costPrice * (1 + margin / 100);
+        basePrice = costPrice * (1 + margin / 100);
       } else if (service.base_price && service.base_price > 0) {
         // Fallback a base_price si no hay cost_price
-        return service.base_price;
+        basePrice = service.base_price;
       }
     }
-    return 0;
+    
+    // Agregar IVA al precio final
+    const vatRate = service.vat_rate || 16;
+    const finalPrice = basePrice * (1 + vatRate / 100);
+    
+    return finalPrice;
   };
 
   const formatEstimatedTime = (hours: number | null) => {
