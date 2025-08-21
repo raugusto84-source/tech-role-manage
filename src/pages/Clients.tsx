@@ -1,10 +1,11 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, FileText, ShoppingCart, Gift } from 'lucide-react';
+import { Users, FileText, ShoppingCart, Gift, Shield } from 'lucide-react';
 import { ClientsList } from '@/components/clients/ClientsList';
 import { ClientQuotesHistory } from '@/components/clients/ClientQuotesHistory';
 import { ClientServicesHistory } from '@/components/clients/ClientServicesHistory';
 import { RewardsAdminPanel } from '@/components/rewards/RewardsAdminPanel';
+import { WarrantyManager } from '@/components/warranty/WarrantyManager';
 
 /**
  * Página de gestión integral de clientes
@@ -24,7 +25,7 @@ export default function Clients() {
         </div>
 
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="clients" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Clientes
@@ -40,6 +41,10 @@ export default function Clients() {
             <TabsTrigger value="rewards" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
               Recompensas
+            </TabsTrigger>
+            <TabsTrigger value="warranties" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Garantías
             </TabsTrigger>
           </TabsList>
 
@@ -57,6 +62,10 @@ export default function Clients() {
 
           <TabsContent value="rewards" className="space-y-6">
             <RewardsAdminPanel />
+          </TabsContent>
+
+          <TabsContent value="warranties" className="space-y-6">
+            <WarrantyManager />
           </TabsContent>
         </Tabs>
       </div>

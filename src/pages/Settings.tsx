@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseAdminPanel } from '@/components/admin/DatabaseAdminPanel';
-import { WarrantyManager } from '@/components/warranty/WarrantyManager';
 import { Database, Settings as SettingsIcon, Shield, Users } from 'lucide-react';
 
 export default function Settings() {
@@ -20,14 +19,10 @@ export default function Settings() {
           </div>
 
           <Tabs defaultValue="database" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="database" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
                 Base de Datos
-              </TabsTrigger>
-              <TabsTrigger value="warranties" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Garantías
               </TabsTrigger>
               <TabsTrigger value="general" className="flex items-center gap-2">
                 <SettingsIcon className="h-4 w-4" />
@@ -45,10 +40,6 @@ export default function Settings() {
 
             <TabsContent value="database" className="space-y-6">
               <DatabaseAdminPanel />
-            </TabsContent>
-
-            <TabsContent value="warranties" className="space-y-6">
-              <WarrantyManager />
             </TabsContent>
 
             <TabsContent value="general" className="space-y-6">
