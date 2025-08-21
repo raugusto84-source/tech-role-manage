@@ -110,6 +110,20 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
     }).format(amount);
   };
 
+  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
+    if (service.item_type === 'servicio') {
+      // Para servicios, usar el precio base establecido
+      return (service.base_price || 0) * quantity;
+    } else {
+      // Para artículos, calcular costo + margen + IVA
+      const costPrice = service.cost_price || 0;
+      const margin = 0.30; // 30% margen por defecto
+      const basePrice = costPrice + (costPrice * margin);
+      const vatAmount = basePrice * (service.vat_rate / 100);
+      return (basePrice + vatAmount) * quantity;
+    }
+  };
+
   const formatEstimatedTime = (hours: number | null) => {
     if (!hours) return 'No especificado';
     
@@ -261,7 +275,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                             <div className="flex items-center gap-1">
                               <Package className="h-4 w-4 text-green-600" />
                               <span className="font-medium text-green-600">
-                                {formatCurrency(service.base_price || 0)}
+                                {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
+                                {service.item_type === 'articulo' && (
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    (inc. IVA {service.vat_rate}%)
+                                  </span>
+                                )}
                               </span>
                             </div>
                             
@@ -361,7 +380,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
                           <div className="flex items-center gap-1">
                             <Package className="h-4 w-4 text-green-600" />
                             <span className="font-medium text-green-600">
-                              {formatCurrency(service.base_price || 0)}
+                              {formatCurrency(calculateDisplayPrice(service, quantities[service.id] || 1))}
+                              {service.item_type === 'articulo' && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  (inc. IVA {service.vat_rate}%)
+                                </span>
+                              )}
                             </span>
                           </div>
                           
