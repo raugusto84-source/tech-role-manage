@@ -283,7 +283,7 @@ export function ClientsList() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold text-lg">{client.full_name}</h3>
                     <Badge variant="outline">
-                      Cliente desde {new Date(client.created_at).toLocaleDateString()}
+                      Cliente desde {client.created_at ? new Date(client.created_at).toLocaleDateString() : 'Fecha no disponible'}
                     </Badge>
                     {client.is_new_client && !client.new_client_discount_used && (
                       <Badge className="bg-green-100 text-green-800">
