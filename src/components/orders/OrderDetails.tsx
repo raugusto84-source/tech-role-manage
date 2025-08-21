@@ -345,14 +345,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     );
   }
 
-  // Si es cliente y la orden está pendiente de aprobación inicial, mostrar el componente de firma de autorización
+  // Si es cliente y la orden está pendiente de aprobación inicial, mostrar aprobación de orden completa
   if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !authorizationSignature) {
     return (
-      <AuthorizationSignature
-        orderId={order.id}
-        orderNumber={order.order_number}
-        clientName={order.clients?.name || ''}
-        onSignatureComplete={() => {
+      <ClientOrderApproval
+        order={order}
+        onApprovalChange={() => {
           // Solo recargar datos, el trigger de DB se encarga del cambio de estado
           loadAuthorizationSignature();
           onUpdate();
