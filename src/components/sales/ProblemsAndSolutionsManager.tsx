@@ -199,6 +199,24 @@ export function ProblemsAndSolutionsManager() {
     }
   };
 
+  const handleEditProblem = (problem: Problem) => {
+    console.log('Editando problema:', problem);
+    
+    // Toast temporal para debugging
+    toast({ 
+      title: 'Debug', 
+      description: `Intentando editar: ${problem.name}` 
+    });
+    
+    setProblemForm({
+      id: problem.id,
+      name: problem.name,
+      description: problem.description || '',
+      category_id: problem.category_id || '',
+    });
+    setShowProblemDialog(true);
+  };
+
   const saveQuestion = async () => {
     try {
       const data = {
@@ -360,22 +378,16 @@ export function ProblemsAndSolutionsManager() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <IconComponent className="h-5 w-5 text-primary flex-shrink-0" />
-                        <h4 
-                          className="font-semibold text-foreground group-hover:text-primary transition-colors truncate cursor-text hover:underline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProblemForm({
-                              id: problem.id,
-                              name: problem.name,
-                              description: problem.description || '',
-                              category_id: problem.category_id || '',
-                            });
-                            setShowProblemDialog(true);
-                          }}
-                          title="Haz clic para editar el nombre del problema"
-                        >
-                          {problem.name}
-                        </h4>
+                         <h4 
+                           className="font-semibold text-foreground group-hover:text-primary transition-colors truncate cursor-pointer hover:underline"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             handleEditProblem(problem);
+                           }}
+                           title="Haz clic para editar el nombre del problema"
+                         >
+                           {problem.name}
+                         </h4>
                       </div>
                       {problem.description && (
                         <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
@@ -387,24 +399,18 @@ export function ProblemsAndSolutionsManager() {
                       </Badge>
                     </div>
                     <div className="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProblemForm({
-                            id: problem.id,
-                            name: problem.name,
-                            description: problem.description || '',
-                            category_id: problem.category_id || '',
-                          });
-                          setShowProblemDialog(true);
-                        }}
-                        title="Editar nombre y descripción del problema"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
+                       <Button
+                         size="sm"
+                         variant="outline"
+                         className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           handleEditProblem(problem);
+                         }}
+                         title="Editar nombre y descripción del problema"
+                       >
+                         <Edit className="h-3 w-3" />
+                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
