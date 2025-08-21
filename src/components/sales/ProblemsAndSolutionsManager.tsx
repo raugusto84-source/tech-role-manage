@@ -200,9 +200,6 @@ export function ProblemsAndSolutionsManager() {
   };
 
   const handleEditProblem = (problem: Problem) => {
-    // Debugging más simple
-    alert(`Editando: ${problem.name}`);
-    
     setProblemForm({
       id: problem.id,
       name: problem.name,
@@ -374,22 +371,21 @@ export function ProblemsAndSolutionsManager() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <IconComponent className="h-5 w-5 text-primary flex-shrink-0" />
-                        <button 
-                          className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-left p-1 hover:bg-muted rounded"
-                          onClick={() => {
-                            alert(`Intentando editar: ${problem.name}`);
-                            setProblemForm({
-                              id: problem.id,
-                              name: problem.name,
-                              description: problem.description || '',
-                              category_id: problem.category_id || '',
-                            });
-                            setShowProblemDialog(true);
-                          }}
-                          type="button"
-                        >
-                          {problem.name}
-                        </button>
+                         <button 
+                           className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-left p-1 hover:bg-muted rounded"
+                           onClick={() => {
+                             setProblemForm({
+                               id: problem.id,
+                               name: problem.name,
+                               description: problem.description || '',
+                               category_id: problem.category_id || '',
+                             });
+                             setShowProblemDialog(true);
+                           }}
+                           type="button"
+                         >
+                           {problem.name}
+                         </button>
                       </div>
                       {problem.description && (
                         <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
@@ -472,6 +468,12 @@ export function ProblemsAndSolutionsManager() {
                         <DialogTitle>
                           {questionForm.id ? 'Editar Pregunta' : 'Nueva Pregunta'}
                         </DialogTitle>
+                        <DialogDescription>
+                          {questionForm.id 
+                            ? 'Modifica la pregunta de diagnóstico existente.'
+                            : 'Crea una nueva pregunta para el diagnóstico de este problema.'
+                          }
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
@@ -553,6 +555,12 @@ export function ProblemsAndSolutionsManager() {
                         <DialogTitle>
                           {ruleForm.id ? 'Editar Regla' : 'Nueva Regla de Solución'}
                         </DialogTitle>
+                        <DialogDescription>
+                          {ruleForm.id 
+                            ? 'Modifica la regla de solución existente.'
+                            : 'Crea una nueva regla que defina qué servicios recomendar basándose en las respuestas del diagnóstico.'
+                          }
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
