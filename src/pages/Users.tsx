@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { SkillsManager } from '@/components/technicians/SkillsManager';
-
+import { AdminEmployeePanel } from '@/components/admin/AdminEmployeePanel';
 import { WorkSchedulePanel } from '@/components/admin/WorkSchedulePanel';
 import { UserRanking } from '@/components/admin/UserRanking';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,10 +49,14 @@ export default function Users() {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="users" className="flex items-center gap-2">
               <UsersIcon className="h-4 w-4" />
               Usuarios
+            </TabsTrigger>
+            <TabsTrigger value="employee-panel" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Panel Empleados
             </TabsTrigger>
             <TabsTrigger value="ranking" className="flex items-center gap-2">
               <Trophy className="h-4 w-4" />
@@ -81,6 +85,11 @@ export default function Users() {
                 <UserManagement onUserSelect={handleUserSelect} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Panel administrativo completo de empleados */}
+          <TabsContent value="employee-panel" className="space-y-6">
+            <AdminEmployeePanel />
           </TabsContent>
 
           {/* Panel de rankings */}
