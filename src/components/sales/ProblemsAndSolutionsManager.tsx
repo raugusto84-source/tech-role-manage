@@ -357,7 +357,8 @@ export function ProblemsAndSolutionsManager() {
                     <div className="flex gap-1">
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
+                        className="h-8 w-8 p-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           setProblemForm({
@@ -368,6 +369,7 @@ export function ProblemsAndSolutionsManager() {
                           });
                           setShowProblemDialog(true);
                         }}
+                        title="Editar problema"
                       >
                         <Edit className="h-3 w-3" />
                       </Button>
@@ -375,8 +377,10 @@ export function ProblemsAndSolutionsManager() {
                         <AlertDialogTrigger asChild>
                           <Button
                             size="sm"
-                            variant="ghost"
+                            variant="outline"
+                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive hover:text-destructive-foreground"
                             onClick={(e) => e.stopPropagation()}
+                            title="Eliminar problema"
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
