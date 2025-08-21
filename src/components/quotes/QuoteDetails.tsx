@@ -27,6 +27,7 @@ interface QuoteItem {
   withholding_type: string;
   total: number;
   is_custom: boolean;
+  image_url?: string | null;
   taxes?: any[];
 }
 
@@ -78,17 +79,25 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   useEffect(() => {
     const loadQuoteDetails = async () => {
       try {
-        // Load quote items
+        // Load quote items with service type images
         const { data: items, error: itemsError } = await supabase
           .from('quote_items')
-          .select('*')
+          .select(`
+            *,
+            service_types!left(image_url)
+          `)
           .eq('quote_id', quote.id)
           .order('created_at', { ascending: true });
 
         if (itemsError) {
           console.error('Error loading quote items:', itemsError);
         } else {
-          setQuoteItems(items || []);
+          // Map the items to include image_url from service_types
+          const mappedItems = (items || []).map(item => ({
+            ...item,
+            image_url: item.service_types?.image_url || null
+          }));
+          setQuoteItems(mappedItems);
         }
 
         // Load salesperson information
@@ -364,28 +373,48 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             <CardContent>
               {quoteItems.length > 0 ? (
                 <div className="space-y-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Artículo/Servicio</TableHead>
-                        <TableHead className="text-center">Cantidad</TableHead>
-                        <TableHead className="text-right">Precio Unitario</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead className="text-right">Impuestos</TableHead>
-                        <TableHead className="text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {quoteItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Imagen</TableHead>
+                          <TableHead>Artículo/Servicio</TableHead>
+                          <TableHead className="text-center">Cantidad</TableHead>
+                          <TableHead className="text-right">Precio Unitario</TableHead>
+                          <TableHead className="text-right">Subtotal</TableHead>
+                          <TableHead className="text-right">Impuestos</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {quoteItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="w-20">
+                              {item.image_url ? (
+                                <div className="w-16 h-16">
+                                  <img 
+                                    src={item.image_url} 
+                                    alt={item.name}
+                                    className="w-full h-full object-cover rounded-md border"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.style.display = 'none';
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
+                                  <Package className="h-6 w-6 text-gray-400" />
+                                </div>
                               )}
-                            </div>
-                          </TableCell>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{item.name}</p>
+                                {item.description && (
+                                  <p className="text-sm text-muted-foreground">{item.description}</p>
+                                )}
+                              </div>
+                            </TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
