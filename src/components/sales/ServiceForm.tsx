@@ -10,11 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown, Calculator, Upload, ImageIcon, X } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 /** ============================
@@ -62,6 +61,8 @@ const serviceSchema = z.object({
   is_active: z.boolean(),
   warranty_duration_days: z.number().min(0, 'Los días de garantía deben ser 0 o más'),
   warranty_conditions: z.string().optional(),
+  image_url: z.string().optional(),
+  stock_quantity: z.number().min(0, 'La cantidad en stock debe ser mayor o igual a 0'),
 }).refine(data => data.max_quantity >= data.min_quantity, {
   message: 'La cantidad máxima debe ser mayor o igual a la mínima',
   path: ['max_quantity'],
@@ -78,6 +79,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const [loading, setLoading] = useState(false);
   const [marginConfigs, setMarginConfigs] = useState<any[]>([]);
   const [autoMargin, setAutoMargin] = useState<number | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -99,6 +102,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       is_active: true,
       warranty_duration_days: 0,
       warranty_conditions: '',
+      image_url: '',
+      stock_quantity: 0,
     },
   });
 
@@ -164,13 +169,67 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         is_active: data.is_active,
         warranty_duration_days: data.warranty_duration_days || 0,
         warranty_conditions: data.warranty_conditions || '',
+        image_url: data.image_url || '',
+        stock_quantity: data.stock_quantity || 0,
       });
+
+      // Cargar imagen si existe
+      if (data.image_url) {
+        setImagePreview(data.image_url);
+      }
     } catch (error) {
       console.error('Error loading service:', error);
-      toast({ title: "Error", description: "Error inesperado al cargar el servicio.", variant: "destructive" });
+      toast({ title: "Error", description: "Error inesperado al cargar el servicio.", variant: "descriptive" });
     } finally {
       setLoading(false);
     }
+  };
+
+  /** Upload de imagen */
+  const uploadImage = async (file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `service-${Date.now()}.${fileExt}`;
+    const filePath = fileName;
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('service-images')
+        .upload(filePath, file);
+
+      if (error) {
+        console.error('Error uploading image:', error);
+        toast({
+          title: "Error",
+          description: 'Error al subir la imagen: ' + error.message,
+          variant: "destructive"
+        });
+        return null;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('service-images')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    const imageUrl = await uploadImage(file);
+    if (imageUrl) {
+      form.setValue('image_url', imageUrl);
+      setImagePreview(imageUrl);
+    }
+    setUploadingImage(false);
+  };
+
+  const removeImage = () => {
+    form.setValue('image_url', '');
+    setImagePreview(null);
   };
 
   /** Preview de precio */
@@ -208,6 +267,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         is_active: values.is_active,
         warranty_duration_days: values.warranty_duration_days,
         warranty_conditions: values.warranty_conditions || 'Sin garantía específica',
+        image_url: values.image_url || null,
+        stock_quantity: values.stock_quantity,
       };
 
       if (serviceId) {
@@ -453,7 +514,69 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                 )}
               />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Campo de imagen opcional */}
+              <FormField
+                control={form.control}
+                name="image_url"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Imagen del Producto/Servicio (Opcional)</FormLabel>
+                    <FormControl>
+                      <div className="space-y-4">
+                        {imagePreview ? (
+                          <div className="relative inline-block">
+                            <img 
+                              src={imagePreview} 
+                              alt="Preview del servicio/artículo"
+                              className="w-32 h-32 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                              onClick={removeImage}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              id="image-upload"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleImageUpload(file);
+                                }
+                              }}
+                              disabled={uploadingImage}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => document.getElementById('image-upload')?.click()}
+                              disabled={uploadingImage}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              {uploadingImage ? 'Subiendo...' : 'Subir Imagen'}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      Agrega una imagen para mostrar el producto o servicio (formato: JPG, PNG)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <FormField
                   control={form.control}
                   name="unit"
@@ -475,6 +598,29 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           <SelectItem value="licencia">Licencia</SelectItem>
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="stock_quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cantidad en Stock</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {watchedKind === 'servicio' ? 'Para servicios, indica disponibilidad general' : 'Cantidad disponible en inventario'}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
