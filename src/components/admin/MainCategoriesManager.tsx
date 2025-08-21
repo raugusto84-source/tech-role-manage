@@ -276,11 +276,11 @@ export function MainCategoriesManager() {
                           type="button"
                           variant={form.icon === iconName ? "default" : "outline"}
                           size="sm"
-                          className="flex items-center gap-1"
+                          className="p-2"
                           onClick={() => setForm(prev => ({ ...prev, icon: iconName }))}
+                          title={iconName}
                         >
-                          <IconComponent className="h-3 w-3" />
-                          <span className="text-xs">{iconName}</span>
+                          <IconComponent className="h-4 w-4" />
                         </Button>
                       );
                     })}
