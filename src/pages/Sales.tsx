@@ -85,6 +85,19 @@ const getDisplayPrice = (service: Service): number => {
 const formatCurrency = (amount: number): string =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
+// Normaliza la categoría seleccionada a los posibles valores del campo service_types.category
+const categoryFilterValues = (name: string): string[] => {
+  const n = name.toLowerCase();
+  if (n.includes('servicio')) return ['Servicio Técnico', 'general', 'mantenimiento'];
+  if (n.includes('cámara') || n.includes('camaras') || n.includes('cámaras')) return ['Cámaras de Seguridad', 'Camaras de Seguridad'];
+  if (n.includes('computadora')) return ['Computadoras', 'Computadora'];
+  if (n.includes('cerca')) return ['Cercas Eléctricas', 'Cercas Electricas'];
+  if (n.includes('control de acceso')) return ['Control de Acceso'];
+  if (n.includes('fraccion')) return ['Fraccionamientos'];
+  if (n.includes('alarma')) return ['Alarmas'];
+  return [name];
+};
+
 export default function Sales() {
   const { toast } = useToast();
   const { profile } = useAuth();
@@ -99,27 +112,33 @@ export default function Sales() {
 
   // Mapa de iconos por nombre (si existen en service_categories)
   const [iconByName, setIconByName] = useState<Record<string, string>>({});
+  const [mainCategories, setMainCategories] = useState<string[]>([]);
 
   // Ítems cargados para la categoría principal (o todo si null)
   const [services, setServices] = useState<Service[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
 
-  // Cargar iconos de categorías (opcional)
+  // Cargar categorías principales e iconos desde main_service_categories
   useEffect(() => {
     let mounted = true;
     (async () => {
       const { data, error } = await supabase
-        .from('service_categories')
-        .select('name, icon');
+        .from('main_service_categories')
+        .select('name, icon, is_active')
+        .order('name', { ascending: true });
       if (!mounted) return;
       if (error) {
         // silencioso; usamos fallback
         return;
       }
+      const names: string[] = [];
       const map: Record<string, string> = {};
-      (data ?? []).forEach((c: { name: string; icon: string | null }) => {
-        if (c.name && c.icon) map[c.name] = c.icon;
+      (data ?? []).forEach((c: { name: string; icon: string | null; is_active: boolean }) => {
+        if (!c?.name) return;
+        if (c.is_active) names.push(c.name);
+        if (c.icon) map[c.name] = c.icon;
       });
+      setMainCategories(names);
       setIconByName(map);
     })();
     return () => {
@@ -139,7 +158,12 @@ export default function Sales() {
         .order('name', { ascending: true });
 
       if (activeMainCategory) {
-        query = query.eq('category', activeMainCategory);
+        const vals = categoryFilterValues(activeMainCategory);
+        if (vals.length === 1) {
+          query = query.eq('category', vals[0]);
+        } else {
+          query = query.in('category', vals);
+        }
       }
 
       const { data, error } = await query;
@@ -297,7 +321,7 @@ export default function Sales() {
                     ☆ Todas
                   </Button>
 
-                  {MAIN_CATEGORIES.map((name) => (
+                  {mainCategories.map((name) => (
                     <Button
                       key={name}
                       type="button"
