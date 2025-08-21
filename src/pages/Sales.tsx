@@ -45,19 +45,43 @@ const SERVICES_TABLE = 'service_types' as const;
 
 // Campos a leer (incluye subcategory e item_type para compatibilidad)
 const SERVICE_SELECT =
-  'id, name, description, base_price, unit, vat_rate, category, item_type, subcategory';
+  'id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type, subcategory';
 
 type Service = {
   id: string;
   name: string;
   description?: string | null;
   base_price?: number | null;
+  cost_price?: number | null;
+  profit_margin_tiers?: any;
   unit?: string | null;
   vat_rate?: number | null;
   category?: string | null;
   item_type?: string | null; // tipo ('servicio' | 'articulo') o legado
   subcategory?: string | null; // nueva subcategoría
 };
+
+// Funciones auxiliares para calcular precios
+const isProduct = (service: Service) => {
+  const hasTiers = Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0;
+  return hasTiers || service.item_type === 'articulo';
+};
+
+const marginFromTiers = (service: Service): number =>
+  (service.profit_margin_tiers?.[0]?.margin ?? 30);
+
+const getDisplayPrice = (service: Service): number => {
+  if (!isProduct(service)) {
+    return (service.base_price || 0) * (1 + (service.vat_rate || 0) / 100);
+  } else {
+    const profitMargin = marginFromTiers(service);
+    const priceWithMargin = (service.cost_price || 0) * (1 + profitMargin / 100);
+    return priceWithMargin * (1 + (service.vat_rate || 0) / 100);
+  }
+};
+
+const formatCurrency = (amount: number): string =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
 export default function Sales() {
   const { toast } = useToast();
@@ -388,7 +412,7 @@ export default function Sales() {
                           )}
                           <div className="flex items-center justify-between">
                             <div className="text-xl font-bold">
-                              {typeof svc.base_price === 'number' ? `$${svc.base_price.toFixed(2)}` : '—'}
+                              {formatCurrency(getDisplayPrice(svc))}
                               {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
                             </div>
                             <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>

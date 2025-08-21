@@ -50,10 +50,35 @@ interface ServiceType {
   name: string;
   description?: string;
   base_price?: number;
+  cost_price?: number;
+  profit_margin_tiers?: any;
   unit?: string;
   vat_rate?: number;
   category?: string;
+  item_type?: string;
 }
+
+// Funciones auxiliares para calcular precios
+const isProduct = (service: ServiceType) => {
+  const hasTiers = Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0;
+  return hasTiers || service.item_type === 'articulo';
+};
+
+const marginFromTiers = (service: ServiceType): number =>
+  (service.profit_margin_tiers?.[0]?.margin ?? 30);
+
+const getDisplayPrice = (service: ServiceType): number => {
+  if (!isProduct(service)) {
+    return (service.base_price || 0) * (1 + (service.vat_rate || 0) / 100);
+  } else {
+    const profitMargin = marginFromTiers(service);
+    const priceWithMargin = (service.cost_price || 0) * (1 + profitMargin / 100);
+    return priceWithMargin * (1 + (service.vat_rate || 0) / 100);
+  }
+};
+
+const formatCurrency = (amount: number): string =>
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
 
 interface SimpleDiagnosticFlowProps {
   onDiagnosisComplete?: (result: {
@@ -206,7 +231,7 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
     if (selectedSolution.recommended_services.length > 0) {
       const { data: services } = await supabase
         .from('service_types')
-        .select('id, name, description, base_price, unit, vat_rate, category')
+        .select('id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type')
         .in('id', selectedSolution.recommended_services)
         .eq('is_active', true);
       
@@ -404,19 +429,17 @@ export function SimpleDiagnosticFlow({ onDiagnosisComplete }: SimpleDiagnosticFl
                           )}
                         </div>
                         <div className="text-right ml-4">
-                          {service.base_price && (
-                            <div className="font-bold text-lg">
-                              ${service.base_price.toFixed(2)}
-                              {service.unit && (
-                                <span className="text-sm text-muted-foreground ml-1">
-                                  /{service.unit}
-                                </span>
-                              )}
-                            </div>
-                          )}
+                          <div className="font-bold text-lg">
+                            {formatCurrency(getDisplayPrice(service))}
+                            {service.unit && (
+                              <span className="text-sm text-muted-foreground ml-1">
+                                /{service.unit}
+                              </span>
+                            )}
+                          </div>
                           {service.vat_rate && (
                             <div className="text-xs text-muted-foreground">
-                              +{service.vat_rate}% IVA
+                              (incluye IVA {service.vat_rate}%)
                             </div>
                           )}
                         </div>
