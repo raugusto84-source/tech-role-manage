@@ -92,7 +92,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     defaultValues: {
       name: '',
       description: '',
-      main_category: 'Computadoras',
+      main_category: '',
       subcategory: '',
       kind: 'servicio',
       cost_price: 0,
@@ -118,19 +118,13 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const watchedVatRate = form.watch('vat_rate');
   const watchedMainCategory = form.watch('main_category');
 
-  /** Si la categoría principal cambia, proponemos la primera subcategoría disponible */
+  /** Si la categoría principal cambia, limpiar subcategoría */
   useEffect(() => {
-    const subs = dynamicSubcategories[watchedMainCategory as MainCategory] || [];
-    const current = form.getValues('subcategory');
-    if (subs.length > 0 && !subs.includes(current)) {
-      form.setValue('subcategory', subs[0]);
-    }
-    if (subs.length === 0 && current === '') {
-      // sin catálogo predefinido, dejar editable
+    if (watchedMainCategory) {
       form.setValue('subcategory', '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedMainCategory, dynamicSubcategories]);
+  }, [watchedMainCategory]);
 
   /** Carga datos para edición */
   const loadServiceData = async () => {
@@ -251,8 +245,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     setShowNewSubcategoryDialog(false);
     
     toast({
-      title: "Subcategoría agregada",
-      description: `"${newSubcategoryName.trim()}" ha sido agregada a ${mainCategory}`,
+      title: "Subcategoría agregada temporalmente",
+      description: `"${newSubcategoryName.trim()}" se guardará cuando guardes el servicio`,
     });
   };
 
@@ -430,12 +424,12 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Categoría Principal *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecciona categoría" />
-                          </SelectTrigger>
-                        </FormControl>
+                       <Select onValueChange={field.onChange} value={field.value}>
+                         <FormControl>
+                           <SelectTrigger>
+                             <SelectValue placeholder="Selecciona una categoría" />
+                           </SelectTrigger>
+                         </FormControl>
                         <SelectContent>
                           {MAIN_CATEGORIES.map((c) => (
                             <SelectItem key={c} value={c}>{c}</SelectItem>
