@@ -338,7 +338,7 @@ export function ProblemsAndSolutionsManager() {
             <CardTitle className="flex items-center justify-between">
               <span>Problemas ({problems.length})</span>
               <span className="text-sm font-normal text-muted-foreground">
-                Haz clic para editar
+                Clic en título o botón para editar
               </span>
             </CardTitle>
           </CardHeader>
@@ -360,7 +360,20 @@ export function ProblemsAndSolutionsManager() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
                         <IconComponent className="h-5 w-5 text-primary flex-shrink-0" />
-                        <h4 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                        <h4 
+                          className="font-semibold text-foreground group-hover:text-primary transition-colors truncate cursor-text hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProblemForm({
+                              id: problem.id,
+                              name: problem.name,
+                              description: problem.description || '',
+                              category_id: problem.category_id || '',
+                            });
+                            setShowProblemDialog(true);
+                          }}
+                          title="Haz clic para editar el nombre del problema"
+                        >
                           {problem.name}
                         </h4>
                       </div>
