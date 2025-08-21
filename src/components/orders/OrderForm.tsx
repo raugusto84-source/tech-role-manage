@@ -312,6 +312,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
+  const calculateCorrectPricing = async (serviceTypeId: string, quantity: number) => {
+    try {
+      const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
+        p_service_type_id: serviceTypeId,
+        p_quantity: quantity
+      });
+
+      if (error) throw error;
+
+      return data && data.length > 0 ? data[0] : null;
+    } catch (error) {
+      console.error('Error calculating pricing:', error);
+      return null;
+    }
+  };
+
   const handleServiceAdd = async (service: ServiceType, quantity: number = 1) => {
     // Verificar si el servicio ya existe
     const existingItemIndex = orderItems.findIndex(item => item.service_type_id === service.id);
@@ -322,19 +338,30 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       updatedItems = [...orderItems];
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
-      const subtotal = newQuantity * existingItem.unit_price;
-      const vatAmount = subtotal * 0.16; // Fixed 16% VAT
-      const total = subtotal + vatAmount;
-      // Calcular horas por unidad basándose en el servicio original, no en las horas ya calculadas
+      
+      // Recalcular precios con la nueva cantidad
+      const pricing = await calculateCorrectPricing(service.id, newQuantity);
+      if (!pricing) {
+        toast({
+          title: "Error",
+          description: "No se pudo calcular el precio del servicio",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Calcular horas por unidad basándose en el servicio original
       const hoursPerUnit = (service.estimated_hours || 0);
       const totalEstimatedHours = newQuantity * hoursPerUnit;
       
       updatedItems[existingItemIndex] = {
         ...existingItem,
         quantity: newQuantity,
-        subtotal,
-        vat_amount: vatAmount,
-        total,
+        unit_price: pricing.unit_base_price,
+        subtotal: pricing.subtotal,
+        vat_rate: pricing.vat_rate,
+        vat_amount: pricing.vat_amount,
+        total: pricing.total_amount,
         estimated_hours: totalEstimatedHours
       };
       
@@ -343,11 +370,17 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         description: `Se aumentó la cantidad de ${service.name} a ${newQuantity}`,
       });
     } else {
-      // Agregar nuevo item
-      const subtotal = quantity * (service.base_price || 0);
-      const vatRate = 16; // Fixed 16% VAT for all orders
-      const vatAmount = subtotal * (vatRate / 100);
-      const total = subtotal + vatAmount;
+      // Agregar nuevo item - calcular precios correctos
+      const pricing = await calculateCorrectPricing(service.id, quantity);
+      if (!pricing) {
+        toast({
+          title: "Error",
+          description: "No se pudo calcular el precio del servicio",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const estimatedHours = quantity * (service.estimated_hours || 0);
       
       const newItem: OrderItem = {
@@ -356,15 +389,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         name: service.name,
         description: service.description || '',
         quantity,
-        unit_price: service.base_price || 0,
+        unit_price: pricing.unit_base_price,
         estimated_hours: estimatedHours,
-        subtotal,
-        vat_rate: vatRate,
-        vat_amount: vatAmount,
-        total,
+        subtotal: pricing.subtotal,
+        vat_rate: pricing.vat_rate,
+        vat_amount: pricing.vat_amount,
+        total: pricing.total_amount,
         item_type: service.item_type,
-        shared_time: (service as any).shared_time || false, // Usar valor del servicio
-        status: 'pendiente' // Estado inicial
+        shared_time: (service as any).shared_time || false,
+        status: 'pendiente'
       };
       
       updatedItems = [...orderItems, newItem];
