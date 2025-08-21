@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Calculator } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { WarrantyConfigForm } from '@/components/warranty/WarrantyConfigForm';
 
 /** ============================
  *  CATEGORÍAS / SUBCATEGORÍAS
@@ -48,7 +47,7 @@ const serviceSchema = z.object({
   main_category: z.string().min(1, 'Selecciona una categoría'),
   subcategory: z.string().min(1, 'Selecciona o escribe una subcategoría'),
   kind: z.enum(['servicio', 'articulo'], { required_error: 'Selecciona el tipo' }), // ← reemplaza al antiguo item_type
-  cost_price: z.number().min(0, 'El precio de costo debe ser mayor a 0'),
+  cost_price: z.number().min(0, 'El precio de costo debe ser mayor o igual a 0'),
   base_price: z.number().min(0, 'El precio fijo debe ser mayor a 0'),
   profit_margin: z.number().min(0).max(1000, 'El margen debe estar entre 0 y 1000%'),
   vat_rate: z.number().min(0).max(100, 'El IVA debe estar entre 0 y 100%'),
@@ -58,6 +57,8 @@ const serviceSchema = z.object({
   estimated_hours: z.number().min(0, 'Las horas estimadas deben ser 0 o más'),
   shared_time: z.boolean().default(false),
   is_active: z.boolean(),
+  warranty_duration_days: z.number().min(0, 'Los días de garantía deben ser 0 o más'),
+  warranty_conditions: z.string().optional(),
 }).refine(data => data.max_quantity >= data.min_quantity, {
   message: 'La cantidad máxima debe ser mayor o igual a la mínima',
   path: ['max_quantity'],
@@ -93,6 +94,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       estimated_hours: 0,
       shared_time: false,
       is_active: true,
+      warranty_duration_days: 0,
+      warranty_conditions: '',
     },
   });
 
@@ -156,6 +159,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         estimated_hours: data.estimated_hours || 0,
         shared_time: (data as any).shared_time || false,
         is_active: data.is_active,
+        warranty_duration_days: data.warranty_duration_days || 0,
+        warranty_conditions: data.warranty_conditions || '',
       });
     } catch (error) {
       console.error('Error loading service:', error);
@@ -170,7 +175,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     if (watchedKind === 'servicio') {
       return watchedBasePrice * (1 + watchedVatRate / 100);
     } else {
-      const priceWithMargin = watchedBasePrice * (1 + watchedProfitMargin / 100);
+      const priceWithMargin = watchedCostPrice * (1 + watchedProfitMargin / 100);
       return priceWithMargin * (1 + watchedVatRate / 100);
     }
   };
@@ -198,6 +203,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         estimated_hours: values.estimated_hours,
         shared_time: values.shared_time,
         is_active: values.is_active,
+        warranty_duration_days: values.warranty_duration_days,
+        warranty_conditions: values.warranty_conditions || 'Sin garantía específica',
       };
 
       if (serviceId) {
@@ -488,6 +495,48 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   )}
                 />
               </div>
+
+              {/* Garantía */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="warranty_duration_days"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Duración de Garantía (días)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          {...field}
+                          onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>Días de garantía para este servicio/artículo</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="warranty_conditions"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Condiciones de Garantía</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Condiciones específicas..."
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>Términos y condiciones de la garantía</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -510,7 +559,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           <Input
                             type="number"
                             min="0"
-                            step="100"
+                            step="1"
                             {...field}
                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                           />
@@ -524,20 +573,20 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="base_price"
+                      name="cost_price"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Precio Base * (COP)</FormLabel>
+                          <FormLabel>Costo Base * (COP)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               min="0"
-                              step="100"
+                              step="1"
                               {...field}
                               onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
-                          <FormDescription>Precio base del artículo (sin margen ni IVA)</FormDescription>
+                          <FormDescription>Costo base del artículo (sin margen ni IVA)</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -644,7 +693,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           </Card>
 
           {/* Preview de precios */}
-          {watchedBasePrice > 0 && (
+          {(watchedKind === 'servicio' ? watchedBasePrice : watchedCostPrice) > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -657,18 +706,18 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Precio Base:</span>
-                      <span>{formatCurrency(watchedBasePrice)}</span>
+                      <span>{watchedKind === 'servicio' ? 'Precio Base:' : 'Costo Base:'}</span>
+                      <span>{formatCurrency(watchedKind === 'servicio' ? watchedBasePrice : watchedCostPrice)}</span>
                     </div>
                     {watchedKind === 'articulo' && (
                       <div className="flex justify-between text-green-600">
                         <span>+ Margen ({watchedProfitMargin}%):</span>
-                        <span>{formatCurrency(watchedBasePrice * watchedProfitMargin / 100)}</span>
+                        <span>{formatCurrency(watchedCostPrice * watchedProfitMargin / 100)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-blue-600">
                       <span>+ IVA ({watchedVatRate}%):</span>
-                      <span>{formatCurrency((watchedKind === 'articulo' ? watchedBasePrice * (1 + watchedProfitMargin / 100) : watchedBasePrice) * watchedVatRate / 100)}</span>
+                      <span>{formatCurrency((watchedKind === 'articulo' ? watchedCostPrice * (1 + watchedProfitMargin / 100) : watchedBasePrice) * watchedVatRate / 100)}</span>
                     </div>
                     <hr />
                     <div className="flex justify-between text-lg font-bold text-green-600">
@@ -681,15 +730,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
             </Card>
           )}
 
-          {/* Garantía */}
-          {serviceId && (
-            <WarrantyConfigForm
-              serviceTypeId={serviceId}
-              onSave={() => {
-                toast({ title: "Éxito", description: "Configuración de garantía actualizada" });
-              }}
-            />
-          )}
+          {/* Garantía - removed separate component */}
 
           {/* Acciones */}
           <div className="flex justify-end gap-4">
