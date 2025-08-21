@@ -184,8 +184,8 @@ export function SimpleSatisfactionSurvey({ orderId, clientId, onComplete }: Simp
             />
           </div>
 
-          {/* Botón de envío */}
-          <div className="pt-4">
+          {/* Botones de acción */}
+          <div className="pt-4 space-y-3">
             <Button
               onClick={handleSubmit}
               disabled={loading || !isFormValid()}
@@ -203,6 +203,16 @@ export function SimpleSatisfactionSurvey({ orderId, clientId, onComplete }: Simp
                   Enviar Encuesta
                 </>
               )}
+            </Button>
+            
+            <Button
+              onClick={onComplete}
+              disabled={loading}
+              variant="outline"
+              className="w-full"
+              size="lg"
+            >
+              Omitir Encuesta
             </Button>
           </div>
 
