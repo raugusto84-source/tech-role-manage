@@ -62,7 +62,7 @@ const serviceSchema = z.object({
   warranty_duration_days: z.number().min(0, 'Los días de garantía deben ser 0 o más'),
   warranty_conditions: z.string().optional(),
   image_url: z.string().optional(),
-  stock_quantity: z.number().min(0, 'La cantidad en stock debe ser mayor o igual a 0'),
+  stock_quantity: z.number().min(0, 'La cantidad debe ser mayor o igual a 0'),
 }).refine(data => data.max_quantity >= data.min_quantity, {
   message: 'La cantidad máxima debe ser mayor o igual a la mínima',
   path: ['max_quantity'],
@@ -103,7 +103,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       warranty_duration_days: 0,
       warranty_conditions: '',
       image_url: '',
-      stock_quantity: 0,
+      stock_quantity: 1,
     },
   });
 
@@ -170,7 +170,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         warranty_duration_days: data.warranty_duration_days || 0,
         warranty_conditions: data.warranty_conditions || '',
         image_url: (data as any).image_url || '',
-        stock_quantity: (data as any).stock_quantity || 0,
+        stock_quantity: (data as any).stock_quantity || 1,
       });
 
       // Cargar imagen si existe
@@ -608,18 +608,18 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   name="stock_quantity"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Cantidad en Stock</FormLabel>
+                      <FormLabel>Cantidad Sugerida</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          min="0"
+                          min="1"
                           step="1"
                           {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                         />
                       </FormControl>
                       <FormDescription>
-                        {watchedKind === 'servicio' ? 'Para servicios, indica disponibilidad general' : 'Cantidad disponible en inventario'}
+                        Cantidad por defecto que se sugiere al agregar este {watchedKind} a una orden
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
