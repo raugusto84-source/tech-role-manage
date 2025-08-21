@@ -18,6 +18,12 @@ interface OrderItem {
   unit_base_price: number;
   total_amount: number;
   status: string;
+  item_type?: string;
+  service_types?: {
+    base_price: number;
+    cost_price: number;
+    item_type: string;
+  };
 }
 
 interface ClientOrderApprovalProps {
@@ -66,7 +72,22 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
       console.log('Loading order items for order:', order.id);
       const { data, error } = await supabase
         .from('order_items')
-        .select('id, service_name, service_description, quantity, unit_base_price, total_amount, status')
+        .select(`
+          id, 
+          service_name, 
+          service_description, 
+          quantity, 
+          unit_base_price, 
+          unit_cost_price,
+          total_amount, 
+          status,
+          item_type,
+          service_types!inner(
+            base_price,
+            cost_price,
+            item_type
+          )
+        `)
         .eq('order_id', order.id)
         .order('created_at', { ascending: true });
 
@@ -76,7 +97,17 @@ export function ClientOrderApproval({ order, onApprovalChange }: ClientOrderAppr
       }
       
       console.log('Order items loaded:', data);
-      setOrderItems(data || []);
+      
+      // Procesar los items para asegurar que tengan precios correctos
+      const processedItems = data?.map(item => ({
+        ...item,
+        // Usar el precio base del item o del service_type como fallback
+        unit_base_price: item.unit_base_price || item.service_types?.base_price || item.service_types?.cost_price || 0,
+        total_amount: item.total_amount || (item.quantity * (item.unit_base_price || item.service_types?.base_price || item.service_types?.cost_price || 0))
+      })) || [];
+      
+      console.log('Processed items with prices:', processedItems);
+      setOrderItems(processedItems);
     } catch (error) {
       console.error('Error loading order items:', error);
       toast({
