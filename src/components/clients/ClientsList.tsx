@@ -10,13 +10,13 @@ import { Search, Plus, Mail, Phone, MapPin, Users } from 'lucide-react';
 import { ClientForm } from '@/components/ClientForm';
 
 interface Client {
-  id: string;
-  name: string;
+  user_id: string;
+  client_id: string | null;
+  full_name: string;
   email: string;
   phone: string;
-  address: string;
-  whatsapp?: string;
   created_at: string;
+  type: 'profile' | 'client';
   orders_count?: number;
   quotes_count?: number;
   total_spent?: number;
@@ -41,33 +41,103 @@ export function ClientsList() {
     try {
       setLoading(true);
       
-      // Cargar clientes con estadísticas
-      const { data: clientsData, error } = await supabase
+      // Cargar usuarios registrados con rol de cliente
+      const { data: profileClients, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone, created_at')
+        .eq('role', 'cliente');
+
+      if (profileError) throw profileError;
+
+      // Cargar clientes de la tabla clients que tienen user_id (vinculados)
+      const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select(`
-          *,
-          orders:orders(count),
-          quotes:quotes(count)
-        `)
-        .order('created_at', { ascending: false });
+        .select('id, user_id, name, email, phone, address, created_at')
+        .not('user_id', 'is', null);
 
-      if (error) throw error;
+      if (clientsError) throw clientsError;
 
-        // Calcular total gastado por cliente
-        const clientsWithStats = await Promise.all(
-          (clientsData || []).map(async (client) => {
-          const { data: ordersData } = await supabase
-            .from('orders')
-            .select('estimated_cost')
-            .eq('client_id', client.id)
-            .eq('status', 'finalizada');
+      // Combinar ambos tipos de clientes y evitar duplicados
+      const allClients = [];
+      
+      // Agregar usuarios con rol cliente
+      for (const profile of profileClients || []) {
+        const client = {
+          user_id: profile.user_id,
+          client_id: null,
+          full_name: profile.full_name,
+          email: profile.email,
+          phone: profile.phone,
+          created_at: profile.created_at,
+          type: 'profile'
+        };
+        allClients.push(client);
+      }
+      
+      // Agregar clientes de tabla clients (solo si no están ya en profiles)
+      for (const client of clientsData || []) {
+        const existingProfile = profileClients?.find(p => p.user_id === client.user_id);
+        if (!existingProfile) {
+          allClients.push({
+            user_id: client.user_id,
+            client_id: client.id,
+            full_name: client.name,
+            email: client.email,
+            phone: client.phone,
+            created_at: client.created_at,
+            type: 'client'
+          });
+        } else {
+          // Actualizar con client_id si existe
+          const existingClient = allClients.find(c => c.user_id === client.user_id);
+          if (existingClient) {
+            existingClient.client_id = client.id;
+          }
+        }
+      }
 
-          const totalSpent = ordersData?.reduce((sum, order) => sum + (order.estimated_cost || 0), 0) || 0;
+      // Calcular estadísticas para cada cliente
+      const clientsWithStats = await Promise.all(
+        allClients.map(async (client) => {
+          let orders_count = 0;
+          let totalSpent = 0;
+          let quotes_count = 0;
+
+          // Contar órdenes por client_id si existe
+          if (client.client_id) {
+            const { data: ordersData } = await supabase
+              .from('orders')
+              .select('estimated_cost')
+              .eq('client_id', client.client_id);
+
+            orders_count = ordersData?.length || 0;
+            totalSpent = ordersData?.reduce((sum, order) => sum + (order.estimated_cost || 0), 0) || 0;
+          }
+
+          // Contar cotizaciones por user_id
+          if (client.user_id) {
+            const { data: quotesData } = await supabase
+              .from('quotes')
+              .select('id')
+              .eq('user_id', client.user_id);
+
+            quotes_count = quotesData?.length || 0;
+          }
+
+          // También buscar cotizaciones por email si no hay user_id
+          if (!quotes_count && client.email) {
+            const { data: quotesDataByEmail } = await supabase
+              .from('quotes')
+              .select('id')
+              .eq('client_email', client.email);
+
+            quotes_count = quotesDataByEmail?.length || 0;
+          }
 
           return {
             ...client,
-            orders_count: client.orders?.length || 0,
-            quotes_count: client.quotes?.length || 0,
+            orders_count,
+            quotes_count,
             total_spent: totalSpent
           };
         })
@@ -96,7 +166,7 @@ export function ClientsList() {
   };
 
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -123,23 +193,9 @@ export function ClientsList() {
             <Users className="h-5 w-5" />
             Lista de Clientes ({clients.length})
           </CardTitle>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Nuevo Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Crear Nuevo Cliente</DialogTitle>
-              </DialogHeader>
-              <ClientForm
-                onSuccess={handleClientCreated}
-                onCancel={() => setShowCreateDialog(false)}
-              />
-            </DialogContent>
-          </Dialog>
+            <div className="text-sm text-muted-foreground">
+              Los clientes son usuarios registrados con rol de cliente
+            </div>
         </div>
         
         <div className="flex items-center gap-4 mt-4">
@@ -158,11 +214,11 @@ export function ClientsList() {
       <CardContent>
         <div className="grid gap-4">
           {filteredClients.map((client) => (
-            <Card key={client.id} className="p-4">
+            <Card key={client.user_id} className="p-4">
               <div className="flex items-start justify-between">
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg">{client.name}</h3>
+                    <h3 className="font-semibold text-lg">{client.full_name}</h3>
                     <Badge variant="outline">
                       Cliente desde {new Date(client.created_at).toLocaleDateString()}
                     </Badge>
@@ -181,10 +237,6 @@ export function ClientsList() {
                         {client.phone}
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {client.address}
-                    </div>
                   </div>
                 </div>
                 

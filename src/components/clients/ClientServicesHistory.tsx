@@ -44,20 +44,29 @@ export function ClientServicesHistory() {
     try {
       setLoading(true);
       
-      // Cargar órdenes con información de cliente
+      // Cargar órdenes con información de cliente desde la tabla clients
       const { data: ordersData, error: ordersError } = await supabase
         .from('orders')
-        .select(`
-          *,
-          clients:client_id(name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (ordersError) throw ordersError;
 
-      // Cargar ítems y información del técnico para cada orden
+      // Cargar información completa para cada orden
       const ordersWithItems = await Promise.all(
         (ordersData || []).map(async (order) => {
+          // Cargar información del cliente desde la tabla clients
+          let clientInfo = null;
+          if (order.client_id) {
+            const { data: clientData } = await supabase
+              .from('clients')
+              .select('name, email')
+              .eq('id', order.client_id)
+              .single();
+            clientInfo = clientData;
+          }
+
+          // Cargar ítems de la orden
           const { data: itemsData } = await supabase
             .from('order_items')
             .select('service_name, quantity, total_amount')
@@ -80,7 +89,10 @@ export function ClientServicesHistory() {
             status: order.status,
             estimated_amount: order.estimated_cost || 0,
             created_at: order.created_at,
-            client: order.clients,
+            client: clientInfo ? { 
+              name: clientInfo.name, 
+              email: clientInfo.email 
+            } : null,
             technician_name: technicianName,
             items: itemsData || []
           };
