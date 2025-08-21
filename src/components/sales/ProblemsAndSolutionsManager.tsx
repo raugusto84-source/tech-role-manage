@@ -9,8 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Save, X, Package } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
+import { Plus, Edit, Trash2, Save, X, Package, Camera, Monitor, Computer, Zap, ShieldCheck, Key, Home, Wrench, Settings, Phone, Wifi, Lock, Users, Building, Car } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -239,11 +238,31 @@ export function ProblemsAndSolutionsManager() {
     }
   };
 
+  // Icon mapping - same as MainCategoriesManager
+  const ICON_COMPONENTS: Record<string, React.ComponentType<any>> = {
+    camera: Camera,
+    monitor: Monitor,
+    computer: Computer,
+    zap: Zap,
+    'shield-check': ShieldCheck,
+    key: Key,
+    home: Home,
+    wrench: Wrench,
+    settings: Settings,
+    package: Package,
+    'shield-alert': Package, // fallback
+    phone: Phone,
+    wifi: Wifi,
+    lock: Lock,
+    users: Users,
+    building: Building,
+    car: Car,
+  };
+
   // Helper to get icon component from icon name
   const getIconComponent = (iconName: string | null) => {
     if (!iconName) return Package;
-    const IconComponent = (LucideIcons as any)[iconName];
-    return IconComponent || Package;
+    return ICON_COMPONENTS[iconName] || Package;
   };
 
   return (
