@@ -10,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Check, ChevronsUpDown, Calculator, Upload, ImageIcon, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Calculator, Upload, ImageIcon, X, Plus } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
 /** ============================
@@ -29,7 +31,8 @@ const MAIN_CATEGORIES = [
 ] as const;
 type MainCategory = typeof MAIN_CATEGORIES[number];
 
-const SUBCATEGORY_MAP: Record<MainCategory, string[]> = {
+// Mapa inicial de subcategorías - se actualizará dinámicamente
+let SUBCATEGORY_MAP: Record<MainCategory, string[]> = {
   'Computadoras': ['Programas', 'Antivirus', 'Mtto Fisico', 'Formateo con Respaldo', 'Formateo sin Respaldo'],
   'Cámaras de Seguridad': ['Kit 4 Camaras', 'Mtto General'],
   'Control de Acceso': [],
@@ -80,6 +83,9 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const [autoMargin, setAutoMargin] = useState<number | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showNewSubcategoryDialog, setShowNewSubcategoryDialog] = useState(false);
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [dynamicSubcategories, setDynamicSubcategories] = useState(SUBCATEGORY_MAP);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -114,7 +120,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
 
   /** Si la categoría principal cambia, proponemos la primera subcategoría disponible */
   useEffect(() => {
-    const subs = SUBCATEGORY_MAP[watchedMainCategory as MainCategory] || [];
+    const subs = dynamicSubcategories[watchedMainCategory as MainCategory] || [];
     const current = form.getValues('subcategory');
     if (subs.length > 0 && !subs.includes(current)) {
       form.setValue('subcategory', subs[0]);
@@ -124,7 +130,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       form.setValue('subcategory', '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedMainCategory]);
+  }, [watchedMainCategory, dynamicSubcategories]);
 
   /** Carga datos para edición */
   const loadServiceData = async () => {
@@ -227,6 +233,27 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const removeImage = () => {
     form.setValue('image_url', '');
     setImagePreview(null);
+  };
+
+  /** Función para agregar nueva subcategoría */
+  const handleAddSubcategory = () => {
+    if (!newSubcategoryName.trim()) return;
+    
+    const mainCategory = watchedMainCategory as MainCategory;
+    const updatedSubcategories = {
+      ...dynamicSubcategories,
+      [mainCategory]: [...(dynamicSubcategories[mainCategory] || []), newSubcategoryName.trim()]
+    };
+    
+    setDynamicSubcategories(updatedSubcategories);
+    form.setValue('subcategory', newSubcategoryName.trim());
+    setNewSubcategoryName('');
+    setShowNewSubcategoryDialog(false);
+    
+    toast({
+      title: "Subcategoría agregada",
+      description: `"${newSubcategoryName.trim()}" ha sido agregada a ${mainCategory}`,
+    });
   };
 
   /** Preview de precio */
@@ -338,8 +365,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   }, [serviceId]);
 
   const subcategoriesForSelected = useMemo(
-    () => SUBCATEGORY_MAP[watchedMainCategory as MainCategory] || [],
-    [watchedMainCategory]
+    () => dynamicSubcategories[watchedMainCategory as MainCategory] || [],
+    [watchedMainCategory, dynamicSubcategories]
   );
 
   return (
@@ -420,13 +447,62 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                   )}
                 />
 
-                {/* Subcategoría */}
+                 {/* Subcategoría */}
                 <FormField
                   control={form.control}
                   name="subcategory"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Subcategoría *</FormLabel>
+                      <FormLabel className="flex items-center justify-between">
+                        Subcategoría *
+                        <Dialog open={showNewSubcategoryDialog} onOpenChange={setShowNewSubcategoryDialog}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" type="button">
+                              <Plus className="h-3 w-3 mr-1" />
+                              Nueva
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Agregar Subcategoría</DialogTitle>
+                              <DialogDescription>
+                                Crear una nueva subcategoría para "{watchedMainCategory}"
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="subcategory-name">Nombre de la subcategoría</Label>
+                                <Input
+                                  id="subcategory-name"
+                                  value={newSubcategoryName}
+                                  onChange={(e) => setNewSubcategoryName(e.target.value)}
+                                  placeholder="Ej: Instalación de Windows"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      handleAddSubcategory();
+                                    }
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => {
+                                  setShowNewSubcategoryDialog(false);
+                                  setNewSubcategoryName('');
+                                }}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button onClick={handleAddSubcategory} disabled={!newSubcategoryName.trim()}>
+                                Agregar
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </FormLabel>
                       <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
