@@ -19,6 +19,7 @@ import Users from "./pages/Users";
 import Surveys from "./pages/Surveys";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
+import InsurancePolicies from "./pages/InsurancePolicies";
 
 const queryClient = new QueryClient();
 
@@ -96,11 +97,19 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route 
+          <Route 
             path="/clientes" 
             element={
               <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
                 <Clients />
+              </ProtectedRoute>
+            }
+          />
+          <Route 
+            path="/polizas" 
+            element={
+              <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
+                <InsurancePolicies />
               </ProtectedRoute>
             }
           />

@@ -9,7 +9,8 @@ import {
   Calendar,
   Wrench,
   Banknote,
-  BarChart3
+  BarChart3,
+  Shield
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -52,6 +53,7 @@ export function AppSidebar() {
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
           { title: 'Clientes', url: '/clientes', icon: UserCheck },
+          { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
@@ -63,6 +65,7 @@ export function AppSidebar() {
       case 'vendedor':
         return [
           ...commonItems,
+          { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
@@ -71,6 +74,7 @@ export function AppSidebar() {
         return [
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
+          { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
