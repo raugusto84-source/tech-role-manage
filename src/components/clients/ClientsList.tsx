@@ -1,13 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Mail, Phone, MapPin, Users, Gift, Star, Users as UsersIcon } from 'lucide-react';
-import { ClientForm } from '@/components/ClientForm';
+import { Search, Mail, Phone, MapPin, Users, Gift, Star, Users as UsersIcon } from 'lucide-react';
 
 interface Client {
   user_id: string;
@@ -37,7 +34,6 @@ export function ClientsList() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -219,14 +215,6 @@ export function ClientsList() {
     }
   };
 
-  const handleClientCreated = (newClient: any) => {
-    loadClients(); // Recargar la lista completa
-    setShowCreateDialog(false);
-    toast({
-      title: "Cliente creado",
-      description: "El cliente se ha creado exitosamente",
-    });
-  };
 
   const filteredClients = clients.filter(client =>
     client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -251,33 +239,10 @@ export function ClientsList() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Lista de Clientes ({clients.length})
-          </CardTitle>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Cliente
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Crear Nuevo Cliente</DialogTitle>
-              </DialogHeader>
-              <ClientForm 
-                onSuccess={handleClientCreated}
-                onCancel={() => setShowCreateDialog(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          Los clientes registrados incluyen usuarios con cuentas y clientes directos. 
-          Usa "Nuevo Cliente" para agregar clientes que no tienen cuenta de usuario.
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Lista de Clientes ({clients.length})
+        </CardTitle>
         
         <div className="flex items-center gap-4 mt-4">
           <div className="relative flex-1">
