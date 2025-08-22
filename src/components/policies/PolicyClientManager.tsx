@@ -87,13 +87,18 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
   const loadClientsAndPolicies = async () => {
     try {
-      // Load available clients
+      // Load available clients - force refresh from server
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('id, name, email, phone')
         .order('name');
 
-      if (clientsError) throw clientsError;
+      if (clientsError) {
+        console.error('Clients loading error:', clientsError);
+        throw clientsError;
+      }
+      
+      console.log('Loaded clients:', clientsData?.length || 0);
       setClients(clientsData || []);
 
       // Load active policies
@@ -103,14 +108,19 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         .eq('is_active', true)
         .order('policy_name');
 
-      if (policiesError) throw policiesError;
+      if (policiesError) {
+        console.error('Policies loading error:', policiesError);
+        throw policiesError;
+      }
+      
+      console.log('Loaded policies:', policiesData?.length || 0);
       setPolicies(policiesData || []);
 
     } catch (error: any) {
       console.error('Error loading clients and policies:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los clientes y pólizas disponibles",
+        description: `No se pudieron cargar los clientes y pólizas disponibles: ${error.message}`,
         variant: "destructive",
       });
     }
@@ -232,7 +242,10 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (open) {
-            // Refresh clients and policies when dialog opens
+            // Clear current selections and refresh data when dialog opens
+            setSelectedPolicyId('');
+            setSelectedClientId('');
+            console.log('Dialog opened, refreshing clients and policies...');
             loadClientsAndPolicies();
           }
         }}>
