@@ -1,74 +1,28 @@
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, FileText, ShoppingCart, Gift, Shield } from 'lucide-react';
-import { ClientsList } from '@/components/clients/ClientsList';
-import { ClientQuotesHistory } from '@/components/clients/ClientQuotesHistory';
-import { ClientServicesHistory } from '@/components/clients/ClientServicesHistory';
-import { RewardsAdminPanel } from '@/components/rewards/RewardsAdminPanel';
-import { WarrantyManager } from '@/components/warranty/WarrantyManager';
+import { UnifiedClientDashboard } from '@/components/clients/UnifiedClientDashboard';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
- * Página de gestión integral de clientes
- * Incluye lista de clientes, historial de cotizaciones, servicios y sistema de recompensas
+ * Página unificada de clientes
+ * Dashboard personalizado para que los clientes vean sus cotizaciones, servicios y recompensas
  */
 export default function Clients() {
+  const { profile } = useAuth();
+
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Gestión de Clientes
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            Panel completo para gestionar clientes, historial y sistema de recompensas
-          </p>
+      {profile?.role === 'cliente' ? (
+        <UnifiedClientDashboard />
+      ) : (
+        <div className="container mx-auto p-6">
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold mb-4">Acceso Restringido</h1>
+            <p className="text-muted-foreground">
+              Esta página está disponible solo para clientes.
+            </p>
+          </div>
         </div>
-
-        <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="clients" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Clientes
-            </TabsTrigger>
-            <TabsTrigger value="quotes" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Cotizaciones
-            </TabsTrigger>
-            <TabsTrigger value="services" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Servicios
-            </TabsTrigger>
-            <TabsTrigger value="rewards" className="flex items-center gap-2">
-              <Gift className="h-4 w-4" />
-              Recompensas
-            </TabsTrigger>
-            <TabsTrigger value="warranties" className="flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Garantías
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="clients" className="space-y-6">
-            <ClientsList />
-          </TabsContent>
-
-          <TabsContent value="quotes" className="space-y-6">
-            <ClientQuotesHistory />
-          </TabsContent>
-
-          <TabsContent value="services" className="space-y-6">
-            <ClientServicesHistory />
-          </TabsContent>
-
-          <TabsContent value="rewards" className="space-y-6">
-            <RewardsAdminPanel />
-          </TabsContent>
-
-          <TabsContent value="warranties" className="space-y-6">
-            <WarrantyManager />
-          </TabsContent>
-        </Tabs>
-      </div>
+      )}
     </AppLayout>
   );
 }
