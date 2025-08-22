@@ -123,66 +123,55 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   // Verificar estado de encuesta cuando cambia el estado de la orden
   useEffect(() => {
     checkSurveyStatus();
-    checkExistingAuthorization(); // Re-check authorization when status changes
-  }, [orderStatus, profile?.role, user?.id]);
+    // Solo revisar autorización si realmente cambió el estado
+    const timeoutId = setTimeout(() => {
+      checkExistingAuthorization();
+    }, 100); // Pequeño delay para evitar llamadas excesivas
+
+    return () => clearTimeout(timeoutId);
+  }, [orderStatus]); // Quitar profile?.role y user?.id de las dependencias
 
 
   const checkExistingAuthorization = async () => {
-    console.log('=== checkExistingAuthorization DEBUG ===');
-    console.log('Current orderStatus:', orderStatus);
-    console.log('Current hasAuthorization:', hasAuthorization);
+    console.log('=== checkExistingAuthorization SIMPLIFIED ===');
+    console.log('orderStatus:', orderStatus);
     
     try {
       if (orderStatus === 'pendiente_actualizacion') {
-        // For update approvals, check if there's a pending modification without approval
+        // Para modificaciones, simplemente verificar si hay modificaciones pendientes
         const { data: modificationData } = await supabase
           .from('order_modifications')
           .select('id')
           .eq('order_id', order.id)
           .is('client_approved', null)
+          .limit(1)
           .maybeSingle();
         
-        console.log('Modification data:', modificationData);
-        
-        // If there's a pending modification, we need approval regardless of existing signatures
         const needsApproval = !!modificationData;
-        console.log('Needs approval (has pending modification):', needsApproval);
+        console.log('Needs approval (modification pending):', needsApproval);
         
-        // Only update state if it actually changed to prevent unnecessary re-renders
-        if (hasAuthorization === needsApproval) {
-          console.log('Setting hasAuthorization to:', !needsApproval);
-          setHasAuthorization(!needsApproval);
-        }
+        setHasAuthorization(!needsApproval);
       } else if (orderStatus === 'pendiente_aprobacion') {
-        // For regular approvals, check for existing signatures
+        // Para aprobaciones iniciales, verificar si ya existe una firma
         const { data } = await supabase
           .from('order_authorization_signatures')
           .select('id')
           .eq('order_id', order.id)
+          .limit(1)
           .maybeSingle();
-        
-        console.log('Authorization signature data:', data);
         
         const hasSignature = !!data;
         console.log('Has signature:', hasSignature);
         
-        // Only update state if it actually changed
-        if (hasAuthorization !== hasSignature) {
-          console.log('Setting hasAuthorization to:', hasSignature);
-          setHasAuthorization(hasSignature);
-        }
+        setHasAuthorization(hasSignature);
       } else {
-        // For other statuses, assume authorization exists
-        if (!hasAuthorization) {
-          console.log('Setting hasAuthorization to true for status:', orderStatus);
-          setHasAuthorization(true);
-        }
+        // Para otros estados, asumir que ya está autorizado
+        console.log('Other status, setting authorized');
+        setHasAuthorization(true);
       }
     } catch (error) {
       console.error('Error checking authorization:', error);
-      if (hasAuthorization !== false) {
-        setHasAuthorization(false);
-      }
+      setHasAuthorization(false);
     }
   };
 
