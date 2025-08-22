@@ -560,23 +560,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               canEdit={canUpdateStatus}
               onItemUpdate={loadOrderItems}
             />
-
-            {/* Chat de la Orden */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MessageSquare className="h-5 w-5 mr-2 text-primary" />
-                  Chat de la Orden
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <OrderChat 
-                  orderId={order.id} 
-                  disabled={orderStatus === 'finalizada' || orderStatus === 'cancelada'}
-                  onMessagesRead={handleMessagesRead}
-                />
-              </CardContent>
-            </Card>
           </div>
 
           {/* Panel Lateral */}
