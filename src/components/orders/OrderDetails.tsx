@@ -66,6 +66,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [currentUnreadCount, setCurrentUnreadCount] = useState(0);
+  const [hasAuthorization, setHasAuthorization] = useState(false);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -80,6 +81,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   useEffect(() => {
     loadOrderItems();
     loadAssignedTechnician();
+    checkExistingAuthorization();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -110,6 +112,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     checkSurveyStatus();
   }, [orderStatus, profile?.role, user?.id]);
 
+
+  const checkExistingAuthorization = async () => {
+    try {
+      const { data } = await supabase
+        .from('order_authorization_signatures')
+        .select('id')
+        .eq('order_id', order.id)
+        .maybeSingle();
+      
+      setHasAuthorization(!!data);
+    } catch (error) {
+      console.error('Error checking authorization:', error);
+    }
+  };
 
   const loadAssignedTechnician = async () => {
     if (order.assigned_technician) {
@@ -233,14 +249,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
 
 
-  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente simple
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
+  // Si es cliente y la orden está pendiente de aprobación Y no tiene autorización, mostrar el componente simple
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !hasAuthorization) {
     return (
       <SimpleOrderApproval
         order={order}
         orderItems={orderItems}
         onBack={onBack}
         onApprovalComplete={() => {
+          setHasAuthorization(true);
           setOrderStatus('pendiente');
           onUpdate();
         }}
