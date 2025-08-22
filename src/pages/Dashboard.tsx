@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
+import { AdminDashboard } from '@/components/admin/AdminDashboard';
 
 /**
  * Dashboard principal personalizado por rol
@@ -86,6 +87,15 @@ export default function Dashboard() {
   };
 
   const roleInfo = getRoleGreeting();
+
+  // Show admin dashboard for administrators
+  if (profile?.role === 'administrador') {
+    return (
+      <AppLayout>
+        <AdminDashboard />
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
