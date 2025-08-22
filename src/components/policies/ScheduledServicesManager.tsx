@@ -162,11 +162,16 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         is_active: true,
       }));
 
+      console.log('Inserting scheduled services:', servicesToInsert);
+
       const { error } = await supabase
         .from('scheduled_services')
         .insert(servicesToInsert);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
       toast({
         title: "Éxito",
@@ -181,7 +186,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       console.error('Error creating scheduled service:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear el servicio programado",
+        description: `No se pudo crear el servicio programado: ${error.message}`,
         variant: "destructive",
       });
     }
