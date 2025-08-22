@@ -15,7 +15,6 @@ import { PolicyPaymentManager } from "@/components/policies/PolicyPaymentManager
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { Search, Plus, Shield, Users, CreditCard, Calendar, FileText } from "lucide-react";
-
 interface PolicyStats {
   total_policies: number;
   active_policies: number;
@@ -24,10 +23,14 @@ interface PolicyStats {
   overdue_payments: number;
   scheduled_services: number;
 }
-
 export default function InsurancePolicies() {
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
+  const {
+    user,
+    profile
+  } = useAuth();
+  const {
+    toast
+  } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState<PolicyStats>({
     total_policies: 0,
@@ -38,19 +41,18 @@ export default function InsurancePolicies() {
     scheduled_services: 0
   });
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     loadStats();
   }, []);
-
   const loadStats = async () => {
     try {
       setLoading(true);
-      
+
       // Load policy stats
-      const { data: policies, error: policiesError } = await supabase
-        .from('insurance_policies')
-        .select(`
+      const {
+        data: policies,
+        error: policiesError
+      } = await supabase.from('insurance_policies').select(`
           id,
           is_active,
           policy_clients!inner(
@@ -67,26 +69,11 @@ export default function InsurancePolicies() {
             )
           )
         `);
-
       if (policiesError) throw policiesError;
-
       const activePolicies = policies?.filter(p => p.is_active) || [];
-      const totalClients = new Set(
-        activePolicies.flatMap(p => 
-          p.policy_clients
-            .filter(pc => pc.is_active)
-            .map(pc => pc.id)
-        )
-      ).size;
-
-      const allPayments = activePolicies.flatMap(p => 
-        p.policy_clients.flatMap(pc => pc.policy_payments)
-      );
-      
-      const allScheduledServices = activePolicies.flatMap(p => 
-        p.policy_clients.flatMap(pc => pc.scheduled_services)
-      );
-
+      const totalClients = new Set(activePolicies.flatMap(p => p.policy_clients.filter(pc => pc.is_active).map(pc => pc.id))).size;
+      const allPayments = activePolicies.flatMap(p => p.policy_clients.flatMap(pc => pc.policy_payments));
+      const allScheduledServices = activePolicies.flatMap(p => p.policy_clients.flatMap(pc => pc.scheduled_services));
       setStats({
         total_policies: policies?.length || 0,
         active_policies: activePolicies.length,
@@ -95,34 +82,29 @@ export default function InsurancePolicies() {
         overdue_payments: allPayments.filter(p => p.payment_status === 'vencido').length,
         scheduled_services: allScheduledServices.filter(s => s.is_active).length
       });
-
     } catch (error: any) {
       console.error('Error loading stats:', error);
       toast({
         title: "Error",
         description: "No se pudieron cargar las estadísticas",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const refreshStats = () => {
     loadStats();
   };
-
   if (!user) {
     return <div>Cargando...</div>;
   }
-
-  return (
-    <AppLayout>
+  return <AppLayout>
       <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Pólizas de Seguros</h1>
+          <h1 className="text-3xl font-bold">Pólizas de Servicios</h1>
           <p className="text-muted-foreground">
             Gestión completa de pólizas, clientes y servicios programados
           </p>
@@ -130,9 +112,7 @@ export default function InsurancePolicies() {
       </div>
 
       {/* Personal Time Clock for vendedor role */}
-      {profile?.role === 'vendedor' && (
-        <PersonalTimeClockPanel />
-      )}
+      {profile?.role === 'vendedor' && <PersonalTimeClockPanel />}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -260,13 +240,11 @@ export default function InsurancePolicies() {
                     <span>Pagos Vencidos</span>
                     <Badge variant="destructive">{stats.overdue_payments}</Badge>
                   </div>
-                  {stats.overdue_payments > 0 && (
-                    <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                  {stats.overdue_payments > 0 && <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
                       <p className="text-sm text-destructive">
                         ⚠️ Hay {stats.overdue_payments} pagos vencidos que requieren atención inmediata
                       </p>
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </CardContent>
             </Card>
@@ -294,6 +272,5 @@ export default function InsurancePolicies() {
         </TabsContent>
       </Tabs>
       </div>
-    </AppLayout>
-  );
+    </AppLayout>;
 }
