@@ -62,7 +62,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           order_id: order.id,
           client_signature_data: signatureData,
           client_name: order.clients?.name || '',
-          authorization_date: new Date().toISOString()
+          signed_at: new Date().toISOString()
         });
 
       if (signatureError) throw signatureError;
