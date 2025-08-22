@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, Play, Pause, Clock, RotateCcw } from "lucide-react";
+import { Plus, Calendar, Play, Pause, Clock, RotateCcw, Trash2 } from "lucide-react";
 
 interface ScheduledService {
   id: string;
@@ -278,6 +278,36 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       toast({
         title: "Error",
         description: `No se pudo crear la orden de servicio: ${error.message}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteService = async (serviceId: string, serviceName: string) => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar el servicio programado "${serviceName}"? Esta acción no se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('scheduled_services')
+        .delete()
+        .eq('id', serviceId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Servicio programado eliminado correctamente",
+      });
+
+      loadData();
+      onStatsUpdate();
+    } catch (error: any) {
+      console.error('Error deleting scheduled service:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el servicio programado",
         variant: "destructive",
       });
     }
@@ -560,6 +590,13 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                             ) : (
                               <Play className="h-4 w-4" />
                             )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteService(service.id, service.service_types.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>
