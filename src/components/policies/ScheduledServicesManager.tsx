@@ -23,6 +23,7 @@ interface ScheduledService {
   is_active: boolean;
   service_description: string;
   priority: number;
+  quantity: number;
   created_at: string;
   policy_clients: {
     clients: {
@@ -151,11 +152,23 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     }
     
     try {
-      // Create one scheduled service record for each selected service with its quantity
-      const servicesToInsert = selectedServiceIds.map(serviceTypeId => ({
+      const isValidUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+      if (!isValidUUID(formData.policy_client_id)) {
+        throw new Error('Cliente de póliza inválido. Seleccione nuevamente.');
+      }
+
+      // Normaliza IDs de servicio por si se coló un nombre en vez de UUID
+      const normalizedIds = selectedServiceIds.map(id => {
+        if (isValidUUID(id)) return id;
+        const byName = serviceTypes.find(st => st.name === id);
+        return byName?.id || id;
+      });
+
+      // Crear un registro por cada servicio seleccionado con su cantidad
+      const servicesToInsert = normalizedIds.map(serviceTypeId => ({
         policy_client_id: formData.policy_client_id,
         service_type_id: serviceTypeId,
-        quantity: formData.selected_services[serviceTypeId],
+        quantity: formData.selected_services[serviceTypeId] ?? 1,
         frequency_days: formData.frequency_days,
         next_service_date: formData.next_service_date,
         service_description: formData.service_description,
@@ -239,8 +252,8 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         .insert({
           order_number: `ORD-POL-${Date.now()}`,
           client_id: policyClient.clients.id,
-          service_type: 'domicilio', // Use valid service_type enum value
-          service_location: 'domicilio', // Use valid service_location enum value
+          service_type: service.service_types.name, // tipo textual del servicio
+          service_location: 'domicilio', // lugar del servicio
           delivery_date: service.next_service_date,
           estimated_cost: 0,
           failure_description: service.service_description || `Servicio programado: ${service.service_types.name}`,
@@ -260,7 +273,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         .insert({
           order_id: orderData.id,
           service_type_id: service.service_type_id,
-          quantity: 1,
+          quantity: (service as any).quantity ?? 1,
           unit_cost_price: 0,
           unit_base_price: 0,
           profit_margin_rate: 0,
