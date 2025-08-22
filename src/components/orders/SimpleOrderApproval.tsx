@@ -422,51 +422,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             <CardHeader>
               <CardTitle className="flex items-center text-orange-800">
                 <AlertTriangle className="h-5 w-5 mr-2" />
-                Modificación Realizada - Requiere Nueva Autorización
+                Modificación Realizada - Requiere Autorización
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <p className="text-orange-800 font-medium text-sm">
-                    ⚠️ Esta orden ya fue autorizada previamente, pero se realizaron cambios que requieren su nueva aprobación.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-orange-700">
-                    <strong>Razón de la modificación:</strong> {modifications[0].modification_reason}
-                  </p>
-                  <p className="text-orange-700">
-                    <strong>Modificado por:</strong> {modifications[0].created_by_name}
-                  </p>
-                  {modifications[0].notes && (
-                    <p className="text-orange-700">
-                      <strong>Detalles adicionales:</strong> {modifications[0].notes}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-orange-200">
-                    <div className="text-center p-2 bg-white rounded-lg">
-                      <p className="text-sm text-orange-600">Total Anterior</p>
-                      <p className="text-lg font-bold text-orange-800">
-                        ${modifications[0].previous_total?.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-white rounded-lg">
-                      <p className="text-sm text-orange-600">Nuevo Total</p>
-                      <p className="text-lg font-bold text-orange-800">
-                        ${modifications[0].new_total?.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="text-center p-2 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-600">Incremento</p>
-                      <p className="text-lg font-bold text-green-700">
-                        +${((modifications[0].new_total || 0) - (modifications[0].previous_total || 0)).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
           </Card>
         )}
 
