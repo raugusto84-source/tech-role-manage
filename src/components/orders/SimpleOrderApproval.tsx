@@ -39,6 +39,14 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   const isOrderUpdate = order.status === 'pendiente_actualizacion';
   const isInitialApproval = order.status === 'pendiente_aprobacion';
 
+  // Debug logging del estado del componente
+  console.log('=== SimpleOrderApproval DEBUG ===');
+  console.log('Order:', order);
+  console.log('Order status:', order.status);
+  console.log('isOrderUpdate:', isOrderUpdate);
+  console.log('isInitialApproval:', isInitialApproval);
+  console.log('OrderItems count:', orderItems.length);
+
   useEffect(() => {
     // Determinar el tipo de autorización según el estado
     if (isOrderUpdate) {
@@ -69,6 +77,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   }, [order.assigned_technician, orderItems, isOrderUpdate]);
 
   const loadOrderModifications = async () => {
+    console.log('Loading modifications for order:', order.id);
     try {
       const { data, error } = await supabase
         .from('order_modifications')
@@ -78,8 +87,22 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         .order('created_at', { ascending: false })
         .limit(1);
 
+      console.log('Modifications query result:', { data, error });
+      
       if (error) throw error;
+      
+      console.log('Setting modifications:', data || []);
       setModifications(data || []);
+      
+      // Verificar si no hay modificaciones pendientes
+      if (isOrderUpdate && (!data || data.length === 0)) {
+        console.log('WARNING: Order is in pendiente_actualizacion but no pending modifications found!');
+        toast({
+          title: "Aviso",
+          description: "No se encontraron modificaciones pendientes para esta orden.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('Error loading modifications:', error);
     }
