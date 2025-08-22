@@ -164,8 +164,14 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         return byName?.id || id;
       });
 
+      // Filtra solo IDs válidos (UUID), evitando valores como "domicilio"
+      const validServiceIds = normalizedIds.filter(isValidUUID);
+      if (validServiceIds.length === 0) {
+        throw new Error('No se encontraron servicios válidos para programar. Vuelva a seleccionarlos.');
+      }
+
       // Crear un registro por cada servicio seleccionado con su cantidad
-      const servicesToInsert = normalizedIds.map(serviceTypeId => ({
+      const servicesToInsert = validServiceIds.map(serviceTypeId => ({
         policy_client_id: formData.policy_client_id,
         service_type_id: serviceTypeId,
         quantity: formData.selected_services[serviceTypeId] ?? 1,
