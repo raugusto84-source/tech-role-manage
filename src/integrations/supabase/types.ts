@@ -5149,6 +5149,28 @@ export type Database = {
         Args: { quote_id: string }
         Returns: Json
       }
+      create_order_for_scheduled_service: {
+        Args: { p_scheduled_service_id: string }
+        Returns: {
+          order_id: string
+          order_number: string
+        }[]
+      }
+      create_scheduled_service_bundle: {
+        Args: {
+          p_created_by: string
+          p_frequency_days: number
+          p_items: Json
+          p_next_service_date: string
+          p_policy_client_id: string
+          p_priority: number
+          p_service_description: string
+        }
+        Returns: {
+          order_id: string
+          scheduled_service_id: string
+        }[]
+      }
       generate_client_number: {
         Args: Record<PropertyKey, never>
         Returns: string

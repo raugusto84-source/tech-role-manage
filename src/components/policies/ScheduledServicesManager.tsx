@@ -184,7 +184,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       console.log('Creating scheduled service bundle with items:', itemsArray);
 
-      const { data, error } = await supabase.rpc('create_scheduled_service_bundle', {
+      const { data, error } = await (supabase as any).rpc('create_scheduled_service_bundle', {
         p_policy_client_id: formData.policy_client_id,
         p_frequency_days: formData.frequency_days,
         p_next_service_date: formData.next_service_date,
@@ -246,7 +246,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
   const handleCreateOrder = async (service: ScheduledService) => {
     try {
-      const { data, error } = await supabase.rpc('create_order_for_scheduled_service', {
+      const { data, error } = await (supabase as any).rpc('create_order_for_scheduled_service', {
         p_scheduled_service_id: service.id
       });
 
