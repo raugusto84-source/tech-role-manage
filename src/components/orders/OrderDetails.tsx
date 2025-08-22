@@ -68,6 +68,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [orderStatus, setOrderStatus] = useState(order.status);
+  const [hasApproved, setHasApproved] = useState(false); // Flag para evitar mostrar aprobación nuevamente
   const [currentUnreadCount, setCurrentUnreadCount] = useState(0);
   const [deliveryPhase, setDeliveryPhase] = useState<'signature' | 'survey' | 'completed'>('signature');
   const [hasDeliverySignature, setHasDeliverySignature] = useState(false);
@@ -312,24 +313,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     })();
 
 
-  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación de cliente
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
-    return (
-      <ClientOrderApproval
-        order={order}
-        onApprovalChange={() => {
-          loadAuthorizationSignature();
-          setOrderStatus('pendiente');
-          onUpdate();
-        }}
-      />
-    );
-  }
-
-  // Si es cliente y la orden está pendiente de entrega, marcar como finalizada automáticamente
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
-    // Auto-complete delivery without requiring signature
-    useEffect(() => {
+  // Auto-completar entrega cuando sea necesario
+  useEffect(() => {
+    if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
       const autoCompleteDelivery = async () => {
         try {
           const { error } = await supabase
@@ -356,7 +342,22 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       };
 
       autoCompleteDelivery();
-    }, []);
+    }
+  }, [orderStatus, profile?.role, order.id, onUpdate]);
+
+  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación de cliente
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !hasApproved) {
+    return (
+      <ClientOrderApproval
+        order={order}
+        onApprovalChange={() => {
+          setHasApproved(true); // Marcar como aprobado para evitar mostrar nuevamente
+          loadAuthorizationSignature();
+          setOrderStatus('pendiente');
+          onUpdate();
+        }}
+      />
+    );
   }
 
   return (

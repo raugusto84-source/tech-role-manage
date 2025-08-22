@@ -63,14 +63,7 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
           msg => msg.sender_id !== user.id && msg.read_at === null
         );
         
-        console.log('Unread messages found:', unreadMessages.length);
-        console.log('Current user ID:', user.id);
-        console.log('All messages:', data.map(m => ({ 
-          id: m.id, 
-          sender_id: m.sender_id, 
-          read_at: m.read_at,
-          is_from_current_user: m.sender_id === user.id
-        })));
+        // Process unread messages silently
         
         if (unreadMessages.length > 0) {
           const messageIds = unreadMessages.map(msg => msg.id);
@@ -103,7 +96,7 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
             onMessagesRead?.();
           }
         } else {
-          console.log('No unread messages to mark as read');
+          // No unread messages
         }
       }
       

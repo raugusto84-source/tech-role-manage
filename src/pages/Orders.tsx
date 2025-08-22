@@ -140,7 +140,7 @@ export default function Orders() {
 
           // Count unread messages for current user
           if (user?.id) {
-            console.log(`Counting unread messages for order ${order.order_number} and user ${user.id}`);
+            // Counting unread messages
             
             const { count, error } = await supabase
               .from('order_chat_messages')
@@ -154,7 +154,7 @@ export default function Orders() {
               unreadCount = 0;
             } else {
               unreadCount = count || 0;
-              console.log(`Order ${order.order_number}: ${unreadCount} unread messages`);
+              // Unread count updated
             }
           }
           
@@ -233,12 +233,12 @@ export default function Orders() {
   const updateUnreadCounts = async () => {
     if (!user?.id || orders.length === 0) return;
     
-    console.log('Updating unread counts for', orders.length, 'orders');
+    // Updating unread counts silently
     
     try {
       const updatedOrders = await Promise.all(
         orders.map(async (order) => {
-          console.log(`Updating unread count for order ${order.order_number}`);
+          // Processing order unread count
           
           const { count, error } = await supabase
             .from('order_chat_messages')
@@ -253,7 +253,7 @@ export default function Orders() {
           }
           
           const newCount = count || 0;
-          console.log(`Order ${order.order_number}: unread count ${order.unread_messages_count} -> ${newCount}`);
+          // Unread count updated
           
           return {
             ...order,
@@ -263,7 +263,7 @@ export default function Orders() {
       );
       
       setOrders(updatedOrders);
-      console.log('Unread counts updated successfully');
+      // Unread counts updated successfully
     } catch (error) {
       console.error('Error updating unread counts:', error);
     }
