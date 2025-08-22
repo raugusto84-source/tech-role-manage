@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { X, ArrowRight, CheckCircle2, Truck, Wrench } from 'lucide-react';
+import { DeliverySignature } from './DeliverySignature';
 
 interface OrderStatusUpdateProps {
   order: {
@@ -98,6 +99,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [showDeliverySignature, setShowDeliverySignature] = useState(false);
 
   /**
    * Obtiene las transiciones disponibles para el estado actual
@@ -109,6 +111,12 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
    */
   const handleStatusChange = async (newStatus: 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada') => {
     if (loading) return;
+    
+    // Si el nuevo estado es "finalizada", mostrar componente de firma
+    if (newStatus === 'finalizada') {
+      setShowDeliverySignature(true);
+      return;
+    }
     
     setLoading(true);
     setSelectedStatus(newStatus);
@@ -181,91 +189,109 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-      <Card className="w-full max-w-md mx-auto sm:w-auto min-w-[320px] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 duration-300">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">Cambiar Estado</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onClose}
-              disabled={loading}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          
-          {/* Información de la orden */}
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              {order.order_number} - {order.clients?.name}
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Estado actual:</span>
-              <Badge className={getCurrentStatusColor(order.status)}>
-                {getCurrentStatusLabel(order.status)}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-3">
-          {availableTransitions.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground text-sm">
-                No hay cambios de estado disponibles para esta orden.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground mb-4">
-                Selecciona el nuevo estado:
-              </p>
+    <>
+      {/* Modal principal de cambio de estado */}
+      {!showDeliverySignature && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+          <Card className="w-full max-w-md mx-auto sm:w-auto min-w-[320px] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 duration-300">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Cambiar Estado</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onClose}
+                  disabled={loading}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
               
-              {availableTransitions.map((transition) => {
-                const Icon = transition.icon;
-                const isSelected = selectedStatus === transition.value;
-                const isLoading = loading && isSelected;
-                
-                return (
-                  <Button
-                    key={transition.value}
-                    onClick={() => handleStatusChange(transition.value as 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada')}
-                    disabled={loading}
-                    className={`w-full h-auto p-4 flex items-center justify-start gap-3 text-left ${transition.color} text-white relative overflow-hidden`}
-                    variant="default"
-                  >
-                    {/* Indicador de carga */}
-                    {isLoading && (
-                      <div className="absolute inset-0 bg-white/20 flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
+              {/* Información de la orden */}
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {order.order_number} - {order.clients?.name}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">Estado actual:</span>
+                  <Badge className={getCurrentStatusColor(order.status)}>
+                    {getCurrentStatusLabel(order.status)}
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              {availableTransitions.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground text-sm">
+                    No hay cambios de estado disponibles para esta orden.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Selecciona el nuevo estado:
+                  </p>
+                  
+                  {availableTransitions.map((transition) => {
+                    const Icon = transition.icon;
+                    const isSelected = selectedStatus === transition.value;
+                    const isLoading = loading && isSelected;
                     
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <div className="font-semibold">{transition.label}</div>
-                      <div className="text-sm opacity-90">{transition.description}</div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 flex-shrink-0 opacity-70" />
-                  </Button>
-                );
-              })}
-            </div>
-          )}
-          
-          {/* Botón de cancelar */}
-          <Button 
-            variant="outline" 
-            className="w-full mt-4" 
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+                    return (
+                      <Button
+                        key={transition.value}
+                        onClick={() => handleStatusChange(transition.value as 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada')}
+                        disabled={loading}
+                        className={`w-full h-auto p-4 flex items-center justify-start gap-3 text-left ${transition.color} text-white relative overflow-hidden`}
+                        variant="default"
+                      >
+                        {/* Indicador de carga */}
+                        {isLoading && (
+                          <div className="absolute inset-0 bg-white/20 flex items-center justify-center">
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                        
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="font-semibold">{transition.label}</div>
+                          <div className="text-sm opacity-90">{transition.description}</div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 flex-shrink-0 opacity-70" />
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Botón de cancelar */}
+              <Button 
+                variant="outline" 
+                className="w-full mt-4" 
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Componente de firma de entrega */}
+      {showDeliverySignature && (
+        <DeliverySignature 
+          order={order}
+          onClose={() => setShowDeliverySignature(false)}
+          onComplete={() => {
+            setShowDeliverySignature(false);
+            onUpdate();
+            onClose();
+          }}
+        />
+      )}
+    </>
   );
 }
