@@ -71,7 +71,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     policy_client_id: '',
-    service_type_id: '',
+    service_type_ids: [] as string[],
     frequency_days: 30,
     next_service_date: '',
     service_description: '',
@@ -140,20 +140,37 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const handleCreateScheduledService = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (formData.service_type_ids.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar al menos un servicio",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
+      // Create one scheduled service record for each selected service
+      const servicesToInsert = formData.service_type_ids.map(serviceTypeId => ({
+        policy_client_id: formData.policy_client_id,
+        service_type_id: serviceTypeId,
+        frequency_days: formData.frequency_days,
+        next_service_date: formData.next_service_date,
+        service_description: formData.service_description,
+        priority: formData.priority,
+        created_by: user?.id,
+        is_active: true,
+      }));
+
       const { error } = await supabase
         .from('scheduled_services')
-        .insert([{
-          ...formData,
-          created_by: user?.id,
-          is_active: true,
-        }]);
+        .insert(servicesToInsert);
 
       if (error) throw error;
 
       toast({
         title: "Éxito",
-        description: "Servicio programado creado correctamente",
+        description: `${formData.service_type_ids.length} servicio(s) programado(s) creado(s) correctamente`,
       });
 
       setIsDialogOpen(false);
@@ -316,7 +333,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const resetForm = () => {
     setFormData({
       policy_client_id: '',
-      service_type_id: '',
+      service_type_ids: [],
       frequency_days: 30,
       next_service_date: '',
       service_description: '',
@@ -392,22 +409,38 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="service_type_id">Tipo de Servicio *</Label>
-                <Select 
-                  value={formData.service_type_id} 
-                  onValueChange={(value) => setFormData({...formData, service_type_id: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar servicio" />
-                  </SelectTrigger>
-                  <SelectContent>
+                <Label htmlFor="service_type_ids">Servicios a Realizar *</Label>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">
+                    Selecciona los servicios que se realizarán en cada visita:
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border rounded-md p-2">
                     {serviceTypes.map((st) => (
-                      <SelectItem key={st.id} value={st.id}>
-                        {st.name}
-                      </SelectItem>
+                      <div key={st.id} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id={`service_${st.id}`}
+                          checked={formData.service_type_ids.includes(st.id)}
+                          onChange={(e) => {
+                            const newServiceIds = e.target.checked
+                              ? [...formData.service_type_ids, st.id]
+                              : formData.service_type_ids.filter(id => id !== st.id);
+                            setFormData({...formData, service_type_ids: newServiceIds});
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <label htmlFor={`service_${st.id}`} className="text-sm font-medium cursor-pointer flex-1">
+                          {st.name}
+                        </label>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                  {formData.service_type_ids.length > 0 && (
+                    <div className="text-sm text-muted-foreground">
+                      {formData.service_type_ids.length} servicio(s) seleccionado(s)
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
