@@ -329,6 +329,7 @@ export function DiagnosticChecklistManager() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   className="hidden"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -484,6 +485,7 @@ function QuestionCard({
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
