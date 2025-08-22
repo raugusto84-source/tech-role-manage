@@ -14,10 +14,7 @@ import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
-import { ClientOrderApproval } from './ClientOrderApproval';
-import { AuthorizationSignature } from './AuthorizationSignature';
-import { DeliverySignature } from './DeliverySignature';
-import { SimpleSatisfactionSurvey } from './SimpleSatisfactionSurvey';
+import { SimpleOrderApproval } from './SimpleOrderApproval';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 
@@ -68,13 +65,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [orderStatus, setOrderStatus] = useState(order.status);
-  const [hasApproved, setHasApproved] = useState(false); // Flag para evitar mostrar aprobación nuevamente
   const [currentUnreadCount, setCurrentUnreadCount] = useState(0);
-  const [deliveryPhase, setDeliveryPhase] = useState<'signature' | 'survey' | 'completed'>('signature');
-  const [hasDeliverySignature, setHasDeliverySignature] = useState(false);
-  const [hasCompletedSurvey, setHasCompletedSurvey] = useState(false);
-  const [deliveryStatusChecked, setDeliveryStatusChecked] = useState(false);
-  const [authorizationSignature, setAuthorizationSignature] = useState<any>(null);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -89,12 +80,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   useEffect(() => {
     loadOrderItems();
     loadAssignedTechnician();
-    loadAuthorizationSignature();
-    
-    // Solo verificar estado de entrega si es cliente y está pendiente de entrega
-    if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
-      checkDeliveryStatus();
-    }
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -118,20 +103,13 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [order.id, profile?.role]); // Agregar profile?.role como dependencia
+  }, [order.id]);
 
   // Verificar estado de encuesta cuando cambia el estado de la orden
   useEffect(() => {
     checkSurveyStatus();
   }, [orderStatus, profile?.role, user?.id]);
 
-  // Verificar estado de entrega cuando cambia el estado de la orden a pendiente_entrega
-  useEffect(() => {
-    if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
-      setDeliveryStatusChecked(false); // Reset para permitir nueva verificación
-      checkDeliveryStatus();
-    }
-  }, [orderStatus, profile?.role]);
 
   const loadAssignedTechnician = async () => {
     if (order.assigned_technician) {
@@ -145,20 +123,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
-  const loadAuthorizationSignature = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('order_authorization_signatures')
-        .select('*')
-        .eq('order_id', order.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setAuthorizationSignature(data);
-    } catch (error) {
-      console.error('Error loading authorization signature:', error);
-    }
-  };
 
   const loadOrderItems = async () => {
     try {
@@ -194,51 +158,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
-  const checkDeliveryStatus = async () => {
-    if (orderStatus === 'pendiente_entrega' && profile?.role === 'cliente' && !deliveryStatusChecked) {
-      try {
-        console.log('Checking delivery status for order:', order.id);
-        setDeliveryStatusChecked(true);
-        
-        // Check if delivery signature exists
-        const { data: signature } = await supabase
-          .from('delivery_signatures')
-          .select('id')
-          .eq('order_id', order.id)
-          .maybeSingle();
-
-        // Check if survey exists
-        const { data: survey } = await supabase
-          .from('order_satisfaction_surveys')
-          .select('id')
-          .eq('order_id', order.id)
-          .maybeSingle();
-
-        console.log('Signature exists:', !!signature, 'Survey exists:', !!survey);
-
-        const signatureExists = !!signature;
-        const surveyExists = !!survey;
-
-        setHasDeliverySignature(signatureExists);
-        setHasCompletedSurvey(surveyExists);
-
-        // Determinar la fase actual
-        if (!signatureExists) {
-          console.log('Setting delivery phase to signature');
-          setDeliveryPhase('signature');
-        } else if (!surveyExists) {
-          console.log('Setting delivery phase to survey');
-          setDeliveryPhase('survey');
-        } else {
-          console.log('Setting delivery phase to completed');
-          setDeliveryPhase('completed');
-        }
-      } catch (error) {
-        console.error('Error checking delivery status:', error);
-        setDeliveryStatusChecked(false); // Reset on error
-      }
-    }
-  };
 
   const loadOrderNotes = async () => {
     try {
@@ -313,46 +232,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     })();
 
 
-  // Auto-completar entrega cuando sea necesario
-  useEffect(() => {
-    if (profile?.role === 'cliente' && orderStatus === 'pendiente_entrega') {
-      const autoCompleteDelivery = async () => {
-        try {
-          const { error } = await supabase
-            .from('orders')
-            .update({ 
-              status: 'finalizada',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', order.id);
 
-          if (error) throw error;
-          
-          setOrderStatus('finalizada');
-          onUpdate();
-          
-          toast({
-            title: "Orden completada",
-            description: "La orden ha sido marcada como finalizada automáticamente",
-            variant: "default"
-          });
-        } catch (error) {
-          console.error('Error completing order:', error);
-        }
-      };
-
-      autoCompleteDelivery();
-    }
-  }, [orderStatus, profile?.role, order.id, onUpdate]);
-
-  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente de aprobación de cliente
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !hasApproved) {
+  // Si es cliente y la orden está pendiente de aprobación, mostrar el componente simple
+  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion') {
     return (
-      <ClientOrderApproval
+      <SimpleOrderApproval
         order={order}
-        onApprovalChange={() => {
-          setHasApproved(true); // Marcar como aprobado para evitar mostrar nuevamente
-          loadAuthorizationSignature();
+        orderItems={orderItems}
+        onBack={onBack}
+        onApprovalComplete={() => {
           setOrderStatus('pendiente');
           onUpdate();
         }}
@@ -461,43 +349,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                </CardContent>
             </Card>
 
-            {/* Firma de Autorización */}
-            {authorizationSignature && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Shield className="h-5 w-5 mr-2 text-success" />
-                    Orden Autorizada
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="bg-success/10 border border-success/20 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="h-5 w-5 text-success" />
-                      <span className="font-medium text-success">Autorizada por: {authorizationSignature.client_name}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p><strong>Fecha de autorización:</strong> {formatDateTime(authorizationSignature.signed_at)}</p>
-                      {authorizationSignature.authorization_notes && (
-                        <p><strong>Notas:</strong> {authorizationSignature.authorization_notes}</p>
-                      )}
-                    </div>
-                    {authorizationSignature.client_signature_data && (
-                      <div className="mt-4">
-                        <Label className="text-sm font-medium">Firma de autorización:</Label>
-                        <div className="mt-2 border rounded-lg bg-white p-2 inline-block">
-                          <img 
-                            src={authorizationSignature.client_signature_data} 
-                            alt="Firma de autorización" 
-                            className="max-h-24 max-w-48"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Descripción del Problema */}
             <Card>
