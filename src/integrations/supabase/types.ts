@@ -1632,6 +1632,57 @@ export type Database = {
           },
         ]
       }
+      order_modifications: {
+        Row: {
+          approved_at: string | null
+          client_approved: boolean | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          items_added: Json | null
+          items_removed: Json | null
+          modification_reason: string | null
+          modification_type: string
+          new_total: number | null
+          notes: string | null
+          order_id: string
+          previous_total: number | null
+        }
+        Insert: {
+          approved_at?: string | null
+          client_approved?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          items_added?: Json | null
+          items_removed?: Json | null
+          modification_reason?: string | null
+          modification_type?: string
+          new_total?: number | null
+          notes?: string | null
+          order_id: string
+          previous_total?: number | null
+        }
+        Update: {
+          approved_at?: string | null
+          client_approved?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          items_added?: Json | null
+          items_removed?: Json | null
+          modification_reason?: string | null
+          modification_type?: string
+          new_total?: number | null
+          notes?: string | null
+          order_id?: string
+          previous_total?: number | null
+        }
+        Relationships: []
+      }
       order_notes: {
         Row: {
           created_at: string
@@ -4834,6 +4885,8 @@ export type Database = {
         | "en_camino"
         | "pendiente_aprobacion"
         | "pendiente_entrega"
+        | "pausa"
+        | "pendiente_actualizacion"
       quote_status:
         | "solicitud"
         | "enviada"
@@ -5041,6 +5094,8 @@ export const Constants = {
         "en_camino",
         "pendiente_aprobacion",
         "pendiente_entrega",
+        "pausa",
+        "pendiente_actualizacion",
       ],
       quote_status: [
         "solicitud",

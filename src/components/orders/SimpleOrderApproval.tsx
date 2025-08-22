@@ -12,6 +12,7 @@ interface SimpleOrderApprovalProps {
     id: string;
     order_number: string;
     assigned_technician?: string;
+    status: string;
     clients?: {
       name: string;
       email: string;
@@ -32,6 +33,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     time: string;
     totalHours: number;
   } | null>(null);
+  const [modifications, setModifications] = useState<any[]>([]);
+
+  const isOrderUpdate = order.status === 'pendiente_actualizacion';
 
   const calculateTotals = () => {
     const subtotal = orderItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -47,7 +51,28 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     if (order.assigned_technician && orderItems.length > 0) {
       calculateDeliveryTime();
     }
-  }, [order.assigned_technician, orderItems]);
+    
+    if (isOrderUpdate) {
+      loadOrderModifications();
+    }
+  }, [order.assigned_technician, orderItems, isOrderUpdate]);
+
+  const loadOrderModifications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('order_modifications')
+        .select('*')
+        .eq('order_id', order.id)
+        .eq('client_approved', false)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      setModifications(data || []);
+    } catch (error) {
+      console.error('Error loading modifications:', error);
+    }
+  };
 
   const calculateDeliveryTime = () => {
     try {
@@ -103,35 +128,82 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     try {
       const signatureData = signatureRef.current.toDataURL();
 
-      // Guardar la firma de autorización
-      const { error: signatureError } = await supabase
-        .from('order_authorization_signatures')
-        .insert({
-          order_id: order.id,
-          client_signature_data: signatureData,
-          client_name: order.clients?.name || '',
-          signed_at: new Date().toISOString()
+      if (isOrderUpdate) {
+        // Aprobar modificaciones
+        const latestModification = modifications[0];
+        if (latestModification) {
+          const { error: modError } = await supabase
+            .from('order_modifications')
+            .update({
+              client_approved: true,
+              approved_at: new Date().toISOString()
+            })
+            .eq('id', latestModification.id);
+
+          if (modError) throw modError;
+        }
+
+        // Guardar nueva firma de autorización para la modificación
+        const { error: signatureError } = await supabase
+          .from('order_authorization_signatures')
+          .insert({
+            order_id: order.id,
+            client_signature_data: signatureData,
+            client_name: order.clients?.name || '',
+            signed_at: new Date().toISOString(),
+            modification_id: latestModification?.id
+          });
+
+        if (signatureError) throw signatureError;
+
+        // Actualizar el estado de la orden a 'pendiente'
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({
+            status: 'pendiente',
+            client_approval: true,
+            client_approved_at: new Date().toISOString()
+          })
+          .eq('id', order.id);
+
+        if (orderError) throw orderError;
+
+        toast({
+          title: "Modificación aprobada",
+          description: "Los cambios en la orden han sido aprobados exitosamente.",
+          variant: "default"
         });
+      } else {
+        // Aprobación original
+        const { error: signatureError } = await supabase
+          .from('order_authorization_signatures')
+          .insert({
+            order_id: order.id,
+            client_signature_data: signatureData,
+            client_name: order.clients?.name || '',
+            signed_at: new Date().toISOString()
+          });
 
-      if (signatureError) throw signatureError;
+        if (signatureError) throw signatureError;
 
-      // Actualizar el estado de la orden a 'pendiente'
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({
-          status: 'pendiente',
-          client_approval: true,
-          client_approved_at: new Date().toISOString()
-        })
-        .eq('id', order.id);
+        // Actualizar el estado de la orden a 'pendiente'
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({
+            status: 'pendiente',
+            client_approval: true,
+            client_approved_at: new Date().toISOString()
+          })
+          .eq('id', order.id);
 
-      if (orderError) throw orderError;
+        if (orderError) throw orderError;
 
-      toast({
-        title: "Orden aprobada",
-        description: "La orden ha sido aprobada exitosamente y está lista para ser procesada.",
-        variant: "default"
-      });
+        toast({
+          title: "Orden aprobada",
+          description: "La orden ha sido aprobada exitosamente y está lista para ser procesada.",
+          variant: "default"
+        });
+      }
 
       onApprovalComplete();
     } catch (error) {
@@ -155,10 +227,47 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Aprobación de Orden</h1>
+            <h1 className="text-3xl font-bold text-foreground">
+              {isOrderUpdate ? 'Aprobar Modificación de Orden' : 'Aprobación de Orden'}
+            </h1>
             <p className="text-muted-foreground">{order.order_number}</p>
           </div>
         </div>
+
+        {/* Información de modificación */}
+        {isOrderUpdate && modifications.length > 0 && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="text-orange-800">Modificación Realizada</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-orange-700">
+                  <strong>Razón:</strong> {modifications[0].modification_reason}
+                </p>
+                <p className="text-orange-700">
+                  <strong>Modificado por:</strong> {modifications[0].created_by_name}
+                </p>
+                {modifications[0].notes && (
+                  <p className="text-orange-700">
+                    <strong>Detalles:</strong> {modifications[0].notes}
+                  </p>
+                )}
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-orange-700">
+                    <strong>Total anterior:</strong> ${modifications[0].previous_total?.toLocaleString()}
+                  </span>
+                  <span className="text-orange-700">
+                    <strong>Nuevo total:</strong> ${modifications[0].new_total?.toLocaleString()}
+                  </span>
+                  <span className="text-green-600 font-semibold">
+                    Incremento: +${((modifications[0].new_total || 0) - (modifications[0].previous_total || 0)).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Servicios y Productos */}
         <Card className="mb-6">
@@ -247,9 +356,14 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           <Card>
             <CardContent className="text-center py-8">
               <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Confirmar Aprobación</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                {isOrderUpdate ? 'Confirmar Modificación' : 'Confirmar Aprobación'}
+              </h3>
               <p className="text-muted-foreground mb-6">
-                Al aprobar esta orden, confirma que está de acuerdo con los servicios y el costo total.
+                {isOrderUpdate 
+                  ? 'Al aprobar esta modificación, confirma que está de acuerdo con los cambios realizados y el nuevo costo total.'
+                  : 'Al aprobar esta orden, confirma que está de acuerdo con los servicios y el costo total.'
+                }
               </p>
               <Button 
                 onClick={() => setShowSignature(true)}
@@ -322,7 +436,10 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
               </div>
 
               <div className="text-center text-sm text-muted-foreground">
-                Al firmar, confirma que aprueba la orden con los servicios y costos mostrados
+                {isOrderUpdate 
+                  ? 'Al firmar, confirma que aprueba la modificación con los cambios y costos actualizados'
+                  : 'Al firmar, confirma que aprueba la orden con los servicios y costos mostrados'
+                }
               </div>
             </CardContent>
           </Card>

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield } from 'lucide-react';
+import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -18,6 +18,7 @@ import { SimpleOrderApproval } from './SimpleOrderApproval';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
+import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 
 interface OrderDetailsProps {
   order: {
@@ -31,7 +32,7 @@ interface OrderDetailsProps {
     estimated_delivery_date?: string | null;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega';
+    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega' | 'pendiente_actualizacion';
     assigned_technician?: string;
     assignment_reason?: string;
     evidence_photos?: string[];
@@ -72,6 +73,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     time: string;
     totalHours: number;
   } | null>(null);
+  const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -250,6 +252,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
+      case 'pendiente_actualizacion': return 'bg-orange-100 text-orange-700 border-orange-300';
       case 'pendiente': return 'bg-info/10 text-info border-info/20';
       case 'en_proceso': return 'bg-info/10 text-info border-info/20';
       case 'en_camino': return 'bg-info/10 text-info border-info/20';
@@ -268,6 +271,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   const isClient = profile?.role === 'cliente';
   const canSeeSurvey = isClient && orderStatus === 'finalizada' && !surveyCompleted;
+  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor') && 
+                         ['pendiente', 'en_proceso'].includes(orderStatus);
   
   // Check if service was completed before estimated time
   const isEarlyCompletion = orderStatus === 'finalizada' && 
@@ -282,8 +287,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
 
 
-  // Si es cliente y la orden está pendiente de aprobación Y no tiene autorización, mostrar el componente simple
-  if (profile?.role === 'cliente' && orderStatus === 'pendiente_aprobacion' && !hasAuthorization) {
+  // Si es cliente y la orden está pendiente de aprobación O actualización Y no tiene autorización, mostrar el componente simple
+  if (profile?.role === 'cliente' && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') && !hasAuthorization) {
     return (
       <SimpleOrderApproval
         order={order}
@@ -315,7 +320,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(orderStatus)} variant="outline">
-              {orderStatus.replace('_', ' ').toUpperCase()}
+              {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE ACTUALIZACIÓN' : orderStatus.replace('_', ' ').toUpperCase()}
             </Badge>
             
             
@@ -416,9 +421,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             {/* Servicios Solicitados */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Wrench className="h-5 w-5 mr-2 text-primary" />
-                  Servicios y Productos
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Wrench className="h-5 w-5 mr-2 text-primary" />
+                    Servicios y Productos
+                  </div>
+                  {canModifyOrder && (
+                    <Button
+                      onClick={() => setShowAddItemsDialog(true)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Agregar
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -548,7 +565,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Estado Actual</Label>
                   <Badge className={getStatusColor(orderStatus)} variant="outline">
-                    {orderStatus.replace('_', ' ').toUpperCase()}
+                    {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE ACTUALIZACIÓN' : orderStatus.replace('_', ' ').toUpperCase()}
                   </Badge>
                 </div>
 
@@ -800,6 +817,18 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             )}
           </div>
         </div>
+
+        {/* Dialog para agregar servicios */}
+        <AddOrderItemsDialog
+          open={showAddItemsDialog}
+          onOpenChange={setShowAddItemsDialog}
+          orderId={order.id}
+          orderNumber={order.order_number}
+          onItemsAdded={() => {
+            loadOrderItems();
+            onUpdate();
+          }}
+        />
       </div>
     </div>
   );
