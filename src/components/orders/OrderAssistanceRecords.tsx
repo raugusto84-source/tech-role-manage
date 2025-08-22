@@ -5,10 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Camera, User, Clock, CheckCircle2, Upload, Loader2 } from 'lucide-react';
+import { MapPin, Camera, CheckCircle2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import SignatureCanvas from 'react-signature-canvas';
 
 interface OrderAssistanceRecordsProps {
   orderId: string;
@@ -24,7 +23,6 @@ interface AssistanceRecord {
   location_latitude: number;
   location_longitude: number;
   location_address?: string;
-  signature_data?: string;
   evidence_photos: string[];
   notes?: string;
   created_at?: string;
@@ -39,10 +37,9 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
   const [records, setRecords] = useState<AssistanceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [pendingRecord, setPendingRecord] = useState<'arrival' | 'departure' | null>(null);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
-  const sigRef = useRef<SignatureCanvas>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -104,7 +101,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
     setCapturedPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
-  const openSignatureModal = (type: 'arrival' | 'departure') => {
+  const openEvidenceModal = (type: 'arrival' | 'departure') => {
     if (!currentLocation) {
       toast({
         title: "Ubicación requerida",
@@ -115,28 +112,12 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
     }
 
     setPendingRecord(type);
-    setShowSignatureModal(true);
+    setShowEvidenceModal(true);
     setCapturedPhotos([]);
-  };
-
-  const clearSignature = () => {
-    if (sigRef.current) {
-      sigRef.current.clear();
-    }
   };
 
   const saveRecord = async () => {
     if (!user || !currentLocation || !pendingRecord) return;
-
-    // Validar que hay firma
-    if (!sigRef.current || sigRef.current.isEmpty()) {
-      toast({
-        title: "Firma requerida",
-        description: "Por favor proporciona tu firma para continuar.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     // Validar que hay al menos una foto
     if (capturedPhotos.length === 0) {
@@ -151,7 +132,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
     setLoading(true);
 
     try {
-      // Obtener dirección aproximada usando reverse geocoding
+      // Obtener dirección simplificada usando reverse geocoding
       let address = `${currentLocation.lat}, ${currentLocation.lng}`;
       
       try {
@@ -159,8 +140,18 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
           `https://api.openstreetmap.org/reverse?format=json&lat=${currentLocation.lat}&lon=${currentLocation.lng}`
         );
         const data = await response.json();
-        if (data.display_name) {
-          address = data.display_name;
+        if (data.address) {
+          // Extraer solo nombre y número de calle
+          const streetNumber = data.address.house_number || '';
+          const streetName = data.address.road || data.address.street || '';
+          
+          if (streetName) {
+            address = `${streetNumber} ${streetName}`.trim();
+          } else if (data.display_name) {
+            // Fallback: tomar los primeros elementos de la dirección completa
+            const parts = data.display_name.split(',');
+            address = parts.slice(0, 2).join(',').trim();
+          }
         }
       } catch (e) {
         console.log('Could not get address, using coordinates');
@@ -175,7 +166,6 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
         location_latitude: currentLocation.lat,
         location_longitude: currentLocation.lng,
         location_address: address,
-        signature_data: sigRef.current?.toDataURL(),
         evidence_photos: capturedPhotos,
       };
 
@@ -191,7 +181,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
       });
 
       // Limpiar estado
-      setShowSignatureModal(false);
+      setShowEvidenceModal(false);
       setPendingRecord(null);
       setCapturedPhotos([]);
       
@@ -231,7 +221,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
         <div className="flex gap-2 mb-4">
           {!hasCompleteRecords && !hasArrivalWithoutDeparture && (
             <Button
-              onClick={() => openSignatureModal('arrival')}
+              onClick={() => openEvidenceModal('arrival')}
               className="flex items-center gap-2"
             >
               <CheckCircle2 className="h-4 w-4" />
@@ -241,7 +231,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
           
           {hasArrivalWithoutDeparture && (
             <Button
-              onClick={() => openSignatureModal('departure')}
+              onClick={() => openEvidenceModal('departure')}
               className="flex items-center gap-2"
               variant="outline"
             >
@@ -280,10 +270,6 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                   </div>
                 )}
 
-                <div className="text-xs text-muted-foreground">
-                  GPS: {record.location_latitude.toFixed(6)}, {record.location_longitude.toFixed(6)}
-                </div>
-
                 {/* Evidencia fotográfica */}
                 {record.evidence_photos && record.evidence_photos.length > 0 && (
                   <div>
@@ -301,24 +287,13 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                   </div>
                 )}
 
-                {/* Firma */}
-                {record.signature_data && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Firma del cliente:</p>
-                    <img 
-                      src={record.signature_data} 
-                      alt="Firma del cliente"
-                      className="max-w-xs h-20 border rounded bg-white"
-                    />
-                  </div>
-                )}
               </div>
             ))
           )}
         </div>
 
-        {/* Modal de firma */}
-        {showSignatureModal && (
+        {/* Modal de evidencia */}
+        {showEvidenceModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <Card className="w-full max-w-lg mx-4">
               <CardHeader>
@@ -378,37 +353,11 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                   )}
                 </div>
 
-                {/* Firma */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Firma del cliente (requerida):
-                  </label>
-                  <div className="border rounded bg-white">
-                    <SignatureCanvas
-                      ref={sigRef}
-                      canvasProps={{
-                        width: 400,
-                        height: 150,
-                        className: 'signature-canvas w-full'
-                      }}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={clearSignature}
-                    className="mt-2"
-                  >
-                    Limpiar Firma
-                  </Button>
-                </div>
-
                 {/* Ubicación actual */}
                 {currentLocation && (
-                  <div className="text-xs text-muted-foreground">
-                    <strong>Ubicación actual:</strong><br/>
-                    {currentLocation.lat.toFixed(6)}, {currentLocation.lng.toFixed(6)}
+                  <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
+                    <strong>Ubicación detectada:</strong><br/>
+                    Se registrará automáticamente la dirección donde te encuentras
                   </div>
                 )}
 
@@ -431,7 +380,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setShowSignatureModal(false);
+                      setShowEvidenceModal(false);
                       setPendingRecord(null);
                       setCapturedPhotos([]);
                     }}
