@@ -1427,6 +1427,75 @@ export type Database = {
           },
         ]
       }
+      order_assistance_records: {
+        Row: {
+          arrival_location: Json | null
+          arrival_photo_url: string | null
+          arrival_time: string | null
+          client_name: string | null
+          client_signature_data: string | null
+          created_at: string
+          departure_location: Json | null
+          departure_photo_url: string | null
+          departure_time: string | null
+          id: string
+          notes: string | null
+          order_id: string
+          status: string
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          arrival_location?: Json | null
+          arrival_photo_url?: string | null
+          arrival_time?: string | null
+          client_name?: string | null
+          client_signature_data?: string | null
+          created_at?: string
+          departure_location?: Json | null
+          departure_photo_url?: string | null
+          departure_time?: string | null
+          id?: string
+          notes?: string | null
+          order_id: string
+          status?: string
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          arrival_location?: Json | null
+          arrival_photo_url?: string | null
+          arrival_time?: string | null
+          client_name?: string | null
+          client_signature_data?: string | null
+          created_at?: string
+          departure_location?: Json | null
+          departure_photo_url?: string | null
+          departure_time?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string
+          status?: string
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_assistance_records_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_assistance_records_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_authorization_signatures: {
         Row: {
           authorization_notes: string | null
