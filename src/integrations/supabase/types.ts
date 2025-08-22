@@ -2497,6 +2497,85 @@ export type Database = {
           },
         ]
       }
+      policy_expenses: {
+        Row: {
+          client_paid_amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_covered_by_policy: boolean
+          month: number
+          order_id: string | null
+          original_cost: number
+          policy_client_id: string
+          policy_covered_amount: number
+          savings_amount: number
+          service_date: string
+          service_description: string | null
+          service_name: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          client_paid_amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_covered_by_policy?: boolean
+          month: number
+          order_id?: string | null
+          original_cost?: number
+          policy_client_id: string
+          policy_covered_amount?: number
+          savings_amount?: number
+          service_date?: string
+          service_description?: string | null
+          service_name: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          client_paid_amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_covered_by_policy?: boolean
+          month?: number
+          order_id?: string | null
+          original_cost?: number
+          policy_client_id?: string
+          policy_covered_amount?: number
+          savings_amount?: number
+          service_date?: string
+          service_description?: string | null
+          service_name?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_policy_expenses_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_policy_expenses_order"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_policy_expenses_policy_client"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policy_order_expenses: {
         Row: {
           created_at: string
