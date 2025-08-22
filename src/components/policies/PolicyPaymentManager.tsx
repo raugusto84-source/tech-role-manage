@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, AlertTriangle, DollarSign, Calendar, CreditCard } from "lucide-react";
+import { Plus, Check, AlertTriangle, DollarSign, Calendar, CreditCard, Trash2 } from "lucide-react";
 
 interface PolicyPayment {
   id: string;
@@ -196,6 +196,35 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
       toast({
         title: "Error",
         description: "No se pudo marcar el pago como pagado",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add function to delete a payment
+  const handleDeletePayment = async (paymentId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este pago? Esta acción no se puede deshacer.')) return;
+
+    try {
+      const { error } = await supabase
+        .from('policy_payments')
+        .delete()
+        .eq('id', paymentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Éxito",
+        description: "Pago eliminado correctamente",
+      });
+
+      loadData();
+      onStatsUpdate();
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el pago",
         variant: "destructive",
       });
     }
@@ -485,16 +514,25 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
                       {getStatusBadge(payment)}
                     </TableCell>
                     <TableCell>
-                      {!payment.is_paid && (
+                      <div className="flex space-x-2">
+                        {!payment.is_paid && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMarkAsPaid(payment.id)}
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            Marcar Pagado
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleMarkAsPaid(payment.id)}
+                          onClick={() => handleDeletePayment(payment.id)}
                         >
-                          <Check className="h-4 w-4 mr-2" />
-                          Marcar Pagado
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
