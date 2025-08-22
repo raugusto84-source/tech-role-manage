@@ -1362,6 +1362,54 @@ export type Database = {
           },
         ]
       }
+      insurance_policies: {
+        Row: {
+          cashback_percentage: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          free_services: boolean | null
+          id: string
+          is_active: boolean | null
+          monthly_fee: number
+          policy_name: string
+          policy_number: string
+          products_generate_cashback: boolean | null
+          service_discount_percentage: number | null
+          updated_at: string
+        }
+        Insert: {
+          cashback_percentage?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          free_services?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          monthly_fee?: number
+          policy_name: string
+          policy_number: string
+          products_generate_cashback?: boolean | null
+          service_discount_percentage?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cashback_percentage?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          free_services?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          monthly_fee?: number
+          policy_name?: string
+          policy_number?: string
+          products_generate_cashback?: boolean | null
+          service_discount_percentage?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       main_service_categories: {
         Row: {
           created_at: string
@@ -2107,8 +2155,11 @@ export type Database = {
           id: string
           initial_signature_url: string | null
           is_home_service: boolean | null
+          is_policy_order: boolean | null
           order_number: string
+          order_priority: number | null
           pdf_url: string | null
+          policy_id: string | null
           requested_date: string | null
           service_location: Json | null
           service_type: string
@@ -2136,8 +2187,11 @@ export type Database = {
           id?: string
           initial_signature_url?: string | null
           is_home_service?: boolean | null
+          is_policy_order?: boolean | null
           order_number: string
+          order_priority?: number | null
           pdf_url?: string | null
+          policy_id?: string | null
           requested_date?: string | null
           service_location?: Json | null
           service_type: string
@@ -2165,8 +2219,11 @@ export type Database = {
           id?: string
           initial_signature_url?: string | null
           is_home_service?: boolean | null
+          is_policy_order?: boolean | null
           order_number?: string
+          order_priority?: number | null
           pdf_url?: string | null
+          policy_id?: string | null
           requested_date?: string | null
           service_location?: Json | null
           service_type?: string
@@ -2180,6 +2237,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_policies"
             referencedColumns: ["id"]
           },
           {
@@ -2363,6 +2427,177 @@ export type Database = {
           visit_frequency?: number
         }
         Relationships: []
+      }
+      policy_clients: {
+        Row: {
+          assigned_by: string | null
+          client_id: string
+          created_at: string
+          end_date: string | null
+          id: string
+          is_active: boolean | null
+          policy_id: string
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          client_id: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          policy_id: string
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_by?: string | null
+          client_id?: string
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          policy_id?: string
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_clients_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_clients_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "insurance_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_order_expenses: {
+        Row: {
+          created_at: string
+          expense_month: number
+          expense_year: number
+          id: string
+          order_id: string
+          policy_client_id: string
+          product_cost: number | null
+          service_cost: number | null
+          total_cost: number | null
+        }
+        Insert: {
+          created_at?: string
+          expense_month: number
+          expense_year: number
+          id?: string
+          order_id: string
+          policy_client_id: string
+          product_cost?: number | null
+          service_cost?: number | null
+          total_cost?: number | null
+        }
+        Update: {
+          created_at?: string
+          expense_month?: number
+          expense_year?: number
+          id?: string
+          order_id?: string
+          policy_client_id?: string
+          product_cost?: number | null
+          service_cost?: number | null
+          total_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_order_expenses_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_order_expenses_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_order_expenses_policy_client_id_fkey"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_payments: {
+        Row: {
+          account_type: Database["public"]["Enums"]["account_type"]
+          amount: number
+          created_at: string
+          created_by: string | null
+          due_date: string
+          id: string
+          invoice_number: string | null
+          is_paid: boolean | null
+          payment_date: string | null
+          payment_method: string | null
+          payment_month: number
+          payment_status: string | null
+          payment_year: number
+          policy_client_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          id?: string
+          invoice_number?: string | null
+          is_paid?: boolean | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_month: number
+          payment_status?: string | null
+          payment_year: number
+          policy_client_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_type?: Database["public"]["Enums"]["account_type"]
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          id?: string
+          invoice_number?: string | null
+          is_paid?: boolean | null
+          payment_date?: string | null
+          payment_method?: string | null
+          payment_month?: number
+          payment_status?: string | null
+          payment_year?: number
+          policy_client_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_payments_policy_client_id_fkey"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       policy_visits: {
         Row: {
@@ -3290,6 +3525,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      scheduled_services: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          frequency_days: number
+          id: string
+          is_active: boolean | null
+          last_service_date: string | null
+          next_service_date: string
+          policy_client_id: string
+          priority: number | null
+          service_description: string | null
+          service_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          frequency_days?: number
+          id?: string
+          is_active?: boolean | null
+          last_service_date?: string | null
+          next_service_date: string
+          policy_client_id: string
+          priority?: number | null
+          service_description?: string | null
+          service_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          frequency_days?: number
+          id?: string
+          is_active?: boolean | null
+          last_service_date?: string | null
+          next_service_date?: string
+          policy_client_id?: string
+          priority?: number | null
+          service_description?: string | null
+          service_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_services_policy_client_id_fkey"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_services_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scheduled_surveys: {
         Row: {
@@ -4901,6 +5196,10 @@ export type Database = {
           technician_id: string
           years_experience: number
         }[]
+      }
+      update_overdue_policy_payments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {
