@@ -191,7 +191,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         p_service_description: formData.service_description,
         p_priority: formData.priority,
         p_created_by: user?.id,
-        p_items: JSON.stringify(itemsArray)
+        p_items: itemsArray
       });
 
       if (error) {
