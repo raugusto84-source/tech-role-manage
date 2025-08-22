@@ -3544,6 +3544,45 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_service_items: {
+        Row: {
+          created_at: string
+          id: string
+          quantity: number
+          scheduled_service_id: string
+          service_type_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          quantity?: number
+          scheduled_service_id: string
+          service_type_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          quantity?: number
+          scheduled_service_id?: string
+          service_type_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_service_items_scheduled_service_id_fkey"
+            columns: ["scheduled_service_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_service_items_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_services: {
         Row: {
           created_at: string

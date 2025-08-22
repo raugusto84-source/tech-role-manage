@@ -87,7 +87,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     try {
       setLoading(true);
       
-      // Load scheduled services
+      // Load scheduled services with bundled items
       const { data: servicesData, error: servicesError } = await supabase
         .from('scheduled_services')
         .select(`
@@ -96,7 +96,13 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
             clients(name, email),
             insurance_policies(policy_name, policy_number)
           ),
-          service_types(name, description)
+          service_types(name, description),
+          scheduled_service_items(
+            id,
+            service_type_id,
+            quantity,
+            service_types(name, description)
+          )
         `)
         .order('next_service_date', { ascending: true });
 
@@ -170,24 +176,23 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         throw new Error('No se encontraron servicios válidos para programar. Vuelva a seleccionarlos.');
       }
 
-      // Crear un registro por cada servicio seleccionado con su cantidad
-      const servicesToInsert = validServiceIds.map(serviceTypeId => ({
-        policy_client_id: formData.policy_client_id,
+      // Crear bundle de servicios con items JSON
+      const itemsArray = validServiceIds.map(serviceTypeId => ({
         service_type_id: serviceTypeId,
-        quantity: formData.selected_services[serviceTypeId] ?? 1,
-        frequency_days: formData.frequency_days,
-        next_service_date: formData.next_service_date,
-        service_description: formData.service_description,
-        priority: formData.priority,
-        created_by: user?.id,
-        is_active: true,
+        quantity: formData.selected_services[serviceTypeId] ?? 1
       }));
 
-      console.log('Inserting scheduled services:', servicesToInsert);
+      console.log('Creating scheduled service bundle with items:', itemsArray);
 
-      const { error } = await supabase
-        .from('scheduled_services')
-        .insert(servicesToInsert);
+      const { data, error } = await supabase.rpc('create_scheduled_service_bundle', {
+        p_policy_client_id: formData.policy_client_id,
+        p_frequency_days: formData.frequency_days,
+        p_next_service_date: formData.next_service_date,
+        p_service_description: formData.service_description,
+        p_priority: formData.priority,
+        p_created_by: user?.id,
+        p_items: JSON.stringify(itemsArray)
+      });
 
       if (error) {
         console.error('Database error:', error);
@@ -196,7 +201,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       toast({
         title: "Éxito",
-        description: `${selectedServiceIds.length} servicio(s) programado(s) creado(s) correctamente`,
+        description: `Servicio programado creado con ${selectedServiceIds.length} item(s). Se creó orden y registro pendiente en finanzas.`,
       });
 
       setIsDialogOpen(false);
@@ -241,77 +246,21 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
   const handleCreateOrder = async (service: ScheduledService) => {
     try {
-      // Get client_id from policy_clients
-      const { data: policyClient, error: policyError } = await supabase
-        .from('policy_clients')
-        .select('clients(id)')
-        .eq('id', service.policy_client_id)
-        .single();
+      const { data, error } = await supabase.rpc('create_order_for_scheduled_service', {
+        p_scheduled_service_id: service.id
+      });
 
-      if (policyError || !policyClient) {
-        throw new Error('No se pudo obtener información del cliente');
-      }
+      if (error) throw error;
 
-      // Create order with policy information
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          order_number: `ORD-POL-${Date.now()}`,
-          client_id: policyClient.clients.id,
-          service_type: service.service_types.name, // tipo textual del servicio
-          service_location: 'domicilio', // lugar del servicio
-          delivery_date: service.next_service_date,
-          estimated_cost: 0,
-          failure_description: service.service_description || `Servicio programado: ${service.service_types.name}`,
-          status: 'pendiente',
-          is_policy_order: true,
-          order_priority: service.priority,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
-
-      if (orderError) throw orderError;
-
-      // Create order item for the scheduled service
-      const { error: itemError } = await supabase
-        .from('order_items')
-        .insert({
-          order_id: orderData.id,
-          service_type_id: service.service_type_id,
-          quantity: (service as any).quantity ?? 1,
-          unit_cost_price: 0,
-          unit_base_price: 0,
-          profit_margin_rate: 0,
-          subtotal: 0,
-          vat_rate: 0,
-          vat_amount: 0,
-          total_amount: 0,
-          service_name: service.service_types.name,
-          service_description: service.service_types.description,
-          item_type: 'servicio',
-          status: 'pendiente',
-        });
-
-      if (itemError) throw itemError;
-
-      // Update last service date and calculate next date
+      const orderNumber = data?.[0]?.order_number || 'desconocido';
+      
+      // Calculate next date for display
       const nextDate = new Date();
       nextDate.setDate(nextDate.getDate() + service.frequency_days);
 
-      const { error: updateError } = await supabase
-        .from('scheduled_services')
-        .update({
-          last_service_date: new Date().toISOString().split('T')[0],
-          next_service_date: nextDate.toISOString().split('T')[0],
-        })
-        .eq('id', service.id);
-
-      if (updateError) throw updateError;
-
       toast({
         title: "Éxito",
-        description: `Orden ${orderData.order_number} creada y próxima fecha programada para ${nextDate.toLocaleDateString('es-MX')}`,
+        description: `Orden ${orderNumber} creada con todos los servicios del bundle. Próxima fecha: ${nextDate.toLocaleDateString('es-MX')}`,
       });
 
       loadData();
@@ -616,16 +565,31 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{service.service_types.name}</div>
-                          {service.service_description && (
-                            <div className="text-sm text-muted-foreground">
-                              {service.service_description}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
+                       <TableCell>
+                         <div>
+                           <div className="font-medium">
+                             Bundle de {(service as any).scheduled_service_items?.length || 1} servicio(s)
+                           </div>
+                           {(service as any).scheduled_service_items && (service as any).scheduled_service_items.length > 0 ? (
+                             <div className="text-sm text-muted-foreground space-y-1">
+                               {(service as any).scheduled_service_items.map((item: any, idx: number) => (
+                                 <div key={idx}>
+                                   • {item.service_types?.name} (x{item.quantity})
+                                 </div>
+                               ))}
+                             </div>
+                           ) : (
+                             <div className="text-sm text-muted-foreground">
+                               {service.service_types.name} (Legacy)
+                             </div>
+                           )}
+                           {service.service_description && (
+                             <div className="text-sm text-muted-foreground mt-1 font-italic">
+                               {service.service_description}
+                             </div>
+                           )}
+                         </div>
+                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <RotateCcw className="h-4 w-4 text-muted-foreground" />
