@@ -311,7 +311,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const canSeeSurvey = isClient && orderStatus === 'finalizada' && !surveyCompleted;
   const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor') && 
                          ['pendiente', 'en_proceso'].includes(orderStatus);
-  const canSignDelivery = isClient && orderStatus === 'pendiente_entrega';
+  const canSignDelivery = (isClient && orderStatus === 'pendiente_entrega') || 
+                       (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
   
   // Check if service was completed before estimated time
   const isEarlyCompletion = orderStatus === 'finalizada' && 
@@ -326,7 +327,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
 
 
-  // Si es cliente y la orden está pendiente de aprobación O actualización Y no tiene autorización, mostrar el componente simple
+  // Si es cliente (NO administrador) y la orden está pendiente de aprobación O actualización Y no tiene autorización, mostrar el componente simple
   if (profile?.role === 'cliente' && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') && !hasAuthorization) {
     return (
       <SimpleOrderApproval
