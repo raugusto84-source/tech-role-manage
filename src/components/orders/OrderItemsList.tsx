@@ -315,17 +315,17 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                   
                    <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                      {/* Mostrar desglose de precios con póliza */}
-                     {item.original_subtotal && item.policy_discount_amount && item.policy_discount_amount > 0 ? (
-                       <>
-                         <span>Precio original: {formatCurrency(item.original_subtotal)}</span>
-                         <span className="text-blue-600 font-medium">
-                           Descuento {item.policy_name || 'póliza'} ({item.policy_discount_percentage}%): 
-                           -{formatCurrency(item.policy_discount_amount)}
-                         </span>
-                         <span>Subtotal final: {formatCurrency(item.subtotal)}</span>
-                         <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
-                       </>
-                     ) : (
+                      {item.original_subtotal && item.policy_discount_amount && item.policy_discount_amount > 0 ? (
+                        <>
+                          <span>Precio sin póliza: <span className="line-through text-muted-foreground">{formatCurrency(item.original_subtotal)}</span></span>
+                          <span className="text-green-600 font-medium">
+                            💰 Ahorro: {formatCurrency(item.policy_discount_amount)} 
+                            ({item.policy_name || 'póliza'} - {item.policy_discount_percentage}%)
+                          </span>
+                          <span className="text-primary font-medium">Precio final: {formatCurrency(item.subtotal)}</span>
+                          <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
+                        </>
+                      ) : (
                        <>
                          <span>Subtotal: {formatCurrency(item.subtotal)}</span>
                          <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
