@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { InsurancePolicyManager } from "@/components/policies/InsurancePolicyManager";
 import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
-import { PolicyPaymentManager } from "@/components/policies/PolicyPaymentManager";
+
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { Search, Plus, Shield, Users, CreditCard, Calendar, FileText } from "lucide-react";
@@ -187,11 +187,10 @@ export default function InsurancePolicies() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Resumen</TabsTrigger>
           <TabsTrigger value="policies">Pólizas</TabsTrigger>
           <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="payments">Pagos</TabsTrigger>
           <TabsTrigger value="services">Servicios</TabsTrigger>
           <TabsTrigger value="reports">Reportes</TabsTrigger>
         </TabsList>
@@ -257,10 +256,6 @@ export default function InsurancePolicies() {
 
         <TabsContent value="clients">
           <PolicyClientManager onStatsUpdate={refreshStats} />
-        </TabsContent>
-
-        <TabsContent value="payments">
-          <PolicyPaymentManager onStatsUpdate={refreshStats} />
         </TabsContent>
 
         <TabsContent value="services">
