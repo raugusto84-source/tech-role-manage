@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Camera, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield, Plus, Loader2, X } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield, Plus, Loader2, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -75,10 +75,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     totalHours: number;
   } | null>(null);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [newEvidencePhotos, setNewEvidencePhotos] = useState<string[]>([]);
-  const [uploadingEvidence, setUploadingEvidence] = useState(false);
-  const evidenceInputRef = useRef<HTMLInputElement>(null);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -199,60 +195,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       });
     } catch (error) {
       console.error('Error calculating delivery time:', error);
-    }
-  };
-
-  const handleEvidenceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          setNewEvidencePhotos(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  };
-
-  const removeNewEvidencePhoto = (index: number) => {
-    setNewEvidencePhotos(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const saveNewEvidencePhotos = async () => {
-    if (newEvidencePhotos.length === 0) return;
-
-    setUploadingEvidence(true);
-    try {
-      // Combinar fotos existentes con las nuevas
-      const allPhotos = [...(order.evidence_photos || []), ...newEvidencePhotos];
-
-      const { error } = await supabase
-        .from('orders')
-        .update({ evidence_photos: allPhotos })
-        .eq('id', order.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Evidencia guardada",
-        description: "Las fotos de evidencia se han guardado correctamente.",
-      });
-
-      // Actualizar el estado local y llamar onUpdate para refrescar
-      setNewEvidencePhotos([]);
-      onUpdate();
-      
-    } catch (error) {
-      console.error('Error saving evidence:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo guardar la evidencia. Inténtalo de nuevo.",
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingEvidence(false);
     }
   };
 
@@ -619,107 +561,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               onItemUpdate={loadOrderItems}
             />
 
-            {/* Evidencia Fotográfica */}
+            {/* Chat de la Orden */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Camera className="h-5 w-5 mr-2 text-primary" />
-                  Evidencia Fotográfica
+                  <MessageSquare className="h-5 w-5 mr-2 text-primary" />
+                  Chat de la Orden
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Fotos existentes */}
-                {order.evidence_photos && order.evidence_photos.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Evidencia actual:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {order.evidence_photos.map((photo, index) => (
-                        <div 
-                          key={index} 
-                          className="aspect-square bg-muted rounded-lg overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => setSelectedPhoto(photo)}
-                        >
-                          <img 
-                            src={photo} 
-                            alt={`Evidencia ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Campo para agregar nueva evidencia */}
-                {canEdit && (
-                  <div className="border-t pt-4">
-                    <h4 className="text-sm font-medium mb-2">Agregar nueva evidencia:</h4>
-                    <div className="space-y-2">
-                      <input
-                        type="file"
-                        ref={evidenceInputRef}
-                        accept="image/*"
-                        capture="environment"
-                        multiple
-                        onChange={handleEvidenceUpload}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => evidenceInputRef.current?.click()}
-                        className="w-full"
-                      >
-                        <Camera className="h-4 w-4 mr-2" />
-                        Tomar/Agregar Fotos de Evidencia
-                      </Button>
-                      
-                      {/* Preview de fotos nuevas */}
-                      {newEvidencePhotos.length > 0 && (
-                        <div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            Fotos por subir ({newEvidencePhotos.length}):
-                          </p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {newEvidencePhotos.map((photo, index) => (
-                              <div key={index} className="relative">
-                                <img
-                                  src={photo}
-                                  alt={`Nueva evidencia ${index + 1}`}
-                                  className="w-full h-20 object-cover rounded border cursor-pointer"
-                                  onClick={() => setSelectedPhoto(photo)}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="destructive"
-                                  size="sm"
-                                  className="absolute top-1 right-1 h-6 w-6 p-0"
-                                  onClick={() => removeNewEvidencePhoto(index)}
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                          <Button
-                            onClick={saveNewEvidencePhotos}
-                            disabled={uploadingEvidence}
-                            className="w-full mt-2"
-                          >
-                            {uploadingEvidence ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Subiendo...
-                              </>
-                            ) : (
-                              'Guardar Evidencia'
-                            )}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+              <CardContent>
+                <OrderChat 
+                  orderId={order.id} 
+                  disabled={orderStatus === 'finalizada' || orderStatus === 'cancelada'}
+                  onMessagesRead={handleMessagesRead}
+                />
               </CardContent>
             </Card>
           </div>
@@ -1021,27 +876,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           />
         )}
       </div>
-
-      {/* Modal para ver fotos */}
-      {selectedPhoto && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="relative max-w-4xl max-h-full">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="absolute top-2 right-2 z-10"
-              onClick={() => setSelectedPhoto(null)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-            <img
-              src={selectedPhoto}
-              alt="Evidencia ampliada"
-              className="max-w-full max-h-full object-contain rounded-lg"
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
