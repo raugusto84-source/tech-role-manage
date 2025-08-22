@@ -132,6 +132,13 @@ export function AddOrderItemsDialog({
   };
 
   const handleSubmit = async () => {
+    console.log('=== HANDLE SUBMIT START ===');
+    console.log('Current orderId prop:', orderId);
+    console.log('Current reason state:', reason);
+    console.log('Reason length:', reason?.length);
+    console.log('Reason trimmed:', reason?.trim());
+    console.log('NewItems:', newItems);
+    
     if (newItems.length === 0) {
       toast({
         title: "Error",
@@ -150,10 +157,19 @@ export function AddOrderItemsDialog({
       return;
     }
 
-    if (!reason.trim()) {
+    if (!reason || !reason.trim()) {
       toast({
         title: "Error",
         description: "Debe proporcionar una razón para la modificación",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!orderId) {
+      toast({
+        title: "Error",
+        description: "ID de orden no válido",
         variant: "destructive"
       });
       return;
@@ -208,9 +224,9 @@ export function AddOrderItemsDialog({
         order_id: orderId,
         previous_total: previousTotal,
         new_total: newTotal,
-        items_added: JSON.stringify(newItems) as any, // Convert to JSON for JSONB field
-        modification_type: 'item_added',
-        modification_reason: reason,
+        items_added: JSON.stringify(newItems),
+        modification_type: 'item_added' as const,
+        modification_reason: reason.trim(),
         created_by: userResult.user?.id,
         created_by_name: createdByName,
         notes: `Servicios/productos agregados: ${newItems.map(item => `${item.service_name} (x${item.quantity})`).join(', ')}`
