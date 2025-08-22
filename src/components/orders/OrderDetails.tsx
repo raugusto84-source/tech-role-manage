@@ -128,6 +128,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
 
   const checkExistingAuthorization = async () => {
+    console.log('=== checkExistingAuthorization DEBUG ===');
+    console.log('Current orderStatus:', orderStatus);
+    console.log('Current hasAuthorization:', hasAuthorization);
+    
     try {
       if (orderStatus === 'pendiente_actualizacion') {
         // For update approvals, check if there's a pending modification without approval
@@ -138,9 +142,18 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           .is('client_approved', null)
           .maybeSingle();
         
+        console.log('Modification data:', modificationData);
+        
         // If there's a pending modification, we need approval regardless of existing signatures
-        setHasAuthorization(!modificationData);
-      } else {
+        const needsApproval = !!modificationData;
+        console.log('Needs approval (has pending modification):', needsApproval);
+        
+        // Only update state if it actually changed to prevent unnecessary re-renders
+        if (hasAuthorization === needsApproval) {
+          console.log('Setting hasAuthorization to:', !needsApproval);
+          setHasAuthorization(!needsApproval);
+        }
+      } else if (orderStatus === 'pendiente_aprobacion') {
         // For regular approvals, check for existing signatures
         const { data } = await supabase
           .from('order_authorization_signatures')
@@ -148,11 +161,28 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           .eq('order_id', order.id)
           .maybeSingle();
         
-        setHasAuthorization(!!data);
+        console.log('Authorization signature data:', data);
+        
+        const hasSignature = !!data;
+        console.log('Has signature:', hasSignature);
+        
+        // Only update state if it actually changed
+        if (hasAuthorization !== hasSignature) {
+          console.log('Setting hasAuthorization to:', hasSignature);
+          setHasAuthorization(hasSignature);
+        }
+      } else {
+        // For other statuses, assume authorization exists
+        if (!hasAuthorization) {
+          console.log('Setting hasAuthorization to true for status:', orderStatus);
+          setHasAuthorization(true);
+        }
       }
     } catch (error) {
       console.error('Error checking authorization:', error);
-      setHasAuthorization(false);
+      if (hasAuthorization !== false) {
+        setHasAuthorization(false);
+      }
     }
   };
 
