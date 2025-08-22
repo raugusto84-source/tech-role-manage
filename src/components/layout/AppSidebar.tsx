@@ -10,7 +10,11 @@ import {
   Wrench,
   Banknote,
   BarChart3,
-  Shield
+  Shield,
+  Gift,
+  ShieldCheck,
+  MessageSquare,
+  ClipboardCheck
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -53,20 +57,25 @@ export function AppSidebar() {
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
           { title: 'Clientes', url: '/clientes', icon: UserCheck },
+          { title: 'Recompensas', url: '/recompensas', icon: Gift },
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
           { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
+          { title: 'Encuestas Programables', url: '/encuestas-programables', icon: MessageSquare },
           { title: 'Reportes', url: '/reports', icon: FileText },
           { title: 'Configuración', url: '/settings', icon: Settings },
         ];
       case 'vendedor':
         return [
           ...commonItems,
+          { title: 'Recompensas', url: '/recompensas', icon: Gift },
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
         ];
@@ -74,12 +83,15 @@ export function AppSidebar() {
         return [
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
+          { title: 'Recompensas', url: '/recompensas', icon: Gift },
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
           { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
+          { title: 'Encuestas Programables', url: '/encuestas-programables', icon: MessageSquare },
         ];
       case 'tecnico':
         return [
@@ -91,6 +103,7 @@ export function AppSidebar() {
           { title: 'Panel Cliente', url: '/client', icon: Home },
           { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Mis Cotizaciones', url: '/quotes', icon: FileText },
+          { title: 'Mis Recompensas', url: '/recompensas', icon: Gift },
         ];
       default:
         return commonItems;

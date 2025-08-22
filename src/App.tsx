@@ -20,6 +20,9 @@ import Surveys from "./pages/Surveys";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import InsurancePolicies from "./pages/InsurancePolicies";
+import Rewards from "./pages/Rewards";
+import Warranties from "./pages/Warranties";
+import ProgrammableSurveys from "./pages/ProgrammableSurveys";
 
 const queryClient = new QueryClient();
 
@@ -126,6 +129,30 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['administrador']}>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/recompensas" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'cliente']}>
+                  <Rewards />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/garantias" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
+                  <Warranties />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/encuestas-programables" 
+              element={
+                <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
+                  <ProgrammableSurveys />
                 </ProtectedRoute>
               }
             />
