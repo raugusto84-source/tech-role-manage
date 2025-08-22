@@ -27,10 +27,10 @@ function exportCsv(filename: string, rows: Record<string, any>[]) {
     const str = String(val).replace(/"/g, '""');
     return `"${str}"`;
   };
-  const csv = [headers.join(",")]
-    .concat(rows.map(r => headers.map(h => escape(r[h])).join(",")))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const csv = [headers.join(",")].concat(rows.map(r => headers.map(h => escape(r[h])).join(","))).join("\n");
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8;"
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -38,10 +38,13 @@ function exportCsv(filename: string, rows: Record<string, any>[]) {
   a.click();
   URL.revokeObjectURL(url);
 }
-
 export default function Finance() {
-  const { toast } = useToast();
-  const { profile } = useAuth();
+  const {
+    toast
+  } = useToast();
+  const {
+    profile
+  } = useAuth();
   const isAdmin = profile?.role === 'administrador';
 
   // SEO básico
@@ -51,7 +54,6 @@ export default function Finance() {
     metaDesc.setAttribute("name", "description");
     metaDesc.setAttribute("content", "Finanzas SYSLAG: ingresos, egresos y cobranzas pendientes con filtros y exportación CSV.");
     if (!metaDesc.parentElement) document.head.appendChild(metaDesc);
-
     const linkCanonical = document.querySelector('link[rel="canonical"]') || document.createElement("link");
     linkCanonical.setAttribute("rel", "canonical");
     linkCanonical.setAttribute("href", window.location.origin + "/finanzas");
@@ -59,10 +61,10 @@ export default function Finance() {
   }, []);
 
   // Filtros compartidos
-  const [startDate, setStartDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0,10));
-  const [endDate, setEndDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0,10));
+  const [startDate, setStartDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10));
+  const [endDate, setEndDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0, 10));
   const [accountType, setAccountType] = useState<string>("all"); // all | fiscal | no_fiscal
-  
+
   // Estado para retiros
   const [selectedWithdrawals, setSelectedWithdrawals] = useState<string[]>([]);
   const [showWithdrawalDialog, setShowWithdrawalDialog] = useState(false);
@@ -72,8 +74,8 @@ export default function Finance() {
   // Función para establecer mes actual rápidamente
   const setCurrentMonth = () => {
     const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().substring(0,10);
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().substring(0,10);
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().substring(0, 10);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().substring(0, 10);
     setStartDate(firstDay);
     setEndDate(lastDay);
   };
@@ -82,63 +84,76 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at").order("income_date", { ascending: false });
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at").order("income_date", {
+        ascending: false
+      });
       if (startDate) q = q.gte("income_date", startDate);
       if (endDate) q = q.lte("income_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
-      const { data, error } = await q;
+      const {
+        data,
+        error
+      } = await q;
       if (error) throw error;
       return data ?? [];
     }
   });
-
   const suppliersQuery = useQuery({
     queryKey: ["suppliers"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("suppliers").select("*").eq("status", "active").order("supplier_name");
+      const {
+        data,
+        error
+      } = await supabase.from("suppliers").select("*").eq("status", "active").order("supplier_name");
       if (error) throw error;
       return data || [];
-    },
+    }
   });
-
   const purchasesQuery = useQuery({
     queryKey: ["purchases", startDate, endDate],
     queryFn: async () => {
-      let q = supabase
-        .from("purchases")
-        .select(`
+      let q = supabase.from("purchases").select(`
           *,
           supplier:suppliers(supplier_name)
-        `)
-        .order("purchase_date", { ascending: false });
+        `).order("purchase_date", {
+        ascending: false
+      });
       if (startDate) q = q.gte("purchase_date", startDate);
       if (endDate) q = q.lte("purchase_date", endDate);
-      const { data, error } = await q;
+      const {
+        data,
+        error
+      } = await q;
       if (error) throw error;
       return data || [];
-    },
+    }
   });
-
   const expensesQuery = useQuery({
     queryKey: ["expenses", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,created_at").order("expense_date", { ascending: false });
+      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,created_at").order("expense_date", {
+        ascending: false
+      });
       if (startDate) q = q.gte("expense_date", startDate);
       if (endDate) q = q.lte("expense_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
-      const { data, error } = await q;
+      const {
+        data,
+        error
+      } = await q;
       if (error) throw error;
       return data ?? [];
     }
   });
-
   const collectionsQuery = useQuery({
     queryKey: ["pending_collections"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pending_collections")
-        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat")
-        .order("delivery_date", { ascending: true });
+      const {
+        data,
+        error
+      } = await supabase.from("pending_collections").select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat").order("delivery_date", {
+        ascending: true
+      });
       if (error) throw error;
       return data ?? [];
     }
@@ -149,23 +164,23 @@ export default function Finance() {
     queryKey: ["fiscal_withdrawals"],
     queryFn: async () => {
       console.log('Fetching fiscal withdrawals...');
-      const { data, error } = await supabase
-        .from("fiscal_withdrawals")
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from("fiscal_withdrawals").select(`
           id,
           amount,
           description,
           withdrawal_status,
           created_at,
           withdrawn_at
-        `)
-        .order("created_at", { ascending: false });
-      
+        `).order("created_at", {
+        ascending: false
+      });
       if (error) {
         console.error('Error fetching fiscal withdrawals:', error);
         throw error;
       }
-      
       console.log('Fiscal withdrawals fetched:', data);
       console.log('Available withdrawals:', data?.filter(fw => fw.withdrawal_status === 'available'));
       return data ?? [];
@@ -176,31 +191,22 @@ export default function Finance() {
   const vatDetailsQuery = useQuery({
     queryKey: ["vat_details", startDate, endDate],
     queryFn: async () => {
-      const [incomesData, expensesData] = await Promise.all([
-        supabase.from("incomes")
-          .select("income_date, description, amount, vat_rate, vat_amount, taxable_amount")
-          .eq("account_type", "fiscal")
-          .not("vat_amount", "is", null)
-          .gte("income_date", startDate)
-          .lte("income_date", endDate)
-          .order("income_date", { ascending: false }),
-        supabase.from("expenses")
-          .select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount")
-          .eq("account_type", "fiscal")
-          .not("vat_amount", "is", null)
-          .gte("expense_date", startDate)
-          .lte("expense_date", endDate)
-          .order("expense_date", { ascending: false })
-      ]);
-      
+      const [incomesData, expensesData] = await Promise.all([supabase.from("incomes").select("income_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").not("vat_amount", "is", null).gte("income_date", startDate).lte("income_date", endDate).order("income_date", {
+        ascending: false
+      }), supabase.from("expenses").select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").not("vat_amount", "is", null).gte("expense_date", startDate).lte("expense_date", endDate).order("expense_date", {
+        ascending: false
+      })]);
       if (incomesData.error) throw incomesData.error;
       if (expensesData.error) throw expensesData.error;
-      
-      const combined = [
-        ...(incomesData.data || []).map(item => ({ ...item, date: item.income_date, type: 'ingresos' })),
-        ...(expensesData.data || []).map(item => ({ ...item, date: item.expense_date, type: 'egresos' }))
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+      const combined = [...(incomesData.data || []).map(item => ({
+        ...item,
+        date: item.income_date,
+        type: 'ingresos'
+      })), ...(expensesData.data || []).map(item => ({
+        ...item,
+        date: item.expense_date,
+        type: 'egresos'
+      }))].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       return combined;
     }
   });
@@ -209,22 +215,18 @@ export default function Finance() {
   const vatSummaryQuery = useQuery({
     queryKey: ["vat_summary"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("vat_summary")
-        .select("*")
-        .limit(12);
+      const {
+        data,
+        error
+      } = await supabase.from("vat_summary").select("*").limit(12);
       if (error) throw error;
       return data ?? [];
     }
   });
-
-
   const financialHistoryQuery = useQuery({
     queryKey: ["financial_history", startDate, endDate],
     queryFn: async () => {
-      let q = supabase
-        .from("financial_history")
-        .select(`
+      let q = supabase.from("financial_history").select(`
           id,
           operation_type,
           table_name,
@@ -235,77 +237,73 @@ export default function Finance() {
           created_at,
           performed_by,
           profiles:performed_by(full_name)
-        `)
-        .order("created_at", { ascending: false });
-      
+        `).order("created_at", {
+        ascending: false
+      });
       if (startDate) q = q.gte("operation_date", startDate);
       if (endDate) q = q.lte("operation_date", endDate);
-      
-      const { data, error } = await q;
+      const {
+        data,
+        error
+      } = await q;
       if (error) throw error;
       return data ?? [];
     }
   });
-  
   const fixedExpensesQuery = useQuery({
     queryKey: ["fixed_expenses"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fixed_expenses")
-        .select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month")
-        .order("next_run_date", { ascending: true });
+      const {
+        data,
+        error
+      } = await supabase.from("fixed_expenses").select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month").order("next_run_date", {
+        ascending: true
+      });
       if (error) throw error;
       return data ?? [];
     }
   });
-  
   const recurringPayrollsQuery = useQuery({
     queryKey: ["recurring_payrolls"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recurring_payrolls")
-        .select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active,day_of_month")
-        .order("next_run_date", { ascending: true });
+      const {
+        data,
+        error
+      } = await supabase.from("recurring_payrolls").select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active,day_of_month").order("next_run_date", {
+        ascending: true
+      });
       if (error) throw error;
       return data ?? [];
     }
   });
-
   const fixedIncomesQuery = useQuery({
     queryKey: ["fixed_incomes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("fixed_incomes")
-        .select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month")
-        .order("next_run_date", { ascending: true });
+      const {
+        data,
+        error
+      } = await supabase.from("fixed_incomes").select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month").order("next_run_date", {
+        ascending: true
+      });
       if (error) throw error;
       return data ?? [];
     }
   });
-  
-  const incomesTotal = useMemo(() => (incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [incomesQuery.data]);
-  const expensesTotal = useMemo(() => (expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0), [expensesQuery.data]);
+  const incomesTotal = useMemo(() => incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [incomesQuery.data]);
+  const expensesTotal = useMemo(() => expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [expensesQuery.data]);
 
   // Cálculos para gastos fijos recurrentes mensuales
   const monthlyFixedExpenses = useMemo(() => {
-    return (fixedExpensesQuery.data ?? [])
-      .filter((fx: any) => fx.active)
-      .reduce((total: number, fx: any) => total + (Number(fx.amount) || 0), 0);
+    return (fixedExpensesQuery.data ?? []).filter((fx: any) => fx.active).reduce((total: number, fx: any) => total + (Number(fx.amount) || 0), 0);
   }, [fixedExpensesQuery.data]);
-
   const monthlyRecurringPayrolls = useMemo(() => {
-    return (recurringPayrollsQuery.data ?? [])
-      .filter((pr: any) => pr.active)
-      .reduce((total: number, pr: any) => total + (Number(pr.net_salary) || 0), 0);
+    return (recurringPayrollsQuery.data ?? []).filter((pr: any) => pr.active).reduce((total: number, pr: any) => total + (Number(pr.net_salary) || 0), 0);
   }, [recurringPayrollsQuery.data]);
 
   // Cálculos para ingresos fijos mensuales
   const monthlyFixedIncomes = useMemo(() => {
-    return (fixedIncomesQuery.data ?? [])
-      .filter((fi: any) => fi.active)
-      .reduce((total: number, fi: any) => total + (Number(fi.amount) || 0), 0);
+    return (fixedIncomesQuery.data ?? []).filter((fi: any) => fi.active).reduce((total: number, fi: any) => total + (Number(fi.amount) || 0), 0);
   }, [fixedIncomesQuery.data]);
-
   const totalMonthlyFixedCosts = monthlyFixedExpenses + monthlyRecurringPayrolls;
   const netMonthlyFixedFlow = monthlyFixedIncomes - totalMonthlyFixedCosts;
 
@@ -316,18 +314,15 @@ export default function Finance() {
   const incomesNoFiscal = useMemo(() => incomesData.filter((r: any) => r.account_type === 'no_fiscal'), [incomesData]);
   const expensesFiscal = useMemo(() => expensesData.filter((r: any) => r.account_type === 'fiscal'), [expensesData]);
   const expensesNoFiscal = useMemo(() => expensesData.filter((r: any) => r.account_type === 'no_fiscal'), [expensesData]);
-
   const totIF = useMemo(() => incomesFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [incomesFiscal]);
   const totINF = useMemo(() => incomesNoFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [incomesNoFiscal]);
   const totEF = useMemo(() => expensesFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [expensesFiscal]);
   const totENF = useMemo(() => expensesNoFiscal.reduce((s: number, r: any) => s + (Number(r.amount) || 0), 0), [expensesNoFiscal]);
-
   const [feDesc, setFeDesc] = useState("");
   const [feAmount, setFeAmount] = useState("");
   const [feAccount, setFeAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
   const [feMethod, setFeMethod] = useState("");
   const [feDayOfMonth, setFeDayOfMonth] = useState<number>(1);
-
   const [pEmployee, setPEmployee] = useState("");
   const [pBaseSalary, setPBaseSalary] = useState("");
   const [pNetSalary, setPNetSalary] = useState("");
@@ -357,7 +352,7 @@ export default function Finance() {
   const [expAccount, setExpAccount] = useState<"fiscal" | "no_fiscal">("fiscal");
   const [expMethod, setExpMethod] = useState("");
   const [expCategory, setExpCategory] = useState("");
-  const [expDate, setExpDate] = useState<string>(new Date().toISOString().substring(0,10));
+  const [expDate, setExpDate] = useState<string>(new Date().toISOString().substring(0, 10));
   const [expInvoiceNumber, setExpInvoiceNumber] = useState("");
 
   // Estados para compras
@@ -366,10 +361,10 @@ export default function Finance() {
   const [purchaseAmount, setPurchaseAmount] = useState("");
   const [purchaseAccount, setPurchaseAccount] = useState<"fiscal" | "no_fiscal">("no_fiscal");
   const [purchaseMethod, setPurchaseMethod] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().substring(0,10));
+  const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().substring(0, 10));
   const [purchaseHasInvoice, setPurchaseHasInvoice] = useState(false);
   const [purchaseInvoiceNumber, setPurchaseInvoiceNumber] = useState("");
-  
+
   // Estados para proveedores
   const [supplierName, setSupplierName] = useState("");
   const [supplierContact, setSupplierContact] = useState("");
@@ -384,24 +379,15 @@ export default function Finance() {
   const [showVatCalculator, setShowVatCalculator] = useState(false);
   const [tempAmount, setTempAmount] = useState("");
   const [tempVatRate, setTempVatRate] = useState("16");
-  
+
   // Estados removidos - ya no se necesitan gastos fiscales seleccionados
-  
+
   // Estados para el diálogo de cobro
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
 
   // Función para registrar en historial financiero
-  const logFinancialOperation = async (
-    operationType: string,
-    tableName: string,
-    recordId: string,
-    recordData: any,
-    description: string,
-    amount: number,
-    accountType?: string,
-    operationDate?: string
-  ) => {
+  const logFinancialOperation = async (operationType: string, tableName: string, recordId: string, recordData: any, description: string, amount: number, accountType?: string, operationDate?: string) => {
     try {
       await supabase.rpc('log_financial_operation', {
         p_operation_type: operationType,
@@ -417,84 +403,87 @@ export default function Finance() {
       console.error('Error logging financial operation:', error);
     }
   };
-
   const addFixedExpense = async () => {
     try {
       const amount = Number(feAmount);
       if (!feDesc || !amount) throw new Error("Completa descripción y monto válido");
-      
-      const { data, error } = await supabase.from("fixed_expenses").insert({
+      const {
+        data,
+        error
+      } = await supabase.from("fixed_expenses").insert({
         description: feDesc,
         amount,
         account_type: feAccount as any,
         payment_method: feMethod || null,
         frequency: 'monthly',
-        day_of_month: feDayOfMonth,
+        day_of_month: feDayOfMonth
       } as any).select('*').single();
-      
       if (error) throw error;
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'create',
-        'fixed_expenses',
-        data.id,
-        data,
-        `Creación de gasto fijo: ${feDesc}`,
-        amount,
-        feAccount as any
-      );
-
-      toast({ title: "Gasto fijo programado" });
-      setFeDesc(""); setFeAmount(""); setFeMethod(""); setFeAccount("fiscal"); setFeDayOfMonth(1);
+      await logFinancialOperation('create', 'fixed_expenses', data.id, data, `Creación de gasto fijo: ${feDesc}`, amount, feAccount as any);
+      toast({
+        title: "Gasto fijo programado"
+      });
+      setFeDesc("");
+      setFeAmount("");
+      setFeMethod("");
+      setFeAccount("fiscal");
+      setFeDayOfMonth(1);
       fixedExpensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible agregar",
+        variant: "destructive"
+      });
     }
   };
-
   const addFixedIncome = async () => {
     try {
       const amount = Number(fiAmount);
       if (!fiDesc || !amount) throw new Error("Completa descripción y monto válido");
-      
-      const { data, error } = await supabase.from("fixed_incomes").insert({
+      const {
+        data,
+        error
+      } = await supabase.from("fixed_incomes").insert({
         description: fiDesc,
         amount,
         account_type: fiAccount as any,
         payment_method: fiMethod || null,
         frequency: 'monthly',
-        day_of_month: fiDayOfMonth,
+        day_of_month: fiDayOfMonth
       } as any).select('*').single();
-      
       if (error) throw error;
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'create',
-        'fixed_incomes',
-        data.id,
-        data,
-        `Creación de ingreso fijo: ${fiDesc}`,
-        amount,
-        fiAccount as any
-      );
-      
-      toast({ title: "Ingreso fijo programado" });
-      setFiDesc(""); setFiAmount(""); setFiMethod(""); setFiAccount("fiscal"); setFiDayOfMonth(1);
+      await logFinancialOperation('create', 'fixed_incomes', data.id, data, `Creación de ingreso fijo: ${fiDesc}`, amount, fiAccount as any);
+      toast({
+        title: "Ingreso fijo programado"
+      });
+      setFiDesc("");
+      setFiAmount("");
+      setFiMethod("");
+      setFiAccount("fiscal");
+      setFiDayOfMonth(1);
       fixedIncomesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible agregar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible agregar",
+        variant: "destructive"
+      });
     }
   };
-
   const addSupplier = async () => {
     try {
       if (!supplierName) throw new Error("El nombre del proveedor es obligatorio");
-      
-      const { data, error } = await supabase.from("suppliers").insert({
+      const {
+        data,
+        error
+      } = await supabase.from("suppliers").insert({
         supplier_name: supplierName,
         contact_person: supplierContact || null,
         email: supplierEmail || null,
@@ -503,66 +492,90 @@ export default function Finance() {
         tax_id: supplierRFC || null,
         status: 'active'
       }).select().single();
-      
       if (error) throw error;
-
-      toast({ title: "Proveedor agregado" });
-      setSupplierName(""); setSupplierContact(""); setSupplierEmail(""); 
-      setSupplierPhone(""); setSupplierAddress(""); setSupplierRFC("");
+      toast({
+        title: "Proveedor agregado"
+      });
+      setSupplierName("");
+      setSupplierContact("");
+      setSupplierEmail("");
+      setSupplierPhone("");
+      setSupplierAddress("");
+      setSupplierRFC("");
       setShowSupplierDialog(false);
       suppliersQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible agregar el proveedor", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible agregar el proveedor",
+        variant: "destructive"
+      });
     }
   };
-
   const updateSupplier = async () => {
     try {
       if (!editingSupplier || !supplierName) throw new Error("Datos incompletos");
-      
-      const { error } = await supabase.from("suppliers").update({
+      const {
+        error
+      } = await supabase.from("suppliers").update({
         supplier_name: supplierName,
         contact_person: supplierContact || null,
         email: supplierEmail || null,
         phone: supplierPhone || null,
         address: supplierAddress || null,
-        tax_id: supplierRFC || null,
+        tax_id: supplierRFC || null
       }).eq("id", editingSupplier.id);
-      
       if (error) throw error;
-
-      toast({ title: "Proveedor actualizado" });
-      setSupplierName(""); setSupplierContact(""); setSupplierEmail(""); 
-      setSupplierPhone(""); setSupplierAddress(""); setSupplierRFC("");
+      toast({
+        title: "Proveedor actualizado"
+      });
+      setSupplierName("");
+      setSupplierContact("");
+      setSupplierEmail("");
+      setSupplierPhone("");
+      setSupplierAddress("");
+      setSupplierRFC("");
       setEditingSupplier(null);
       setShowSupplierDialog(false);
       suppliersQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible actualizar el proveedor", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible actualizar el proveedor",
+        variant: "destructive"
+      });
     }
   };
-
   const deleteSupplier = async (supplierId: string) => {
     try {
-      const { error } = await supabase.from("suppliers").update({ status: 'inactive' }).eq("id", supplierId);
+      const {
+        error
+      } = await supabase.from("suppliers").update({
+        status: 'inactive'
+      }).eq("id", supplierId);
       if (error) throw error;
-      toast({ title: "Proveedor eliminado" });
+      toast({
+        title: "Proveedor eliminado"
+      });
       suppliersQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible eliminar el proveedor", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar el proveedor",
+        variant: "destructive"
+      });
     }
   };
-
   const addPurchase = async () => {
     try {
       const amount = Number(purchaseAmount);
       if (!purchaseSupplier || !purchaseConcept || !amount) throw new Error("Completa todos los campos obligatorios");
-      
+
       // Validar que si no tiene factura, solo se puede pagar con cuenta no fiscal
       if (!purchaseHasInvoice && purchaseAccount === 'fiscal') {
         throw new Error("Sin factura solo se puede pagar desde cuenta no fiscal");
       }
-      
+
       // Calcular IVA si es cuenta fiscal
       // Si es fiscal, el monto incluye IVA, así que calculamos la base gravable
       const vatRate = purchaseAccount === "fiscal" ? 16 : 0;
@@ -570,7 +583,10 @@ export default function Finance() {
       const vatAmount = purchaseAccount === "fiscal" ? amount - taxableAmount : 0;
 
       // Crear el gasto
-      const { data: expense, error: expenseError } = await supabase.from("expenses").insert({
+      const {
+        data: expense,
+        error: expenseError
+      } = await supabase.from("expenses").insert({
         amount: amount,
         description: `Compra - ${purchaseConcept}`,
         category: "compra",
@@ -582,12 +598,11 @@ export default function Finance() {
         taxable_amount: taxableAmount || null,
         status: "pagado"
       } as any).select().single();
-      
       if (expenseError) throw expenseError;
 
       // Buscar el proveedor seleccionado
       const supplier = suppliersQuery.data?.find(s => s.id === purchaseSupplier);
-      
+
       // Crear el registro de compra
       const purchaseData = {
         supplier_id: purchaseSupplier,
@@ -599,38 +614,43 @@ export default function Finance() {
         account_type: purchaseAccount,
         payment_method: purchaseMethod || null,
         purchase_date: purchaseDate,
-        expense_id: expense.id,
+        expense_id: expense.id
       };
-
-      const { data: purchase, error: purchaseError } = await supabase.from("purchases").insert(purchaseData).select().single();
+      const {
+        data: purchase,
+        error: purchaseError
+      } = await supabase.from("purchases").insert(purchaseData).select().single();
       if (purchaseError) throw purchaseError;
 
       // Si tiene factura y se pagó de cuenta no fiscal, crear retiro fiscal disponible
       if (purchaseHasInvoice && purchaseAccount === 'no_fiscal') {
         console.log('Creating fiscal withdrawal for invoiced purchase from non-fiscal account');
-        
+
         // Create a dummy income first since income_id is required
-        const { data: dummyIncome, error: incomeError } = await supabase.from("incomes").insert({
+        const {
+          data: dummyIncome,
+          error: incomeError
+        } = await supabase.from("incomes").insert({
           amount: 0,
           description: `Referencia fiscal para retiro de compra: ${purchaseConcept}`,
           category: "referencia",
           account_type: "fiscal"
         } as any).select().single();
-        
         if (incomeError) {
           console.error('Error creating dummy income:', incomeError);
           throw incomeError;
         }
-        
         if (dummyIncome) {
           console.log('Creating fiscal withdrawal with amount:', amount);
-          const { data: withdrawal, error: withdrawalError } = await supabase.from("fiscal_withdrawals").insert({
+          const {
+            data: withdrawal,
+            error: withdrawalError
+          } = await supabase.from("fiscal_withdrawals").insert({
             amount: amount,
             description: `Factura pendiente: ${purchaseConcept} - ${supplier?.supplier_name || 'Proveedor'}`,
             withdrawal_status: 'available',
             income_id: dummyIncome.id
           } as any).select().single();
-          
           if (withdrawalError) {
             console.error("Error creating fiscal withdrawal:", withdrawalError);
             throw withdrawalError;
@@ -641,166 +661,165 @@ export default function Finance() {
       }
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'create',
-        'purchases',
-        purchase.id,
-        purchase,
-        `Compra registrada: ${supplier?.supplier_name || 'Proveedor'} - ${purchaseConcept}${purchaseHasInvoice ? ' (Con factura)' : ' (Sin factura)'}`,
-        amount,
-        purchaseAccount,
-        purchaseDate
-      );
-
-      toast({ title: "Compra registrada" });
-      setPurchaseSupplier(""); setPurchaseConcept(""); setPurchaseAmount(""); 
-      setPurchaseMethod(""); setPurchaseHasInvoice(false); setPurchaseInvoiceNumber("");
+      await logFinancialOperation('create', 'purchases', purchase.id, purchase, `Compra registrada: ${supplier?.supplier_name || 'Proveedor'} - ${purchaseConcept}${purchaseHasInvoice ? ' (Con factura)' : ' (Sin factura)'}`, amount, purchaseAccount, purchaseDate);
+      toast({
+        title: "Compra registrada"
+      });
+      setPurchaseSupplier("");
+      setPurchaseConcept("");
+      setPurchaseAmount("");
+      setPurchaseMethod("");
+      setPurchaseHasInvoice(false);
+      setPurchaseInvoiceNumber("");
       expensesQuery.refetch();
       purchasesQuery.refetch();
       fiscalWithdrawalsQuery.refetch(); // Refrescar retiros fiscales
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible registrar la compra", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible registrar la compra",
+        variant: "destructive"
+      });
     }
   };
-
   const deleteFixedExpense = async (id: string) => {
     if (!isAdmin) return;
     try {
       // Get record data before deletion for history
-      const { data: recordData } = await supabase.from("fixed_expenses").select("*").eq("id", id).single();
-      
-      const { error } = await supabase.from("fixed_expenses").delete().eq("id", id);
+      const {
+        data: recordData
+      } = await supabase.from("fixed_expenses").select("*").eq("id", id).single();
+      const {
+        error
+      } = await supabase.from("fixed_expenses").delete().eq("id", id);
       if (error) throw error;
 
       // Log deletion
       if (recordData) {
-        await logFinancialOperation(
-          'delete',
-          'fixed_expenses',
-          id,
-          recordData,
-          `Eliminación de gasto fijo: ${recordData.description}`,
-          recordData.amount,
-          recordData.account_type
-        );
+        await logFinancialOperation('delete', 'fixed_expenses', id, recordData, `Eliminación de gasto fijo: ${recordData.description}`, recordData.amount, recordData.account_type);
       }
-
-      toast({ title: "Gasto fijo eliminado" });
+      toast({
+        title: "Gasto fijo eliminado"
+      });
       fixedExpensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar",
+        variant: "destructive"
+      });
     }
   };
-
   const deleteRecurringPayroll = async (id: string) => {
     if (!isAdmin) return;
     try {
       // Get record data before deletion for history
-      const { data: recordData } = await supabase.from("recurring_payrolls").select("*").eq("id", id).single();
-      
-      const { error } = await supabase.from("recurring_payrolls").delete().eq("id", id);
+      const {
+        data: recordData
+      } = await supabase.from("recurring_payrolls").select("*").eq("id", id).single();
+      const {
+        error
+      } = await supabase.from("recurring_payrolls").delete().eq("id", id);
       if (error) throw error;
 
       // Log deletion
       if (recordData) {
-        await logFinancialOperation(
-          'delete',
-          'recurring_payrolls',
-          id,
-          recordData,
-          `Eliminación de nómina recurrente: ${recordData.employee_name}`,
-          recordData.net_salary,
-          recordData.account_type
-        );
+        await logFinancialOperation('delete', 'recurring_payrolls', id, recordData, `Eliminación de nómina recurrente: ${recordData.employee_name}`, recordData.net_salary, recordData.account_type);
       }
-
-      toast({ title: "Nómina recurrente eliminada" });
+      toast({
+        title: "Nómina recurrente eliminada"
+      });
       recurringPayrollsQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar",
+        variant: "destructive"
+      });
     }
   };
-
-
   const deleteFixedIncome = async (id: string) => {
     if (!isAdmin) return;
     try {
       // Get record data before deletion for history
-      const { data: recordData } = await supabase.from("fixed_incomes").select("*").eq("id", id).single();
-      
-      const { error } = await supabase.from("fixed_incomes").delete().eq("id", id);
+      const {
+        data: recordData
+      } = await supabase.from("fixed_incomes").select("*").eq("id", id).single();
+      const {
+        error
+      } = await supabase.from("fixed_incomes").delete().eq("id", id);
       if (error) throw error;
 
       // Log deletion
       if (recordData) {
-        await logFinancialOperation(
-          'delete',
-          'fixed_incomes',
-          id,
-          recordData,
-          `Eliminación de ingreso fijo: ${recordData.description}`,
-          recordData.amount,
-          recordData.account_type
-        );
+        await logFinancialOperation('delete', 'fixed_incomes', id, recordData, `Eliminación de ingreso fijo: ${recordData.description}`, recordData.amount, recordData.account_type);
       }
-
-      toast({ title: "Ingreso fijo eliminado" });
+      toast({
+        title: "Ingreso fijo eliminado"
+      });
       fixedIncomesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar",
+        variant: "destructive"
+      });
     }
   };
-
   const toggleFixedIncomeActive = async (row: any) => {
     try {
-      const { error } = await supabase.from('fixed_incomes').update({ active: !row.active }).eq('id', row.id);
+      const {
+        error
+      } = await supabase.from('fixed_incomes').update({
+        active: !row.active
+      }).eq('id', row.id);
       if (error) throw error;
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'update',
-        'fixed_incomes',
-        row.id,
-        { ...row, active: !row.active },
-        `${row.active ? 'Desactivación' : 'Activación'} de ingreso fijo: ${row.description}`,
-        row.amount,
-        row.account_type
-      );
-
-      toast({ title: row.active ? 'Ingreso fijo desactivado' : 'Ingreso fijo activado' });
+      await logFinancialOperation('update', 'fixed_incomes', row.id, {
+        ...row,
+        active: !row.active
+      }, `${row.active ? 'Desactivación' : 'Activación'} de ingreso fijo: ${row.description}`, row.amount, row.account_type);
+      toast({
+        title: row.active ? 'Ingreso fijo desactivado' : 'Ingreso fijo activado'
+      });
       fixedIncomesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible actualizar',
+        variant: 'destructive'
+      });
     }
   };
-
   const addExpense = async () => {
     try {
       const amount = Number(expAmount);
       if (!expDesc || !amount || !expAccount || !expCategory) throw new Error("Completa todos los campos requeridos");
-      
+
       // Validar factura para cuentas fiscales
       if (expAccount === 'fiscal' && (!expInvoiceNumber || expInvoiceNumber.trim() === "")) {
         throw new Error("Para cuentas fiscales es obligatorio ingresar el número de factura");
       }
-      
+
       // Calcular IVA si es cuenta fiscal
       let vatRate = 0;
       let vatAmount = 0;
       let taxableAmount = amount;
-      
       if (expAccount === 'fiscal') {
         vatRate = 16; // IVA del 16% para México
         taxableAmount = amount / 1.16; // Calcular base gravable
         vatAmount = amount - taxableAmount; // IVA incluido
       }
-      
-      const { data, error } = await supabase.from("expenses").insert({
+      const {
+        data,
+        error
+      } = await supabase.from("expenses").insert({
         amount,
         description: expDesc,
         category: expCategory,
@@ -811,128 +830,113 @@ export default function Finance() {
         vat_amount: expAccount === 'fiscal' ? vatAmount : null,
         taxable_amount: expAccount === 'fiscal' ? taxableAmount : null,
         has_invoice: expAccount === 'fiscal',
-        invoice_number: expAccount === 'fiscal' ? expInvoiceNumber : null,
+        invoice_number: expAccount === 'fiscal' ? expInvoiceNumber : null
       } as any).select('*').single();
-      
       if (error) throw error;
-      
+
       // Log en historial financiero
-      await logFinancialOperation(
-        'create',
-        'expenses',
-        data.id,
-        data,
-        `Creación de egreso: ${expDesc}`,
-        amount,
-        expAccount as any,
-        expDate
-      );
-      
-      toast({ 
-        title: "Egreso registrado exitosamente", 
-        description: expAccount === 'fiscal' && vatAmount > 0 
-          ? `Base: $${taxableAmount.toFixed(2)}, IVA: $${vatAmount.toFixed(2)}, Total: $${amount.toFixed(2)}`
-          : `Total: $${amount.toFixed(2)}`
+      await logFinancialOperation('create', 'expenses', data.id, data, `Creación de egreso: ${expDesc}`, amount, expAccount as any, expDate);
+      toast({
+        title: "Egreso registrado exitosamente",
+        description: expAccount === 'fiscal' && vatAmount > 0 ? `Base: $${taxableAmount.toFixed(2)}, IVA: $${vatAmount.toFixed(2)}, Total: $${amount.toFixed(2)}` : `Total: $${amount.toFixed(2)}`
       });
-      
+
       // Clear form
-      setExpDesc(""); 
-      setExpAmount(""); 
-      setExpMethod(""); 
+      setExpDesc("");
+      setExpAmount("");
+      setExpMethod("");
       setExpCategory("");
       setExpAccount("fiscal");
-      setExpDate(new Date().toISOString().substring(0,10));
+      setExpDate(new Date().toISOString().substring(0, 10));
       setExpInvoiceNumber("");
-      
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible registrar el egreso", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible registrar el egreso",
+        variant: "destructive"
+      });
     }
   };
-
   const deleteIncome = async (id: string) => {
     if (!isAdmin) return;
     try {
       // Get record data before deletion for history
-      const { data: recordData } = await supabase.from("incomes").select("*").eq("id", id).single();
-      
-      const { error } = await supabase.from("incomes").delete().eq("id", id);
+      const {
+        data: recordData
+      } = await supabase.from("incomes").select("*").eq("id", id).single();
+      const {
+        error
+      } = await supabase.from("incomes").delete().eq("id", id);
       if (error) throw error;
 
       // Log deletion
       if (recordData) {
-        await logFinancialOperation(
-          'delete',
-          'incomes',
-          id,
-          recordData,
-          `Eliminación de ingreso: ${recordData.description}`,
-          recordData.amount,
-          recordData.account_type,
-          recordData.income_date
-        );
+        await logFinancialOperation('delete', 'incomes', id, recordData, `Eliminación de ingreso: ${recordData.description}`, recordData.amount, recordData.account_type, recordData.income_date);
       }
-
-      toast({ title: "Ingreso eliminado" });
+      toast({
+        title: "Ingreso eliminado"
+      });
       incomesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar",
+        variant: "destructive"
+      });
     }
   };
-
   const deleteExpense = async (id: string) => {
     if (!isAdmin) return;
     try {
       // Get record data before deletion for history
-      const { data: recordData } = await supabase.from("expenses").select("*").eq("id", id).single();
-      
-      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      const {
+        data: recordData
+      } = await supabase.from("expenses").select("*").eq("id", id).single();
+      const {
+        error
+      } = await supabase.from("expenses").delete().eq("id", id);
       if (error) throw error;
 
       // Log deletion
       if (recordData) {
-        await logFinancialOperation(
-          'delete',
-          'expenses',
-          id,
-          recordData,
-          `Eliminación de egreso: ${recordData.description}`,
-          recordData.amount,
-          recordData.account_type,
-          recordData.expense_date
-        );
+        await logFinancialOperation('delete', 'expenses', id, recordData, `Eliminación de egreso: ${recordData.description}`, recordData.amount, recordData.account_type, recordData.expense_date);
       }
-
-      toast({ title: "Egreso eliminado" });
+      toast({
+        title: "Egreso eliminado"
+      });
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible eliminar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar",
+        variant: "destructive"
+      });
     }
   };
-
   const processWithdrawal = async () => {
     try {
       const amount = Number(feAmount);
       if (!feDesc || !amount || !feAccount) throw new Error("Completa todos los campos requeridos");
-      
       const today = new Date().toISOString().split('T')[0];
-      
+
       // Calcular IVA si es cuenta fiscal
       let vatRate = 0;
       let vatAmount = 0;
       let taxableAmount = amount;
-      
       if (feAccount === 'fiscal') {
         vatRate = 16; // IVA del 16% para México
         taxableAmount = amount / 1.16; // Calcular base gravable
         vatAmount = amount - taxableAmount; // IVA incluido
       }
-      
+
       // Create expense for the withdrawal
-      const { error } = await supabase.from("expenses").insert({
+      const {
+        error
+      } = await supabase.from("expenses").insert({
         amount,
         description: `[Retiro] ${feDesc}`,
         category: 'retiro',
@@ -941,38 +945,38 @@ export default function Finance() {
         expense_date: today,
         vat_rate: feAccount === 'fiscal' ? vatRate : null,
         vat_amount: feAccount === 'fiscal' ? vatAmount : null,
-        taxable_amount: feAccount === 'fiscal' ? taxableAmount : null,
+        taxable_amount: feAccount === 'fiscal' ? taxableAmount : null
       } as any);
-      
       if (error) throw error;
-      
+
       // Log the withdrawal operation
-      await logFinancialOperation(
-        'create',
-        'expenses',
-        '', // Will be filled by the system
-        { description: `[Retiro] ${feDesc}`, amount, account_type: feAccount },
-        `Retiro manual - ${feDesc}`,
+      await logFinancialOperation('create', 'expenses', '',
+      // Will be filled by the system
+      {
+        description: `[Retiro] ${feDesc}`,
         amount,
-        feAccount as any,
-        today
-      );
-      
-      toast({ 
-        title: "Retiro procesado exitosamente", 
-        description: `Se retiró $${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} de la cuenta ${feAccount === 'fiscal' ? 'fiscal' : 'no fiscal'}` 
+        account_type: feAccount
+      }, `Retiro manual - ${feDesc}`, amount, feAccount as any, today);
+      toast({
+        title: "Retiro procesado exitosamente",
+        description: `Se retiró $${amount.toLocaleString('es-MX', {
+          minimumFractionDigits: 2
+        })} de la cuenta ${feAccount === 'fiscal' ? 'fiscal' : 'no fiscal'}`
       });
-      
+
       // Clear form
-      setFeDesc(""); 
-      setFeAmount(""); 
-      setFeMethod(""); 
+      setFeDesc("");
+      setFeAmount("");
+      setFeMethod("");
       setFeAccount("fiscal");
-      
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible procesar el retiro", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible procesar el retiro",
+        variant: "destructive"
+      });
     }
   };
   const addPayroll = async () => {
@@ -980,7 +984,9 @@ export default function Finance() {
       const baseSalary = Number(pBaseSalary);
       const netSalary = Number(pNetSalary);
       if (!pEmployee || !netSalary || !baseSalary) throw new Error("Completa empleado y montos válidos");
-      const { error: payErr } = await supabase.from("payrolls").insert({
+      const {
+        error: payErr
+      } = await supabase.from("payrolls").insert({
         employee_name: pEmployee,
         base_salary: baseSalary,
         net_salary: netSalary,
@@ -990,24 +996,23 @@ export default function Finance() {
         period_month: pMonth,
         period_year: pYear,
         period_week: pFrequency === 'weekly' ? Math.ceil(new Date().getDate() / 7) : null,
-        status: "pendiente",
+        status: "pendiente"
       } as any);
       if (payErr) throw payErr;
-
       const totalAmount = netSalary + (pBonusAmount ? Number(pBonusAmount) : 0) + (pExtraPayments ? Number(pExtraPayments) : 0);
-      
+
       // Calcular IVA si es cuenta fiscal
       let vatRate = 0;
       let vatAmount = 0;
       let taxableAmount = totalAmount;
-      
       if (pAccount === 'fiscal') {
         vatRate = 16; // IVA del 16% para México
         taxableAmount = totalAmount / 1.16; // Calcular base gravable
         vatAmount = totalAmount - taxableAmount; // IVA incluido
       }
-      
-      const { error: expErr } = await supabase.from("expenses").insert({
+      const {
+        error: expErr
+      } = await supabase.from("expenses").insert({
         amount: totalAmount,
         description: `Nómina ${pEmployee} ${pMonth}/${pYear}${pBonusDesc ? ` - ${pBonusDesc}` : ''}`,
         category: "nomina",
@@ -1015,229 +1020,253 @@ export default function Finance() {
         payment_method: pMethod || null,
         vat_rate: pAccount === 'fiscal' ? vatRate : null,
         vat_amount: pAccount === 'fiscal' ? vatAmount : null,
-        taxable_amount: pAccount === 'fiscal' ? taxableAmount : null,
+        taxable_amount: pAccount === 'fiscal' ? taxableAmount : null
       } as any);
       if (expErr) throw expErr;
-
-      toast({ title: "Nómina registrada" });
-      setPEmployee(""); setPBaseSalary(""); setPNetSalary(""); setPBonusAmount(""); setPBonusDesc("");
-      setPExtraPayments(""); setPMethod(""); setPAccount("fiscal");
+      toast({
+        title: "Nómina registrada"
+      });
+      setPEmployee("");
+      setPBaseSalary("");
+      setPNetSalary("");
+      setPBonusAmount("");
+      setPBonusDesc("");
+      setPExtraPayments("");
+      setPMethod("");
+      setPAccount("fiscal");
       expensesQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible registrar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible registrar",
+        variant: "destructive"
+      });
     }
   };
-  
   const toggleFixedActive = async (row: any) => {
     try {
-      const { error } = await supabase.from('fixed_expenses').update({ active: !row.active }).eq('id', row.id);
+      const {
+        error
+      } = await supabase.from('fixed_expenses').update({
+        active: !row.active
+      }).eq('id', row.id);
       if (error) throw error;
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'update',
-        'fixed_expenses',
-        row.id,
-        { ...row, active: !row.active },
-        `${row.active ? 'Desactivación' : 'Activación'} de gasto fijo: ${row.description}`,
-        row.amount,
-        row.account_type
-      );
-
-      toast({ title: row.active ? 'Gasto fijo desactivado' : 'Gasto fijo activado' });
+      await logFinancialOperation('update', 'fixed_expenses', row.id, {
+        ...row,
+        active: !row.active
+      }, `${row.active ? 'Desactivación' : 'Activación'} de gasto fijo: ${row.description}`, row.amount, row.account_type);
+      toast({
+        title: row.active ? 'Gasto fijo desactivado' : 'Gasto fijo activado'
+      });
       fixedExpensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible actualizar',
+        variant: 'destructive'
+      });
     }
   };
-
   const runFixedNow = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('run-fixed-expenses');
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('run-fixed-expenses');
       if (error) throw error as any;
-      toast({ title: 'Gastos fijos ejecutados', description: `Procesados: ${data?.created ?? 0}` });
+      toast({
+        title: 'Gastos fijos ejecutados',
+        description: `Procesados: ${data?.created ?? 0}`
+      });
       expensesQuery.refetch();
       fixedExpensesQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible ejecutar', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible ejecutar',
+        variant: 'destructive'
+      });
     }
   };
-
   const addRecurringPayroll = async () => {
     try {
       const baseSalary = Number(pBaseSalary);
       const netSalary = Number(pNetSalary);
       if (!pEmployee || !netSalary || !baseSalary) throw new Error('Completa empleado y montos válidos');
-      
-      const { data, error } = await supabase.from('recurring_payrolls').insert({
+      const {
+        data,
+        error
+      } = await supabase.from('recurring_payrolls').insert({
         employee_name: pEmployee,
         base_salary: baseSalary,
         net_salary: netSalary,
         account_type: pAccount as any,
         payment_method: pMethod || null,
-        frequency: 'monthly',
+        frequency: 'monthly'
       } as any).select('*').single();
-      
       if (error) throw error;
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'create',
-        'recurring_payrolls',
-        data.id,
-        data,
-        `Creación de nómina recurrente: ${pEmployee}`,
-        netSalary,
-        pAccount as any
-      );
-
-      toast({ title: 'Nómina recurrente programada' });
-      setPEmployee(''); setPBaseSalary(''); setPNetSalary(''); setPMethod(''); setPAccount('fiscal'); setPRecurring(false);
+      await logFinancialOperation('create', 'recurring_payrolls', data.id, data, `Creación de nómina recurrente: ${pEmployee}`, netSalary, pAccount as any);
+      toast({
+        title: 'Nómina recurrente programada'
+      });
+      setPEmployee('');
+      setPBaseSalary('');
+      setPNetSalary('');
+      setPMethod('');
+      setPAccount('fiscal');
+      setPRecurring(false);
       recurringPayrollsQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible programar', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible programar',
+        variant: 'destructive'
+      });
     }
   };
-
   const toggleRecurringPayrollActive = async (row: any) => {
     try {
-      const { error } = await supabase.from('recurring_payrolls').update({ active: !row.active }).eq('id', row.id);
+      const {
+        error
+      } = await supabase.from('recurring_payrolls').update({
+        active: !row.active
+      }).eq('id', row.id);
       if (error) throw error;
 
       // Log en historial financiero
-      await logFinancialOperation(
-        'update',
-        'recurring_payrolls',
-        row.id,
-        { ...row, active: !row.active },
-        `${row.active ? 'Desactivación' : 'Activación'} de nómina recurrente: ${row.employee_name}`,
-        row.net_salary,
-        row.account_type
-      );
-
-      toast({ title: row.active ? 'Recurrente desactivado' : 'Recurrente activado' });
+      await logFinancialOperation('update', 'recurring_payrolls', row.id, {
+        ...row,
+        active: !row.active
+      }, `${row.active ? 'Desactivación' : 'Activación'} de nómina recurrente: ${row.employee_name}`, row.net_salary, row.account_type);
+      toast({
+        title: row.active ? 'Recurrente desactivado' : 'Recurrente activado'
+      });
       recurringPayrollsQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible actualizar', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible actualizar',
+        variant: 'destructive'
+      });
     }
   };
-
   const runRecurringNow = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('run-recurring-payrolls');
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('run-recurring-payrolls');
       if (error) throw error as any;
-      toast({ title: 'Nóminas recurrentes ejecutadas', description: `Procesadas: ${data?.created ?? 0}` });
+      toast({
+        title: 'Nóminas recurrentes ejecutadas',
+        description: `Procesadas: ${data?.created ?? 0}`
+      });
       expensesQuery.refetch();
       recurringPayrollsQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible ejecutar', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible ejecutar',
+        variant: 'destructive'
+      });
     }
   };
-
   const handleRevertExpense = async (row: any) => {
     if (!isAdmin) return;
     try {
-      const today = new Date().toISOString().substring(0,10);
-      
+      const today = new Date().toISOString().substring(0, 10);
+
       // Create a reversal income record (income_number will be auto-generated)
-      const { error: insErr } = await supabase.from('incomes').insert({
+      const {
+        error: insErr
+      } = await supabase.from('incomes').insert({
         amount: row.amount,
         description: `Reverso egreso ${row.expense_number ?? ''} - ${row.description ?? ''}`.trim(),
         account_type: row.account_type,
         category: 'reverso',
         income_date: today,
-        payment_method: row.payment_method ?? null,
+        payment_method: row.payment_method ?? null
       } as any);
       if (insErr) throw insErr;
-      
+
       // Log the reversal operation
-      await logFinancialOperation(
-        'reverse',
-        'expenses',
-        row.id,
-        row,
-        `Reverso de egreso ${row.expense_number || ''} - ${row.description || ''}`.trim(),
-        row.amount,
-        row.account_type,
-        row.expense_date
-      );
+      await logFinancialOperation('reverse', 'expenses', row.id, row, `Reverso de egreso ${row.expense_number || ''} - ${row.description || ''}`.trim(), row.amount, row.account_type, row.expense_date);
 
       // Delete the original expense
-      const { error: delErr } = await supabase.from('expenses').delete().eq('id', row.id);
+      const {
+        error: delErr
+      } = await supabase.from('expenses').delete().eq('id', row.id);
       if (delErr) throw delErr;
-      
-      toast({ title: 'Egreso revertido' });
+      toast({
+        title: 'Egreso revertido'
+      });
       incomesQuery.refetch();
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible revertir',
+        variant: 'destructive'
+      });
     }
   };
-
   const handleRevertIncome = async (row: any) => {
     if (!isAdmin) return;
     try {
       // First, check if this income is related to any order payments and remove them
       // This will make the orders appear back in pending collections
-      const { data: relatedPayments, error: paymentsQueryError } = await supabase
-        .from('order_payments')
-        .select('id, order_id, order_number')
-        .eq('income_id', row.id);
-      
+      const {
+        data: relatedPayments,
+        error: paymentsQueryError
+      } = await supabase.from('order_payments').select('id, order_id, order_number').eq('income_id', row.id);
       if (paymentsQueryError) throw paymentsQueryError;
-      
+
       // Remove related order payments to return orders to pending collections
       if (relatedPayments && relatedPayments.length > 0) {
-        const { error: deletePaymentsError } = await supabase
-          .from('order_payments')
-          .delete()
-          .eq('income_id', row.id);
-        
+        const {
+          error: deletePaymentsError
+        } = await supabase.from('order_payments').delete().eq('income_id', row.id);
         if (deletePaymentsError) throw deletePaymentsError;
       }
-      
+
       // Log the reversal operation before deleting
-      await logFinancialOperation(
-        'reverse',
-        'incomes',
-        row.id,
-        row,
-        `Reverso de ingreso ${row.income_number || ''} - ${row.description || ''}`.trim(),
-        row.amount,
-        row.account_type,
-        row.income_date
-      );
+      await logFinancialOperation('reverse', 'incomes', row.id, row, `Reverso de ingreso ${row.income_number || ''} - ${row.description || ''}`.trim(), row.amount, row.account_type, row.income_date);
 
       // Delete the original income (no expense counterpart needed)
-      const { error: delErr } = await supabase.from('incomes').delete().eq('id', row.id);
+      const {
+        error: delErr
+      } = await supabase.from('incomes').delete().eq('id', row.id);
       if (delErr) throw delErr;
-      
       const orderNumbers = relatedPayments?.map(p => p.order_number).join(', ') || '';
-      toast({ 
-        title: 'Ingreso revertido', 
-        description: relatedPayments && relatedPayments.length > 0 
-          ? `Las órdenes ${orderNumbers} han regresado a cobranzas pendientes` 
-          : undefined
+      toast({
+        title: 'Ingreso revertido',
+        description: relatedPayments && relatedPayments.length > 0 ? `Las órdenes ${orderNumbers} han regresado a cobranzas pendientes` : undefined
       });
-      
       incomesQuery.refetch();
       expensesQuery.refetch();
       collectionsQuery.refetch(); // Refresh pending collections
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: 'Error', description: e?.message || 'No fue posible revertir', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: e?.message || 'No fue posible revertir',
+        variant: 'destructive'
+      });
     }
   };
 
   // Funciones para gestión de IVA (ya no se registra manualmente)
   const calculateVat = (amount: number, rate: number) => {
-    return (amount * rate) / 100;
+    return amount * rate / 100;
   };
-
   const calculateTotal = (amount: number, rate: number) => {
     return amount + calculateVat(amount, rate);
   };
@@ -1247,22 +1276,26 @@ export default function Finance() {
   const withdrawFiscalAmount = async (withdrawalId: string) => {
     try {
       // Get the withdrawal details first
-      const { data: withdrawal, error: fetchError } = await supabase
-        .from("fiscal_withdrawals")
-        .select("*")
-        .eq("id", withdrawalId)
-        .single();
-
+      const {
+        data: withdrawal,
+        error: fetchError
+      } = await supabase.from("fiscal_withdrawals").select("*").eq("id", withdrawalId).single();
       if (fetchError) throw fetchError;
 
       // Skip if amount is 0 or null
       if (!withdrawal.amount || withdrawal.amount === 0) {
-        toast({ title: "Error", description: "No se puede retirar un monto de $0", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "No se puede retirar un monto de $0",
+          variant: "destructive"
+        });
         return;
       }
 
       // Create the fiscal expense record
-      const { error: expenseError } = await supabase.from("expenses").insert({
+      const {
+        error: expenseError
+      } = await supabase.from("expenses").insert({
         amount: withdrawal.amount,
         description: `Retiro individual: ${withdrawal.description}`,
         category: 'retiro_fiscal',
@@ -1271,49 +1304,58 @@ export default function Finance() {
         expense_date: new Date().toISOString().split('T')[0],
         status: 'pagado'
       } as any);
-
       if (expenseError) throw expenseError;
 
       // Update the withdrawal status
-      const { error } = await supabase
-        .from("fiscal_withdrawals")
-        .update({
-          withdrawal_status: "withdrawn",
-          withdrawn_at: new Date().toISOString(),
-          withdrawn_by: profile?.user_id
-        })
-        .eq("id", withdrawalId);
-      
+      const {
+        error
+      } = await supabase.from("fiscal_withdrawals").update({
+        withdrawal_status: "withdrawn",
+        withdrawn_at: new Date().toISOString(),
+        withdrawn_by: profile?.user_id
+      }).eq("id", withdrawalId);
       if (error) throw error;
-
-      toast({ title: "Retiro realizado exitosamente", description: `Se retiró $${withdrawal.amount.toLocaleString()} de la cuenta fiscal` });
+      toast({
+        title: "Retiro realizado exitosamente",
+        description: `Se retiró $${withdrawal.amount.toLocaleString()} de la cuenta fiscal`
+      });
       fiscalWithdrawalsQuery.refetch();
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible realizar el retiro", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible realizar el retiro",
+        variant: "destructive"
+      });
     }
   };
-
   const handleBulkWithdrawal = async () => {
     if (selectedWithdrawals.length === 0) {
-      toast({ title: "Error", description: "Selecciona al menos un item para retirar", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Selecciona al menos un item para retirar",
+        variant: "destructive"
+      });
       return;
     }
-    
     if (!withdrawalConcept.trim()) {
-      toast({ title: "Error", description: "El concepto es obligatorio", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "El concepto es obligatorio",
+        variant: "destructive"
+      });
       return;
     }
-
     try {
       // Obtener los retiros seleccionados
-      const selectedItems = fiscalWithdrawalsQuery.data?.filter(fw => 
-        selectedWithdrawals.includes(fw.id) && fw.withdrawal_status === 'available'
-      ) || [];
-
+      const selectedItems = fiscalWithdrawalsQuery.data?.filter(fw => selectedWithdrawals.includes(fw.id) && fw.withdrawal_status === 'available') || [];
       if (selectedItems.length === 0) {
-        toast({ title: "Error", description: "No hay items válidos para retirar", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "No hay items válidos para retirar",
+          variant: "destructive"
+        });
         return;
       }
 
@@ -1321,7 +1363,9 @@ export default function Finance() {
       const totalAmount = selectedItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 
       // Crear el egreso fiscal por el total
-      const { error: expenseError } = await supabase.from("expenses").insert({
+      const {
+        error: expenseError
+      } = await supabase.from("expenses").insert({
         amount: totalAmount,
         description: `${withdrawalConcept}${withdrawalDescription ? ' - ' + withdrawalDescription : ''}`,
         category: 'retiro_fiscal',
@@ -1330,49 +1374,43 @@ export default function Finance() {
         expense_date: new Date().toISOString().split('T')[0],
         status: 'pagado'
       } as any);
-
       if (expenseError) throw expenseError;
 
       // Marcar todos los retiros seleccionados como retirados
-      const { error: updateError } = await supabase
-        .from("fiscal_withdrawals")
-        .update({
-          withdrawal_status: "withdrawn",
-          withdrawn_by: (await supabase.auth.getUser()).data.user?.id,
-          withdrawn_at: new Date().toISOString()
-        })
-        .in('id', selectedWithdrawals);
-
+      const {
+        error: updateError
+      } = await supabase.from("fiscal_withdrawals").update({
+        withdrawal_status: "withdrawn",
+        withdrawn_by: (await supabase.auth.getUser()).data.user?.id,
+        withdrawn_at: new Date().toISOString()
+      }).in('id', selectedWithdrawals);
       if (updateError) throw updateError;
-
-      toast({ 
-        title: "Retiro realizado exitosamente", 
-        description: `Se retiraron ${selectedItems.length} items por un total de $${totalAmount.toLocaleString()}` 
+      toast({
+        title: "Retiro realizado exitosamente",
+        description: `Se retiraron ${selectedItems.length} items por un total de $${totalAmount.toLocaleString()}`
       });
-      
+
       // Limpiar estado
       setSelectedWithdrawals([]);
       setWithdrawalConcept('');
       setWithdrawalDescription('');
       setShowWithdrawalDialog(false);
-      
+
       // Refrescar datos
       fiscalWithdrawalsQuery.refetch();
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "No fue posible realizar el retiro", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible realizar el retiro",
+        variant: "destructive"
+      });
     }
   };
-
   const toggleWithdrawalSelection = (withdrawalId: string) => {
-    setSelectedWithdrawals(prev => 
-      prev.includes(withdrawalId) 
-        ? prev.filter(id => id !== withdrawalId)
-        : [...prev, withdrawalId]
-    );
+    setSelectedWithdrawals(prev => prev.includes(withdrawalId) ? prev.filter(id => id !== withdrawalId) : [...prev, withdrawalId]);
   };
-
   const selectAllWithdrawals = () => {
     const availableWithdrawals = fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0) || [];
     if (selectedWithdrawals.length === availableWithdrawals.length) {
@@ -1381,7 +1419,6 @@ export default function Finance() {
       setSelectedWithdrawals(availableWithdrawals.map(fw => fw.id));
     }
   };
-
   const onExport = (type: "incomes" | "expenses" | "collections") => {
     try {
       if (type === "incomes" && incomesQuery.data) {
@@ -1391,25 +1428,30 @@ export default function Finance() {
       } else if (type === "collections" && collectionsQuery.data) {
         exportCsv(`cobranzas_pendientes`, collectionsQuery.data as any);
       }
-      toast({ title: "Exportación lista", description: "Se descargó el archivo CSV." });
+      toast({
+        title: "Exportación lista",
+        description: "Se descargó el archivo CSV."
+      });
     } catch (e: any) {
-      toast({ title: "Error al exportar", description: e?.message || "Intenta de nuevo", variant: "destructive" });
+      toast({
+        title: "Error al exportar",
+        description: e?.message || "Intenta de nuevo",
+        variant: "destructive"
+      });
     }
   };
-
   const handleCollect = (order: any) => {
     setSelectedCollection(order);
     setCollectionDialogOpen(true);
   };
-
   const handleCollectionSuccess = () => {
     collectionsQuery.refetch();
     incomesQuery.refetch();
-    toast({ title: "Cobro registrado exitosamente" });
+    toast({
+      title: "Cobro registrado exitosamente"
+    });
   };
-
-  return (
-    <AppLayout>
+  return <AppLayout>
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos, Egresos y Cobranzas</h1>
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
@@ -1445,15 +1487,24 @@ export default function Finance() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Ingresos</div>
-                <div className="font-semibold text-orange-700 dark:text-orange-300">{totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">{totIF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Egresos</div>
-                <div className="font-semibold text-orange-700 dark:text-orange-300">{totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">{totEF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Balance</div>
-                <div className="font-semibold text-orange-700 dark:text-orange-300">{(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-orange-700 dark:text-orange-300">{(totIF - totEF).toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}</div>
               </div>
             </div>
           </CardContent>
@@ -1470,15 +1521,24 @@ export default function Finance() {
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Ingresos</div>
-                <div className="font-semibold text-blue-700 dark:text-blue-300">{totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-blue-700 dark:text-blue-300">{totINF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Egresos</div>
-                <div className="font-semibold text-blue-700 dark:text-blue-300">{totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-blue-700 dark:text-blue-300">{totENF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}</div>
               </div>
               <div>
                 <div className="text-muted-foreground">Balance</div>
-                <div className="font-semibold text-blue-700 dark:text-blue-300">{(totINF - totENF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</div>
+                <div className="font-semibold text-blue-700 dark:text-blue-300">{(totINF - totENF).toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}</div>
               </div>
             </div>
           </CardContent>
@@ -1503,7 +1563,10 @@ export default function Finance() {
               <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 dark:bg-orange-950/20">
                 <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
                   <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  Ingresos - Fiscal ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
                 </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
@@ -1524,27 +1587,32 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {incomesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
-                      )}
-                      {!incomesQuery.isLoading && incomesFiscal.map((r: any) => (
-                        <TableRow key={r.id}>
+                      {incomesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
+                      {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.income_number}</TableCell>
                           <TableCell>{r.income_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
                           <TableCell className="text-green-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })} (${r.vat_rate}%)` : 'Sin IVA'}
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                            {Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {isAdmin && (
-                                  <>
+                                {isAdmin && <>
                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
@@ -1567,12 +1635,10 @@ export default function Finance() {
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
-                                  </>
-                                )}
+                                  </>}
                               </div>
                             </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
@@ -1583,7 +1649,10 @@ export default function Finance() {
               <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
                 <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  Ingresos - No Fiscal ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
                 </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`ingresos_no_fiscal_${startDate}_${endDate}`, incomesNoFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
@@ -1602,21 +1671,20 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && (
-                         <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
-                       )}
-                       {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => (
-                         <TableRow key={r.id}>
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>}
+                       {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
                            <TableCell>{r.income_date}</TableCell>
-                           <TableCell>{Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                           <TableCell>{Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
                            <TableCell>{r.category}</TableCell>
                            <TableCell>{r.payment_method}</TableCell>
                            <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
-                                {isAdmin && (
-                                  <>
+                                {isAdmin && <>
                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
@@ -1639,12 +1707,10 @@ export default function Finance() {
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
-                                  </>
-                                )}
+                                  </>}
                               </div>
                             </TableCell>
-                         </TableRow>
-                       ))}
+                         </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
@@ -1659,7 +1725,10 @@ export default function Finance() {
               <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 dark:bg-orange-950/20">
                 <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
                   <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
                 </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
@@ -1680,27 +1749,32 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
-                      )}
-                      {!expensesQuery.isLoading && expensesFiscal.map((r: any) => (
-                        <TableRow key={r.id}>
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
+                      {!expensesQuery.isLoading && expensesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
                           <TableCell className="text-red-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })} (${r.vat_rate}%)` : 'Sin IVA'}
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                            {Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                            <TableCell>
                              <div className="flex items-center gap-2">
-                               {isAdmin && (
-                                 <>
+                               {isAdmin && <>
                                    <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
                                    <AlertDialog>
                                      <AlertDialogTrigger asChild>
@@ -1723,12 +1797,10 @@ export default function Finance() {
                                        </AlertDialogFooter>
                                      </AlertDialogContent>
                                    </AlertDialog>
-                                 </>
-                               )}
+                                 </>}
                              </div>
                            </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
@@ -1739,7 +1811,10 @@ export default function Finance() {
               <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
                 <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                  Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
                 </CardTitle>
                 <Button size="sm" onClick={() => exportCsv(`egresos_no_fiscal_${startDate}_${endDate}`, expensesNoFiscal as any)}>Exportar CSV</Button>
               </CardHeader>
@@ -1760,27 +1835,32 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>
-                      )}
-                      {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => (
-                        <TableRow key={r.id}>
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
+                      {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
                           <TableCell className="text-red-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} (${r.vat_rate}%)` : 'Sin IVA'}
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })} (${r.vat_rate}%)` : 'Sin IVA'}
                           </TableCell>
                           <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                            {Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                           <TableCell>
                              <div className="flex items-center gap-2">
-                               {isAdmin && (
-                                 <>
+                               {isAdmin && <>
                                    <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
                                    <AlertDialog>
                                      <AlertDialogTrigger asChild>
@@ -1803,12 +1883,10 @@ export default function Finance() {
                                        </AlertDialogFooter>
                                      </AlertDialogContent>
                                    </AlertDialog>
-                                 </>
-                               )}
+                                 </>}
                              </div>
                           </TableCell>
-                        </TableRow>
-                      ))}
+                        </TableRow>)}
                     </TableBody>
                   </Table>
                 </div>
@@ -1834,72 +1912,43 @@ export default function Finance() {
                         <SelectValue placeholder="Seleccionar proveedor" />
                       </SelectTrigger>
                       <SelectContent>
-                        {suppliersQuery.data?.map(supplier => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
+                        {suppliersQuery.data?.map(supplier => <SelectItem key={supplier.id} value={supplier.id}>
                             {supplier.supplier_name}
-                          </SelectItem>
-                        ))}
+                          </SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="flex items-end">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowSupplierDialog(true)}
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={() => setShowSupplierDialog(true)}>
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Concepto*</label>
-                  <Input
-                    value={purchaseConcept}
-                    onChange={(e) => setPurchaseConcept(e.target.value)}
-                    placeholder="Descripción de la compra"
-                  />
+                  <Input value={purchaseConcept} onChange={e => setPurchaseConcept(e.target.value)} placeholder="Descripción de la compra" />
                 </div>
                 <div>
                   <label className="text-sm font-medium">Monto*</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={purchaseAmount}
-                    onChange={(e) => setPurchaseAmount(e.target.value)}
-                    placeholder="0.00"
-                  />
-                  {purchaseAccount === "fiscal" && purchaseAmount && (
-                    <div className="mt-1 text-xs text-muted-foreground">
+                  <Input type="number" step="0.01" value={purchaseAmount} onChange={e => setPurchaseAmount(e.target.value)} placeholder="0.00" />
+                  {purchaseAccount === "fiscal" && purchaseAmount && <div className="mt-1 text-xs text-muted-foreground">
                       Base: ${(Number(purchaseAmount) / 1.16).toFixed(2)} | 
-                      IVA (16%): ${(Number(purchaseAmount) - (Number(purchaseAmount) / 1.16)).toFixed(2)}
-                    </div>
-                  )}
+                      IVA (16%): ${(Number(purchaseAmount) - Number(purchaseAmount) / 1.16).toFixed(2)}
+                    </div>}
                 </div>
                 
                 {/* Nueva sección para factura */}
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="has-invoice"
-                      checked={purchaseHasInvoice} 
-                      onCheckedChange={(checked) => setPurchaseHasInvoice(checked === true)} 
-                    />
+                    <Checkbox id="has-invoice" checked={purchaseHasInvoice} onCheckedChange={checked => setPurchaseHasInvoice(checked === true)} />
                     <label htmlFor="has-invoice" className="text-sm font-medium">
                       Esta compra tiene factura
                     </label>
                   </div>
-                  {purchaseHasInvoice && (
-                    <div>
+                  {purchaseHasInvoice && <div>
                       <label className="text-sm font-medium">Número de factura</label>
-                      <Input 
-                        value={purchaseInvoiceNumber} 
-                        onChange={e => setPurchaseInvoiceNumber(e.target.value)} 
-                        placeholder="Ingrese número de factura" 
-                      />
-                    </div>
-                  )}
+                      <Input value={purchaseInvoiceNumber} onChange={e => setPurchaseInvoiceNumber(e.target.value)} placeholder="Ingrese número de factura" />
+                    </div>}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Cuenta</label>
@@ -1939,11 +1988,7 @@ export default function Finance() {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Fecha</label>
-                  <Input
-                    type="date"
-                    value={purchaseDate}
-                    onChange={(e) => setPurchaseDate(e.target.value)}
-                  />
+                  <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
                 </div>
                 <Button onClick={addPurchase} className="w-full">
                   Registrar Compra
@@ -1985,21 +2030,17 @@ export default function Finance() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Historial de Compras</CardTitle>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportCsv("compras", purchasesQuery.data?.map(r => ({
-                  numero: r.purchase_number,
-                  fecha: r.purchase_date,
-                  proveedor: r.supplier_name,
-                  concepto: r.concept,
-                  monto: r.total_amount,
-                  cuenta: r.account_type,
-                  metodo: r.payment_method,
-                  factura: r.has_invoice ? 'Sí' : 'No',
-                  numero_factura: r.invoice_number || ''
-                })) ?? [])}
-              >
+              <Button variant="outline" size="sm" onClick={() => exportCsv("compras", purchasesQuery.data?.map(r => ({
+              numero: r.purchase_number,
+              fecha: r.purchase_date,
+              proveedor: r.supplier_name,
+              concepto: r.concept,
+              monto: r.total_amount,
+              cuenta: r.account_type,
+              metodo: r.payment_method,
+              factura: r.has_invoice ? 'Sí' : 'No',
+              numero_factura: r.invoice_number || ''
+            })) ?? [])}>
                 Exportar CSV
               </Button>
             </CardHeader>
@@ -2017,8 +2058,7 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchasesQuery.data?.map((purchase) => (
-                      <TableRow key={purchase.id}>
+                    {purchasesQuery.data?.map(purchase => <TableRow key={purchase.id}>
                         <TableCell>{purchase.purchase_date}</TableCell>
                         <TableCell>{purchase.supplier_name}</TableCell>
                         <TableCell>{purchase.concept}</TableCell>
@@ -2030,15 +2070,12 @@ export default function Finance() {
                           </div>
                         </TableCell>
                         <TableCell>{purchase.payment_method || '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                    {(!purchasesQuery.data || purchasesQuery.data.length === 0) && (
-                      <TableRow>
+                      </TableRow>)}
+                    {(!purchasesQuery.data || purchasesQuery.data.length === 0) && <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground">
                           No hay compras registradas
                         </TableCell>
-                      </TableRow>
-                    )}
+                      </TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -2079,8 +2116,7 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).map((withdrawal) => (
-                      <TableRow key={withdrawal.id}>
+                    {fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).map(withdrawal => <TableRow key={withdrawal.id}>
                         <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
                           {withdrawal.description}
@@ -2089,37 +2125,21 @@ export default function Finance() {
                           ${Number(withdrawal.amount).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          {withdrawal.withdrawal_status === 'available' ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700">
+                          {withdrawal.withdrawal_status === 'available' ? <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-orange-100 text-orange-700">
                               Pendiente
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                            </span> : <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
                               Retirado
-                            </span>
-                          )}
+                            </span>}
                         </TableCell>
                         <TableCell>
-                          {withdrawal.withdrawal_status === 'available' ? (
-                            <Button
-                              size="sm"
-                              onClick={() => withdrawFiscalAmount(withdrawal.id)}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
+                          {withdrawal.withdrawal_status === 'available' ? <Button size="sm" onClick={() => withdrawFiscalAmount(withdrawal.id)} className="bg-green-600 hover:bg-green-700">
                               Retirar
-                            </Button>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">
-                              {withdrawal.withdrawn_at && (
-                                <span>Retirado {new Date(withdrawal.withdrawn_at).toLocaleDateString()}</span>
-                              )}
-                            </div>
-                          )}
+                            </Button> : <div className="text-sm text-muted-foreground">
+                              {withdrawal.withdrawn_at && <span>Retirado {new Date(withdrawal.withdrawn_at).toLocaleDateString()}</span>}
+                            </div>}
                         </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).length) && (
-                      <TableRow>
+                      </TableRow>)}
+                    {!fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).length && <TableRow>
                         <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center gap-2">
                             <div className="text-4xl">📋</div>
@@ -2127,8 +2147,7 @@ export default function Finance() {
                             <div className="text-sm">Los retiros aparecerán aquí cuando se registren compras con factura</div>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    )}
+                      </TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -2152,7 +2171,7 @@ export default function Finance() {
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Tipo de Cuenta</label>
-                  <Select value={feAccount} onValueChange={(v) => setFeAccount(v as any)}>
+                  <Select value={feAccount} onValueChange={v => setFeAccount(v as any)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona tipo de cuenta" />
                     </SelectTrigger>
@@ -2166,26 +2185,21 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de retiro</label>
                   <Input value={feMethod} onChange={e => setFeMethod(e.target.value)} placeholder="Transferencia, Efectivo, Cheque, etc." />
                 </div>
-                {feAccount === 'fiscal' && feAmount && (
-                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                {feAccount === 'fiscal' && feAmount && <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="text-sm font-medium text-orange-800 mb-1">Cálculo automático de IVA (16%)</div>
                     <div className="text-xs text-orange-600 space-y-1">
                       <div>Base gravable: ${(Number(feAmount) / 1.16).toFixed(2)}</div>
-                      <div>IVA (16%): ${(Number(feAmount) - (Number(feAmount) / 1.16)).toFixed(2)}</div>
+                      <div>IVA (16%): ${(Number(feAmount) - Number(feAmount) / 1.16).toFixed(2)}</div>
                       <div className="font-medium">Total: ${Number(feAmount).toFixed(2)}</div>
                     </div>
-                  </div>
-                )}
+                  </div>}
                 <div className="flex items-center gap-3 pt-2">
                   <Button onClick={processWithdrawal} disabled={!feDesc || !feAmount || !feAccount}>
                     💰 Procesar Retiro
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {feAccount === 'fiscal' 
-                    ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%). Ingresa el monto total con IVA incluido.'
-                    : 'Este retiro se registrará como un egreso en la cuenta seleccionada con la fecha actual.'
-                  }
+                  {feAccount === 'fiscal' ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%). Ingresa el monto total con IVA incluido.' : 'Este retiro se registrará como un egreso en la cuenta seleccionada con la fecha actual.'}
                 </p>
               </CardContent>
             </Card>
@@ -2213,7 +2227,7 @@ export default function Finance() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <label className="text-sm text-muted-foreground">Tipo de Cuenta</label>
-                    <Select value={expAccount} onValueChange={(v) => setExpAccount(v as any)}>
+                    <Select value={expAccount} onValueChange={v => setExpAccount(v as any)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona tipo de cuenta" />
                       </SelectTrigger>
@@ -2255,37 +2269,25 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={expMethod} onChange={e => setExpMethod(e.target.value)} placeholder="Transferencia, Efectivo, Tarjeta, etc." />
                 </div>
-                {expAccount === 'fiscal' && (
-                  <div>
+                {expAccount === 'fiscal' && <div>
                     <label className="text-sm text-muted-foreground">Número de Factura *</label>
-                    <Input 
-                      value={expInvoiceNumber} 
-                      onChange={e => setExpInvoiceNumber(e.target.value)} 
-                      placeholder="A001-001-000001" 
-                      required={expAccount === 'fiscal'}
-                    />
-                  </div>
-                )}
-                {expAccount === 'fiscal' && expAmount && (
-                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                    <Input value={expInvoiceNumber} onChange={e => setExpInvoiceNumber(e.target.value)} placeholder="A001-001-000001" required={expAccount === 'fiscal'} />
+                  </div>}
+                {expAccount === 'fiscal' && expAmount && <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="text-sm font-medium text-orange-800 mb-1">Cálculo automático de IVA (16%)</div>
                     <div className="text-xs text-orange-600 space-y-1">
                       <div>Base gravable: ${(Number(expAmount) / 1.16).toFixed(2)}</div>
-                      <div>IVA (16%): ${(Number(expAmount) - (Number(expAmount) / 1.16)).toFixed(2)}</div>
+                      <div>IVA (16%): ${(Number(expAmount) - Number(expAmount) / 1.16).toFixed(2)}</div>
                       <div className="font-medium">Total: ${Number(expAmount).toFixed(2)}</div>
                     </div>
-                  </div>
-                )}
+                  </div>}
                 <div className="flex items-center gap-3 pt-2">
-                  <Button onClick={addExpense} disabled={!expDesc || !expAmount || !expAccount || !expCategory || (expAccount === 'fiscal' && !expInvoiceNumber.trim())}>
+                  <Button onClick={addExpense} disabled={!expDesc || !expAmount || !expAccount || !expCategory || expAccount === 'fiscal' && !expInvoiceNumber.trim()}>
                     📝 Registrar Egreso
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {expAccount === 'fiscal' 
-                    ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%) y se requiere número de factura.'
-                    : 'Este egreso se registrará sin IVA para cuenta no fiscal.'
-                  }
+                  {expAccount === 'fiscal' ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%) y se requiere número de factura.' : 'Este egreso se registrará sin IVA para cuenta no fiscal.'}
                 </p>
               </CardContent>
             </Card>
@@ -2310,48 +2312,33 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && (
-                        <TableRow><TableCell colSpan={5}>Cargando retiros...</TableCell></TableRow>
-                      )}
-                      {!expensesQuery.isLoading && 
-                        (expensesQuery.data ?? [])
-                          .filter((expense: any) => {
-                            const expenseDate = new Date(expense.expense_date);
-                            const thirtyDaysAgo = new Date();
-                            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                            return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
-                          })
-                          .slice(0, 10)
-                          .map((expense: any) => (
-                            <TableRow key={expense.id}>
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={5}>Cargando retiros...</TableCell></TableRow>}
+                      {!expensesQuery.isLoading && (expensesQuery.data ?? []).filter((expense: any) => {
+                      const expenseDate = new Date(expense.expense_date);
+                      const thirtyDaysAgo = new Date();
+                      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                      return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
+                    }).slice(0, 10).map((expense: any) => <TableRow key={expense.id}>
                               <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
                               <TableCell className="max-w-48 truncate">{expense.description}</TableCell>
                               <TableCell className="font-medium text-red-600">
-                                -${Number(expense.amount).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                -${Number(expense.amount).toLocaleString('es-MX', {
+                          minimumFractionDigits: 2
+                        })}
                               </TableCell>
                               <TableCell>
-                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                  expense.account_type === 'fiscal' 
-                                    ? 'bg-blue-100 text-blue-800' 
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}>
+                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${expense.account_type === 'fiscal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                                   {expense.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
                                 </span>
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{expense.payment_method || 'N/A'}</TableCell>
-                            </TableRow>
-                          ))
-                      }
-                      {!expensesQuery.isLoading && 
-                        (expensesQuery.data ?? [])
-                          .filter((expense: any) => {
-                            const expenseDate = new Date(expense.expense_date);
-                            const thirtyDaysAgo = new Date();
-                            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                            return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
-                          }).length === 0 && (
-                        <TableRow><TableCell colSpan={5}>No hay retiros recientes.</TableCell></TableRow>
-                      )}
+                            </TableRow>)}
+                      {!expensesQuery.isLoading && (expensesQuery.data ?? []).filter((expense: any) => {
+                      const expenseDate = new Date(expense.expense_date);
+                      const thirtyDaysAgo = new Date();
+                      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                      return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
+                    }).length === 0 && <TableRow><TableCell colSpan={5}>No hay retiros recientes.</TableCell></TableRow>}
                     </TableBody>
                   </Table>
                 </div>
@@ -2372,7 +2359,10 @@ export default function Finance() {
                 <div className="p-4 rounded-lg bg-green-50 border border-green-200">
                   <div className="text-sm text-green-600 font-medium">Ingresos Fijos</div>
                   <div className="text-2xl font-bold text-green-700">
-                    {monthlyFixedIncomes.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    {monthlyFixedIncomes.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}
                   </div>
                   <div className="text-xs text-green-500 mt-1">
                     {(fixedIncomesQuery.data ?? []).filter((fi: any) => fi.active).length} conceptos activos
@@ -2382,7 +2372,10 @@ export default function Finance() {
                 <div className="p-4 rounded-lg bg-red-50 border border-red-200">
                   <div className="text-sm text-red-600 font-medium">Gastos Fijos</div>
                   <div className="text-2xl font-bold text-red-700">
-                    {monthlyFixedExpenses.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    {monthlyFixedExpenses.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}
                   </div>
                   <div className="text-xs text-red-500 mt-1">
                     {(fixedExpensesQuery.data ?? []).filter((fx: any) => fx.active).length} conceptos activos
@@ -2392,7 +2385,10 @@ export default function Finance() {
                 <div className="p-4 rounded-lg bg-orange-50 border border-orange-200">
                   <div className="text-sm text-orange-600 font-medium">Nóminas Recurrentes</div>
                   <div className="text-2xl font-bold text-orange-700">
-                    {monthlyRecurringPayrolls.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    {monthlyRecurringPayrolls.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}
                   </div>
                   <div className="text-xs text-orange-500 mt-1">
                     {(recurringPayrollsQuery.data ?? []).filter((pr: any) => pr.active).length} empleados activos
@@ -2404,7 +2400,10 @@ export default function Finance() {
                     Flujo Neto Mensual
                   </div>
                   <div className={`text-2xl font-bold ${netMonthlyFixedFlow >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                    {netMonthlyFixedFlow.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    {netMonthlyFixedFlow.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}
                   </div>
                   <div className={`text-xs mt-1 ${netMonthlyFixedFlow >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
                     {netMonthlyFixedFlow >= 0 ? 'Superávit proyectado' : 'Déficit proyectado'}
@@ -2431,7 +2430,7 @@ export default function Finance() {
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Cuenta</label>
-                  <Select value={feAccount} onValueChange={(v) => setFeAccount(v as any)}>
+                  <Select value={feAccount} onValueChange={v => setFeAccount(v as any)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona cuenta" />
                     </SelectTrigger>
@@ -2447,16 +2446,16 @@ export default function Finance() {
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Día del mes para ejecutar</label>
-                  <Select value={feDayOfMonth.toString()} onValueChange={(v) => setFeDayOfMonth(Number(v))}>
+                  <Select value={feDayOfMonth.toString()} onValueChange={v => setFeDayOfMonth(Number(v))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Día del mes" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                        <SelectItem key={day} value={day.toString()}>
+                      {Array.from({
+                      length: 31
+                    }, (_, i) => i + 1).map(day => <SelectItem key={day} value={day.toString()}>
                           Día {day}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -2484,19 +2483,15 @@ export default function Finance() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {fixedExpensesQuery.isLoading && (
-                          <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
-                        )}
-                        {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).map((fx: any) => (
-                          <TableRow key={fx.id}>
+                        {fixedExpensesQuery.isLoading && <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>}
+                        {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).map((fx: any) => <TableRow key={fx.id}>
                             <TableCell>{fx.description}</TableCell>
-                            <TableCell>{Number(fx.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                            <TableCell>{Number(fx.amount).toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'MXN'
+                          })}</TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                fx.account_type === 'fiscal' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${fx.account_type === 'fiscal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {fx.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
                               </span>
                             </TableCell>
@@ -2507,11 +2502,7 @@ export default function Finance() {
                             </TableCell>
                             <TableCell>{fx.next_run_date}</TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                fx.active 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${fx.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                 {fx.active ? 'Activo' : 'Inactivo'}
                               </span>
                             </TableCell>
@@ -2520,8 +2511,7 @@ export default function Finance() {
                                  <Button size="sm" variant="outline" onClick={() => toggleFixedActive(fx)}>
                                    {fx.active ? '⏸️' : '▶️'}
                                  </Button>
-                                 {isAdmin && (
-                                   <AlertDialog>
+                                 {isAdmin && <AlertDialog>
                                      <AlertDialogTrigger asChild>
                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
                                          <X className="h-4 w-4" />
@@ -2541,15 +2531,11 @@ export default function Finance() {
                                          </AlertDialogAction>
                                        </AlertDialogFooter>
                                      </AlertDialogContent>
-                                   </AlertDialog>
-                                 )}
+                                   </AlertDialog>}
                                </div>
                              </TableCell>
-                          </TableRow>
-                        ))}
-                        {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).length === 0 && (
-                          <TableRow><TableCell colSpan={7}>Sin gastos fijos programados.</TableCell></TableRow>
-                        )}
+                          </TableRow>)}
+                        {!fixedExpensesQuery.isLoading && (fixedExpensesQuery.data ?? []).length === 0 && <TableRow><TableCell colSpan={7}>Sin gastos fijos programados.</TableCell></TableRow>}
                       </TableBody>
                     </Table>
                   </div>
@@ -2602,7 +2588,7 @@ export default function Finance() {
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">Cuenta</label>
-                    <Select value={pAccount} onValueChange={(v) => setPAccount(v as any)}>
+                    <Select value={pAccount} onValueChange={v => setPAccount(v as any)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecciona cuenta" />
                       </SelectTrigger>
@@ -2617,12 +2603,11 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={pMethod} onChange={e => setPMethod(e.target.value)} placeholder="Transferencia, Efectivo, etc." />
                 </div>
-                {pRecurring && (
-                  <>
+                {pRecurring && <>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div>
                         <label className="text-sm text-muted-foreground">Frecuencia</label>
-                        <Select value={pFrequency} onValueChange={(v) => setPFrequency(v as any)}>
+                        <Select value={pFrequency} onValueChange={v => setPFrequency(v as any)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona frecuencia" />
                           </SelectTrigger>
@@ -2632,10 +2617,9 @@ export default function Finance() {
                           </SelectContent>
                         </Select>
                       </div>
-                      {pFrequency === 'weekly' && (
-                        <div>
+                      {pFrequency === 'weekly' && <div>
                           <label className="text-sm text-muted-foreground">Día de corte</label>
-                          <Select value={pCutoffWeekday.toString()} onValueChange={(v) => setPCutoffWeekday(Number(v))}>
+                          <Select value={pCutoffWeekday.toString()} onValueChange={v => setPCutoffWeekday(Number(v))}>
                             <SelectTrigger>
                               <SelectValue placeholder="Día de corte" />
                             </SelectTrigger>
@@ -2649,8 +2633,7 @@ export default function Finance() {
                               <SelectItem value="0">Domingo</SelectItem>
                             </SelectContent>
                           </Select>
-                        </div>
-                      )}
+                        </div>}
                       <div>
                         <label className="text-sm text-muted-foreground">Bono por defecto</label>
                         <Input type="number" inputMode="decimal" value={pDefaultBonus} onChange={e => setPDefaultBonus(e.target.value)} placeholder="0.00" />
@@ -2658,23 +2641,22 @@ export default function Finance() {
                     </div>
                     <div>
                       <label className="text-sm text-muted-foreground">Día del mes para ejecutar</label>
-                      <Select value={pDayOfMonth.toString()} onValueChange={(v) => setPDayOfMonth(Number(v))}>
+                      <Select value={pDayOfMonth.toString()} onValueChange={v => setPDayOfMonth(Number(v))}>
                         <SelectTrigger>
                           <SelectValue placeholder="Día del mes" />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                            <SelectItem key={day} value={day.toString()}>
+                          {Array.from({
+                        length: 31
+                      }, (_, i) => i + 1).map(day => <SelectItem key={day} value={day.toString()}>
                               Día {day}
-                            </SelectItem>
-                          ))}
+                            </SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                  </>
-                )}
+                  </>}
                 <div className="flex items-center gap-2 pt-2">
-                  <Checkbox id="rec-pay" checked={pRecurring} onCheckedChange={(v) => setPRecurring(!!v)} />
+                  <Checkbox id="rec-pay" checked={pRecurring} onCheckedChange={v => setPRecurring(!!v)} />
                   <label htmlFor="rec-pay" className="text-sm">Programar como recurrente</label>
                 </div>
                 <div className="flex items-center gap-3 pt-2">
@@ -2702,29 +2684,21 @@ export default function Finance() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {recurringPayrollsQuery.isLoading && (
-                          <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>
-                        )}
-                        {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).map((rp: any) => (
-                          <TableRow key={rp.id}>
+                        {recurringPayrollsQuery.isLoading && <TableRow><TableCell colSpan={6}>Cargando...</TableCell></TableRow>}
+                        {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).map((rp: any) => <TableRow key={rp.id}>
                             <TableCell>{rp.employee_name}</TableCell>
-                            <TableCell>{Number(rp.net_salary).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                            <TableCell>{Number(rp.net_salary).toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'MXN'
+                          })}</TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                rp.account_type === 'fiscal' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${rp.account_type === 'fiscal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {rp.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
                               </span>
                             </TableCell>
                             <TableCell>{rp.next_run_date}</TableCell>
                             <TableCell>
-                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                                rp.active 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
+                              <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${rp.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                 {rp.active ? 'Activo' : 'Inactivo'}
                               </span>
                             </TableCell>
@@ -2733,8 +2707,7 @@ export default function Finance() {
                                  <Button size="sm" variant="outline" onClick={() => toggleRecurringPayrollActive(rp)}>
                                    {rp.active ? '⏸️' : '▶️'}
                                  </Button>
-                                 {isAdmin && (
-                                   <AlertDialog>
+                                 {isAdmin && <AlertDialog>
                                      <AlertDialogTrigger asChild>
                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
                                          <X className="h-4 w-4" />
@@ -2754,15 +2727,11 @@ export default function Finance() {
                                          </AlertDialogAction>
                                        </AlertDialogFooter>
                                      </AlertDialogContent>
-                                   </AlertDialog>
-                                 )}
+                                   </AlertDialog>}
                                </div>
                              </TableCell>
-                          </TableRow>
-                        ))}
-                        {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).length === 0 && (
-                          <TableRow><TableCell colSpan={6}>Sin nóminas programadas.</TableCell></TableRow>
-                        )}
+                          </TableRow>)}
+                        {!recurringPayrollsQuery.isLoading && (recurringPayrollsQuery.data ?? []).length === 0 && <TableRow><TableCell colSpan={6}>Sin nóminas programadas.</TableCell></TableRow>}
                       </TableBody>
                     </Table>
                   </div>
@@ -2786,7 +2755,7 @@ export default function Finance() {
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Cuenta</label>
-                  <Select value={fiAccount} onValueChange={(v) => setFiAccount(v as any)}>
+                  <Select value={fiAccount} onValueChange={v => setFiAccount(v as any)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecciona cuenta" />
                     </SelectTrigger>
@@ -2802,16 +2771,16 @@ export default function Finance() {
                 </div>
                 <div>
                   <label className="text-sm text-muted-foreground">Día del mes para ejecutar</label>
-                  <Select value={fiDayOfMonth.toString()} onValueChange={(v) => setFiDayOfMonth(Number(v))}>
+                  <Select value={fiDayOfMonth.toString()} onValueChange={v => setFiDayOfMonth(Number(v))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Día del mes" />
                     </SelectTrigger>
                     <SelectContent>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                        <SelectItem key={day} value={day.toString()}>
+                      {Array.from({
+                      length: 31
+                    }, (_, i) => i + 1).map(day => <SelectItem key={day} value={day.toString()}>
                           Día {day}
-                        </SelectItem>
-                      ))}
+                        </SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -2838,10 +2807,12 @@ export default function Finance() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(fixedIncomesQuery.data ?? []).map((fi: any) => (
-                          <TableRow key={fi.id}>
+                        {(fixedIncomesQuery.data ?? []).map((fi: any) => <TableRow key={fi.id}>
                             <TableCell className="font-medium">{fi.description}</TableCell>
-                            <TableCell>{Number(fi.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                            <TableCell>{Number(fi.amount).toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'MXN'
+                          })}</TableCell>
                             <TableCell>
                               <span className={`px-2 py-1 rounded-full text-xs ${fi.account_type === 'fiscal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                                 {fi.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
@@ -2856,8 +2827,7 @@ export default function Finance() {
                             </TableCell>
                              <TableCell>
                                <div className="flex items-center gap-2">
-                                 {isAdmin && (
-                                   <>
+                                 {isAdmin && <>
                                      <Button size="sm" variant="outline" onClick={() => toggleFixedIncomeActive(fi)}>
                                        {fi.active ? 'Desactivar' : 'Activar'}
                                      </Button>
@@ -2882,15 +2852,11 @@ export default function Finance() {
                                          </AlertDialogFooter>
                                        </AlertDialogContent>
                                      </AlertDialog>
-                                   </>
-                                 )}
+                                   </>}
                                </div>
                              </TableCell>
-                          </TableRow>
-                        ))}
-                        {!fixedIncomesQuery.isLoading && (fixedIncomesQuery.data ?? []).length === 0 && (
-                          <TableRow><TableCell colSpan={7}>Sin ingresos fijos programados.</TableCell></TableRow>
-                        )}
+                          </TableRow>)}
+                        {!fixedIncomesQuery.isLoading && (fixedIncomesQuery.data ?? []).length === 0 && <TableRow><TableCell colSpan={7}>Sin ingresos fijos programados.</TableCell></TableRow>}
                       </TableBody>
                     </Table>
                   </div>
@@ -2914,42 +2880,39 @@ export default function Finance() {
               <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm text-muted-foreground">Monto base (sin IVA)</label>
-                  <Input 
-                    type="number" 
-                    value={tempAmount} 
-                    onChange={e => setTempAmount(e.target.value)} 
-                    placeholder="0.00" 
-                  />
+                  <Input type="number" value={tempAmount} onChange={e => setTempAmount(e.target.value)} placeholder="0.00" />
                 </div>
                 
                 <div>
                   <label className="text-sm text-muted-foreground">Tasa IVA (%)</label>
-                  <Input 
-                    type="number" 
-                    value={tempVatRate} 
-                    onChange={e => setTempVatRate(e.target.value)} 
-                    placeholder="16" 
-                  />
+                  <Input type="number" value={tempVatRate} onChange={e => setTempVatRate(e.target.value)} placeholder="16" />
                 </div>
                 
-                {tempAmount && tempVatRate && (
-                  <div className="p-4 bg-muted rounded-lg">
+                {tempAmount && tempVatRate && <div className="p-4 bg-muted rounded-lg">
                     <div className="text-sm space-y-2">
                       <div className="flex justify-between">
                         <span>Monto base:</span>
-                        <span>{Number(tempAmount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
+                        <span>{Number(tempAmount).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}</span>
                       </div>
                       <div className="flex justify-between text-blue-600">
                         <span>IVA ({tempVatRate}%):</span>
-                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
+                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}</span>
                       </div>
                       <div className="flex justify-between font-semibold text-lg border-t pt-2">
                         <span>Total:</span>
-                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
+                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}</span>
                       </div>
                     </div>
-                  </div>
-                )}
+                  </div>}
                 
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-700">
@@ -2971,32 +2934,33 @@ export default function Finance() {
                   <div className="p-4 bg-green-50 rounded-lg">
                     <div className="text-sm text-green-600 font-medium">IVA Trasladado</div>
                     <div className="text-xl font-bold text-green-700">
-                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                      {incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0).toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'MXN'
+                    })}
                     </div>
                     <div className="text-xs text-green-600">Cobrado en ventas fiscales</div>
                   </div>
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <div className="text-sm text-blue-600 font-medium">IVA Acreditable</div>
                     <div className="text-xl font-bold text-blue-700">
-                      {(expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                      {expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0).toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'MXN'
+                    })}
                     </div>
                     <div className="text-xs text-blue-600">Pagado en compras fiscales</div>
                   </div>
                   <div className="p-4 bg-orange-50 rounded-lg">
                     <div className="text-sm text-orange-600 font-medium">IVA a Pagar/Favor</div>
-                    <div className={`text-2xl font-bold ${
-                      (incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - 
-                       expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)) >= 0 
-                        ? 'text-red-700' : 'text-green-700'
-                    }`}>
-                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - 
-                        expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)
-                       ).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    <div className={`text-2xl font-bold ${incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) >= 0 ? 'text-red-700' : 'text-green-700'}`}>
+                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)).toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'MXN'
+                    })}
                     </div>
                     <div className="text-xs text-orange-600">
-                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - 
-                        expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)) >= 0 
-                        ? 'A pagar al SAT' : 'A favor del contribuyente'}
+                      {incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) >= 0 ? 'A pagar al SAT' : 'A favor del contribuyente'}
                     </div>
                   </div>
                 </div>
@@ -3004,68 +2968,7 @@ export default function Finance() {
             </Card>
 
             {/* Resumen Fiscal */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Calculadora de IVA</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Herramienta para calcular IVA. El IVA se registra automáticamente al crear ingresos/egresos fiscales.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm text-muted-foreground">Monto base (sin IVA)</label>
-                    <Input 
-                      type="number" 
-                      inputMode="decimal" 
-                      value={tempAmount} 
-                      onChange={e => setTempAmount(e.target.value)} 
-                      placeholder="0.00" 
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-muted-foreground">Tasa IVA (%)</label>
-                    <Select value={tempVatRate} onValueChange={setTempVatRate}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Tasa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">0% (Exento)</SelectItem>
-                        <SelectItem value="8">8%</SelectItem>
-                        <SelectItem value="16">16% (General)</SelectItem>
-                        <SelectItem value="21">21%</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                {tempAmount && tempVatRate && (
-                  <div className="p-4 bg-muted rounded-lg">
-                    <div className="text-sm space-y-2">
-                      <div className="flex justify-between">
-                        <span>Monto base:</span>
-                        <span>{Number(tempAmount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
-                      </div>
-                      <div className="flex justify-between text-blue-600">
-                        <span>IVA ({tempVatRate}%):</span>
-                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                        <span>Total:</span>
-                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    💡 <strong>Tip:</strong> Para registrar transacciones con IVA, ve a la sección de Ingresos o Egresos 
-                    y configura el IVA al crear cada registro.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            
 
             <Card>
               <CardHeader>
@@ -3078,25 +2981,34 @@ export default function Finance() {
                     <div className="p-4 bg-green-50 rounded-lg">
                       <div className="text-sm text-green-600 font-medium">Ingresos Fiscales</div>
                       <div className="text-2xl font-bold text-green-700">
-                        {totIF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                        {totIF.toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                       </div>
                       <div className="text-xs text-green-600">{incomesFiscal.length} registros</div>
                     </div>
                     <div className="p-4 bg-red-50 rounded-lg">
                       <div className="text-sm text-red-600 font-medium">Egresos Fiscales</div>
                       <div className="text-2xl font-bold text-red-700">
-                        {totEF.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                        {totEF.toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                       </div>
                       <div className="text-xs text-red-600">{expensesFiscal.length} registros</div>
                     </div>
                   </div>
                   <div className="p-4 bg-blue-50 rounded-lg">
                     <div className="text-sm text-blue-600 font-medium">Balance Fiscal</div>
-                    <div className={`text-2xl font-bold ${(totIF - totEF) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                      {(totIF - totEF).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    <div className={`text-2xl font-bold ${totIF - totEF >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                      {(totIF - totEF).toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'MXN'
+                    })}
                     </div>
                     <div className="text-xs text-blue-600">
-                      {(totIF - totEF) >= 0 ? 'Utilidad' : 'Pérdida'}
+                      {totIF - totEF >= 0 ? 'Utilidad' : 'Pérdida'}
                     </div>
                   </div>
                 </div>
@@ -3108,11 +3020,7 @@ export default function Finance() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Ingresos Fiscales ({incomesFiscal.length})</CardTitle>
-                <Button 
-                  size="sm" 
-                  onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}
-                  disabled={!incomesFiscal.length}
-                >
+                <Button size="sm" onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)} disabled={!incomesFiscal.length}>
                   Exportar CSV
                 </Button>
               </CardHeader>
@@ -3131,31 +3039,33 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {incomesFiscal.map((r: any) => (
-                        <TableRow key={r.id}>
+                      {incomesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs">{r.income_number}</TableCell>
                           <TableCell>{r.income_date}</TableCell>
                           <TableCell className="max-w-[200px] truncate" title={r.description}>
                             {r.description}
                           </TableCell>
                           <TableCell className="font-mono">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                            {Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}
                           </TableCell>
                           <TableCell className="font-mono text-xs">
                             {r.invoice_number || '-'}
                           </TableCell>
                           <TableCell className="font-mono text-green-600">
-                            {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' }) : '-'}
+                            {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        }) : '-'}
                           </TableCell>
-                        </TableRow>
-                      ))}
-                      {incomesFiscal.length === 0 && (
-                        <TableRow>
+                        </TableRow>)}
+                      {incomesFiscal.length === 0 && <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             No hay ingresos fiscales en el período seleccionado
                           </TableCell>
-                        </TableRow>
-                      )}
+                        </TableRow>}
                     </TableBody>
                   </Table>
                 </div>
@@ -3165,11 +3075,7 @@ export default function Finance() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Egresos Fiscales ({expensesFiscal.length})</CardTitle>
-                <Button 
-                  size="sm" 
-                  onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)}
-                  disabled={!expensesFiscal.length}
-                >
+                <Button size="sm" onClick={() => exportCsv(`egresos_fiscal_${startDate}_${endDate}`, expensesFiscal as any)} disabled={!expensesFiscal.length}>
                   Exportar CSV
                 </Button>
               </CardHeader>
@@ -3186,31 +3092,33 @@ export default function Finance() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesFiscal.map((r: any) => (
-                        <TableRow key={r.id}>
+                      {expensesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs">{r.expense_number}</TableCell>
                           <TableCell>{r.expense_date}</TableCell>
                           <TableCell className="max-w-[200px] truncate" title={r.description}>
                             {r.description}
                           </TableCell>
                           <TableCell className="font-mono">
-                            {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                            {Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}
                           </TableCell>
                           <TableCell className="font-mono text-xs">
                             {r.invoice_number || '-'}
                           </TableCell>
                           <TableCell className="font-mono text-red-600">
-                            {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' }) : '-'}
+                            {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        }) : '-'}
                           </TableCell>
-                        </TableRow>
-                      ))}
-                      {expensesFiscal.length === 0 && (
-                        <TableRow>
+                        </TableRow>)}
+                      {expensesFiscal.length === 0 && <TableRow>
                           <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             No hay egresos fiscales en el período seleccionado
                           </TableCell>
-                        </TableRow>
-                      )}
+                        </TableRow>}
                     </TableBody>
                   </Table>
                 </div>
@@ -3240,37 +3148,36 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {vatDetailsQuery.isLoading && (
-                      <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>
-                    )}
-                    {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).map((vat: any, index: number) => (
-                      <TableRow key={index}>
+                    {vatDetailsQuery.isLoading && <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>}
+                    {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).map((vat: any, index: number) => <TableRow key={index}>
                         <TableCell>{vat.date}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                            vat.type === 'ingresos' 
-                              ? 'bg-green-100 text-green-700' 
-                              : 'bg-red-100 text-red-700'
-                          }`}>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${vat.type === 'ingresos' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                             {vat.type === 'ingresos' ? 'Ingreso' : 'Egreso'}
                           </span>
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate" title={vat.description}>
                           {vat.description}
                         </TableCell>
-                        <TableCell>{Number(vat.taxable_amount || vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</TableCell>
+                        <TableCell>{Number(vat.taxable_amount || vat.amount).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}</TableCell>
                         <TableCell>{vat.vat_rate || 0}%</TableCell>
                         <TableCell className={vat.type === 'ingresos' ? 'text-green-600' : 'text-red-600'}>
-                          {Number(vat.vat_amount || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                          {Number(vat.vat_amount || 0).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                         </TableCell>
                         <TableCell className="font-semibold">
-                          {Number(vat.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                          {Number(vat.amount).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                         </TableCell>
-                      </TableRow>
-                    ))}
-                    {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).length === 0 && (
-                      <TableRow><TableCell colSpan={7}>No hay registros con IVA para el período seleccionado.</TableCell></TableRow>
-                    )}
+                      </TableRow>)}
+                    {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).length === 0 && <TableRow><TableCell colSpan={7}>No hay registros con IVA para el período seleccionado.</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -3307,11 +3214,8 @@ export default function Finance() {
                      </TableRow>
                   </TableHeader>
                   <TableBody>
-                     {collectionsQuery.isLoading && (
-                       <TableRow><TableCell colSpan={10}>Cargando cobranzas pendientes...</TableCell></TableRow>
-                     )}
-                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((order: any) => (
-                       <TableRow key={order.id} className="hover:bg-muted/50">
+                     {collectionsQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando cobranzas pendientes...</TableCell></TableRow>}
+                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((order: any) => <TableRow key={order.id} className="hover:bg-muted/50">
                          <TableCell className="font-medium">{order.order_number}</TableCell>
                          <TableCell>
                            <div>
@@ -3321,19 +3225,34 @@ export default function Finance() {
                          </TableCell>
                          <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
                          <TableCell className="font-medium">
-                           {Number(order.subtotal_without_vat || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                           {Number(order.subtotal_without_vat || 0).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="text-blue-600 font-medium">
-                           {Number(order.total_vat_amount || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                           {Number(order.total_vat_amount || 0).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="font-medium">
-                           {Number(order.total_with_vat || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                           {Number(order.total_with_vat || order.estimated_cost).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="text-green-600 font-medium">
-                           {Number(order.total_paid || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                           {Number(order.total_paid || 0).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="text-red-600 font-medium">
-                           {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                           {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell>
                            <div className="flex items-center gap-2">
@@ -3342,22 +3261,15 @@ export default function Finance() {
                            </div>
                          </TableCell>
                          <TableCell>
-                           <Button 
-                             size="sm" 
-                             variant="default"
-                             onClick={() => {
-                               setSelectedCollection(order);
-                               setCollectionDialogOpen(true);
-                             }}
-                             className="bg-green-600 hover:bg-green-700"
-                           >
+                           <Button size="sm" variant="default" onClick={() => {
+                        setSelectedCollection(order);
+                        setCollectionDialogOpen(true);
+                      }} className="bg-green-600 hover:bg-green-700">
                              Cobrar
                            </Button>
                          </TableCell>
-                       </TableRow>
-                     ))}
-                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && (
-                       <TableRow>
+                       </TableRow>)}
+                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && <TableRow>
                          <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                            <div className="flex flex-col items-center gap-2">
                              <div className="text-4xl">💰</div>
@@ -3365,8 +3277,7 @@ export default function Finance() {
                              <div className="text-sm">Todas las órdenes terminadas han sido cobradas</div>
                            </div>
                          </TableCell>
-                       </TableRow>
-                     )}
+                       </TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -3378,11 +3289,7 @@ export default function Finance() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Historial de Movimientos ({financialHistoryQuery.data?.length || 0})</CardTitle>
-              <Button 
-                size="sm" 
-                onClick={() => exportCsv(`historial_financiero_${startDate}_${endDate}`, financialHistoryQuery.data as any)}
-                disabled={!financialHistoryQuery.data?.length}
-              >
+              <Button size="sm" onClick={() => exportCsv(`historial_financiero_${startDate}_${endDate}`, financialHistoryQuery.data as any)} disabled={!financialHistoryQuery.data?.length}>
                 Exportar CSV
               </Button>
             </CardHeader>
@@ -3401,68 +3308,42 @@ export default function Finance() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {financialHistoryQuery.isLoading && (
-                      <TableRow>
+                    {financialHistoryQuery.isLoading && <TableRow>
                         <TableCell colSpan={7} className="text-center py-8">
                           Cargando historial...
                         </TableCell>
-                      </TableRow>
-                    )}
-                    {financialHistoryQuery.data?.map((h: any) => (
-                      <TableRow key={h.id}>
+                      </TableRow>}
+                    {financialHistoryQuery.data?.map((h: any) => <TableRow key={h.id}>
                         <TableCell>{h.operation_date}</TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            h.operation_type === 'create' ? 'bg-green-100 text-green-800' :
-                            h.operation_type === 'delete' ? 'bg-red-100 text-red-800' :
-                            h.operation_type === 'reverse' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {h.operation_type === 'create' ? 'Crear' :
-                             h.operation_type === 'delete' ? 'Eliminar' :
-                             h.operation_type === 'reverse' ? 'Revertir' :
-                             h.operation_type}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${h.operation_type === 'create' ? 'bg-green-100 text-green-800' : h.operation_type === 'delete' ? 'bg-red-100 text-red-800' : h.operation_type === 'reverse' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {h.operation_type === 'create' ? 'Crear' : h.operation_type === 'delete' ? 'Eliminar' : h.operation_type === 'reverse' ? 'Revertir' : h.operation_type}
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            h.table_name === 'incomes' ? 'bg-blue-100 text-blue-800' :
-                            h.table_name === 'expenses' ? 'bg-orange-100 text-orange-800' :
-                            h.table_name === 'fixed_expenses' ? 'bg-purple-100 text-purple-800' :
-                            h.table_name === 'recurring_payrolls' ? 'bg-pink-100 text-pink-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {h.table_name === 'incomes' ? 'Ingresos' :
-                             h.table_name === 'expenses' ? 'Egresos' :
-                             h.table_name === 'fixed_expenses' ? 'Gastos Fijos' :
-                             h.table_name === 'recurring_payrolls' ? 'Nóminas' :
-                             h.table_name}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${h.table_name === 'incomes' ? 'bg-blue-100 text-blue-800' : h.table_name === 'expenses' ? 'bg-orange-100 text-orange-800' : h.table_name === 'fixed_expenses' ? 'bg-purple-100 text-purple-800' : h.table_name === 'recurring_payrolls' ? 'bg-pink-100 text-pink-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {h.table_name === 'incomes' ? 'Ingresos' : h.table_name === 'expenses' ? 'Egresos' : h.table_name === 'fixed_expenses' ? 'Gastos Fijos' : h.table_name === 'recurring_payrolls' ? 'Nóminas' : h.table_name}
                           </span>
                         </TableCell>
                         <TableCell className="max-w-[300px] truncate" title={h.operation_description}>
                           {h.operation_description}
                         </TableCell>
                         <TableCell className="font-mono">
-                          {Number(h.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                          {Number(h.amount).toLocaleString(undefined, {
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                         </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            h.account_type === 'fiscal' ? 'bg-green-100 text-green-800' :
-                            h.account_type === 'no_fiscal' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {h.account_type === 'fiscal' ? 'Fiscal' :
-                             h.account_type === 'no_fiscal' ? 'No Fiscal' :
-                             h.account_type || 'N/A'}
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${h.account_type === 'fiscal' ? 'bg-green-100 text-green-800' : h.account_type === 'no_fiscal' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {h.account_type === 'fiscal' ? 'Fiscal' : h.account_type === 'no_fiscal' ? 'No Fiscal' : h.account_type || 'N/A'}
                           </span>
                         </TableCell>
                         <TableCell>
                           {h.profiles?.full_name || 'Sistema'}
                         </TableCell>
-                      </TableRow>
-                    ))}
-                    {!financialHistoryQuery.isLoading && (!financialHistoryQuery.data || financialHistoryQuery.data.length === 0) && (
-                      <TableRow>
+                      </TableRow>)}
+                    {!financialHistoryQuery.isLoading && (!financialHistoryQuery.data || financialHistoryQuery.data.length === 0) && <TableRow>
                         <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center gap-2">
                             <div className="text-4xl">📋</div>
@@ -3470,8 +3351,7 @@ export default function Finance() {
                             <div className="text-sm">Los movimientos aparecerán aquí conforme se vayan realizando</div>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    )}
+                      </TableRow>}
                   </TableBody>
                 </Table>
               </div>
@@ -3480,16 +3360,13 @@ export default function Finance() {
         </TabsContent>
       </Tabs>
 
-      <CollectionDialog
-        open={collectionDialogOpen}
-        onOpenChange={setCollectionDialogOpen}
-        collection={selectedCollection}
-        onSuccess={() => {
-          incomesQuery.refetch();
-          collectionsQuery.refetch();
-          toast({ title: "Cobro registrado exitosamente" });
-        }}
-      />
+      <CollectionDialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen} collection={selectedCollection} onSuccess={() => {
+      incomesQuery.refetch();
+      collectionsQuery.refetch();
+      toast({
+        title: "Cobro registrado exitosamente"
+      });
+    }} />
 
       {/* Diálogo para gestión de proveedores */}
       <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
@@ -3506,68 +3383,47 @@ export default function Finance() {
           <div className="grid gap-4 py-4">
             <div>
               <label className="text-sm font-medium">Nombre del proveedor *</label>
-              <Input
-                value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
-                placeholder="Nombre completo del proveedor"
-              />
+              <Input value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="Nombre completo del proveedor" />
             </div>
             
             <div>
               <label className="text-sm font-medium">Persona de contacto</label>
-              <Input
-                value={supplierContact}
-                onChange={(e) => setSupplierContact(e.target.value)}
-                placeholder="Nombre del contacto"
-              />
+              <Input value={supplierContact} onChange={e => setSupplierContact(e.target.value)} placeholder="Nombre del contacto" />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium">Email</label>
-                <Input
-                  type="email"
-                  value={supplierEmail}
-                  onChange={(e) => setSupplierEmail(e.target.value)}
-                  placeholder="email@proveedor.com"
-                />
+                <Input type="email" value={supplierEmail} onChange={e => setSupplierEmail(e.target.value)} placeholder="email@proveedor.com" />
               </div>
               <div>
                 <label className="text-sm font-medium">Teléfono</label>
-                <Input
-                  value={supplierPhone}
-                  onChange={(e) => setSupplierPhone(e.target.value)}
-                  placeholder="555-0123"
-                />
+                <Input value={supplierPhone} onChange={e => setSupplierPhone(e.target.value)} placeholder="555-0123" />
               </div>
             </div>
             
             <div>
               <label className="text-sm font-medium">Dirección</label>
-              <Input
-                value={supplierAddress}
-                onChange={(e) => setSupplierAddress(e.target.value)}
-                placeholder="Dirección completa"
-              />
+              <Input value={supplierAddress} onChange={e => setSupplierAddress(e.target.value)} placeholder="Dirección completa" />
             </div>
             
             <div>
               <label className="text-sm font-medium">RFC</label>
-              <Input
-                value={supplierRFC}
-                onChange={(e) => setSupplierRFC(e.target.value)}
-                placeholder="ABCD123456789"
-              />
+              <Input value={supplierRFC} onChange={e => setSupplierRFC(e.target.value)} placeholder="ABCD123456789" />
             </div>
           </div>
           
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              setShowSupplierDialog(false);
-              setEditingSupplier(null);
-              setSupplierName(""); setSupplierContact(""); setSupplierEmail("");
-              setSupplierPhone(""); setSupplierAddress(""); setSupplierRFC("");
-            }}>
+            setShowSupplierDialog(false);
+            setEditingSupplier(null);
+            setSupplierName("");
+            setSupplierContact("");
+            setSupplierEmail("");
+            setSupplierPhone("");
+            setSupplierAddress("");
+            setSupplierRFC("");
+          }}>
               Cancelar
             </Button>
             <Button onClick={editingSupplier ? updateSupplier : addSupplier}>
@@ -3584,37 +3440,21 @@ export default function Finance() {
             <DialogTitle>Retirar Items Seleccionados</DialogTitle>
             <DialogDescription>
               Se crearán egresos fiscales por los {selectedWithdrawals.length} items seleccionados
-              {fiscalWithdrawalsQuery.data && (
-                <>
-                  {' '}por un total de ${fiscalWithdrawalsQuery.data
-                    .filter(fw => selectedWithdrawals.includes(fw.id))
-                    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
-                    .toLocaleString()}
-                </>
-              )}
+              {fiscalWithdrawalsQuery.data && <>
+                  {' '}por un total de ${fiscalWithdrawalsQuery.data.filter(fw => selectedWithdrawals.includes(fw.id)).reduce((sum, item) => sum + (Number(item.amount) || 0), 0).toLocaleString()}
+                </>}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
             <div>
               <Label htmlFor="withdrawal-concept">Concepto *</Label>
-              <Input
-                id="withdrawal-concept"
-                value={withdrawalConcept}
-                onChange={(e) => setWithdrawalConcept(e.target.value)}
-                placeholder="Ej: Retiro facturas periodo diciembre 2024"
-              />
+              <Input id="withdrawal-concept" value={withdrawalConcept} onChange={e => setWithdrawalConcept(e.target.value)} placeholder="Ej: Retiro facturas periodo diciembre 2024" />
             </div>
             
             <div>
               <Label htmlFor="withdrawal-description">Descripción adicional</Label>
-              <Textarea
-                id="withdrawal-description"
-                value={withdrawalDescription}
-                onChange={(e) => setWithdrawalDescription(e.target.value)}
-                placeholder="Información adicional sobre el retiro (opcional)"
-                rows={3}
-              />
+              <Textarea id="withdrawal-description" value={withdrawalDescription} onChange={e => setWithdrawalDescription(e.target.value)} placeholder="Información adicional sobre el retiro (opcional)" rows={3} />
             </div>
           </div>
           
@@ -3628,6 +3468,5 @@ export default function Finance() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>
-  );
+    </AppLayout>;
 }
