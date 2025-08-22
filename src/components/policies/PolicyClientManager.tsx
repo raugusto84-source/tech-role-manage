@@ -227,32 +227,12 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
       if (error) throw error;
 
-      // Generar el primer pago de la póliza inmediatamente
-      try {
-        console.log('Generando pagos para la nueva asignación de póliza...');
-        const { data: functionResult, error: functionError } = await supabase.functions
-          .invoke('generate-policy-payments', {
-            body: { policy_client_id: clientIdToUse, generate_immediate: true }
-          });
+      // El primer pago se genera automáticamente mediante un trigger en la base de datos
 
-        if (functionError) {
-          console.error('Error generando pagos de póliza:', functionError);
-          // No fallar la asignación por este error, solo avisar
-          toast({
-            title: 'Advertencia',
-            description: 'Cliente asignado correctamente, pero no se pudo generar el primer pago automáticamente',
-            variant: 'default',
-          });
-        } else {
-          console.log('Pagos de póliza generados exitosamente:', functionResult);
-        }
-      } catch (functionError: any) {
-        console.error('Error calling generate-policy-payments:', functionError);
-      }
 
       toast({
         title: 'Éxito',
-        description: 'Cliente asignado a la póliza correctamente y primer pago generado',
+        description: 'Cliente asignado a la póliza correctamente',
       });
 
       setIsDialogOpen(false);
