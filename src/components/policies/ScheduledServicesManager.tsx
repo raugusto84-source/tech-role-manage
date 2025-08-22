@@ -198,13 +198,25 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
   const handleCreateOrder = async (service: ScheduledService) => {
     try {
+      // Get client_id from policy_clients
+      const { data: policyClient, error: policyError } = await supabase
+        .from('policy_clients')
+        .select('clients(id)')
+        .eq('id', service.policy_client_id)
+        .single();
+
+      if (policyError || !policyClient) {
+        throw new Error('No se pudo obtener información del cliente');
+      }
+
       // Create order with policy information
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert({
           order_number: `ORD-POL-${Date.now()}`,
-          service_type: 'programado',
-          service_location: 'programado',
+          client_id: policyClient.clients.id,
+          service_type: 'domicilio', // Use valid service_type enum value
+          service_location: 'domicilio', // Use valid service_location enum value
           delivery_date: service.next_service_date,
           estimated_cost: 0,
           failure_description: service.service_description || `Servicio programado: ${service.service_types.name}`,
@@ -217,6 +229,28 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         .single();
 
       if (orderError) throw orderError;
+
+      // Create order item for the scheduled service
+      const { error: itemError } = await supabase
+        .from('order_items')
+        .insert({
+          order_id: orderData.id,
+          service_type_id: service.service_type_id,
+          quantity: 1,
+          unit_cost_price: 0,
+          unit_base_price: 0,
+          profit_margin_rate: 0,
+          subtotal: 0,
+          vat_rate: 0,
+          vat_amount: 0,
+          total_amount: 0,
+          service_name: service.service_types.name,
+          service_description: service.service_types.description,
+          item_type: 'servicio',
+          status: 'pendiente',
+        });
+
+      if (itemError) throw itemError;
 
       // Update last service date and calculate next date
       const nextDate = new Date();
@@ -234,7 +268,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       toast({
         title: "Éxito",
-        description: "Orden de servicio creada y próxima fecha programada",
+        description: `Orden ${orderData.order_number} creada y próxima fecha programada para ${nextDate.toLocaleDateString('es-MX')}`,
       });
 
       loadData();
@@ -243,7 +277,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       console.error('Error creating order:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear la orden de servicio",
+        description: `No se pudo crear la orden de servicio: ${error.message}`,
         variant: "destructive",
       });
     }
