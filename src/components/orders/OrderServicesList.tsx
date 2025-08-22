@@ -163,7 +163,7 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
                         <strong>Cantidad:</strong> {item.quantity}
                       </span>
                       <span>
-                        <strong>Precio:</strong> {formatCurrency(item.unit_base_price)}
+                        <strong>Precio:</strong> {formatCurrency(item.total_amount / item.quantity)}
                       </span>
                       <span>
                         <strong>Total:</strong> {formatCurrency(item.total_amount)}
