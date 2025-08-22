@@ -314,6 +314,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                     type="file"
                     ref={fileInputRef}
                     accept="image/*"
+                    capture="environment"
                     multiple
                     onChange={handleFileUpload}
                     className="hidden"
