@@ -1,0 +1,211 @@
+// deno-lint-ignore-file no-explicit-any
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+function addOneMonth(dateStr: string): string {
+  const d = new Date(dateStr);
+  const year = d.getUTCFullYear();
+  const month = d.getUTCMonth();
+  const day = d.getUTCDate();
+  const next = new Date(Date.UTC(year, month + 1, day));
+  return next.toISOString().substring(0, 10);
+}
+
+function getNextDueDate(currentMonth: number, currentYear: number): { month: number; year: number; due_date: string } {
+  let nextMonth = currentMonth + 1;
+  let nextYear = currentYear;
+  
+  if (nextMonth > 12) {
+    nextMonth = 1;
+    nextYear += 1;
+  }
+  
+  // Due on the 5th of each month
+  const due_date = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-05`;
+  
+  return { month: nextMonth, year: nextYear, due_date };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+      auth: { persistSession: false }
+    });
+
+    console.log('Starting policy payments generation...');
+
+    const today = new Date();
+    const currentMonth = today.getUTCMonth() + 1;
+    const currentYear = today.getUTCFullYear();
+
+    // Get all active policy clients
+    const { data: policyClients, error: pcError } = await supabase
+      .from('policy_clients')
+      .select(`
+        id,
+        policy_id,
+        start_date,
+        clients(name, email),
+        insurance_policies(monthly_fee, policy_name)
+      `)
+      .eq('is_active', true);
+
+    if (pcError) {
+      console.error('Error loading policy clients:', pcError);
+      throw pcError;
+    }
+
+    console.log(`Found ${policyClients?.length || 0} active policy clients`);
+
+    let created = 0;
+    let skipped = 0;
+    const details: any[] = [];
+
+    for (const policyClient of policyClients || []) {
+      try {
+        const { month, year, due_date } = getNextDueDate(currentMonth, currentYear);
+        
+        // Check if payment for this month already exists
+        const { data: existingPayment, error: checkError } = await supabase
+          .from('policy_payments')
+          .select('id')
+          .eq('policy_client_id', policyClient.id)
+          .eq('payment_month', month)
+          .eq('payment_year', year)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error(`Error checking existing payment for policy client ${policyClient.id}:`, checkError);
+          details.push({
+            policy_client_id: policyClient.id,
+            client_name: policyClient.clients?.name,
+            status: 'error',
+            message: `Check error: ${checkError.message}`
+          });
+          continue;
+        }
+
+        if (existingPayment) {
+          console.log(`Payment already exists for ${policyClient.clients?.name} for ${month}/${year}`);
+          skipped++;
+          details.push({
+            policy_client_id: policyClient.id,
+            client_name: policyClient.clients?.name,
+            status: 'skipped',
+            message: `Payment for ${month}/${year} already exists`
+          });
+          continue;
+        }
+
+        // Create new payment
+        const { error: insertError } = await supabase
+          .from('policy_payments')
+          .insert({
+            policy_client_id: policyClient.id,
+            payment_month: month,
+            payment_year: year,
+            amount: policyClient.insurance_policies?.monthly_fee || 0,
+            account_type: 'no_fiscal',
+            due_date: due_date,
+            is_paid: false,
+            payment_status: 'pendiente',
+          });
+
+        if (insertError) {
+          console.error(`Error creating payment for policy client ${policyClient.id}:`, insertError);
+          details.push({
+            policy_client_id: policyClient.id,
+            client_name: policyClient.clients?.name,
+            status: 'error',
+            message: insertError.message
+          });
+          continue;
+        }
+
+        console.log(`Created payment for ${policyClient.clients?.name} - ${month}/${year}`);
+        created++;
+        details.push({
+          policy_client_id: policyClient.id,
+          client_name: policyClient.clients?.name,
+          policy_name: policyClient.insurance_policies?.policy_name,
+          status: 'created',
+          month: month,
+          year: year,
+          amount: policyClient.insurance_policies?.monthly_fee,
+          due_date: due_date
+        });
+
+      } catch (error: any) {
+        console.error(`Unexpected error processing policy client ${policyClient.id}:`, error);
+        details.push({
+          policy_client_id: policyClient.id,
+          client_name: policyClient.clients?.name,
+          status: 'error',
+          message: error.message
+        });
+      }
+    }
+
+    // Check for overdue payments and update status
+    const { error: overdueError } = await supabase
+      .from('policy_payments')
+      .update({ payment_status: 'vencido' })
+      .lt('due_date', today.toISOString().substring(0, 10))
+      .eq('is_paid', false)
+      .eq('payment_status', 'pendiente');
+
+    if (overdueError) {
+      console.error('Error updating overdue payments:', overdueError);
+    } else {
+      console.log('Updated overdue payments status');
+    }
+
+    const response = {
+      success: true,
+      processed: policyClients?.length || 0,
+      created: created,
+      skipped: skipped,
+      current_month: currentMonth,
+      current_year: currentYear,
+      next_generation_month: getNextDueDate(currentMonth, currentYear).month,
+      next_generation_year: getNextDueDate(currentMonth, currentYear).year,
+      details: details,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('Policy payments generation completed:', response);
+
+    return new Response(
+      JSON.stringify(response),
+      { 
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 200
+      }
+    );
+    
+  } catch (error: any) {
+    console.error('Fatal error in policy payments generation:', error);
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }), 
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      }
+    );
+  }
+});
