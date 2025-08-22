@@ -40,6 +40,7 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
 
     setLoading(true);
     console.log('🔄 Iniciando proceso de confirmación de entrega para orden:', order.id);
+    console.log('🔍 Usuario actual:', supabase.auth.getUser());
 
     try {
       const signatureData = signatureRef.current.toDataURL();
@@ -47,20 +48,28 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
 
       // Guardar firma de entrega
       console.log('💾 Insertando firma en delivery_signatures...');
-      const { error: signatureError } = await supabase
+      console.log('📋 Datos a insertar:', {
+        order_id: order.id,
+        client_name: order.clients?.name || 'Cliente',
+        delivery_date: new Date().toISOString(),
+      });
+
+      const { data: signatureResult, error: signatureError } = await supabase
         .from('delivery_signatures')
         .insert({
           order_id: order.id,
           client_name: order.clients?.name || 'Cliente',
           client_signature_data: signatureData,
           delivery_date: new Date().toISOString(),
-        });
+        })
+        .select();
 
       if (signatureError) {
         console.error('❌ Error al insertar firma:', signatureError);
+        console.error('❌ Detalles del error:', JSON.stringify(signatureError, null, 2));
         throw signatureError;
       }
-      console.log('✅ Firma guardada exitosamente');
+      console.log('✅ Firma guardada exitosamente:', signatureResult);
 
       // Actualizar orden como finalizada
       console.log('🔄 Actualizando estado de orden a finalizada...');
