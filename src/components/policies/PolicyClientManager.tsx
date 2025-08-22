@@ -71,6 +71,22 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       if (policyClientsError) throw policyClientsError;
       setPolicyClients(policyClientsData || []);
 
+      await loadClientsAndPolicies();
+
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadClientsAndPolicies = async () => {
+    try {
       // Load available clients
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
@@ -91,14 +107,12 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       setPolicies(policiesData || []);
 
     } catch (error: any) {
-      console.error('Error loading data:', error);
+      console.error('Error loading clients and policies:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar los datos",
+        description: "No se pudieron cargar los clientes y pólizas disponibles",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -215,7 +229,13 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (open) {
+            // Refresh clients and policies when dialog opens
+            loadClientsAndPolicies();
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
