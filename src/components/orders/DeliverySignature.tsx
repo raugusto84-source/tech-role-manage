@@ -67,6 +67,70 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
 
       if (orderError) throw orderError;
 
+      // Obtener detalles de la orden para generar cobranza
+      const { data: orderDetails, error: orderDetailsError } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            total_amount,
+            vat_amount
+          ),
+          clients (
+            name
+          )
+        `)
+        .eq('id', order.id)
+        .single();
+
+      if (orderDetailsError) {
+        console.error('Error getting order details:', orderDetailsError);
+      } else if (orderDetails) {
+        // Calcular totales
+        const totalAmount = orderDetails.order_items?.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0) || orderDetails.estimated_cost || 0;
+        const vatAmount = orderDetails.order_items?.reduce((sum: number, item: any) => sum + (item.vat_amount || 0), 0) || 0;
+        const taxableAmount = totalAmount - vatAmount;
+
+        // Generar número de ingreso
+        const currentYear = new Date().getFullYear();
+        const { data: existingIncomes } = await supabase
+          .from('incomes')
+          .select('income_number')
+          .like('income_number', `ING-${currentYear}-%`)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        let nextNumber = '0001';
+        if (existingIncomes && existingIncomes.length > 0) {
+          const lastNumber = existingIncomes[0].income_number.split('-')[2];
+          nextNumber = (parseInt(lastNumber) + 1).toString().padStart(4, '0');
+        }
+        const incomeNumber = `ING-${currentYear}-${nextNumber}`;
+
+        // Crear registro de cobranza pendiente
+        const { error: incomeError } = await supabase
+          .from('incomes')
+          .insert({
+            income_number: incomeNumber,
+            amount: totalAmount,
+            taxable_amount: taxableAmount,
+            vat_amount: vatAmount,
+            vat_rate: vatAmount > 0 ? 16 : 0,
+            description: `Cobranza orden #${order.order_number}`,
+            category: 'servicio',
+            client_name: orderDetails.clients?.name || 'Cliente',
+            account_type: 'no_fiscal', // Por defecto no fiscal, se cambiará al cobrar
+            status: 'pendiente', // Pendiente de cobro
+            has_invoice: false, // Se definirá al momento del cobro
+            income_date: new Date().toISOString().split('T')[0]
+          });
+
+        if (incomeError) {
+          console.error('Error creating income record:', incomeError);
+          // No fallar la operación por este error, solo registrar
+        }
+      }
+
       toast({
         title: "Entrega Confirmada",
         description: "La orden ha sido marcada como finalizada con la firma del cliente",

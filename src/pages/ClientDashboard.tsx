@@ -7,20 +7,25 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, RefreshCw, Gift, FileText, ClipboardList } from "lucide-react";
+import { Plus, RefreshCw, Gift, FileText, ClipboardList, Signature } from "lucide-react";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 import { ClientRewardsCard } from "@/components/rewards/ClientRewardsCard";
+import { DeliverySignature } from "@/components/orders/DeliverySignature";
 
 // Tipos locales para órdenes y cotizaciones (ligeros para no depender de types.ts)
 interface Order {
   id: string;
   order_number: string;
-  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | "en_camino" | "pendiente_aprobacion" | string;
+  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | "en_camino" | "pendiente_aprobacion" | "pendiente_entrega" | string;
   created_at: string;
   delivery_date?: string;
   failure_description?: string;
   assigned_technician?: string;
   assignment_reason?: string;
+  clients?: {
+    name: string;
+    email?: string;
+  } | null;
   technician_profile?: {
     full_name: string;
   } | null;
@@ -49,6 +54,7 @@ export default function ClientDashboard() {
   // Estado UI
   const [openNew, setOpenNew] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [orderToSign, setOrderToSign] = useState<Order | null>(null);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -207,17 +213,21 @@ export default function ClientDashboard() {
       pendiente: "bg-info-light text-info-foreground border border-info-border",
       en_camino: "bg-info-light text-info-foreground border border-info-border",
       en_proceso: "bg-warning-light text-warning-foreground border border-warning-border",
+      pendiente_entrega: "bg-primary-light text-primary-foreground border border-primary-border",
       finalizada: "bg-success-light text-success-foreground border border-success-border",
       cancelada: "bg-error-light text-error-foreground border border-error-border",
     };
     
-    const statusText = status === "pendiente_aprobacion" ? "pendiente aprobación" : status.replace("_", " ");
+    const statusText = status === "pendiente_aprobacion" ? "pendiente aprobación" 
+                      : status === "pendiente_entrega" ? "listo para firmar"
+                      : status.replace("_", " ");
     return <Badge className={statusClasses[status] || "bg-muted text-muted-foreground"}>{statusText}</Badge>;
   };
 
   const metrics = useMemo(() => ({
     totalOrders: orders.length,
     pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino" || o.status === "pendiente_aprobacion").length,
+    readyToSign: orders.filter(o => o.status === "pendiente_entrega").length,
     quotesCount: quotes.length,
   }), [orders, quotes]);
 
@@ -269,7 +279,7 @@ export default function ClientDashboard() {
       </section>
 
       {/* Resumen con colores mejorados */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-md transition-all duration-200">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg text-primary">Órdenes activas</CardTitle>
@@ -279,6 +289,22 @@ export default function ClientDashboard() {
             <p className="text-sm text-muted-foreground">En curso o pendientes</p>
           </CardContent>
         </Card>
+        
+        {metrics.readyToSign > 0 && (
+          <Card className="bg-gradient-to-br from-warning/5 to-warning/10 border-warning/20 hover:shadow-md transition-all duration-200 animate-pulse">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg text-warning flex items-center gap-2">
+                <Signature className="h-5 w-5" />
+                Listas para firmar
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-warning">{metrics.readyToSign}</p>
+              <p className="text-sm text-muted-foreground">Requieren tu firma</p>
+            </CardContent>
+          </Card>
+        )}
+        
         <Card className="bg-gradient-to-br from-info/5 to-info/10 border-info/20 hover:shadow-md transition-all duration-200">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg text-info">Total órdenes recientes</CardTitle>
@@ -317,42 +343,65 @@ export default function ClientDashboard() {
               </div>
             ) : (
               orders.map((o) => (
-                <div 
-                  key={o.id} 
-                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
-                    o.status === 'pendiente_aprobacion' 
-                      ? 'bg-warning-light/50 border-warning-border shadow-sm' 
-                      : 'bg-card hover:bg-accent/50 border-border'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-foreground">{o.order_number}</h4>
-                    {statusBadge(o.status)}
-                  </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                    {o.failure_description || "Sin descripción"}
-                  </p>
-                  {o.status === 'pendiente_aprobacion' && (
-                    <div className="flex items-center gap-2 p-2 bg-warning-light rounded-md border border-warning-border">
-                      <span className="text-lg">⚠️</span>
-                      <p className="text-xs text-warning-foreground font-medium">
-                        Requiere tu firma y aprobación
-                      </p>
+                  <div 
+                    key={o.id} 
+                    className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
+                      o.status === 'pendiente_aprobacion' 
+                        ? 'bg-warning-light/50 border-warning-border shadow-sm' 
+                        : o.status === 'pendiente_entrega'
+                        ? 'bg-primary-light/50 border-primary-border shadow-sm'
+                        : 'bg-card hover:bg-accent/50 border-border'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold text-foreground">{o.order_number}</h4>
+                      {statusBadge(o.status)}
                     </div>
-                  )}
-                  {o.technician_profile && (
-                    <div className="mt-2 p-2 bg-info-light rounded-md border border-info-border">
-                      <p className="text-xs text-info-foreground font-medium">
-                        Técnico: {o.technician_profile.full_name}
-                      </p>
-                      {o.assignment_reason && (
-                        <p className="text-xs text-muted-foreground italic">
-                          {o.assignment_reason}
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                      {o.failure_description || "Sin descripción"}
+                    </p>
+                    {o.status === 'pendiente_aprobacion' && (
+                      <div className="flex items-center gap-2 p-2 bg-warning-light rounded-md border border-warning-border">
+                        <span className="text-lg">⚠️</span>
+                        <p className="text-xs text-warning-foreground font-medium">
+                          Requiere tu firma y aprobación
                         </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                    {o.status === 'pendiente_entrega' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 p-2 bg-primary-light rounded-md border border-primary-border">
+                          <Signature className="h-4 w-4 text-primary" />
+                          <p className="text-xs text-primary-foreground font-medium">
+                            Trabajo completado - Listo para firmar entrega
+                          </p>
+                        </div>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderToSign(o);
+                          }}
+                          className="w-full bg-primary hover:bg-primary-hover text-primary-foreground"
+                          size="sm"
+                        >
+                          <Signature className="h-4 w-4 mr-2" />
+                          Firmar Entrega
+                        </Button>
+                      </div>
+                    )}
+                    {o.technician_profile && (
+                      <div className="mt-2 p-2 bg-info-light rounded-md border border-info-border">
+                        <p className="text-xs text-info-foreground font-medium">
+                          Técnico: {o.technician_profile.full_name}
+                        </p>
+                        {o.assignment_reason && (
+                          <p className="text-xs text-muted-foreground italic">
+                            {o.assignment_reason}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
               ))
             )}
           </CardContent>
@@ -396,6 +445,22 @@ export default function ClientDashboard() {
 
       {/* Dialog para nueva solicitud */}
       <NewRequestDialog open={openNew} onOpenChange={setOpenNew} />
+
+      {/* Dialog para firma de entrega */}
+      {orderToSign && (
+        <DeliverySignature
+          order={orderToSign}
+          onClose={() => setOrderToSign(null)}
+          onComplete={() => {
+            setOrderToSign(null);
+            loadOrders(); // Recargar órdenes después de firmar
+            toast({
+              title: "Entrega confirmada",
+              description: "Tu orden ha sido marcada como finalizada y está lista para cobranza",
+            });
+          }}
+        />
+      )}
 
       {/* Loader simple */}
       {loading && (
