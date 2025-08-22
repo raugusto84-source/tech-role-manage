@@ -107,8 +107,42 @@ export function TasksMetrics({ compact = false }: TaskMetricsProps) {
   };
 
   const autoAssignTasks = async () => {
-    // Mock auto-assignment logic
-    console.log('Auto-assignment system active (mock)');
+    try {
+      // Lógica de asignación automática inteligente
+      const unassignedTasks = tasks.filter(t => !t.assigned_to && t.status === 'pending');
+      const idleTechs = availableTechnicians.filter(t => t.isIdle);
+      
+      if (unassignedTasks.length > 0 && idleTechs.length > 0) {
+        // Asignar tareas de alta prioridad primero
+        const highPriorityTasks = unassignedTasks.filter(t => t.priority === 'high');
+        const mediumPriorityTasks = unassignedTasks.filter(t => t.priority === 'medium');
+        const lowPriorityTasks = unassignedTasks.filter(t => t.priority === 'low');
+        
+        const tasksToAssign = [...highPriorityTasks, ...mediumPriorityTasks, ...lowPriorityTasks];
+        
+        // Asignar tareas rotativamente a técnicos disponibles
+        tasksToAssign.forEach((task, index) => {
+          if (index < idleTechs.length) {
+            const assignedTech = idleTechs[index % idleTechs.length];
+            task.assigned_to = assignedTech.id;
+            task.assigned_to_name = assignedTech.name;
+            
+            console.log(`Tarea "${task.title}" asignada automáticamente a ${assignedTech.name}`);
+          }
+        });
+        
+        setTasks([...tasks]);
+        
+        if (tasksToAssign.length > 0) {
+          toast({
+            title: "Asignación automática",
+            description: `${Math.min(tasksToAssign.length, idleTechs.length)} tareas asignadas automáticamente`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error en asignación automática:', error);
+    }
   };
 
   const addTask = async () => {

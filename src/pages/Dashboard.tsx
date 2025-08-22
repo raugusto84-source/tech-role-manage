@@ -88,11 +88,15 @@ export default function Dashboard() {
 
   const roleInfo = getRoleGreeting();
 
-  // Show admin dashboard for administrators
+  // Show admin dashboard for administrators with time clock
   if (profile?.role === 'administrador') {
     return (
       <AppLayout>
-        <AdminDashboard />
+        <div className="space-y-6">
+          {/* Time clock personal para administradores también */}
+          <PersonalTimeClockPanel />
+          <AdminDashboard />
+        </div>
       </AppLayout>
     );
   }
