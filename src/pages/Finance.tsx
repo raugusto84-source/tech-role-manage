@@ -148,14 +148,62 @@ export default function Finance() {
   const collectionsQuery = useQuery({
     queryKey: ["pending_collections"],
     queryFn: async () => {
-      const {
-        data,
-        error
-      } = await supabase.from("pending_collections").select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat").order("delivery_date", {
-        ascending: true
-      });
-      if (error) throw error;
-      return data ?? [];
+      // Get order collections
+      const { data: orderCollections, error: orderError } = await supabase
+        .from("pending_collections")
+        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat")
+        .order("delivery_date", { ascending: true });
+
+      if (orderError) throw orderError;
+
+      // Get policy payment collections
+      const { data: policyCollections, error: policyError } = await supabase
+        .from('policy_payments')
+        .select(`
+          id,
+          amount,
+          due_date,
+          payment_month,
+          payment_year,
+          account_type,
+          payment_status,
+          policy_clients(
+            id,
+            clients(name, email),
+            insurance_policies(policy_name, policy_number)
+          )
+        `)
+        .eq('is_paid', false)
+        .order('due_date', { ascending: true });
+
+      if (policyError) throw policyError;
+
+      // Transform policy payments to match collection format
+      const transformedPolicyCollections = (policyCollections || []).map(payment => ({
+        id: `policy_${payment.id}`,
+        order_number: `POL-${payment.policy_clients.insurance_policies.policy_number}-${payment.payment_month}/${payment.payment_year}`,
+        client_name: payment.policy_clients.clients.name,
+        client_email: payment.policy_clients.clients.email,
+        estimated_cost: payment.amount,
+        delivery_date: payment.due_date,
+        total_paid: 0,
+        remaining_balance: payment.amount,
+        total_vat_amount: 0,
+        subtotal_without_vat: payment.amount,
+        total_with_vat: payment.amount,
+        collection_type: 'policy_payment',
+        policy_payment_id: payment.id,
+        policy_name: payment.policy_clients.insurance_policies.policy_name,
+        payment_period: `${payment.payment_month}/${payment.payment_year}`,
+        account_type: payment.account_type,
+        payment_status: payment.payment_status
+      }));
+
+      // Combine both collections
+      return [
+        ...(orderCollections || []).map(oc => ({ ...oc, collection_type: 'order' })),
+        ...transformedPolicyCollections
+      ];
     }
   });
 
@@ -3189,9 +3237,9 @@ export default function Finance() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle>Cobranza Pendiente ({collectionsQuery.data?.length ?? 0})</CardTitle>
+                <CardTitle>Cobranzas Pendientes ({collectionsQuery.data?.length ?? 0})</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Órdenes terminadas pendientes de cobro
+                  Órdenes terminadas y pagos de pólizas pendientes de cobro
                 </p>
               </div>
               <Button size="sm" onClick={() => onExport("collections")}>Exportar CSV</Button>
@@ -3201,9 +3249,10 @@ export default function Finance() {
                 <Table>
                   <TableHeader>
                      <TableRow>
-                       <TableHead>Orden</TableHead>
+                       <TableHead>Referencia</TableHead>
+                       <TableHead>Tipo</TableHead>
                        <TableHead>Cliente</TableHead>
-                       <TableHead>Entrega</TableHead>
+                       <TableHead>Vencimiento</TableHead>
                        <TableHead>Subtotal</TableHead>
                        <TableHead>IVA</TableHead>
                        <TableHead>Total</TableHead>
@@ -3214,63 +3263,85 @@ export default function Finance() {
                      </TableRow>
                   </TableHeader>
                   <TableBody>
-                     {collectionsQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando cobranzas pendientes...</TableCell></TableRow>}
-                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((order: any) => <TableRow key={order.id} className="hover:bg-muted/50">
-                         <TableCell className="font-medium">{order.order_number}</TableCell>
+                     {collectionsQuery.isLoading && <TableRow><TableCell colSpan={11}>Cargando cobranzas pendientes...</TableCell></TableRow>}
+                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((item: any) => <TableRow key={item.id} className="hover:bg-muted/50">
+                         <TableCell className="font-medium">{item.order_number}</TableCell>
+                         <TableCell>
+                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                             item.collection_type === 'policy_payment' 
+                               ? 'bg-blue-100 text-blue-700' 
+                               : 'bg-green-100 text-green-700'
+                           }`}>
+                             {item.collection_type === 'policy_payment' ? 'Póliza' : 'Orden'}
+                           </span>
+                         </TableCell>
                          <TableCell>
                            <div>
-                             <div className="font-medium">{order.client_name}</div>
-                             <div className="text-xs text-muted-foreground">{order.client_email}</div>
+                             <div className="font-medium">{item.client_name}</div>
+                             <div className="text-xs text-muted-foreground">{item.client_email}</div>
+                             {item.collection_type === 'policy_payment' && (
+                               <div className="text-xs text-blue-600">{item.policy_name}</div>
+                             )}
                            </div>
                          </TableCell>
-                         <TableCell>{new Date(order.delivery_date).toLocaleDateString()}</TableCell>
+                         <TableCell>{new Date(item.delivery_date || item.due_date).toLocaleDateString()}</TableCell>
                          <TableCell className="font-medium">
-                           {Number(order.subtotal_without_vat || 0).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
+                           {Number(item.subtotal_without_vat || 0).toLocaleString(undefined, {
+                         style: 'currency',
+                         currency: 'MXN'
+                       })}
                          </TableCell>
                          <TableCell className="text-blue-600 font-medium">
-                           {Number(order.total_vat_amount || 0).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
+                           {Number(item.total_vat_amount || 0).toLocaleString(undefined, {
+                         style: 'currency',
+                         currency: 'MXN'
+                       })}
                          </TableCell>
                          <TableCell className="font-medium">
-                           {Number(order.total_with_vat || order.estimated_cost).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
+                           {Number(item.total_with_vat || item.estimated_cost).toLocaleString(undefined, {
+                         style: 'currency',
+                         currency: 'MXN'
+                       })}
                          </TableCell>
                          <TableCell className="text-green-600 font-medium">
-                           {Number(order.total_paid || 0).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
+                           {Number(item.total_paid || 0).toLocaleString(undefined, {
+                         style: 'currency',
+                         currency: 'MXN'
+                       })}
                          </TableCell>
                          <TableCell className="text-red-600 font-medium">
-                           {Number(order.remaining_balance || order.estimated_cost).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
+                           {Number(item.remaining_balance || (item.total_with_vat || item.estimated_cost) - (item.total_paid || 0)).toLocaleString(undefined, {
+                         style: 'currency',
+                         currency: 'MXN'
+                       })}
                          </TableCell>
                          <TableCell>
-                           <div className="flex items-center gap-2">
-                             <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                             <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
-                           </div>
+                           {item.collection_type === 'policy_payment' ? (
+                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                               item.payment_status === 'vencido' 
+                                 ? 'bg-red-100 text-red-700' 
+                                 : 'bg-yellow-100 text-yellow-700'
+                             }`}>
+                               {item.payment_status === 'vencido' ? 'Vencido' : 'Pendiente'}
+                             </span>
+                           ) : (
+                             <div className="flex items-center gap-2">
+                               <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                               <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
+                             </div>
+                           )}
                          </TableCell>
                          <TableCell>
                            <Button size="sm" variant="default" onClick={() => {
-                        setSelectedCollection(order);
-                        setCollectionDialogOpen(true);
-                      }} className="bg-green-600 hover:bg-green-700">
+                         setSelectedCollection(item);
+                         setCollectionDialogOpen(true);
+                       }} className="bg-green-600 hover:bg-green-700">
                              Cobrar
                            </Button>
                          </TableCell>
                        </TableRow>)}
                      {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && <TableRow>
-                         <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                         <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                            <div className="flex flex-col items-center gap-2">
                              <div className="text-4xl">💰</div>
                              <div className="font-medium">No hay cobranzas pendientes</div>
