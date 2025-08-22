@@ -103,7 +103,7 @@ export function InsurancePolicyManager({ onStatsUpdate }: InsurancePolicyManager
           .from('insurance_policies')
           .insert({
             ...formData,
-            created_by: user?.id,
+            policy_number: `POL-${Date.now()}`,
           });
         
         if (error) throw error;

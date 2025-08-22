@@ -25,7 +25,7 @@ interface PolicyStats {
 }
 
 export default function InsurancePolicies() {
-  const { user, role: userRole } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState<PolicyStats>({
@@ -128,7 +128,7 @@ export default function InsurancePolicies() {
       </div>
 
       {/* Personal Time Clock for vendedor role */}
-      {userRole === 'vendedor' && (
+      {profile?.role === 'vendedor' && (
         <PersonalTimeClockPanel />
       )}
 
