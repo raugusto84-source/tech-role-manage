@@ -19,6 +19,7 @@ import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
+import { OrderAssistanceRecords } from './OrderAssistanceRecords';
 
 interface OrderDetailsProps {
   order: {
@@ -850,6 +851,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </CardContent>
               </Card>
             )}
+            {/* Registros de Asistencia */}
+            <OrderAssistanceRecords 
+              orderId={order.id}
+              clientName={order.clients?.name}
+            />
           </div>
         </div>
 
