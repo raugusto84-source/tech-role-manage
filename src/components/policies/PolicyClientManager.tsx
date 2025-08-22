@@ -213,32 +213,17 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         clientIdToUse = selectedClientId; // fallback
       }
 
-      // Check if assignment already exists
-      const { data: existing, error: checkError } = await supabase
-        .from('policy_clients')
-        .select('id')
-        .eq('policy_id', selectedPolicyId)
-        .eq('client_id', clientIdToUse)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (existing) {
-        toast({
-          title: 'Error',
-          description: 'Este cliente ya está asignado a esta póliza',
-          variant: 'destructive',
-        });
-        return;
-      }
-
+      // Upsert assignment to avoid duplicates and reactivate if exists
       const { error } = await supabase
         .from('policy_clients')
-        .insert([{
-          policy_id: selectedPolicyId,
-          client_id: clientIdToUse,
-          assigned_by: user?.id,
-          is_active: true,
-        }]);
+        .upsert([
+          {
+            policy_id: selectedPolicyId,
+            client_id: clientIdToUse,
+            assigned_by: user?.id,
+            is_active: true,
+          }
+        ], { onConflict: 'policy_id,client_id' });
 
       if (error) throw error;
 
