@@ -229,37 +229,71 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const handleReject = async () => {
+    console.log('=== HANDLE REJECT DEBUG ===');
+    console.log('Is order update:', isOrderUpdate);
+    console.log('Modifications length:', modifications.length);
+    console.log('Latest modification:', modifications[0]);
+    
     setLoading(true);
 
     try {
       if (isOrderUpdate && modifications.length > 0) {
         const latestModification = modifications[0];
+        console.log('Processing latest modification:', latestModification);
         
         // Obtener items agregados para eliminarlos
         if (latestModification.items_added) {
-          const itemsAdded = typeof latestModification.items_added === 'string' 
-            ? JSON.parse(latestModification.items_added) 
-            : latestModification.items_added;
+          console.log('Items added raw:', latestModification.items_added);
+          
+          let itemsAdded;
+          
+          // Manejar diferentes formatos de items_added
+          if (typeof latestModification.items_added === 'string') {
+            try {
+              itemsAdded = JSON.parse(latestModification.items_added);
+            } catch (e) {
+              console.error('Error parsing items_added string:', e);
+              throw new Error('Error al procesar los items agregados');
+            }
+          } else if (Array.isArray(latestModification.items_added)) {
+            itemsAdded = latestModification.items_added;
+          } else if (typeof latestModification.items_added === 'object' && latestModification.items_added !== null) {
+            // Si es un objeto individual, convertir a array
+            itemsAdded = [latestModification.items_added];
+          } else {
+            console.error('Unknown items_added format:', typeof latestModification.items_added);
+            throw new Error('Formato de items agregados no válido');
+          }
+          
+          console.log('Processed items added:', itemsAdded);
           
           // Eliminar cada item agregado
           for (const item of itemsAdded) {
+            console.log('Deleting item:', item);
             const { error: deleteError } = await supabase
               .from('order_items')
               .delete()
               .eq('order_id', order.id)
               .eq('service_type_id', item.service_type_id);
 
-            if (deleteError) throw deleteError;
+            if (deleteError) {
+              console.error('Error deleting item:', deleteError);
+              throw deleteError;
+            }
           }
         }
 
         // Eliminar el registro de modificación
+        console.log('Deleting modification:', latestModification.id);
         const { error: deleteModError } = await supabase
           .from('order_modifications')
           .delete()
           .eq('id', latestModification.id);
 
-        if (deleteModError) throw deleteModError;
+        if (deleteModError) {
+          console.error('Error deleting modification:', deleteModError);
+          throw deleteModError;
+        }
 
         // Revertir el estado de la orden a 'en_proceso'
         const { error: orderError } = await supabase
@@ -270,8 +304,12 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           })
           .eq('id', order.id);
 
-        if (orderError) throw orderError;
+        if (orderError) {
+          console.error('Error updating order status:', orderError);
+          throw orderError;
+        }
 
+        console.log('Reject completed successfully');
         toast({
           title: "Modificación rechazada",
           description: "Los cambios han sido revertidos y la orden regresó a su estado anterior.",
