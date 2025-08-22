@@ -425,6 +425,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                 Modificación Realizada - Requiere Autorización
               </CardTitle>
             </CardHeader>
+            <CardContent>
+              <p className="text-orange-700">
+                <strong>Razón:</strong> {modifications[0].modification_reason || 'No especificada'}
+              </p>
+            </CardContent>
           </Card>
         )}
 
