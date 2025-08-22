@@ -218,6 +218,68 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   };
 
+  const handleReject = async () => {
+    setLoading(true);
+
+    try {
+      if (isOrderUpdate && modifications.length > 0) {
+        const latestModification = modifications[0];
+        
+        // Obtener items agregados para eliminarlos
+        if (latestModification.items_added) {
+          const itemsAdded = JSON.parse(latestModification.items_added);
+          
+          // Eliminar cada item agregado
+          for (const item of itemsAdded) {
+            const { error: deleteError } = await supabase
+              .from('order_items')
+              .delete()
+              .eq('order_id', order.id)
+              .eq('service_type_id', item.service_type_id);
+
+            if (deleteError) throw deleteError;
+          }
+        }
+
+        // Eliminar el registro de modificación
+        const { error: deleteModError } = await supabase
+          .from('order_modifications')
+          .delete()
+          .eq('id', latestModification.id);
+
+        if (deleteModError) throw deleteModError;
+
+        // Revertir el estado de la orden a 'en_proceso'
+        const { error: orderError } = await supabase
+          .from('orders')
+          .update({
+            status: 'en_proceso',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', order.id);
+
+        if (orderError) throw orderError;
+
+        toast({
+          title: "Modificación rechazada",
+          description: "Los cambios han sido revertidos y la orden regresó a su estado anterior.",
+          variant: "default"
+        });
+      }
+
+      onApprovalComplete();
+    } catch (error) {
+      console.error('Error rejecting modifications:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar la modificación. Intente nuevamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
@@ -365,13 +427,32 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                   : 'Al aprobar esta orden, confirma que está de acuerdo con los servicios y el costo total.'
                 }
               </p>
-              <Button 
-                onClick={() => setShowSignature(true)}
-                className="px-8 py-3 text-lg"
-              >
-                <PenTool className="h-5 w-5 mr-2" />
-                Firmar y Aceptar
-              </Button>
+              <div className="flex gap-4 justify-center">
+                {isOrderUpdate && (
+                  <Button 
+                    onClick={handleReject}
+                    variant="destructive"
+                    disabled={loading}
+                    className="px-8 py-3 text-lg"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Procesando...
+                      </>
+                    ) : (
+                      'Rechazar Cambios'
+                    )}
+                  </Button>
+                )}
+                <Button 
+                  onClick={() => setShowSignature(true)}
+                  className="px-8 py-3 text-lg"
+                >
+                  <PenTool className="h-5 w-5 mr-2" />
+                  Firmar y Aceptar
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
