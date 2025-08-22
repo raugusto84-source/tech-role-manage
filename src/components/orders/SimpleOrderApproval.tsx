@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PenTool, CheckCircle2, ArrowLeft, Clock } from 'lucide-react';
+import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 
@@ -34,8 +34,19 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     totalHours: number;
   } | null>(null);
   const [modifications, setModifications] = useState<any[]>([]);
+  const [authorizationType, setAuthorizationType] = useState<'initial_approval' | 'modification_approval'>('initial_approval');
 
   const isOrderUpdate = order.status === 'pendiente_actualizacion';
+  const isInitialApproval = order.status === 'pendiente_aprobacion';
+
+  useEffect(() => {
+    // Determinar el tipo de autorización según el estado
+    if (isOrderUpdate) {
+      setAuthorizationType('modification_approval');
+    } else if (isInitialApproval) {
+      setAuthorizationType('initial_approval');
+    }
+  }, [isOrderUpdate, isInitialApproval]);
 
   const calculateTotals = () => {
     const subtotal = orderItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -283,48 +294,102 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   return (
     <div className="min-h-screen bg-background p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        {/* Header with Authorization Type */}
         <div className="flex items-center mb-6">
           <Button variant="ghost" onClick={onBack} className="mr-4">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              {isOrderUpdate ? 'Aprobar Modificación de Orden' : 'Aprobación de Orden'}
-            </h1>
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              {authorizationType === 'initial_approval' ? (
+                <FileCheck className="h-8 w-8 text-blue-600" />
+              ) : (
+                <FileEdit className="h-8 w-8 text-orange-600" />
+              )}
+              <h1 className="text-3xl font-bold text-foreground">
+                {authorizationType === 'initial_approval' ? 'Aprobación Inicial' : 'Aprobación de Modificación'}
+              </h1>
+            </div>
             <p className="text-muted-foreground">{order.order_number}</p>
+            <div className="mt-2 flex items-center gap-2">
+              {authorizationType === 'initial_approval' ? (
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  PRIMERA AUTORIZACIÓN
+                </span>
+              ) : (
+                <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm rounded-full">
+                  AUTORIZACIÓN DE CAMBIOS
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Información de modificación */}
-        {isOrderUpdate && modifications.length > 0 && (
-          <Card className="mb-6 border-orange-200 bg-orange-50">
+        {/* Authorization Type Warning */}
+        {authorizationType === 'initial_approval' && (
+          <Card className="mb-6 border-blue-200 bg-blue-50">
             <CardHeader>
-              <CardTitle className="text-orange-800">Modificación Realizada</CardTitle>
+              <CardTitle className="flex items-center text-blue-800">
+                <FileCheck className="h-5 w-5 mr-2" />
+                Autorización Inicial de Orden
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <p className="text-orange-700">
-                  <strong>Razón:</strong> {modifications[0].modification_reason}
-                </p>
-                <p className="text-orange-700">
-                  <strong>Modificado por:</strong> {modifications[0].created_by_name}
-                </p>
-                {modifications[0].notes && (
-                  <p className="text-orange-700">
-                    <strong>Detalles:</strong> {modifications[0].notes}
+              <p className="text-blue-700">
+                Esta es la <strong>primera autorización</strong> de esta orden. Al firmar, autoriza el inicio de los trabajos según los servicios y costos detallados.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Información de modificación */}
+        {authorizationType === 'modification_approval' && modifications.length > 0 && (
+          <Card className="mb-6 border-orange-200 bg-orange-50">
+            <CardHeader>
+              <CardTitle className="flex items-center text-orange-800">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                Modificación Realizada - Requiere Nueva Autorización
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <p className="text-orange-800 font-medium text-sm">
+                    ⚠️ Esta orden ya fue autorizada previamente, pero se realizaron cambios que requieren su nueva aprobación.
                   </p>
-                )}
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-orange-700">
-                    <strong>Total anterior:</strong> ${modifications[0].previous_total?.toLocaleString()}
-                  </span>
-                  <span className="text-orange-700">
-                    <strong>Nuevo total:</strong> ${modifications[0].new_total?.toLocaleString()}
-                  </span>
-                  <span className="text-green-600 font-semibold">
-                    Incremento: +${((modifications[0].new_total || 0) - (modifications[0].previous_total || 0)).toLocaleString()}
-                  </span>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-orange-700">
+                    <strong>Razón de la modificación:</strong> {modifications[0].modification_reason}
+                  </p>
+                  <p className="text-orange-700">
+                    <strong>Modificado por:</strong> {modifications[0].created_by_name}
+                  </p>
+                  {modifications[0].notes && (
+                    <p className="text-orange-700">
+                      <strong>Detalles adicionales:</strong> {modifications[0].notes}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3 border-t border-orange-200">
+                    <div className="text-center p-2 bg-white rounded-lg">
+                      <p className="text-sm text-orange-600">Total Anterior</p>
+                      <p className="text-lg font-bold text-orange-800">
+                        ${modifications[0].previous_total?.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-white rounded-lg">
+                      <p className="text-sm text-orange-600">Nuevo Total</p>
+                      <p className="text-lg font-bold text-orange-800">
+                        ${modifications[0].new_total?.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-600">Incremento</p>
+                      <p className="text-lg font-bold text-green-700">
+                        +${((modifications[0].new_total || 0) - (modifications[0].previous_total || 0)).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -415,20 +480,24 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         )}
 
         {!showSignature ? (
-          <Card>
+          <Card className={`${authorizationType === 'modification_approval' ? 'border-orange-200' : 'border-blue-200'}`}>
             <CardContent className="text-center py-8">
-              <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-4" />
+              {authorizationType === 'initial_approval' ? (
+                <FileCheck className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+              ) : (
+                <FileEdit className="h-12 w-12 text-orange-600 mx-auto mb-4" />
+              )}
               <h3 className="text-xl font-semibold mb-2">
-                {isOrderUpdate ? 'Confirmar Modificación' : 'Confirmar Aprobación'}
+                {authorizationType === 'initial_approval' ? 'Autorización Inicial' : 'Autorización de Modificación'}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {isOrderUpdate 
-                  ? 'Al aprobar esta modificación, confirma que está de acuerdo con los cambios realizados y el nuevo costo total.'
-                  : 'Al aprobar esta orden, confirma que está de acuerdo con los servicios y el costo total.'
+                {authorizationType === 'initial_approval' 
+                  ? 'Al aprobar esta orden, autoriza el inicio de los trabajos según los servicios y costos detallados. Esta será su primera autorización para esta orden.'
+                  : 'Al aprobar esta modificación, confirma que está de acuerdo con los cambios realizados y el nuevo costo total. Esta es una autorización adicional a la inicial.'
                 }
               </p>
               <div className="flex gap-4 justify-center">
-                {isOrderUpdate && (
+                {authorizationType === 'modification_approval' && (
                   <Button 
                     onClick={handleReject}
                     variant="destructive"
@@ -441,29 +510,41 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                         Procesando...
                       </>
                     ) : (
-                      'Rechazar Cambios'
+                      <>
+                        <AlertTriangle className="h-5 w-5 mr-2" />
+                        Rechazar Modificación
+                      </>
                     )}
                   </Button>
                 )}
                 <Button 
                   onClick={() => setShowSignature(true)}
-                  className="px-8 py-3 text-lg"
+                  className={`px-8 py-3 text-lg ${authorizationType === 'modification_approval' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                 >
                   <PenTool className="h-5 w-5 mr-2" />
-                  Firmar y Aceptar
+                  {authorizationType === 'initial_approval' ? 'Autorizar Orden' : 'Autorizar Cambios'}
                 </Button>
               </div>
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <Card className={`${authorizationType === 'modification_approval' ? 'border-orange-200' : 'border-blue-200'}`}>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <PenTool className="h-5 w-5 mr-2" />
-                Firma de Aprobación
+                {authorizationType === 'initial_approval' ? 'Firma de Autorización Inicial' : 'Firma de Autorización de Modificación'}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className={`p-3 rounded-lg ${authorizationType === 'modification_approval' ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50 border border-blue-200'}`}>
+                <p className={`text-sm font-medium ${authorizationType === 'modification_approval' ? 'text-orange-800' : 'text-blue-800'}`}>
+                  {authorizationType === 'initial_approval' 
+                    ? '📄 PRIMERA AUTORIZACIÓN: Su firma autorizará el inicio de los trabajos según lo acordado.'
+                    : '📝 NUEVA AUTORIZACIÓN: Su firma autorizará los cambios realizados a la orden original.'
+                  }
+                </p>
+              </div>
+              
               <div className="border border-border rounded-lg p-4 bg-muted/10">
                 <SignatureCanvas
                   ref={signatureRef}
@@ -476,7 +557,8 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                 />
                 <div className="flex justify-between items-center mt-2">
                   <p className="text-sm text-muted-foreground">
-                    Firme en el área de arriba para aprobar la orden
+                    Firme en el área de arriba para 
+                    {authorizationType === 'initial_approval' ? ' autorizar la orden' : ' aprobar la modificación'}
                   </p>
                   <Button
                     type="button"
@@ -500,7 +582,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                 <Button
                   onClick={handleApproval}
                   disabled={loading}
-                  className="flex-1"
+                  className={`flex-1 ${authorizationType === 'modification_approval' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                 >
                   {loading ? (
                     <>
@@ -510,16 +592,16 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                   ) : (
                     <>
                       <CheckCircle2 className="h-4 w-4 mr-2" />
-                      Confirmar Aprobación
+                      {authorizationType === 'initial_approval' ? 'Confirmar Autorización' : 'Confirmar Modificación'}
                     </>
                   )}
                 </Button>
               </div>
 
-              <div className="text-center text-sm text-muted-foreground">
-                {isOrderUpdate 
-                  ? 'Al firmar, confirma que aprueba la modificación con los cambios y costos actualizados'
-                  : 'Al firmar, confirma que aprueba la orden con los servicios y costos mostrados'
+              <div className={`text-center text-sm p-3 rounded-lg ${authorizationType === 'modification_approval' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>
+                {authorizationType === 'initial_approval' 
+                  ? '🔒 Al firmar, confirma que autoriza la orden con los servicios y costos mostrados. Esta será su autorización inicial.'
+                  : '🔄 Al firmar, confirma que aprueba la modificación con los cambios y costos actualizados. Esta es una autorización adicional.'
                 }
               </div>
             </CardContent>
