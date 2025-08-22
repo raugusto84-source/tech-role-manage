@@ -12,9 +12,10 @@ import { Plus, Trash2, UserPlus, Calendar } from "lucide-react";
 
 interface Client {
   id: string;
+  user_id?: string | null;
   name: string;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
 }
 
 interface InsurancePolicy {
@@ -44,6 +45,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const { toast } = useToast();
   const [policyClients, setPolicyClients] = useState<PolicyClient[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [profileCandidates, setProfileCandidates] = useState<Array<{ user_id: string; full_name: string | null; email: string | null; phone: string | null }>>([]);
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,19 +89,40 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
   const loadClientsAndPolicies = async () => {
     try {
-      // Load available clients - force refresh from server
+      // Load available clients including user_id for mapping
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
-        .select('id, name, email, phone')
+        .select('id, user_id, name, email, phone')
         .order('name');
 
       if (clientsError) {
         console.error('Clients loading error:', clientsError);
         throw clientsError;
       }
-      
       console.log('Loaded clients:', clientsData?.length || 0);
       setClients(clientsData || []);
+
+      // Load profile-only candidates (role cliente) that are NOT in clients table
+      const { data: profileData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone')
+        .eq('role', 'cliente');
+
+      if (profilesError) {
+        console.error('Profiles loading error:', profilesError);
+        throw profilesError;
+      }
+
+      const clientsUserIds = new Set((clientsData || []).map((c) => c.user_id).filter(Boolean));
+      const clientsEmails = new Set((clientsData || []).map((c) => c.email).filter(Boolean));
+
+      const candidates = (profileData || []).filter((p) => {
+        const byUserId = p.user_id && !clientsUserIds.has(p.user_id);
+        const byEmail = p.email == null || !clientsEmails.has(p.email);
+        return byUserId && byEmail;
+      });
+
+      setProfileCandidates(candidates as any);
 
       // Load active policies
       const { data: policiesData, error: policiesError } = await supabase
@@ -112,7 +135,6 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         console.error('Policies loading error:', policiesError);
         throw policiesError;
       }
-      
       console.log('Loaded policies:', policiesData?.length || 0);
       setPolicies(policiesData || []);
 
@@ -137,20 +159,74 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     }
 
     try {
+      let clientIdToUse = '';
+
+      if (selectedClientId.startsWith('client:')) {
+        clientIdToUse = selectedClientId.split(':')[1];
+      } else if (selectedClientId.startsWith('profile:')) {
+        const profileUserId = selectedClientId.split(':')[1];
+
+        // Try to find existing client linked to this profile
+        const { data: existingClient, error: existingErr } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', profileUserId)
+          .maybeSingle();
+        if (existingErr) console.warn('Existing client check error:', existingErr);
+
+        if (existingClient?.id) {
+          clientIdToUse = existingClient.id;
+        } else {
+          const profile = profileCandidates.find((p) => p.user_id === profileUserId);
+          if (!profile) {
+            toast({
+              title: 'Error',
+              description: 'No se encontró el perfil seleccionado',
+              variant: 'destructive',
+            });
+            return;
+          }
+
+          // Create client record from profile
+          const { data: inserted, error: insertErr } = await supabase
+            .from('clients')
+            .insert([
+              {
+                user_id: profile.user_id,
+                name: (profile.full_name || profile.email || 'Cliente') as string,
+                email: profile.email,
+                phone: profile.phone,
+                address: '',
+                client_number: ''
+              }
+            ])
+            .select('id')
+            .single();
+
+          if (insertErr) throw insertErr;
+          clientIdToUse = inserted.id;
+
+          // Refresh lists so the newly created client appears next time
+          await loadClientsAndPolicies();
+        }
+      } else {
+        clientIdToUse = selectedClientId; // fallback
+      }
+
       // Check if assignment already exists
       const { data: existing, error: checkError } = await supabase
         .from('policy_clients')
         .select('id')
         .eq('policy_id', selectedPolicyId)
-        .eq('client_id', selectedClientId)
+        .eq('client_id', clientIdToUse)
         .eq('is_active', true)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         toast({
-          title: "Error", 
-          description: "Este cliente ya está asignado a esta póliza",
-          variant: "destructive",
+          title: 'Error',
+          description: 'Este cliente ya está asignado a esta póliza',
+          variant: 'destructive',
         });
         return;
       }
@@ -159,7 +235,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         .from('policy_clients')
         .insert([{
           policy_id: selectedPolicyId,
-          client_id: selectedClientId,
+          client_id: clientIdToUse,
           assigned_by: user?.id,
           is_active: true,
         }]);
@@ -167,8 +243,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       if (error) throw error;
 
       toast({
-        title: "Éxito",
-        description: "Cliente asignado a la póliza correctamente",
+        title: 'Éxito',
+        description: 'Cliente asignado a la póliza correctamente',
       });
 
       setIsDialogOpen(false);
@@ -179,9 +255,9 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     } catch (error: any) {
       console.error('Error assigning client:', error);
       toast({
-        title: "Error",
-        description: "No se pudo asignar el cliente a la póliza",
-        variant: "destructive",
+        title: 'Error',
+        description: 'No se pudo asignar el cliente a la póliza',
+        variant: 'destructive',
       });
     }
   };
@@ -289,8 +365,13 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
+                      <SelectItem key={`client-${client.id}`} value={`client:${client.id}`}>
                         {client.name} - {client.email}
+                      </SelectItem>
+                    ))}
+                    {profileCandidates.map((p) => (
+                      <SelectItem key={`profile-${p.user_id}`} value={`profile:${p.user_id}`}>
+                        {(p.full_name || p.email) ?? 'Cliente'} - {p.email} (perfil)
                       </SelectItem>
                     ))}
                   </SelectContent>
