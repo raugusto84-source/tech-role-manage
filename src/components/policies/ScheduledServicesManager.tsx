@@ -147,6 +147,9 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const handleCreateScheduledService = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Form data on submit:', formData);
+    console.log('Available policy clients:', policyClients);
+    
     const selectedServiceIds = Object.keys(formData.selected_services);
     if (selectedServiceIds.length === 0) {
       toast({
@@ -157,11 +160,29 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       return;
     }
     
+    // Validar que se haya seleccionado un cliente de póliza
+    if (!formData.policy_client_id || formData.policy_client_id.trim() === '') {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar un cliente de póliza",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Verificar que el cliente existe en la lista
+    const selectedPolicyClient = policyClients.find(pc => pc.id === formData.policy_client_id);
+    if (!selectedPolicyClient) {
+      toast({
+        title: "Error",
+        description: "Cliente de póliza inválido. Seleccione nuevamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       const isValidUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
-      if (!isValidUUID(formData.policy_client_id)) {
-        throw new Error('Cliente de póliza inválido. Seleccione nuevamente.');
-      }
 
       // Normaliza IDs de servicio por si se coló un nombre en vez de UUID
       const normalizedIds = selectedServiceIds.map(id => {
