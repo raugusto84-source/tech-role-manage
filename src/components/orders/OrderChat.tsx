@@ -5,6 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Camera } from "lucide-react";
 
 /**
  * OrderChat
@@ -25,6 +27,7 @@ interface ChatMessage {
   order_id: string;
   sender_id: string;
   message: string;
+  image_url?: string | null;
   created_at: string;
   read_at?: string | null;
   sender_profile?: {
@@ -38,7 +41,10 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [userProfiles, setUserProfiles] = useState<Record<string, string>>({});
+  const [uploading, setUploading] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canSend = useMemo(() => !!user && !disabled && newMessage.trim().length > 0, [user, disabled, newMessage]);
 
@@ -47,7 +53,7 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
     const load = async () => {
       const { data, error } = await supabase
         .from("order_chat_messages")
-        .select("id, order_id, sender_id, message, created_at, read_at")
+        .select("id, order_id, sender_id, message, image_url, created_at, read_at")
         .eq("order_id", orderId)
         .order("created_at", { ascending: true });
 
@@ -200,6 +206,60 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
     }
   };
 
+  const handlePhotoUpload = async (file: File) => {
+    if (!user) return;
+    
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${orderId}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('order-evidence')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('order-evidence')
+        .getPublicUrl(fileName);
+
+      const { error: messageError } = await supabase.from("order_chat_messages").insert({
+        order_id: orderId,
+        sender_id: user.id,
+        message: "📷 Evidencia fotográfica",
+        image_url: publicUrl,
+      });
+
+      if (messageError) throw messageError;
+
+      toast({
+        title: "Foto enviada",
+        description: "La evidencia fotográfica se ha compartido exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error uploading photo:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo enviar la foto.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const triggerPhotoUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handlePhotoUpload(file);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3">
       {/* Historial */}
@@ -218,7 +278,18 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
                   <div className={`text-xs font-medium mb-1 ${isOwn ? "text-primary-foreground/90" : "text-muted-foreground"}`}>
                     {senderName}
                   </div>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.message}</p>
+                   <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{m.message}</p>
+                   {m.image_url && (
+                     <div className="mt-2">
+                       <img 
+                         src={m.image_url} 
+                         alt="Evidencia fotográfica"
+                         className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                         style={{ maxHeight: '200px' }}
+                         onClick={() => setSelectedImage(m.image_url)}
+                       />
+                     </div>
+                   )}
                   <div className={`mt-1 text-[10px] ${isOwn ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
                     {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </div>
@@ -242,11 +313,47 @@ export function OrderChat({ orderId, disabled, onMessagesRead }: OrderChatProps)
             placeholder="Escribe un mensaje..."
             aria-label="Mensaje de chat"
           />
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={triggerPhotoUpload}
+            disabled={uploading}
+            aria-label="Enviar foto"
+          >
+            <Camera className="h-4 w-4" />
+          </Button>
           <Button onClick={sendMessage} disabled={!canSend} aria-label="Enviar mensaje">
             Enviar
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            className="hidden"
+            aria-hidden="true"
+          />
         </div>
       )}
+
+      {/* Modal para ver imagen en grande */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Evidencia fotográfica</DialogTitle>
+          </DialogHeader>
+          {selectedImage && (
+            <div className="flex justify-center">
+              <img 
+                src={selectedImage} 
+                alt="Evidencia fotográfica" 
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
