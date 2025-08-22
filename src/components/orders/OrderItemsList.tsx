@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause } from 'lucide-react';
+import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -18,6 +18,10 @@ export interface OrderItem {
   unit_price: number;
   estimated_hours: number;
   subtotal: number;
+  original_subtotal?: number; // Precio original antes de descuento de póliza
+  policy_discount_percentage?: number; // Porcentaje de descuento por póliza
+  policy_discount_amount?: number; // Monto del descuento por póliza
+  policy_name?: string; // Nombre de la póliza aplicada
   vat_rate: number;
   vat_amount: number;
   total: number;
@@ -197,28 +201,35 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
               <div className="flex justify-between items-start py-2">
                 <div className="flex-1">
                    <div className="flex items-center gap-2 mb-2">
-                     <h4 className="font-medium">{item.name}</h4>
-                     <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
-                       {item.item_type}
-                     </Badge>
-                      {item.shared_time && (
+                      <h4 className="font-medium">{item.name}</h4>
+                      <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
+                        {item.item_type}
+                      </Badge>
+                      {/* Mostrar badge de póliza si aplica */}
+                      {item.policy_name && (
                         <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
-                          <Share2 className="h-3 w-3 mr-1" />
-                          Tiempo Compartido
-                       </Badge>
-                     )}
-                     {item.status && (
-                       <Badge variant={
-                         item.status === 'completado' ? 'default' : 
-                         item.status === 'en_proceso' ? 'secondary' : 'outline'
-                       }>
-                         {item.status === 'completado' && <CheckCircle2 className="h-3 w-3 mr-1" />}
-                         {item.status === 'en_proceso' && <Play className="h-3 w-3 mr-1" />}
-                         {item.status === 'pendiente' && <Pause className="h-3 w-3 mr-1" />}
-                         {item.status}
-                       </Badge>
-                     )}
-                   </div>
+                          <Shield className="h-3 w-3 mr-1" />
+                          {item.policy_name}
+                        </Badge>
+                      )}
+                       {item.shared_time && (
+                         <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
+                           <Share2 className="h-3 w-3 mr-1" />
+                           Tiempo Compartido
+                        </Badge>
+                      )}
+                      {item.status && (
+                        <Badge variant={
+                          item.status === 'completado' ? 'default' : 
+                          item.status === 'en_proceso' ? 'secondary' : 'outline'
+                        }>
+                          {item.status === 'completado' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                          {item.status === 'en_proceso' && <Play className="h-3 w-3 mr-1" />}
+                          {item.status === 'pendiente' && <Pause className="h-3 w-3 mr-1" />}
+                          {item.status}
+                        </Badge>
+                      )}
+                    </div>
                   
                   {item.description && (
                     <p className="text-sm text-muted-foreground mb-3">
@@ -238,12 +249,18 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                        />
                      </div>
                      
-                     <div>
-                       <Label className="text-xs">Precio Unit.</Label>
-                       <div className="text-green-600 font-medium mt-1">
-                         {formatCurrency(item.unit_price)}
-                       </div>
-                     </div>
+                      <div>
+                        <Label className="text-xs">Precio Unit.</Label>
+                        <div className="text-green-600 font-medium mt-1">
+                          {formatCurrency(item.unit_price)}
+                        </div>
+                        {/* Mostrar descuento de póliza si aplica */}
+                        {item.policy_discount_percentage && item.policy_discount_percentage > 0 && (
+                          <div className="text-xs text-blue-600 font-medium">
+                            - {item.policy_discount_percentage}% póliza
+                          </div>
+                        )}
+                      </div>
                      
                      <div className="flex items-center gap-1">
                        <Clock className="h-4 w-4 text-blue-600" />
@@ -296,10 +313,25 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                      </div>
                    </div>
                   
-                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                    <span>Subtotal: {formatCurrency(item.subtotal)}</span>
-                    <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
-                  </div>
+                   <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                     {/* Mostrar desglose de precios con póliza */}
+                     {item.original_subtotal && item.policy_discount_amount && item.policy_discount_amount > 0 ? (
+                       <>
+                         <span>Precio original: {formatCurrency(item.original_subtotal)}</span>
+                         <span className="text-blue-600 font-medium">
+                           Descuento {item.policy_name || 'póliza'} ({item.policy_discount_percentage}%): 
+                           -{formatCurrency(item.policy_discount_amount)}
+                         </span>
+                         <span>Subtotal final: {formatCurrency(item.subtotal)}</span>
+                         <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
+                       </>
+                     ) : (
+                       <>
+                         <span>Subtotal: {formatCurrency(item.subtotal)}</span>
+                         <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
+                       </>
+                     )}
+                   </div>
                 </div>
                 
                 <Button

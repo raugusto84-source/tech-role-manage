@@ -314,7 +314,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const calculateCorrectPricing = async (serviceTypeId: string, quantity: number) => {
     try {
-      const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
+      // Usar la nueva función que incluye descuentos de póliza
+      const { data, error } = await supabase.rpc('calculate_order_pricing_with_policy', {
+        p_client_id: formData.client_id,
         p_service_type_id: serviceTypeId,
         p_quantity: quantity
       });
@@ -323,8 +325,20 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       return data && data.length > 0 ? data[0] : null;
     } catch (error) {
-      console.error('Error calculating pricing:', error);
-      return null;
+      console.error('Error calculating pricing with policy:', error);
+      // Fallback to regular pricing if policy pricing fails
+      try {
+        const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
+          p_service_type_id: serviceTypeId,
+          p_quantity: quantity
+        });
+
+        if (error) throw error;
+        return data && data.length > 0 ? data[0] : null;
+      } catch (fallbackError) {
+        console.error('Error with fallback pricing:', fallbackError);
+        return null;
+      }
     }
   };
 
@@ -354,16 +368,20 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const hoursPerUnit = (service.estimated_hours || 0);
       const totalEstimatedHours = newQuantity * hoursPerUnit;
       
-      updatedItems[existingItemIndex] = {
-        ...existingItem,
-        quantity: newQuantity,
-        unit_price: pricing.unit_base_price,
-        subtotal: pricing.subtotal,
-        vat_rate: pricing.vat_rate,
-        vat_amount: pricing.vat_amount,
-        total: pricing.total_amount,
-        estimated_hours: totalEstimatedHours
-      };
+        updatedItems[existingItemIndex] = {
+          ...existingItem,
+          quantity: newQuantity,
+          unit_price: pricing.unit_base_price,
+          subtotal: (pricing as any).final_subtotal || pricing.subtotal,
+          original_subtotal: (pricing as any).final_subtotal && (pricing as any).final_subtotal !== pricing.subtotal ? pricing.subtotal : undefined,
+          policy_discount_percentage: (pricing as any).policy_discount_percentage || 0,
+          policy_discount_amount: (pricing as any).policy_discount_amount || 0,
+          policy_name: (pricing as any).policy_name || undefined,
+          vat_rate: pricing.vat_rate,
+          vat_amount: pricing.vat_amount,
+          total: pricing.total_amount,
+          estimated_hours: totalEstimatedHours
+        };
       
       toast({
         title: "Cantidad actualizada",
@@ -391,7 +409,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         quantity,
         unit_price: pricing.unit_base_price,
         estimated_hours: estimatedHours,
-        subtotal: pricing.subtotal,
+        subtotal: (pricing as any).final_subtotal || pricing.subtotal,
+        original_subtotal: (pricing as any).final_subtotal && (pricing as any).final_subtotal !== pricing.subtotal ? pricing.subtotal : undefined,
+        policy_discount_percentage: (pricing as any).policy_discount_percentage || 0,
+        policy_discount_amount: (pricing as any).policy_discount_amount || 0,
+        policy_name: (pricing as any).policy_name || undefined,
         vat_rate: pricing.vat_rate,
         vat_amount: pricing.vat_amount,
         total: pricing.total_amount,

@@ -1655,6 +1655,10 @@ export type Database = {
           id: string
           item_type: string
           order_id: string
+          original_subtotal: number | null
+          policy_discount_amount: number | null
+          policy_discount_percentage: number | null
+          policy_name: string | null
           profit_margin_rate: number
           quantity: number
           service_description: string | null
@@ -1677,6 +1681,10 @@ export type Database = {
           id?: string
           item_type?: string
           order_id: string
+          original_subtotal?: number | null
+          policy_discount_amount?: number | null
+          policy_discount_percentage?: number | null
+          policy_name?: string | null
           profit_margin_rate?: number
           quantity?: number
           service_description?: string | null
@@ -1699,6 +1707,10 @@ export type Database = {
           id?: string
           item_type?: string
           order_id?: string
+          original_subtotal?: number | null
+          policy_discount_amount?: number | null
+          policy_discount_percentage?: number | null
+          policy_name?: string | null
           profit_margin_rate?: number
           quantity?: number
           service_description?: string | null
@@ -2152,6 +2164,7 @@ export type Database = {
           evidence_photos: string[] | null
           failure_description: string
           final_signature_url: string | null
+          has_policy_discount: boolean | null
           id: string
           initial_signature_url: string | null
           is_home_service: boolean | null
@@ -2160,6 +2173,7 @@ export type Database = {
           order_priority: number | null
           pdf_url: string | null
           policy_id: string | null
+          policy_name: string | null
           requested_date: string | null
           service_location: Json | null
           service_type: string
@@ -2184,6 +2198,7 @@ export type Database = {
           evidence_photos?: string[] | null
           failure_description: string
           final_signature_url?: string | null
+          has_policy_discount?: boolean | null
           id?: string
           initial_signature_url?: string | null
           is_home_service?: boolean | null
@@ -2192,6 +2207,7 @@ export type Database = {
           order_priority?: number | null
           pdf_url?: string | null
           policy_id?: string | null
+          policy_name?: string | null
           requested_date?: string | null
           service_location?: Json | null
           service_type: string
@@ -2216,6 +2232,7 @@ export type Database = {
           evidence_photos?: string[] | null
           failure_description?: string
           final_signature_url?: string | null
+          has_policy_discount?: boolean | null
           id?: string
           initial_signature_url?: string | null
           is_home_service?: boolean | null
@@ -2224,6 +2241,7 @@ export type Database = {
           order_priority?: number | null
           pdf_url?: string | null
           policy_id?: string | null
+          policy_name?: string | null
           requested_date?: string | null
           service_location?: Json | null
           service_type?: string
@@ -5019,6 +5037,28 @@ export type Database = {
         Args: { p_quantity?: number; p_service_type_id: string }
         Returns: {
           item_type: string
+          profit_margin_rate: number
+          subtotal: number
+          total_amount: number
+          unit_base_price: number
+          unit_cost_price: number
+          vat_amount: number
+          vat_rate: number
+        }[]
+      }
+      calculate_order_pricing_with_policy: {
+        Args: {
+          p_client_id: string
+          p_quantity?: number
+          p_service_type_id: string
+        }
+        Returns: {
+          final_subtotal: number
+          is_policy_client: boolean
+          item_type: string
+          policy_discount_amount: number
+          policy_discount_percentage: number
+          policy_name: string
           profit_margin_rate: number
           subtotal: number
           total_amount: number
