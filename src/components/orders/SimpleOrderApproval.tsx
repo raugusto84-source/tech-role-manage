@@ -161,8 +161,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             order_id: order.id,
             client_signature_data: signatureData,
             client_name: order.clients?.name || '',
-            signed_at: new Date().toISOString(),
-            modification_id: latestModification?.id
+            signed_at: new Date().toISOString()
           });
 
         if (signatureError) throw signatureError;
@@ -238,7 +237,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         
         // Obtener items agregados para eliminarlos
         if (latestModification.items_added) {
-          const itemsAdded = JSON.parse(latestModification.items_added);
+          const itemsAdded = typeof latestModification.items_added === 'string' 
+            ? JSON.parse(latestModification.items_added) 
+            : latestModification.items_added;
           
           // Eliminar cada item agregado
           for (const item of itemsAdded) {
