@@ -358,6 +358,7 @@ export default function Finance() {
   const [expMethod, setExpMethod] = useState("");
   const [expCategory, setExpCategory] = useState("");
   const [expDate, setExpDate] = useState<string>(new Date().toISOString().substring(0,10));
+  const [expInvoiceNumber, setExpInvoiceNumber] = useState("");
 
   // Estados para compras
   const [purchaseSupplier, setPurchaseSupplier] = useState("");
@@ -783,6 +784,11 @@ export default function Finance() {
       const amount = Number(expAmount);
       if (!expDesc || !amount || !expAccount || !expCategory) throw new Error("Completa todos los campos requeridos");
       
+      // Validar factura para cuentas fiscales
+      if (expAccount === 'fiscal' && (!expInvoiceNumber || expInvoiceNumber.trim() === "")) {
+        throw new Error("Para cuentas fiscales es obligatorio ingresar el número de factura");
+      }
+      
       // Calcular IVA si es cuenta fiscal
       let vatRate = 0;
       let vatAmount = 0;
@@ -804,6 +810,8 @@ export default function Finance() {
         vat_rate: expAccount === 'fiscal' ? vatRate : null,
         vat_amount: expAccount === 'fiscal' ? vatAmount : null,
         taxable_amount: expAccount === 'fiscal' ? taxableAmount : null,
+        has_invoice: expAccount === 'fiscal',
+        invoice_number: expAccount === 'fiscal' ? expInvoiceNumber : null,
       } as any).select('*').single();
       
       if (error) throw error;
@@ -834,6 +842,7 @@ export default function Finance() {
       setExpCategory("");
       setExpAccount("fiscal");
       setExpDate(new Date().toISOString().substring(0,10));
+      setExpInvoiceNumber("");
       
       expensesQuery.refetch();
       financialHistoryQuery.refetch();
@@ -2246,6 +2255,17 @@ export default function Finance() {
                   <label className="text-sm text-muted-foreground">Método de pago</label>
                   <Input value={expMethod} onChange={e => setExpMethod(e.target.value)} placeholder="Transferencia, Efectivo, Tarjeta, etc." />
                 </div>
+                {expAccount === 'fiscal' && (
+                  <div>
+                    <label className="text-sm text-muted-foreground">Número de Factura *</label>
+                    <Input 
+                      value={expInvoiceNumber} 
+                      onChange={e => setExpInvoiceNumber(e.target.value)} 
+                      placeholder="A001-001-000001" 
+                      required={expAccount === 'fiscal'}
+                    />
+                  </div>
+                )}
                 {expAccount === 'fiscal' && expAmount && (
                   <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="text-sm font-medium text-orange-800 mb-1">Cálculo automático de IVA (16%)</div>
@@ -2257,13 +2277,13 @@ export default function Finance() {
                   </div>
                 )}
                 <div className="flex items-center gap-3 pt-2">
-                  <Button onClick={addExpense} disabled={!expDesc || !expAmount || !expAccount || !expCategory}>
+                  <Button onClick={addExpense} disabled={!expDesc || !expAmount || !expAccount || !expCategory || (expAccount === 'fiscal' && !expInvoiceNumber.trim())}>
                     📝 Registrar Egreso
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {expAccount === 'fiscal' 
-                    ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%). Ingresa el monto total con IVA incluido.'
+                    ? 'Para cuentas fiscales, el IVA se calcula automáticamente (16%) y se requiere número de factura.'
                     : 'Este egreso se registrará sin IVA para cuenta no fiscal.'
                   }
                 </p>
@@ -2882,7 +2902,108 @@ export default function Finance() {
 
 
         <TabsContent value="vat-management">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
+            {/* Calculadora IVA */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Calculadora de IVA</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Herramienta para calcular IVA. El IVA se registra automáticamente al crear ingresos/egresos fiscales.
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm text-muted-foreground">Monto base (sin IVA)</label>
+                  <Input 
+                    type="number" 
+                    value={tempAmount} 
+                    onChange={e => setTempAmount(e.target.value)} 
+                    placeholder="0.00" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-sm text-muted-foreground">Tasa IVA (%)</label>
+                  <Input 
+                    type="number" 
+                    value={tempVatRate} 
+                    onChange={e => setTempVatRate(e.target.value)} 
+                    placeholder="16" 
+                  />
+                </div>
+                
+                {tempAmount && tempVatRate && (
+                  <div className="p-4 bg-muted rounded-lg">
+                    <div className="text-sm space-y-2">
+                      <div className="flex justify-between">
+                        <span>Monto base:</span>
+                        <span>{Number(tempAmount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
+                      </div>
+                      <div className="flex justify-between text-blue-600">
+                        <span>IVA ({tempVatRate}%):</span>
+                        <span>{calculateVat(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                        <span>Total:</span>
+                        <span>{calculateTotal(Number(tempAmount), Number(tempVatRate)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> Para registrar transacciones con IVA, ve a la sección de Ingresos o Egresos 
+                    y configura el IVA al crear cada registro.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* IVA Neto */}
+            <Card>
+              <CardHeader>
+                <CardTitle>IVA Neto</CardTitle>
+                <p className="text-sm text-muted-foreground">Balance entre IVA trasladado (cobrado) y acreditable (pagado)</p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 rounded-lg">
+                    <div className="text-sm text-green-600 font-medium">IVA Trasladado</div>
+                    <div className="text-xl font-bold text-green-700">
+                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    </div>
+                    <div className="text-xs text-green-600">Cobrado en ventas fiscales</div>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <div className="text-sm text-blue-600 font-medium">IVA Acreditable</div>
+                    <div className="text-xl font-bold text-blue-700">
+                      {(expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    </div>
+                    <div className="text-xs text-blue-600">Pagado en compras fiscales</div>
+                  </div>
+                  <div className="p-4 bg-orange-50 rounded-lg">
+                    <div className="text-sm text-orange-600 font-medium">IVA a Pagar/Favor</div>
+                    <div className={`text-2xl font-bold ${
+                      (incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - 
+                       expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)) >= 0 
+                        ? 'text-red-700' : 'text-green-700'
+                    }`}>
+                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - 
+                        expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)
+                       ).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+                    </div>
+                    <div className="text-xs text-orange-600">
+                      {(incomesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0) - 
+                        expensesFiscal.reduce((sum, r) => sum + (Number(r.vat_amount) || 0), 0)) >= 0 
+                        ? 'A pagar al SAT' : 'A favor del contribuyente'}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Resumen Fiscal */}
             <Card>
               <CardHeader>
                 <CardTitle>Calculadora de IVA</CardTitle>
@@ -3004,6 +3125,8 @@ export default function Finance() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Descripción</TableHead>
                         <TableHead>Monto</TableHead>
+                        <TableHead>Factura</TableHead>
+                        <TableHead>Factura</TableHead>
                         <TableHead>IVA</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -3018,6 +3141,9 @@ export default function Finance() {
                           <TableCell className="font-mono">
                             {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {r.invoice_number || '-'}
+                          </TableCell>
                           <TableCell className="font-mono text-green-600">
                             {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' }) : '-'}
                           </TableCell>
@@ -3025,7 +3151,7 @@ export default function Finance() {
                       ))}
                       {incomesFiscal.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             No hay ingresos fiscales en el período seleccionado
                           </TableCell>
                         </TableRow>
@@ -3070,6 +3196,9 @@ export default function Finance() {
                           <TableCell className="font-mono">
                             {Number(r.amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
                           </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {r.invoice_number || '-'}
+                          </TableCell>
                           <TableCell className="font-mono text-red-600">
                             {r.vat_amount ? Number(r.vat_amount).toLocaleString(undefined, { style: 'currency', currency: 'MXN' }) : '-'}
                           </TableCell>
@@ -3077,7 +3206,7 @@ export default function Finance() {
                       ))}
                       {expensesFiscal.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             No hay egresos fiscales en el período seleccionado
                           </TableCell>
                         </TableRow>

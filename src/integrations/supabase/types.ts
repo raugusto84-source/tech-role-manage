@@ -1028,7 +1028,9 @@ export type Database = {
           description: string
           expense_date: string
           expense_number: string
+          has_invoice: boolean | null
           id: string
+          invoice_number: string | null
           payment_method: string | null
           project_id: string | null
           receipt_url: string | null
@@ -1051,7 +1053,9 @@ export type Database = {
           description: string
           expense_date?: string
           expense_number: string
+          has_invoice?: boolean | null
           id?: string
+          invoice_number?: string | null
           payment_method?: string | null
           project_id?: string | null
           receipt_url?: string | null
@@ -1074,7 +1078,9 @@ export type Database = {
           description?: string
           expense_date?: string
           expense_number?: string
+          has_invoice?: boolean | null
           id?: string
+          invoice_number?: string | null
           payment_method?: string | null
           project_id?: string | null
           receipt_url?: string | null
@@ -1291,9 +1297,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string
+          has_invoice: boolean | null
           id: string
           income_date: string
           income_number: string
+          invoice_number: string | null
           payment_method: string | null
           project_id: string | null
           status: string
@@ -1310,9 +1318,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description: string
+          has_invoice?: boolean | null
           id?: string
           income_date?: string
           income_number: string
+          invoice_number?: string | null
           payment_method?: string | null
           project_id?: string | null
           status?: string
@@ -1329,9 +1339,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string
+          has_invoice?: boolean | null
           id?: string
           income_date?: string
           income_number?: string
+          invoice_number?: string | null
           payment_method?: string | null
           project_id?: string | null
           status?: string
