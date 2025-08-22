@@ -166,15 +166,18 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
         if (signatureError) throw signatureError;
 
-        // Actualizar el estado de la orden a 'pendiente'
+        // Actualizar el estado de la orden según el tipo de aprobación
+        const newStatus = isOrderUpdate ? 'en_proceso' : 'pendiente';
         const { error: orderError } = await supabase
           .from('orders')
           .update({
-            status: 'pendiente',
+            status: newStatus,
             client_approval: true,
             client_approved_at: new Date().toISOString()
           })
           .eq('id', order.id);
+
+        console.log(`Updated order status to: ${newStatus} for order ${order.id}`);
 
         if (orderError) throw orderError;
 
