@@ -219,8 +219,8 @@ export function ClientsList() {
     }
   };
 
-  const handleClientCreated = (newClient: Client) => {
-    setClients(prev => [newClient, ...prev]);
+  const handleClientCreated = (newClient: any) => {
+    loadClients(); // Recargar la lista completa
     setShowCreateDialog(false);
     toast({
       title: "Cliente creado",
@@ -256,9 +256,27 @@ export function ClientsList() {
             <Users className="h-5 w-5" />
             Lista de Clientes ({clients.length})
           </CardTitle>
-            <div className="text-sm text-muted-foreground">
-              Los clientes son usuarios registrados con rol de cliente
-            </div>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Cliente</DialogTitle>
+              </DialogHeader>
+              <ClientForm 
+                onSuccess={handleClientCreated}
+                onCancel={() => setShowCreateDialog(false)}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Los clientes registrados incluyen usuarios con cuentas y clientes directos. 
+          Usa "Nuevo Cliente" para agregar clientes que no tienen cuenta de usuario.
         </div>
         
         <div className="flex items-center gap-4 mt-4">
