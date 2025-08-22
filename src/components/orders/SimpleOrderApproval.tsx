@@ -1,15 +1,17 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { PenTool, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { PenTool, CheckCircle2, ArrowLeft, Clock } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
+import { formatHoursAndMinutes } from '@/utils/timeUtils';
 
 interface SimpleOrderApprovalProps {
   order: {
     id: string;
     order_number: string;
+    assigned_technician?: string;
     clients?: {
       name: string;
       email: string;
@@ -25,6 +27,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   const signatureRef = useRef<SignatureCanvas>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deliveryInfo, setDeliveryInfo] = useState<{
+    date: string;
+    time: string;
+    totalHours: number;
+  } | null>(null);
 
   const calculateTotals = () => {
     const subtotal = orderItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
@@ -35,6 +42,47 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const { subtotal, vatTotal, total } = calculateTotals();
+
+  useEffect(() => {
+    if (order.assigned_technician && orderItems.length > 0) {
+      calculateDeliveryTime();
+    }
+  }, [order.assigned_technician, orderItems]);
+
+  const calculateDeliveryTime = () => {
+    try {
+      // Calcular horas totales estimadas
+      const totalHours = orderItems.reduce((sum, item) => {
+        return sum + ((item.estimated_hours || 2) * (item.quantity || 1));
+      }, 0);
+
+      // Calcular fecha de entrega simple
+      const startDate = new Date();
+      const workHoursPerDay = 8; // Horario estándar de trabajo
+      const daysNeeded = Math.ceil(totalHours / workHoursPerDay);
+      
+      const deliveryDate = new Date(startDate);
+      deliveryDate.setDate(startDate.getDate() + daysNeeded);
+      
+      // Formatear fecha y hora
+      const dateStr = deliveryDate.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      const timeStr = '16:00'; // Hora estándar de finalización
+      
+      setDeliveryInfo({
+        date: dateStr,
+        time: timeStr,
+        totalHours
+      });
+    } catch (error) {
+      console.error('Error calculating delivery time:', error);
+    }
+  };
 
   const clearSignature = () => {
     signatureRef.current?.clear();
@@ -161,6 +209,39 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             </div>
           </CardContent>
         </Card>
+
+        {/* Hora Estimada de Entrega */}
+        {deliveryInfo && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Fecha Estimada de Entrega
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Fecha estimada:</span>
+                  <span className="font-medium">{deliveryInfo.date}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Hora aproximada:</span>
+                  <span className="font-medium">{deliveryInfo.time}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Tiempo estimado total:</span>
+                  <span className="font-medium">{formatHoursAndMinutes(deliveryInfo.totalHours)}</span>
+                </div>
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    *La fecha de entrega puede variar según la disponibilidad del técnico y la complejidad del trabajo.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {!showSignature ? (
           <Card>
