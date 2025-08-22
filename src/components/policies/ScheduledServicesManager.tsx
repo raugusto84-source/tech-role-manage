@@ -273,13 +273,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       if (error) throw error;
 
-      const orderId = data?.[0]?.order_id;
-      if (orderId) {
-        await supabase
-          .from('orders')
-          .update({ status: 'pendiente' })
-          .eq('id', orderId);
-      }
+      // Las órdenes de servicios programados ya se crean con status 'pendiente' desde la base de datos
 
       const orderNumber = data?.[0]?.order_number || 'desconocido';
       
