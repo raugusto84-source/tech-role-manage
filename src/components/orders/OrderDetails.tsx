@@ -123,20 +123,36 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   // Verificar estado de encuesta cuando cambia el estado de la orden
   useEffect(() => {
     checkSurveyStatus();
+    checkExistingAuthorization(); // Re-check authorization when status changes
   }, [orderStatus, profile?.role, user?.id]);
 
 
   const checkExistingAuthorization = async () => {
     try {
-      const { data } = await supabase
-        .from('order_authorization_signatures')
-        .select('id')
-        .eq('order_id', order.id)
-        .maybeSingle();
-      
-      setHasAuthorization(!!data);
+      if (orderStatus === 'pendiente_actualizacion') {
+        // For update approvals, check if there's a pending modification without approval
+        const { data: modificationData } = await supabase
+          .from('order_modifications')
+          .select('id')
+          .eq('order_id', order.id)
+          .is('client_approved', null)
+          .maybeSingle();
+        
+        // If there's a pending modification, we need approval regardless of existing signatures
+        setHasAuthorization(!modificationData);
+      } else {
+        // For regular approvals, check for existing signatures
+        const { data } = await supabase
+          .from('order_authorization_signatures')
+          .select('id')
+          .eq('order_id', order.id)
+          .maybeSingle();
+        
+        setHasAuthorization(!!data);
+      }
     } catch (error) {
       console.error('Error checking authorization:', error);
+      setHasAuthorization(false);
     }
   };
 

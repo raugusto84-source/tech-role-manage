@@ -63,7 +63,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         .from('order_modifications')
         .select('*')
         .eq('order_id', order.id)
-        .eq('client_approved', false)
+        .is('client_approved', null)
         .order('created_at', { ascending: false })
         .limit(1);
 
