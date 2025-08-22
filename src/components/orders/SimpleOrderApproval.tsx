@@ -102,6 +102,15 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           description: "No se encontraron modificaciones pendientes para esta orden.",
           variant: "destructive"
         });
+      } else if (data && data.length > 0) {
+        // Debug: Mostrar todos los campos de la modificación
+        console.log('Modification details:', {
+          reason: data[0].modification_reason,
+          previousTotal: data[0].previous_total,
+          newTotal: data[0].new_total,
+          createdByName: data[0].created_by_name,
+          itemsAdded: data[0].items_added
+        });
       }
     } catch (error) {
       console.error('Error loading modifications:', error);
