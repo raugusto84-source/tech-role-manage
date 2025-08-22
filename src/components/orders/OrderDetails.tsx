@@ -8,13 +8,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield, Plus, Loader2, X } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Star, Trophy, CheckCircle2, Home, MapPin, Shield, Plus, Loader2, X, Signature } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { SimpleOrderApproval } from './SimpleOrderApproval';
+import { DeliverySignature } from './DeliverySignature';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
@@ -75,6 +76,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     totalHours: number;
   } | null>(null);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
+  const [showDeliverySignature, setShowDeliverySignature] = useState(false);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -309,6 +311,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const canSeeSurvey = isClient && orderStatus === 'finalizada' && !surveyCompleted;
   const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor') && 
                          ['pendiente', 'en_proceso'].includes(orderStatus);
+  const canSignDelivery = isClient && orderStatus === 'pendiente_entrega';
   
   // Check if service was completed before estimated time
   const isEarlyCompletion = orderStatus === 'finalizada' && 
@@ -356,9 +359,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(orderStatus)} variant="outline">
-              {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE ACTUALIZACIÓN' : orderStatus.replace('_', ' ').toUpperCase()}
+              {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE ACTUALIZACIÓN' 
+               : orderStatus === 'pendiente_entrega' ? 'LISTO PARA FIRMA'
+               : orderStatus.replace('_', ' ').toUpperCase()}
             </Badge>
             
+            {/* Botón de firma de entrega para clientes */}
+            {canSignDelivery && (
+              <Button
+                onClick={() => setShowDeliverySignature(true)}
+                className="bg-primary hover:bg-primary-hover text-primary-foreground animate-pulse"
+              >
+                <Signature className="h-4 w-4 mr-2" />
+                Firmar Entrega
+              </Button>
+            )}
             
             {isEarlyCompletion && (
               <div className="flex items-center gap-2 bg-green-100 text-green-800 px-3 py-2 rounded-md animate-bounce">
@@ -575,9 +590,30 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               <CardContent className="space-y-4">
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Estado Actual</Label>
-                  <Badge className={getStatusColor(orderStatus)} variant="outline">
-                    {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE ACTUALIZACIÓN' : orderStatus.replace('_', ' ').toUpperCase()}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(orderStatus)} variant="outline">
+                      {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE ACTUALIZACIÓN' 
+                       : orderStatus === 'pendiente_entrega' ? 'LISTO PARA FIRMA'
+                       : orderStatus.replace('_', ' ').toUpperCase()}
+                    </Badge>
+                    {canSignDelivery && (
+                      <Button
+                        onClick={() => setShowDeliverySignature(true)}
+                        size="sm"
+                        className="bg-primary hover:bg-primary-hover text-primary-foreground"
+                      >
+                        <Signature className="h-3 w-3 mr-1" />
+                        Firmar
+                      </Button>
+                    )}
+                  </div>
+                  {canSignDelivery && (
+                    <div className="mt-2 p-2 bg-primary-light/50 border border-primary-border rounded-md">
+                      <p className="text-xs text-primary-foreground">
+                        ✨ Tu trabajo está completado. Confirma la entrega con tu firma.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -856,6 +892,27 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               checkSurveyStatus();
             }}
             onCancel={() => setShowSurvey(false)}
+          />
+        )}
+
+        {/* Firma de Entrega */}
+        {showDeliverySignature && canSignDelivery && (
+          <DeliverySignature
+            order={{
+              id: order.id,
+              order_number: order.order_number,
+              clients: order.clients
+            }}
+            onClose={() => setShowDeliverySignature(false)}
+            onComplete={() => {
+              setShowDeliverySignature(false);
+              setOrderStatus('finalizada');
+              onUpdate();
+              toast({
+                title: "Entrega confirmada",
+                description: "Tu orden ha sido marcada como finalizada y está lista para cobranza",
+              });
+            }}
           />
         )}
       </div>
