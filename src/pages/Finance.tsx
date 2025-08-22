@@ -84,16 +84,16 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at").order("income_date", {
-        ascending: false
-      });
+      let q = supabase
+        .from("incomes")
+        .select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at")
+        .order("income_date", { ascending: false });
       if (startDate) q = q.gte("income_date", startDate);
       if (endDate) q = q.lte("income_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
-      const {
-        data,
-        error
-      } = await q;
+      // Mostrar solo ingresos cobrados, no los pendientes de cobranza
+      q = q.eq("status", "recibido");
+      const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
     }
@@ -239,11 +239,25 @@ export default function Finance() {
   const vatDetailsQuery = useQuery({
     queryKey: ["vat_details", startDate, endDate],
     queryFn: async () => {
-      const [incomesData, expensesData] = await Promise.all([supabase.from("incomes").select("income_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").not("vat_amount", "is", null).gte("income_date", startDate).lte("income_date", endDate).order("income_date", {
-        ascending: false
-      }), supabase.from("expenses").select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").not("vat_amount", "is", null).gte("expense_date", startDate).lte("expense_date", endDate).order("expense_date", {
-        ascending: false
-      })]);
+      const [incomesData, expensesData] = await Promise.all([
+        supabase
+          .from("incomes")
+          .select("income_date, description, amount, vat_rate, vat_amount, taxable_amount")
+          .eq("account_type", "fiscal")
+          .eq("status", "recibido")
+          .not("vat_amount", "is", null)
+          .gte("income_date", startDate)
+          .lte("income_date", endDate)
+          .order("income_date", { ascending: false }),
+        supabase
+          .from("expenses")
+          .select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount")
+          .eq("account_type", "fiscal")
+          .not("vat_amount", "is", null)
+          .gte("expense_date", startDate)
+          .lte("expense_date", endDate)
+          .order("expense_date", { ascending: false })
+      ]);
       if (incomesData.error) throw incomesData.error;
       if (expensesData.error) throw expensesData.error;
       const combined = [...(incomesData.data || []).map(item => ({
