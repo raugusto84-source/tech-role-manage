@@ -311,8 +311,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         orderItems={orderItems}
         onBack={onBack}
         onApprovalComplete={() => {
-          setHasAuthorization(true);
-          setOrderStatus('pendiente');
+          // No cambiar hasAuthorization inmediatamente, dejar que la función checkExistingAuthorization 
+          // se ejecute después de que la base de datos se haya actualizado
+          console.log('Approval completed, triggering update...');
           onUpdate();
         }}
       />
