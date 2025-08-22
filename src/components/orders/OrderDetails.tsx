@@ -17,6 +17,7 @@ import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { SimpleOrderApproval } from './SimpleOrderApproval';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
+import { formatHoursAndMinutes } from '@/utils/timeUtils';
 
 interface OrderDetailsProps {
   order: {
@@ -67,6 +68,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [currentUnreadCount, setCurrentUnreadCount] = useState(0);
   const [hasAuthorization, setHasAuthorization] = useState(false);
+  const [deliveryTime, setDeliveryTime] = useState<{
+    time: string;
+    totalHours: number;
+  } | null>(null);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -82,6 +87,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadOrderItems();
     loadAssignedTechnician();
     checkExistingAuthorization();
+    calculateDeliveryTime();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -103,9 +109,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      channel.unsubscribe();
     };
   }, [order.id]);
+
+  // Recalcular tiempo de entrega cuando cambien los items
+  useEffect(() => {
+    calculateDeliveryTime();
+  }, [orderItems]);
 
   // Verificar estado de encuesta cuando cambia el estado de la orden
   useEffect(() => {
@@ -124,6 +135,28 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       setHasAuthorization(!!data);
     } catch (error) {
       console.error('Error checking authorization:', error);
+    }
+  };
+
+  const calculateDeliveryTime = () => {
+    try {
+      // Calcular horas totales estimadas de los items
+      const totalHours = orderItems.reduce((sum, item) => {
+        return sum + ((item.estimated_hours || 2) * (item.quantity || 1));
+      }, 0);
+
+      // Si no hay items, usar el tiempo promedio de la orden o default
+      const finalHours = totalHours > 0 ? totalHours : (order.average_service_time || 4);
+
+      // Hora estándar de finalización (4 PM)
+      const timeStr = '16:00';
+      
+      setDeliveryTime({
+        time: timeStr,
+        totalHours: finalHours
+      });
+    } catch (error) {
+      console.error('Error calculating delivery time:', error);
     }
   };
 
@@ -441,11 +474,24 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     <Calendar className="h-4 w-4 mr-1" />
                     Fecha de Entrega Estimada
                   </Label>
-                  <p className="text-foreground font-medium text-lg text-orange-600">
-                    {order.estimated_delivery_date 
-                      ? formatDateTime(order.estimated_delivery_date)
-                      : formatDate(order.delivery_date)}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-foreground font-medium text-lg text-orange-600">
+                      {order.estimated_delivery_date 
+                        ? formatDateTime(order.estimated_delivery_date)
+                        : formatDate(order.delivery_date)}
+                      {deliveryTime && (
+                        <span className="text-sm font-normal text-muted-foreground ml-2">
+                          (aprox. {deliveryTime.time})
+                        </span>
+                      )}
+                    </p>
+                    {deliveryTime && (
+                      <p className="text-sm text-muted-foreground flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Tiempo estimado: {formatHoursAndMinutes(deliveryTime.totalHours)}
+                      </p>
+                    )}
+                  </div>
                   {order.estimated_delivery_date && (
                     <p className="text-sm text-muted-foreground">
                       Calculado automáticamente basado en servicios y disponibilidad de técnicos
@@ -520,11 +566,24 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
                 <div>
                   <Label className="text-sm font-medium text-muted-foreground">Fecha de Entrega Estimada</Label>
-                  <p className="text-foreground">
-                    {order.estimated_delivery_date 
-                      ? formatDateTime(order.estimated_delivery_date)
-                      : formatDate(order.delivery_date)}
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-foreground">
+                      {order.estimated_delivery_date 
+                        ? formatDateTime(order.estimated_delivery_date)
+                        : formatDate(order.delivery_date)}
+                      {deliveryTime && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                          (aprox. {deliveryTime.time})
+                        </span>
+                      )}
+                    </p>
+                    {deliveryTime && (
+                      <p className="text-sm text-muted-foreground flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {formatHoursAndMinutes(deliveryTime.totalHours)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
