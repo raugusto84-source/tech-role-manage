@@ -40,6 +40,7 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [pendingRecord, setPendingRecord] = useState<'arrival' | 'departure' | null>(null);
   const [capturedPhotos, setCapturedPhotos] = useState<string[]>([]);
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -275,12 +276,13 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                   <div>
                     <p className="text-sm font-medium mb-2">Evidencia fotográfica:</p>
                     <div className="grid grid-cols-3 gap-2">
-                      {record.evidence_photos.map((photo, index) => (
+                       {record.evidence_photos.map((photo, index) => (
                         <img
                           key={index}
                           src={photo}
                           alt={`Evidencia ${index + 1}`}
-                          className="w-full h-20 object-cover rounded border"
+                          className="w-full h-20 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => setSelectedPhoto(photo)}
                         />
                       ))}
                     </div>
@@ -334,10 +336,11 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
                     <div className="grid grid-cols-2 gap-2">
                       {capturedPhotos.map((photo, index) => (
                         <div key={index} className="relative">
-                          <img
+                           <img
                             src={photo}
                             alt={`Evidencia ${index + 1}`}
-                            className="w-full h-20 object-cover rounded border"
+                            className="w-full h-20 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => setSelectedPhoto(photo)}
                           />
                           <Button
                             type="button"
@@ -395,6 +398,27 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
           </div>
         )}
       </CardContent>
+
+      {/* Modal para ver fotos */}
+      {selectedPhoto && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-4xl max-h-full">
+            <Button
+              variant="secondary"
+              size="sm"
+              className="absolute top-2 right-2 z-10"
+              onClick={() => setSelectedPhoto(null)}
+            >
+              ×
+            </Button>
+            <img
+              src={selectedPhoto}
+              alt="Evidencia ampliada"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
