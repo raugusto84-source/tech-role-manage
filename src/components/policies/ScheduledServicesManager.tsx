@@ -252,6 +252,14 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       if (error) throw error;
 
+      const orderId = data?.[0]?.order_id;
+      if (orderId) {
+        await supabase
+          .from('orders')
+          .update({ status: 'pendiente' })
+          .eq('id', orderId);
+      }
+
       const orderNumber = data?.[0]?.order_number || 'desconocido';
       
       // Calculate next date for display

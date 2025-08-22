@@ -79,7 +79,7 @@ serve(async (req) => {
             delivery_date: service.next_service_date,
             estimated_cost: 0,
             failure_description: service.service_description || `Servicio programado: ${service.service_types.name}`,
-            status: 'en_proceso',
+            status: 'pendiente',
             is_policy_order: true,
             order_priority: service.priority,
             created_by: service.created_by,
