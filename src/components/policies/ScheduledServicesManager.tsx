@@ -71,7 +71,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     policy_client_id: '',
-    service_type_ids: [] as string[],
+    selected_services: {} as Record<string, number>, // service_type_id -> quantity
     frequency_days: 30,
     next_service_date: '',
     service_description: '',
@@ -140,7 +140,8 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const handleCreateScheduledService = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.service_type_ids.length === 0) {
+    const selectedServiceIds = Object.keys(formData.selected_services);
+    if (selectedServiceIds.length === 0) {
       toast({
         title: "Error",
         description: "Debe seleccionar al menos un servicio",
@@ -150,10 +151,11 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     }
     
     try {
-      // Create one scheduled service record for each selected service
-      const servicesToInsert = formData.service_type_ids.map(serviceTypeId => ({
+      // Create one scheduled service record for each selected service with its quantity
+      const servicesToInsert = selectedServiceIds.map(serviceTypeId => ({
         policy_client_id: formData.policy_client_id,
         service_type_id: serviceTypeId,
+        quantity: formData.selected_services[serviceTypeId],
         frequency_days: formData.frequency_days,
         next_service_date: formData.next_service_date,
         service_description: formData.service_description,
@@ -175,7 +177,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       toast({
         title: "Éxito",
-        description: `${formData.service_type_ids.length} servicio(s) programado(s) creado(s) correctamente`,
+        description: `${selectedServiceIds.length} servicio(s) programado(s) creado(s) correctamente`,
       });
 
       setIsDialogOpen(false);
@@ -338,7 +340,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const resetForm = () => {
     setFormData({
       policy_client_id: '',
-      service_type_ids: [],
+      selected_services: {},
       frequency_days: 30,
       next_service_date: '',
       service_description: '',
@@ -414,35 +416,65 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="service_type_ids">Servicios a Realizar *</Label>
+                <Label htmlFor="selected_services">Servicios a Realizar *</Label>
                 <div className="space-y-2">
                   <div className="text-sm text-muted-foreground">
-                    Selecciona los servicios que se realizarán en cada visita:
+                    Selecciona los servicios y especifica la cantidad para cada uno:
                   </div>
-                  <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto border rounded-md p-2">
-                    {serviceTypes.map((st) => (
-                      <div key={st.id} className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id={`service_${st.id}`}
-                          checked={formData.service_type_ids.includes(st.id)}
-                          onChange={(e) => {
-                            const newServiceIds = e.target.checked
-                              ? [...formData.service_type_ids, st.id]
-                              : formData.service_type_ids.filter(id => id !== st.id);
-                            setFormData({...formData, service_type_ids: newServiceIds});
-                          }}
-                          className="rounded border-gray-300"
-                        />
-                        <label htmlFor={`service_${st.id}`} className="text-sm font-medium cursor-pointer flex-1">
-                          {st.name}
-                        </label>
-                      </div>
-                    ))}
+                  <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border rounded-md p-3">
+                    {serviceTypes.map((st) => {
+                      const isSelected = st.id in formData.selected_services;
+                      const quantity = formData.selected_services[st.id] || 1;
+                      
+                      return (
+                        <div key={st.id} className="flex items-center space-x-3">
+                          <input
+                            type="checkbox"
+                            id={`service_${st.id}`}
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const newSelectedServices = { ...formData.selected_services };
+                              if (e.target.checked) {
+                                newSelectedServices[st.id] = 1; // Default quantity
+                              } else {
+                                delete newSelectedServices[st.id];
+                              }
+                              setFormData({...formData, selected_services: newSelectedServices});
+                            }}
+                            className="rounded border-gray-300"
+                          />
+                          <label htmlFor={`service_${st.id}`} className="text-sm font-medium cursor-pointer flex-1">
+                            {st.name}
+                          </label>
+                          {isSelected && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm text-muted-foreground">Cantidad:</span>
+                              <Input
+                                type="number"
+                                min="1"
+                                max="99"
+                                value={quantity}
+                                onChange={(e) => {
+                                  const newQuantity = parseInt(e.target.value) || 1;
+                                  setFormData({
+                                    ...formData,
+                                    selected_services: {
+                                      ...formData.selected_services,
+                                      [st.id]: newQuantity
+                                    }
+                                  });
+                                }}
+                                className="w-16 h-8 text-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  {formData.service_type_ids.length > 0 && (
+                  {Object.keys(formData.selected_services).length > 0 && (
                     <div className="text-sm text-muted-foreground">
-                      {formData.service_type_ids.length} servicio(s) seleccionado(s)
+                      {Object.keys(formData.selected_services).length} servicio(s) seleccionado(s)
                     </div>
                   )}
                 </div>
