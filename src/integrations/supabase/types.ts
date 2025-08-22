@@ -1429,72 +1429,48 @@ export type Database = {
       }
       order_assistance_records: {
         Row: {
-          arrival_location: Json | null
-          arrival_photo_url: string | null
-          arrival_time: string | null
-          client_name: string | null
-          client_signature_data: string | null
           created_at: string
-          departure_location: Json | null
-          departure_photo_url: string | null
-          departure_time: string | null
+          evidence_photos: Json | null
           id: string
+          location_address: string | null
+          location_latitude: number
+          location_longitude: number
           notes: string | null
           order_id: string
-          status: string
+          record_type: string
           technician_id: string
+          timestamp: string
           updated_at: string
         }
         Insert: {
-          arrival_location?: Json | null
-          arrival_photo_url?: string | null
-          arrival_time?: string | null
-          client_name?: string | null
-          client_signature_data?: string | null
           created_at?: string
-          departure_location?: Json | null
-          departure_photo_url?: string | null
-          departure_time?: string | null
+          evidence_photos?: Json | null
           id?: string
+          location_address?: string | null
+          location_latitude: number
+          location_longitude: number
           notes?: string | null
           order_id: string
-          status?: string
+          record_type: string
           technician_id: string
+          timestamp?: string
           updated_at?: string
         }
         Update: {
-          arrival_location?: Json | null
-          arrival_photo_url?: string | null
-          arrival_time?: string | null
-          client_name?: string | null
-          client_signature_data?: string | null
           created_at?: string
-          departure_location?: Json | null
-          departure_photo_url?: string | null
-          departure_time?: string | null
+          evidence_photos?: Json | null
           id?: string
+          location_address?: string | null
+          location_latitude?: number
+          location_longitude?: number
           notes?: string | null
           order_id?: string
-          status?: string
+          record_type?: string
           technician_id?: string
+          timestamp?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "order_assistance_records_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_assistance_records_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       order_authorization_signatures: {
         Row: {
