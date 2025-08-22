@@ -3555,6 +3555,7 @@ export type Database = {
           next_service_date: string
           policy_client_id: string
           priority: number | null
+          quantity: number
           service_description: string | null
           service_type_id: string
           updated_at: string
@@ -3569,6 +3570,7 @@ export type Database = {
           next_service_date: string
           policy_client_id: string
           priority?: number | null
+          quantity?: number
           service_description?: string | null
           service_type_id: string
           updated_at?: string
@@ -3583,6 +3585,7 @@ export type Database = {
           next_service_date?: string
           policy_client_id?: string
           priority?: number | null
+          quantity?: number
           service_description?: string | null
           service_type_id?: string
           updated_at?: string
