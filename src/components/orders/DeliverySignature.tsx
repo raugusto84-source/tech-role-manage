@@ -39,11 +39,14 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
     }
 
     setLoading(true);
+    console.log('🔄 Iniciando proceso de confirmación de entrega para orden:', order.id);
 
     try {
       const signatureData = signatureRef.current.toDataURL();
+      console.log('✅ Firma capturada exitosamente');
 
       // Guardar firma de entrega
+      console.log('💾 Insertando firma en delivery_signatures...');
       const { error: signatureError } = await supabase
         .from('delivery_signatures')
         .insert({
@@ -53,9 +56,14 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
           delivery_date: new Date().toISOString(),
         });
 
-      if (signatureError) throw signatureError;
+      if (signatureError) {
+        console.error('❌ Error al insertar firma:', signatureError);
+        throw signatureError;
+      }
+      console.log('✅ Firma guardada exitosamente');
 
       // Actualizar orden como finalizada
+      console.log('🔄 Actualizando estado de orden a finalizada...');
       const { error: orderError } = await supabase
         .from('orders')
         .update({ 
@@ -65,9 +73,14 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
         })
         .eq('id', order.id);
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('❌ Error al actualizar orden:', orderError);
+        throw orderError;
+      }
+      console.log('✅ Orden actualizada exitosamente');
 
       // Obtener detalles de la orden para generar cobranza
+      console.log('🔍 Obteniendo detalles de la orden para cobranza...');
       const { data: orderDetails, error: orderDetailsError } = await supabase
         .from('orders')
         .select(`
@@ -84,8 +97,9 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
         .single();
 
       if (orderDetailsError) {
-        console.error('Error getting order details:', orderDetailsError);
+        console.error('⚠️ Error getting order details:', orderDetailsError);
       } else if (orderDetails) {
+        console.log('✅ Detalles de orden obtenidos, generando cobranza...');
         // Calcular totales
         const totalAmount = orderDetails.order_items?.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0) || orderDetails.estimated_cost || 0;
         const vatAmount = orderDetails.order_items?.reduce((sum: number, item: any) => sum + (item.vat_amount || 0), 0) || 0;
@@ -108,6 +122,7 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
         const incomeNumber = `ING-${currentYear}-${nextNumber}`;
 
         // Crear registro de cobranza pendiente
+        console.log('💰 Creando registro de cobranza:', { incomeNumber, totalAmount });
         const { error: incomeError } = await supabase
           .from('incomes')
           .insert({
@@ -126,11 +141,14 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
           });
 
         if (incomeError) {
-          console.error('Error creating income record:', incomeError);
+          console.error('⚠️ Error creating income record:', incomeError);
           // No fallar la operación por este error, solo registrar
+        } else {
+          console.log('✅ Registro de cobranza creado exitosamente');
         }
       }
 
+      console.log('🎉 Proceso de confirmación completado exitosamente');
       toast({
         title: "Entrega Confirmada",
         description: "La orden ha sido marcada como finalizada con la firma del cliente",
@@ -140,7 +158,7 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
       onClose();
 
     } catch (error) {
-      console.error('Error confirming delivery:', error);
+      console.error('❌ Error confirming delivery:', error);
       toast({
         title: "Error",
         description: "No se pudo confirmar la entrega. Inténtalo de nuevo.",
