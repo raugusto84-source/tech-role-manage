@@ -84,6 +84,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         .select('*')
         .eq('order_id', order.id)
         .is('client_approved', null)
+        .not('modification_reason', 'is', null) // Solo modificaciones con razón válida
         .order('created_at', { ascending: false })
         .limit(1);
 
