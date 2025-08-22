@@ -330,10 +330,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         orderItems={orderItems}
         onBack={onBack}
         onApprovalComplete={() => {
-          // No cambiar hasAuthorization inmediatamente, dejar que la función checkExistingAuthorization 
-          // se ejecute después de que la base de datos se haya actualizado
-          console.log('Approval completed, triggering update...');
-          onUpdate();
+          console.log('Approval completed, navigating back to orders list...');
+          // Navegar automáticamente de vuelta a la lista de órdenes
+          onBack();
         }}
       />
     );
