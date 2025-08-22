@@ -163,40 +163,71 @@ export function AddOrderItemsDialog({
 
     try {
       // Obtener totales actuales de la orden
+      console.log('=== MODIFICATION DEBUG ===');
+      console.log('Order ID:', orderId);
+      console.log('Reason:', reason);
+      
       const { data: currentOrder, error: orderError } = await supabase
         .from('orders')
         .select('estimated_cost')
         .eq('id', orderId)
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Error fetching order:', orderError);
+        throw orderError;
+      }
 
-      const previousTotal = currentOrder.estimated_cost || 0;
+      const previousTotal = currentOrder?.estimated_cost || 0;
       const newTotal = previousTotal + calculateTotalChange();
+      
+      console.log('Previous total:', previousTotal);
+      console.log('New total:', newTotal);
 
       // Obtener información del usuario actual
-      const { data: profile } = await supabase
+      const { data: userResult } = await supabase.auth.getUser();
+      console.log('Current user:', userResult.user?.id);
+      
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('full_name')
-        .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
-        .single();
+        .eq('user_id', userResult.user?.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
+      
+      console.log('Profile data:', profile);
+      
+      const createdByName = profile?.full_name || 'Usuario desconocido';
+      console.log('Created by name:', createdByName);
 
       // Crear registro de modificación
+      const modificationData = {
+        order_id: orderId,
+        previous_total: previousTotal,
+        new_total: newTotal,
+        items_added: JSON.stringify(newItems) as any, // Convert to JSON for JSONB field
+        modification_type: 'item_added',
+        modification_reason: reason,
+        created_by: userResult.user?.id,
+        created_by_name: createdByName,
+        notes: `Servicios/productos agregados: ${newItems.map(item => `${item.service_name} (x${item.quantity})`).join(', ')}`
+      };
+      
+      console.log('Modification data to insert:', modificationData);
+      
       const { error: modificationError } = await supabase
         .from('order_modifications')
-        .insert({
-          order_id: orderId,
-          previous_total: previousTotal,
-          new_total: newTotal,
-          items_added: JSON.stringify(newItems),
-          modification_type: 'item_added',
-          modification_reason: reason,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
-          created_by_name: profile?.full_name || 'Usuario desconocido',
-          notes: `Servicios/productos agregados: ${newItems.map(item => `${item.service_name} (x${item.quantity})`).join(', ')}`
-        });
+        .insert(modificationData);
 
-      if (modificationError) throw modificationError;
+      if (modificationError) {
+        console.error('Error inserting modification:', modificationError);
+        throw modificationError;
+      }
+
+      console.log('Modification inserted successfully');
 
       // Agregar los nuevos items a la orden uno por uno
       for (const item of newItems) {
