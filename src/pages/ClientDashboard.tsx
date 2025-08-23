@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, RefreshCw, Gift, FileText, ClipboardList, Signature } from "lucide-react";
-import { NewRequestDialog } from "@/components/client/NewRequestDialog";
-import { ClientRewardsCard } from "@/components/rewards/ClientRewardsCard";
+import { Plus, Search, Gift, FileText, ClipboardList, Signature, CheckCircle, Clock, AlertCircle, Star, Copy } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 
-// Tipos locales para órdenes y cotizaciones (ligeros para no depender de types.ts)
+// Tipos locales para órdenes y cotizaciones
 interface Order {
   id: string;
   order_number: string;
@@ -41,28 +40,32 @@ interface Quote {
 }
 
 /**
- * Panel de Cliente
- * - Crear nueva orden o cotización (botón destacado)
- * - Ver estado de órdenes en tiempo real (suscripción Supabase)
- * - Bonos/recompensas (placeholder visual)
- * - Interfaz sencilla inspirada en apps bancarias
+ * Panel Unificado de Cliente
+ * Todo en una sola página: órdenes, cotizaciones y recompensas
  */
 export default function ClientDashboard() {
   const { profile } = useAuth();
   const { toast } = useToast();
 
   // Estado UI
-  const [openNew, setOpenNew] = useState(false);
   const [loading, setLoading] = useState(true);
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [rewards, setRewards] = useState({
+    totalCashback: 0,
+    totalPoints: 0,
+    referralCode: "",
+    isNewClient: true
+  });
 
   // SEO básico por SPA
   useEffect(() => {
-    document.title = "Panel de Cliente | Syslag"; // Title tag (SEO)
+    document.title = "Panel de Cliente | Syslag";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "Panel de cliente Syslag: crea órdenes o cotizaciones y sigue tu estado en tiempo real.");
     else {
@@ -77,15 +80,14 @@ export default function ClientDashboard() {
     if (!canonical.parentElement) document.head.appendChild(canonical);
   }, []);
 
-  // Cargar cotizaciones del cliente usando user_id
+  // Cargar cotizaciones del cliente
   const loadQuotes = async () => {
     if (!profile?.user_id) return;
-      const { data, error } = await supabase
-        .from("quotes")
-        .select("*")
-        .eq("client_email", profile.email)
-        .order("created_at", { ascending: false })
-        .limit(5);
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*")
+      .eq("client_email", profile.email)
+      .order("created_at", { ascending: false });
     if (error) {
       console.error("Error loading quotes:", error);
       toast({ title: "Error", description: "No se pudieron cargar cotizaciones", variant: "destructive" });
@@ -94,11 +96,23 @@ export default function ClientDashboard() {
     }
   };
 
-  // Cargar órdenes del cliente usando user_id en lugar de email
+  // Cargar recompensas del cliente
+  const loadRewards = async () => {
+    if (!profile?.user_id) return;
+    // Simulado - aquí integrarías con tu sistema real de recompensas
+    setRewards({
+      totalCashback: 1250,
+      totalPoints: 450,
+      referralCode: "CLI" + profile.user_id.slice(-6).toUpperCase(),
+      isNewClient: true
+    });
+  };
+
+  // Cargar órdenes del cliente usando user_id
   const loadOrders = async () => {
     if (!profile?.user_id) return;
     
-    // Buscar cliente por user_id (nueva relación)
+    // Buscar cliente por user_id
     const { data: client, error: clientErr } = await supabase
       .from("clients")
       .select("id")
@@ -120,8 +134,7 @@ export default function ClientDashboard() {
       .from("orders")
       .select("*")
       .eq("client_id", client.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error loading orders:", error);
@@ -159,7 +172,7 @@ export default function ClientDashboard() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      await Promise.all([loadOrders(), loadQuotes()]);
+      await Promise.all([loadOrders(), loadQuotes(), loadRewards()]);
       if (mounted) setLoading(false);
     })();
     return () => {
@@ -187,7 +200,6 @@ export default function ClientDashboard() {
           "postgres_changes",
           { event: "INSERT", schema: "public", table: "orders", filter: `client_id=eq.${client.id}` },
           (_payload) => {
-            // Simplificamos recargando top 5 para mantener consistencia
             loadOrders();
           }
         )
@@ -208,266 +220,425 @@ export default function ClientDashboard() {
 
   // Utilidades UI con colores semánticos
   const statusBadge = (status: string) => {
-    const statusClasses: Record<string, string> = {
-      pendiente_aprobacion: "bg-warning-light text-warning-foreground border border-warning-border",
-      pendiente: "bg-info-light text-info-foreground border border-info-border",
-      en_camino: "bg-info-light text-info-foreground border border-info-border",
-      en_proceso: "bg-warning-light text-warning-foreground border border-warning-border",
-      pendiente_entrega: "bg-primary-light text-primary-foreground border border-primary-border",
-      finalizada: "bg-success-light text-success-foreground border border-success-border",
-      cancelada: "bg-error-light text-error-foreground border border-error-border",
+    const statusMap = {
+      pendiente: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
+      en_proceso: { label: "En Proceso", className: "bg-blue-100 text-blue-800 border-blue-300" },
+      en_camino: { label: "En Camino", className: "bg-purple-100 text-purple-800 border-purple-300" },
+      pendiente_entrega: { label: "Listo para firmar", className: "bg-green-100 text-green-800 border-green-300" },
+      finalizada: { label: "Finalizada", className: "bg-gray-100 text-gray-800 border-gray-300" },
+      cancelada: { label: "Cancelada", className: "bg-red-100 text-red-800 border-red-300" },
+      solicitud: { label: "Solicitada", className: "bg-yellow-100 text-yellow-800 border-yellow-300" },
+      enviada: { label: "Enviada", className: "bg-blue-100 text-blue-800 border-blue-300" },
+      aceptada: { label: "Aceptada", className: "bg-green-100 text-green-800 border-green-300" },
+      rechazada: { label: "Rechazada", className: "bg-red-100 text-red-800 border-red-300" },
     };
     
-    const statusText = status === "pendiente_aprobacion" ? "pendiente aprobación" 
-                      : status === "pendiente_entrega" ? "listo para firmar"
-                      : status.replace("_", " ");
-    return <Badge className={statusClasses[status] || "bg-muted text-muted-foreground"}>{statusText}</Badge>;
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { label: status, className: "bg-gray-100 text-gray-800 border-gray-300" };
+    return <Badge className={statusInfo.className}>{statusInfo.label}</Badge>;
   };
+
+  // Filtrar datos según búsqueda
+  const filteredOrders = useMemo(() => 
+    orders.filter(o => 
+      o.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (o.failure_description || "").toLowerCase().includes(searchTerm.toLowerCase())
+    ), [orders, searchTerm]);
+
+  const filteredQuotes = useMemo(() =>
+    quotes.filter(q =>
+      q.quote_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (q.service_description || "").toLowerCase().includes(searchTerm.toLowerCase())
+    ), [quotes, searchTerm]);
 
   const metrics = useMemo(() => ({
     totalOrders: orders.length,
-    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino" || o.status === "pendiente_aprobacion").length,
+    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino").length,
     readyToSign: orders.filter(o => o.status === "pendiente_entrega").length,
+    completed: orders.filter(o => o.status === "finalizada").length,
     quotesCount: quotes.length,
+    quotesAccepted: quotes.filter(q => q.status === "aceptada").length,
   }), [orders, quotes]);
+
+  // Función para crear nueva solicitud
+  const handleNewRequest = (type: 'order' | 'quote') => {
+    if (type === 'order') {
+      window.location.href = '/orders?new=1';
+    } else {
+      window.location.href = '/quotes?new=1';
+    }
+  };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+            <p className="text-muted-foreground">Cargando tu información...</p>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
-      <header className="mb-4">
-        {/* H1 único (SEO) */}
-        <h1 className="text-2xl md:text-3xl font-bold">Panel de Cliente</h1>
-        <p className="text-muted-foreground">Crea y sigue tus solicitudes de forma sencilla.</p>
-      </header>
+      <div className="space-y-6">
+        {/* Header con saludo personalizado */}
+        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6 border border-primary/20">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
+            ¡Hola, {profile?.full_name || 'Cliente'}! 👋
+          </h1>
+          <p className="text-muted-foreground">
+            Gestiona tus servicios, cotizaciones y recompensas todo en un solo lugar
+          </p>
+        </div>
 
-      {/* Acciones principales optimizadas para móvil */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Button 
-          onClick={() => setOpenNew(true)} 
-          className="h-16 md:h-20 flex-col items-center justify-center px-4 bg-primary hover:bg-primary-hover text-primary-foreground shadow-colored"
-        >
-          <Plus className="mb-1" />
-          <span className="text-xs md:text-sm font-medium">Nueva solicitud</span>
-        </Button>
-        <Button 
-          variant="secondary" 
-          onClick={() => { loadOrders(); loadQuotes(); }} 
-          className="h-16 md:h-20 flex-col items-center justify-center px-4 bg-secondary hover:bg-hover text-secondary-foreground"
-        >
-          <RefreshCw className="mb-1" />
-          <span className="text-xs md:text-sm font-medium">Actualizar</span>
-        </Button>
-        <Button 
-          asChild 
-          variant="outline" 
-          className="h-16 md:h-20 flex-col items-center justify-center px-4 border-2 hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-        >
-          <Link to="/orders">
-            <ClipboardList className="mb-1" />
-            <span className="text-xs md:text-sm font-medium">Mis órdenes</span>
-          </Link>
-        </Button>
-        <Button 
-          asChild 
-          variant="outline" 
-          className="h-16 md:h-20 flex-col items-center justify-center px-4 border-2 hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-        >
-          <Link to="/quotes">
-            <FileText className="mb-1" />
-            <span className="text-xs md:text-sm font-medium">Mis cotizaciones</span>
-          </Link>
-        </Button>
-      </section>
+        {/* Botones de acción principales */}
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            onClick={() => handleNewRequest('order')}
+            className="h-20 flex-col justify-center bg-gradient-to-r from-primary to-primary hover:shadow-xl transition-all duration-300"
+            size="lg"
+          >
+            <Plus className="h-6 w-6 mb-2" />
+            <span className="font-semibold">Nueva Orden</span>
+            <span className="text-xs opacity-90">Reportar problema</span>
+          </Button>
+          <Button
+            onClick={() => handleNewRequest('quote')}
+            variant="outline"
+            className="h-20 flex-col justify-center border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300"
+            size="lg"
+          >
+            <FileText className="h-6 w-6 mb-2 text-primary" />
+            <span className="font-semibold text-primary">Nueva Cotización</span>
+            <span className="text-xs text-muted-foreground">Solicitar precio</span>
+          </Button>
+        </div>
 
-      {/* Resumen con colores mejorados */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20 hover:shadow-md transition-all duration-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-primary">Órdenes activas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-primary">{metrics.pending}</p>
-            <p className="text-sm text-muted-foreground">En curso o pendientes</p>
-          </CardContent>
-        </Card>
-        
-        {metrics.readyToSign > 0 && (
-          <Card className="bg-gradient-to-br from-warning/5 to-warning/10 border-warning/20 hover:shadow-md transition-all duration-200 animate-pulse">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg text-warning flex items-center gap-2">
-                <Signature className="h-5 w-5" />
-                Listas para firmar
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold text-warning">{metrics.readyToSign}</p>
-              <p className="text-sm text-muted-foreground">Requieren tu firma</p>
-            </CardContent>
-          </Card>
-        )}
-        
-        <Card className="bg-gradient-to-br from-info/5 to-info/10 border-info/20 hover:shadow-md transition-all duration-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-info">Total órdenes recientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-info">{metrics.totalOrders}</p>
-            <p className="text-sm text-muted-foreground">Últimas 5</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-success/5 to-success/10 border-success/20 hover:shadow-md transition-all duration-200">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg text-success">Cotizaciones recientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-success">{metrics.quotesCount}</p>
-            <p className="text-sm text-muted-foreground">Últimas 5</p>
-          </CardContent>
-        </Card>
-      </section>
+        {/* Tabs principales */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4 h-12 bg-muted/50">
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <Gift className="h-4 w-4" />
+              <span className="hidden sm:inline">Resumen</span>
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              <span className="hidden sm:inline">Órdenes</span>
+            </TabsTrigger>
+            <TabsTrigger value="quotes" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Cotizaciones</span>
+            </TabsTrigger>
+            <TabsTrigger value="rewards" className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              <span className="hidden sm:inline">Recompensas</span>
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Listas recientes con mejor diseño móvil */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Órdenes (realtime) */}
-        <Card className="overflow-hidden">
-          <CardHeader className="flex-row items-center justify-between bg-gradient-to-r from-primary/5 to-primary/10 border-b border-primary/20">
-            <CardTitle className="text-primary">Órdenes recientes</CardTitle>
-            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-              Tiempo real
-            </Badge>
-          </CardHeader>
-          <CardContent className="p-4 space-y-3">
-            {orders.length === 0 ? (
-              <div className="text-center py-8">
-                <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">Aún no tienes órdenes</p>
-              </div>
-            ) : (
-              orders.map((o) => (
-                  <div 
-                    key={o.id} 
-                    className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-md ${
-                      o.status === 'pendiente_aprobacion' 
-                        ? 'bg-warning-light/50 border-warning-border shadow-sm' 
-                        : o.status === 'pendiente_entrega'
-                        ? 'bg-primary-light/50 border-primary-border shadow-sm'
-                        : 'bg-card hover:bg-accent/50 border-border'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-foreground">{o.order_number}</h4>
-                      {statusBadge(o.status)}
+          {/* Buscador */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar órdenes o cotizaciones..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* Contenido de tabs */}
+          <TabsContent value="overview" className="space-y-6">
+            {/* Métricas principales */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                <CardContent className="p-4 text-center">
+                  <Clock className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                  <p className="text-2xl font-bold text-blue-700">{metrics.pending}</p>
+                  <p className="text-sm text-blue-600">En Proceso</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                <CardContent className="p-4 text-center">
+                  <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                  <p className="text-2xl font-bold text-green-700">{metrics.completed}</p>
+                  <p className="text-sm text-green-600">Completadas</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                <CardContent className="p-4 text-center">
+                  <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                  <p className="text-2xl font-bold text-purple-700">{metrics.quotesCount}</p>
+                  <p className="text-sm text-purple-600">Cotizaciones</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                <CardContent className="p-4 text-center">
+                  <Star className="h-8 w-8 mx-auto mb-2 text-orange-600" />
+                  <p className="text-2xl font-bold text-orange-700">${rewards.totalCashback}</p>
+                  <p className="text-sm text-orange-600">Cashback</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Alerta de órdenes para firmar */}
+            {metrics.readyToSign > 0 && (
+              <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <AlertCircle className="h-8 w-8 text-yellow-600 animate-pulse" />
+                    <div>
+                      <h3 className="font-bold text-yellow-800">
+                        ¡{metrics.readyToSign} orden(es) lista(s) para firmar!
+                      </h3>
+                      <p className="text-yellow-700">
+                        Tienes servicios completados esperando tu confirmación
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                      {o.failure_description || "Sin descripción"}
-                    </p>
-                    {o.status === 'pendiente_aprobacion' && (
-                      <div className="flex items-center gap-2 p-2 bg-warning-light rounded-md border border-warning-border">
-                        <span className="text-lg">⚠️</span>
-                        <p className="text-xs text-warning-foreground font-medium">
-                          Requiere tu firma y aprobación
-                        </p>
-                      </div>
-                    )}
-                    {o.status === 'pendiente_entrega' && (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 p-2 bg-primary-light rounded-md border border-primary-border">
-                          <Signature className="h-4 w-4 text-primary" />
-                          <p className="text-xs text-primary-foreground font-medium">
-                            Trabajo completado - Listo para firmar entrega
+                    <Button
+                      onClick={() => setActiveTab("orders")}
+                      className="ml-auto bg-yellow-600 hover:bg-yellow-700 text-white"
+                    >
+                      Ver Órdenes
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Actividad reciente */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Actividad Reciente</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {[...orders.slice(0, 3), ...quotes.slice(0, 2)]
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .slice(0, 5)
+                  .map((item: any) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {'order_number' in item ? (
+                          <ClipboardList className="h-5 w-5 text-primary" />
+                        ) : (
+                          <FileText className="h-5 w-5 text-green-600" />
+                        )}
+                        <div>
+                          <p className="font-medium">
+                            {'order_number' in item ? item.order_number : item.quote_number}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(item.created_at).toLocaleDateString()}
                           </p>
                         </div>
+                      </div>
+                      {statusBadge(item.status)}
+                    </div>
+                  ))}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="orders" className="space-y-4">
+            <div className="space-y-4">
+              {filteredOrders.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <ClipboardList className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                    <h3 className="text-xl font-semibold mb-2">No hay órdenes</h3>
+                    <p className="text-muted-foreground mb-4">Aún no tienes órdenes de servicio</p>
+                    <Button onClick={() => handleNewRequest('order')} className="bg-primary hover:bg-primary-hover">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear Primera Orden
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredOrders.map((order) => (
+                  <Card key={order.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{order.order_number}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(order.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {statusBadge(order.status)}
+                      </div>
+                      <p className="text-muted-foreground mb-4">
+                        {order.failure_description || "Sin descripción"}
+                      </p>
+                      {order.status === 'pendiente_entrega' && (
                         <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOrderToSign(o);
-                          }}
-                          className="w-full bg-primary hover:bg-primary-hover text-primary-foreground"
-                          size="sm"
+                          onClick={() => setOrderToSign(order)}
+                          className="w-full bg-primary hover:bg-primary-hover"
                         >
                           <Signature className="h-4 w-4 mr-2" />
                           Firmar Entrega
                         </Button>
-                      </div>
-                    )}
-                    {o.technician_profile && (
-                      <div className="mt-2 p-2 bg-info-light rounded-md border border-info-border">
-                        <p className="text-xs text-info-foreground font-medium">
-                          Técnico: {o.technician_profile.full_name}
-                        </p>
-                        {o.assignment_reason && (
-                          <p className="text-xs text-muted-foreground italic">
-                            {o.assignment_reason}
+                      )}
+                      {order.technician_profile && (
+                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                          <p className="text-sm font-medium text-blue-800">
+                            Técnico: {order.technician_profile.full_name}
                           </p>
-                        )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="quotes" className="space-y-4">
+            <div className="space-y-4">
+              {filteredQuotes.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+                    <h3 className="text-xl font-semibold mb-2">No hay cotizaciones</h3>
+                    <p className="text-muted-foreground mb-4">Aún no tienes cotizaciones solicitadas</p>
+                    <Button onClick={() => handleNewRequest('quote')} variant="outline" className="border-primary text-primary hover:bg-primary/5">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Solicitar Cotización
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                filteredQuotes.map((quote) => (
+                  <Card key={quote.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">{quote.quote_number}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(quote.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {statusBadge(quote.status)}
                       </div>
-                    )}
+                      <p className="text-muted-foreground">
+                        {quote.service_description || "Sin descripción"}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="rewards" className="space-y-4">
+            <div className="grid gap-6">
+              {/* Tarjeta de recompensas principales */}
+              <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-purple-700">
+                    <Gift className="h-6 w-6" />
+                    Mis Recompensas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-white/60 rounded-lg">
+                      <p className="text-2xl font-bold text-purple-600">${rewards.totalCashback}</p>
+                      <p className="text-sm text-purple-600">Cashback Disponible</p>
+                    </div>
+                    <div className="text-center p-4 bg-white/60 rounded-lg">
+                      <p className="text-2xl font-bold text-pink-600">{rewards.totalPoints}</p>
+                      <p className="text-sm text-pink-600">Puntos Acumulados</p>
+                    </div>
                   </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                  
+                  {rewards.isNewClient && (
+                    <div className="p-4 bg-gradient-to-r from-green-100 to-blue-100 rounded-lg border border-green-300">
+                      <h4 className="font-semibold text-green-800 mb-2">🎉 ¡Cliente Nuevo!</h4>
+                      <p className="text-sm text-green-700">
+                        Obtén 15% de descuento en tu primera orden de servicio
+                      </p>
+                    </div>
+                  )}
 
-        {/* Cotizaciones */}
-        <Card className="overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-success/5 to-success/10 border-b border-success/20">
-            <CardTitle className="text-success">Cotizaciones recientes</CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 space-y-3">
-            {quotes.length === 0 ? (
-              <div className="text-center py-8">
-                <FileText className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground">Aún no tienes cotizaciones</p>
-              </div>
-            ) : (
-              quotes.map((q) => (
-                <div 
-                  key={q.id} 
-                  className="p-4 rounded-lg border bg-card hover:bg-accent/50 border-border transition-all duration-200 hover:shadow-md"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-semibold text-foreground">{q.quote_number}</h4>
-                    <Badge variant="outline" className="text-xs">{q.status}</Badge>
+                  {/* Código de referido */}
+                  <div className="p-4 bg-white/60 rounded-lg">
+                    <h4 className="font-semibold mb-2">Tu código de referido</h4>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-gray-100 px-3 py-2 rounded text-sm font-mono flex-1">
+                        {rewards.referralCode}
+                      </code>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(rewards.referralCode);
+                          toast({ title: "¡Copiado!", description: "Código copiado al portapapeles" });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Comparte tu código y obtén $200 por cada nuevo cliente referido
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {q.service_description || "Sin descripción"}
-                  </p>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </section>
+                </CardContent>
+              </Card>
 
-      {/* Sistema de Recompensas */}
-      <section className="mt-6">
-        <ClientRewardsCard />
-      </section>
+              {/* Historial de recompensas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Historial de Recompensas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-green-800">Cashback por servicio</p>
+                        <p className="text-sm text-green-600">Orden #ORD-2024-001</p>
+                      </div>
+                      <p className="font-bold text-green-700">+$125</p>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-blue-800">Bono cliente nuevo</p>
+                        <p className="text-sm text-blue-600">Bienvenida</p>
+                      </div>
+                      <p className="font-bold text-blue-700">+$500</p>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                      <div>
+                        <p className="font-medium text-purple-800">Referido exitoso</p>
+                        <p className="text-sm text-purple-600">Juan Pérez</p>
+                      </div>
+                      <p className="font-bold text-purple-700">+$200</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
 
-      {/* Dialog para nueva solicitud */}
-      <NewRequestDialog open={openNew} onOpenChange={setOpenNew} />
-
-      {/* Dialog para firma de entrega */}
-      {orderToSign && (
-        <DeliverySignature
-          order={orderToSign}
-          onClose={() => setOrderToSign(null)}
-          onComplete={() => {
-            setOrderToSign(null);
-            loadOrders(); // Recargar órdenes después de firmar
-            toast({
-              title: "Entrega confirmada",
-              description: "Tu orden ha sido marcada como finalizada y está lista para cobranza",
-            });
-          }}
-        />
-      )}
-
-      {/* Loader simple */}
-      {loading && (
-        <div className="fixed inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-40">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-        </div>
-      )}
+        {/* Diálogo de firma */}
+        {orderToSign && (
+          <DeliverySignature
+            order={{
+              id: orderToSign.id,
+              order_number: orderToSign.order_number,
+              clients: orderToSign.clients
+            }}
+            onComplete={() => {
+              setOrderToSign(null);
+              loadOrders();
+              toast({ title: "¡Entrega firmada!", description: "La orden ha sido marcada como completada" });
+            }}
+            onClose={() => setOrderToSign(null)}
+          />
+        )}
+      </div>
     </AppLayout>
   );
 }
