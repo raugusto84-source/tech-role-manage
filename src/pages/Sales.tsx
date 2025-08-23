@@ -17,15 +17,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash2, Folder } from 'lucide-react';
 import { MainCategoriesManager } from '@/components/admin/MainCategoriesManager';
 import { SubcategoriesManager } from '@/components/admin/SubcategoriesManager';
-
-const MAIN_CATEGORIES = [
-  'Computadoras',
-  'Cámaras de Seguridad', 
-  'Control de Acceso',
-  'Fraccionamientos',
-  'Cercas Eléctricas',
-  'Servicio Técnico',
-] as const;
+const MAIN_CATEGORIES = ['Computadoras', 'Cámaras de Seguridad', 'Control de Acceso', 'Fraccionamientos', 'Cercas Eléctricas', 'Servicio Técnico'] as const;
 
 // Emojis fallback si no hay icono en DB
 const getCategoryIcon = (categoryName: string): string => {
@@ -39,7 +31,7 @@ const getCategoryIcon = (categoryName: string): string => {
     'cercas electricas': '⚡',
     'alarmas': '🚨',
     'general': '🔧',
-    'otros': '📋',
+    'otros': '📋'
   };
   return iconMap[categoryName.toLowerCase()] || '🔧';
 };
@@ -48,9 +40,7 @@ const getCategoryIcon = (categoryName: string): string => {
 const SERVICES_TABLE = 'service_types' as const;
 
 // Campos a leer (incluye subcategory e item_type para compatibilidad)
-const SERVICE_SELECT =
-  'id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type, subcategory';
-
+const SERVICE_SELECT = 'id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type, subcategory';
 type Service = {
   id: string;
   name: string;
@@ -70,10 +60,7 @@ const isProduct = (service: Service) => {
   const hasTiers = Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0;
   return hasTiers || service.item_type === 'articulo';
 };
-
-const marginFromTiers = (service: Service): number =>
-  (service.profit_margin_tiers?.[0]?.margin ?? 30);
-
+const marginFromTiers = (service: Service): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
 const getDisplayPrice = (service: Service): number => {
   if (!isProduct(service)) {
     return (service.base_price || 0) * (1 + (service.vat_rate || 0) / 100);
@@ -83,9 +70,12 @@ const getDisplayPrice = (service: Service): number => {
     return priceWithMargin * (1 + (service.vat_rate || 0) / 100);
   }
 };
-
-const formatCurrency = (amount: number): string =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+}).format(amount);
 
 // Normaliza la categoría seleccionada a los posibles valores del campo service_types.category
 const categoryFilterValues = (name: string): string[] => {
@@ -99,11 +89,13 @@ const categoryFilterValues = (name: string): string[] => {
   if (n.includes('alarma')) return ['Alarmas'];
   return [name];
 };
-
 export default function Sales() {
-  const { toast } = useToast();
-  const { profile } = useAuth();
-
+  const {
+    toast
+  } = useToast();
+  const {
+    profile
+  } = useAuth();
   const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics' | 'categories' | 'subcategories'>('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -124,10 +116,12 @@ export default function Sales() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const { data, error } = await supabase
-        .from('main_service_categories')
-        .select('name, icon, is_active')
-        .order('name', { ascending: true });
+      const {
+        data,
+        error
+      } = await supabase.from('main_service_categories').select('name, icon, is_active').order('name', {
+        ascending: true
+      });
       if (!mounted) return;
       if (error) {
         // silencioso; usamos fallback
@@ -135,7 +129,11 @@ export default function Sales() {
       }
       const names: string[] = [];
       const map: Record<string, string> = {};
-      (data ?? []).forEach((c: { name: string; icon: string | null; is_active: boolean }) => {
+      (data ?? []).forEach((c: {
+        name: string;
+        icon: string | null;
+        is_active: boolean;
+      }) => {
         if (!c?.name) return;
         if (c.is_active) names.push(c.name);
         if (c.icon) map[c.name] = c.icon;
@@ -153,12 +151,9 @@ export default function Sales() {
     let mounted = true;
     (async () => {
       setServicesLoading(true);
-
-      let query = supabase
-        .from(SERVICES_TABLE)
-        .select(SERVICE_SELECT)
-        .order('name', { ascending: true });
-
+      let query = supabase.from(SERVICES_TABLE).select(SERVICE_SELECT).order('name', {
+        ascending: true
+      });
       if (activeMainCategory) {
         const vals = categoryFilterValues(activeMainCategory);
         if (vals.length === 1) {
@@ -167,15 +162,16 @@ export default function Sales() {
           query = query.in('category', vals);
         }
       }
-
-      const { data, error } = await query;
-
+      const {
+        data,
+        error
+      } = await query;
       if (!mounted) return;
       if (error) {
         toast({
           title: 'Error cargando artículos',
           description: error.message,
-          variant: 'destructive',
+          variant: 'destructive'
         });
         setServices([]);
       } else {
@@ -183,7 +179,6 @@ export default function Sales() {
       }
       setServicesLoading(false);
     })();
-
     return () => {
       mounted = false;
     };
@@ -193,7 +188,7 @@ export default function Sales() {
   const subcategories = useMemo(() => {
     const set = new Set<string>();
     for (const s of services) {
-      const val = ((s.subcategory ?? s.item_type) ?? '').trim();
+      const val = (s.subcategory ?? s.item_type ?? '').trim();
       if (val) set.add(val);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -202,58 +197,62 @@ export default function Sales() {
   // Servicios mostrados según subcategoría activa
   const displayedServices = useMemo(() => {
     if (!activeSubCategory) return services;
-    return services.filter(
-      s => ((s.subcategory ?? s.item_type) ?? '').trim() === activeSubCategory
-    );
+    return services.filter(s => (s.subcategory ?? s.item_type ?? '').trim() === activeSubCategory);
   }, [services, activeSubCategory]);
-
   const handleServiceCreated = () => {
     setRefreshTrigger(prev => prev + 1);
     setActiveTab('list');
     toast({
       title: 'Servicio creado',
-      description: 'El servicio ha sido agregado exitosamente.',
+      description: 'El servicio ha sido agregado exitosamente.'
     });
   };
-
   const handleServiceUpdated = () => {
     setRefreshTrigger(prev => prev + 1);
     setSelectedService(null);
     setActiveTab('list');
     toast({
       title: 'Servicio actualizado',
-      description: 'Los cambios han sido guardados exitosamente.',
+      description: 'Los cambios han sido guardados exitosamente.'
     });
   };
-
   const handleEditService = (serviceId: string) => {
     setSelectedService(serviceId);
     setActiveTab('form');
   };
-
   const handleCancelEdit = () => {
     setSelectedService(null);
     setActiveTab('list');
   };
-
   const handleDeleteService = async (serviceId: string, serviceName: string) => {
     try {
-      const { error } = await supabase.from('service_types').delete().eq('id', serviceId);
+      const {
+        error
+      } = await supabase.from('service_types').delete().eq('id', serviceId);
       if (error) {
         console.error('Error deleting service:', error);
-        toast({ title: "Error", description: "No se pudo eliminar el servicio.", variant: "destructive" });
+        toast({
+          title: "Error",
+          description: "No se pudo eliminar el servicio.",
+          variant: "destructive"
+        });
         return;
       }
-      toast({ title: "Servicio eliminado", description: `${serviceName} ha sido eliminado exitosamente.` });
+      toast({
+        title: "Servicio eliminado",
+        description: `${serviceName} ha sido eliminado exitosamente.`
+      });
       setRefreshTrigger(prev => prev + 1);
     } catch (error) {
       console.error('Error deleting service:', error);
-      toast({ title: "Error", description: "Error inesperado al eliminar el servicio.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Error inesperado al eliminar el servicio.",
+        variant: "destructive"
+      });
     }
   };
-
-  return (
-    <AppLayout>
+  return <AppLayout>
       <div className="container mx-auto py-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -263,13 +262,10 @@ export default function Sales() {
               Administra servicios, artículos y configuración de precios con IVA y márgenes de ganancia
             </p>
           </div>
-          <Button
-            onClick={() => {
-              setSelectedService(null);
-              setActiveTab('form');
-            }}
-            className="flex items-center gap-2"
-          >
+          <Button onClick={() => {
+          setSelectedService(null);
+          setActiveTab('form');
+        }} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Nuevo Servicio
           </Button>
@@ -279,7 +275,7 @@ export default function Sales() {
         {profile?.role === 'vendedor' && <PersonalTimeClockPanel />}
 
         {/* Tabs principales */}
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+        <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)} className="w-full">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
@@ -317,44 +313,26 @@ export default function Sales() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                  <Button
-                    type="button"
-                    variant={activeMainCategory === null ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setActiveMainCategory(null);
-                      setActiveSubCategory(null);
-                    }}
-                    className="rounded-full"
-                    title="Todas las categorías"
-                  >
+                  <Button type="button" variant={activeMainCategory === null ? 'default' : 'outline'} size="sm" onClick={() => {
+                  setActiveMainCategory(null);
+                  setActiveSubCategory(null);
+                }} className="rounded-full" title="Todas las categorías">
                     ☆ Todas
                   </Button>
 
-                  {mainCategories.map((name) => (
-                    <Button
-                      key={name}
-                      type="button"
-                      variant={activeMainCategory === name ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        setActiveMainCategory(name);
-                        setActiveSubCategory(null); // reset subcategoría al cambiar principal
-                      }}
-                      className="rounded-full"
-                      title={name}
-                    >
-                      <span className="mr-1">{iconByName[name] || getCategoryIcon(name)}</span>
+                  {mainCategories.map(name => <Button key={name} type="button" variant={activeMainCategory === name ? 'default' : 'outline'} size="sm" onClick={() => {
+                  setActiveMainCategory(name);
+                  setActiveSubCategory(null); // reset subcategoría al cambiar principal
+                }} className="rounded-full" title={name}>
+                      
                       {name}
-                    </Button>
-                  ))}
+                    </Button>)}
                 </div>
               </CardContent>
             </Card>
 
             {/* Botones de subcategoría (solo cuando hay categoría principal seleccionada) */}
-            {activeMainCategory && (
-              <Card>
+            {activeMainCategory && <Card>
                 <CardHeader className="pb-3">
                   <CardTitle>Subcategorías</CardTitle>
                   <CardDescription>
@@ -363,61 +341,31 @@ export default function Sales() {
                 </CardHeader>
                 <CardContent>
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-                    <Button
-                      type="button"
-                      variant={activeSubCategory === null ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setActiveSubCategory(null)}
-                      className="rounded-full"
-                      title="Todas las subcategorías"
-                    >
+                    <Button type="button" variant={activeSubCategory === null ? 'default' : 'outline'} size="sm" onClick={() => setActiveSubCategory(null)} className="rounded-full" title="Todas las subcategorías">
                       Todas
                     </Button>
-                    {subcategories.length === 0 ? (
-                      <span className="text-sm text-muted-foreground">No hay subcategorías detectadas.</span>
-                    ) : (
-                      subcategories.map((sc) => (
-                        <Button
-                          key={sc}
-                          type="button"
-                          variant={activeSubCategory === sc ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setActiveSubCategory(sc)}
-                          className="rounded-full"
-                          title={sc}
-                        >
+                    {subcategories.length === 0 ? <span className="text-sm text-muted-foreground">No hay subcategorías detectadas.</span> : subcategories.map(sc => <Button key={sc} type="button" variant={activeSubCategory === sc ? 'default' : 'outline'} size="sm" onClick={() => setActiveSubCategory(sc)} className="rounded-full" title={sc}>
                           {sc}
-                        </Button>
-                      ))
-                    )}
+                        </Button>)}
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
             {/* Grid de ítems */}
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {activeMainCategory
-                    ? activeSubCategory
-                      ? `Artículos: ${activeMainCategory} • ${activeSubCategory}`
-                      : `Artículos de: ${activeMainCategory}`
-                    : 'Todos los artículos'}
+                  {activeMainCategory ? activeSubCategory ? `Artículos: ${activeMainCategory} • ${activeSubCategory}` : `Artículos de: ${activeMainCategory}` : 'Todos los artículos'}
                 </CardTitle>
                 <CardDescription>
-                  {activeMainCategory
-                    ? activeSubCategory
-                      ? `Filtrando por categoría y subcategoría`
-                      : `Filtrando por categoría principal`
-                    : 'Catálogo completo desde public.service_types'}
+                  {activeMainCategory ? activeSubCategory ? `Filtrando por categoría y subcategoría` : `Filtrando por categoría principal` : 'Catálogo completo desde public.service_types'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {servicesLoading ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <Card key={i} className="animate-pulse">
+                {servicesLoading ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {Array.from({
+                  length: 6
+                }).map((_, i) => <Card key={i} className="animate-pulse">
                         <CardHeader>
                           <div className="h-5 w-40 bg-muted rounded" />
                           <div className="h-4 w-28 bg-muted rounded mt-2" />
@@ -425,43 +373,29 @@ export default function Sales() {
                         <CardContent>
                           <div className="h-8 w-24 bg-muted rounded" />
                         </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : displayedServices.length === 0 ? (
-                  <Card>
+                      </Card>)}
+                  </div> : displayedServices.length === 0 ? <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Sin ítems</CardTitle>
                       <CardDescription>
-                        {activeMainCategory
-                          ? 'No hay servicios que coincidan con la selección.'
-                          : 'No hay artículos registrados.'}
+                        {activeMainCategory ? 'No hay servicios que coincidan con la selección.' : 'No hay artículos registrados.'}
                       </CardDescription>
                     </CardHeader>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {displayedServices.map((svc) => (
-                      <Card key={svc.id} className="hover:shadow-md transition-shadow">
+                  </Card> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {displayedServices.map(svc => <Card key={svc.id} className="hover:shadow-md transition-shadow">
                         <CardHeader>
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <CardTitle className="text-lg">{svc.name}</CardTitle>
                               <div className="flex items-center gap-2 mt-1">
-                                {typeof svc.vat_rate === 'number' && (
-                                  <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>
-                                )}
-                                {svc.item_type && (
-                                  <Badge variant="outline">{svc.item_type}</Badge>
-                                )}
+                                {typeof svc.vat_rate === 'number' && <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>}
+                                {svc.item_type && <Badge variant="outline">{svc.item_type}</Badge>}
                               </div>
                             </div>
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {svc.description && (
-                            <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>
-                          )}
+                          {svc.description && <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>}
                           <div className="flex items-center justify-between">
                             <div className="text-xl font-bold">
                               {formatCurrency(getDisplayPrice(svc))}
@@ -493,10 +427,8 @@ export default function Sales() {
                             </div>
                           </div>
                         </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                      </Card>)}
+                  </div>}
               </CardContent>
             </Card>
           </TabsContent>
@@ -507,17 +439,11 @@ export default function Sales() {
               <CardHeader>
                 <CardTitle>{selectedService ? 'Editar Servicio' : 'Nuevo Servicio'}</CardTitle>
                 <CardDescription>
-                  {selectedService
-                    ? 'Modifica los datos del servicio seleccionado'
-                    : 'Agrega un nuevo servicio o artículo al catálogo'}
+                  {selectedService ? 'Modifica los datos del servicio seleccionado' : 'Agrega un nuevo servicio o artículo al catálogo'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ServiceForm
-                  serviceId={selectedService}
-                  onSuccess={selectedService ? handleServiceUpdated : handleServiceCreated}
-                  onCancel={handleCancelEdit}
-                />
+                <ServiceForm serviceId={selectedService} onSuccess={selectedService ? handleServiceUpdated : handleServiceCreated} onCancel={handleCancelEdit} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -553,6 +479,5 @@ export default function Sales() {
           </TabsContent>
         </Tabs>
       </div>
-    </AppLayout>
-  );
+    </AppLayout>;
 }
