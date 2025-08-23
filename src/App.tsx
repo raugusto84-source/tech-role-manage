@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SurveyManager } from "@/components/surveys/SurveyManager";
+import { ClientAwareClientsPage } from "@/components/ClientAwareClientsPage";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
@@ -103,8 +104,8 @@ const App = () => (
           <Route 
             path="/clientes" 
             element={
-              <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
-                <Clients />
+              <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'cliente']}>
+                <ClientAwareClientsPage />
               </ProtectedRoute>
             }
           />
