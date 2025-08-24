@@ -84,16 +84,18 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase
-        .from("incomes")
-        .select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at")
-        .order("income_date", { ascending: false });
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at").order("income_date", {
+        ascending: false
+      });
       if (startDate) q = q.gte("income_date", startDate);
       if (endDate) q = q.lte("income_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
       // Mostrar solo ingresos cobrados, no los pendientes de cobranza
       q = q.eq("status", "recibido");
-      const { data, error } = await q;
+      const {
+        data,
+        error
+      } = await q;
       if (error) throw error;
       return data ?? [];
     }
@@ -149,17 +151,19 @@ export default function Finance() {
     queryKey: ["pending_collections"],
     queryFn: async () => {
       // Get order collections
-      const { data: orderCollections, error: orderError } = await supabase
-        .from("pending_collections")
-        .select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat")
-        .order("delivery_date", { ascending: true });
-
+      const {
+        data: orderCollections,
+        error: orderError
+      } = await supabase.from("pending_collections").select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat").order("delivery_date", {
+        ascending: true
+      });
       if (orderError) throw orderError;
 
       // Get policy payment collections
-      const { data: policyCollections, error: policyError } = await supabase
-        .from('policy_payments')
-        .select(`
+      const {
+        data: policyCollections,
+        error: policyError
+      } = await supabase.from('policy_payments').select(`
           id,
           amount,
           due_date,
@@ -172,10 +176,9 @@ export default function Finance() {
             clients(name, email),
             insurance_policies(policy_name, policy_number)
           )
-        `)
-        .eq('is_paid', false)
-        .order('due_date', { ascending: true });
-
+        `).eq('is_paid', false).order('due_date', {
+        ascending: true
+      });
       if (policyError) throw policyError;
 
       // Transform policy payments to match collection format
@@ -200,10 +203,10 @@ export default function Finance() {
       }));
 
       // Combine both collections
-      return [
-        ...(orderCollections || []).map(oc => ({ ...oc, collection_type: 'order' })),
-        ...transformedPolicyCollections
-      ];
+      return [...(orderCollections || []).map(oc => ({
+        ...oc,
+        collection_type: 'order'
+      })), ...transformedPolicyCollections];
     }
   });
 
@@ -239,25 +242,11 @@ export default function Finance() {
   const vatDetailsQuery = useQuery({
     queryKey: ["vat_details", startDate, endDate],
     queryFn: async () => {
-      const [incomesData, expensesData] = await Promise.all([
-        supabase
-          .from("incomes")
-          .select("income_date, description, amount, vat_rate, vat_amount, taxable_amount")
-          .eq("account_type", "fiscal")
-          .eq("status", "recibido")
-          .not("vat_amount", "is", null)
-          .gte("income_date", startDate)
-          .lte("income_date", endDate)
-          .order("income_date", { ascending: false }),
-        supabase
-          .from("expenses")
-          .select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount")
-          .eq("account_type", "fiscal")
-          .not("vat_amount", "is", null)
-          .gte("expense_date", startDate)
-          .lte("expense_date", endDate)
-          .order("expense_date", { ascending: false })
-      ]);
+      const [incomesData, expensesData] = await Promise.all([supabase.from("incomes").select("income_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").eq("status", "recibido").not("vat_amount", "is", null).gte("income_date", startDate).lte("income_date", endDate).order("income_date", {
+        ascending: false
+      }), supabase.from("expenses").select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").not("vat_amount", "is", null).gte("expense_date", startDate).lte("expense_date", endDate).order("expense_date", {
+        ascending: false
+      })]);
       if (incomesData.error) throw incomesData.error;
       if (expensesData.error) throw expensesData.error;
       const combined = [...(incomesData.data || []).map(item => ({
@@ -1613,7 +1602,7 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          <TabsTrigger value="recurring">Gastos Recurrentes</TabsTrigger>
+          <TabsTrigger value="recurring">FIjos</TabsTrigger>
           <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
           <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
@@ -3281,11 +3270,7 @@ export default function Finance() {
                      {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((item: any) => <TableRow key={item.id} className="hover:bg-muted/50">
                          <TableCell className="font-medium">{item.order_number}</TableCell>
                          <TableCell>
-                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                             item.collection_type === 'policy_payment' 
-                               ? 'bg-blue-100 text-blue-700' 
-                               : 'bg-green-100 text-green-700'
-                           }`}>
+                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${item.collection_type === 'policy_payment' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
                              {item.collection_type === 'policy_payment' ? 'Póliza' : 'Orden'}
                            </span>
                          </TableCell>
@@ -3293,63 +3278,53 @@ export default function Finance() {
                            <div>
                              <div className="font-medium">{item.client_name}</div>
                              <div className="text-xs text-muted-foreground">{item.client_email}</div>
-                             {item.collection_type === 'policy_payment' && (
-                               <div className="text-xs text-blue-600">{item.policy_name}</div>
-                             )}
+                             {item.collection_type === 'policy_payment' && <div className="text-xs text-blue-600">{item.policy_name}</div>}
                            </div>
                          </TableCell>
                          <TableCell>{new Date(item.delivery_date || item.due_date).toLocaleDateString()}</TableCell>
                          <TableCell className="font-medium">
                            {Number(item.subtotal_without_vat || 0).toLocaleString(undefined, {
-                         style: 'currency',
-                         currency: 'MXN'
-                       })}
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="text-blue-600 font-medium">
                            {Number(item.total_vat_amount || 0).toLocaleString(undefined, {
-                         style: 'currency',
-                         currency: 'MXN'
-                       })}
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="font-medium">
                            {Number(item.total_with_vat || item.estimated_cost).toLocaleString(undefined, {
-                         style: 'currency',
-                         currency: 'MXN'
-                       })}
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="text-green-600 font-medium">
                            {Number(item.total_paid || 0).toLocaleString(undefined, {
-                         style: 'currency',
-                         currency: 'MXN'
-                       })}
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell className="text-red-600 font-medium">
                            {Number(item.remaining_balance || (item.total_with_vat || item.estimated_cost) - (item.total_paid || 0)).toLocaleString(undefined, {
-                         style: 'currency',
-                         currency: 'MXN'
-                       })}
+                        style: 'currency',
+                        currency: 'MXN'
+                      })}
                          </TableCell>
                          <TableCell>
-                           {item.collection_type === 'policy_payment' ? (
-                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                               item.payment_status === 'vencido' 
-                                 ? 'bg-red-100 text-red-700' 
-                                 : 'bg-yellow-100 text-yellow-700'
-                             }`}>
+                           {item.collection_type === 'policy_payment' ? <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${item.payment_status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                {item.payment_status === 'vencido' ? 'Vencido' : 'Pendiente'}
-                             </span>
-                           ) : (
-                             <div className="flex items-center gap-2">
+                             </span> : <div className="flex items-center gap-2">
                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                                <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
-                             </div>
-                           )}
+                             </div>}
                          </TableCell>
                          <TableCell>
                            <Button size="sm" variant="default" onClick={() => {
-                         setSelectedCollection(item);
-                         setCollectionDialogOpen(true);
-                       }} className="bg-green-600 hover:bg-green-700">
+                        setSelectedCollection(item);
+                        setCollectionDialogOpen(true);
+                      }} className="bg-green-600 hover:bg-green-700">
                              Cobrar
                            </Button>
                          </TableCell>
