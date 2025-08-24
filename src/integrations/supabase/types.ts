@@ -94,6 +94,56 @@ export type Database = {
         }
         Relationships: []
       }
+      achievements_summary: {
+        Row: {
+          achievement_id: string
+          achievement_name: string
+          actual_value: number
+          created_at: string | null
+          earned_at: string
+          id: string
+          period_end: string
+          period_start: string
+          target_value: number
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          achievement_id: string
+          achievement_name: string
+          actual_value: number
+          created_at?: string | null
+          earned_at: string
+          id?: string
+          period_end: string
+          period_start: string
+          target_value: number
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          achievement_id?: string
+          achievement_name?: string
+          actual_value?: number
+          created_at?: string | null
+          earned_at?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          target_value?: number
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievements_summary_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_adjustments: {
         Row: {
           adjusted_by: string
@@ -584,32 +634,44 @@ export type Database = {
         Row: {
           client_id: string
           created_at: string
+          email_validated: boolean | null
           id: string
           is_new_client: boolean | null
           new_client_discount_used: boolean | null
+          policy_client: boolean | null
+          registration_source: string | null
           total_cashback: number | null
           total_points: number | null
           updated_at: string
+          whatsapp_validated: boolean | null
         }
         Insert: {
           client_id: string
           created_at?: string
+          email_validated?: boolean | null
           id?: string
           is_new_client?: boolean | null
           new_client_discount_used?: boolean | null
+          policy_client?: boolean | null
+          registration_source?: string | null
           total_cashback?: number | null
           total_points?: number | null
           updated_at?: string
+          whatsapp_validated?: boolean | null
         }
         Update: {
           client_id?: string
           created_at?: string
+          email_validated?: boolean | null
           id?: string
           is_new_client?: boolean | null
           new_client_discount_used?: boolean | null
+          policy_client?: boolean | null
+          registration_source?: string | null
           total_cashback?: number | null
           total_points?: number | null
           updated_at?: string
+          whatsapp_validated?: boolean | null
         }
         Relationships: [
           {
@@ -1287,6 +1349,98 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      follow_up_configurations: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          delay_hours: number
+          description: string | null
+          id: string
+          is_active: boolean | null
+          message_template: string
+          name: string
+          notification_channels: string[] | null
+          trigger_event: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          delay_hours?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          message_template: string
+          name: string
+          notification_channels?: string[] | null
+          trigger_event: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          delay_hours?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          message_template?: string
+          name?: string
+          notification_channels?: string[] | null
+          trigger_event?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      follow_up_reminders: {
+        Row: {
+          configuration_id: string
+          created_at: string | null
+          id: string
+          message_content: string | null
+          related_id: string
+          related_type: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string | null
+          target_email: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          configuration_id: string
+          created_at?: string | null
+          id?: string
+          message_content?: string | null
+          related_id: string
+          related_type: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string | null
+          target_email?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          configuration_id?: string
+          created_at?: string | null
+          id?: string
+          message_content?: string | null
+          related_id?: string
+          related_type?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string | null
+          target_email?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_up_reminders_configuration_id_fkey"
+            columns: ["configuration_id"]
+            isOneToOne: false
+            referencedRelation: "follow_up_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incomes: {
         Row: {
@@ -3275,32 +3429,38 @@ export type Database = {
       reward_transactions: {
         Row: {
           amount: number
+          article_discount_percentage: number | null
           client_id: string
           created_at: string
           description: string
           expires_at: string | null
           id: string
           order_id: string | null
+          service_discount_percentage: number | null
           transaction_type: string
         }
         Insert: {
           amount: number
+          article_discount_percentage?: number | null
           client_id: string
           created_at?: string
           description: string
           expires_at?: string | null
           id?: string
           order_id?: string | null
+          service_discount_percentage?: number | null
           transaction_type: string
         }
         Update: {
           amount?: number
+          article_discount_percentage?: number | null
           client_id?: string
           created_at?: string
           description?: string
           expires_at?: string | null
           id?: string
           order_id?: string | null
+          service_discount_percentage?: number | null
           transaction_type?: string
         }
         Relationships: [
@@ -4869,6 +5029,60 @@ export type Database = {
             columns: ["visit_id"]
             isOneToOne: false
             referencedRelation: "policy_visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warranties_summary: {
+        Row: {
+          client_name: string
+          created_at: string | null
+          days_remaining: number | null
+          id: string
+          order_id: string
+          service_name: string
+          updated_at: string | null
+          warranty_end_date: string
+          warranty_start_date: string
+          warranty_status: string | null
+        }
+        Insert: {
+          client_name: string
+          created_at?: string | null
+          days_remaining?: number | null
+          id?: string
+          order_id: string
+          service_name: string
+          updated_at?: string | null
+          warranty_end_date: string
+          warranty_start_date: string
+          warranty_status?: string | null
+        }
+        Update: {
+          client_name?: string
+          created_at?: string | null
+          days_remaining?: number | null
+          id?: string
+          order_id?: string
+          service_name?: string
+          updated_at?: string | null
+          warranty_end_date?: string
+          warranty_start_date?: string
+          warranty_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warranties_summary_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "warranties_summary_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]

@@ -7,6 +7,9 @@ import { SalesMetrics } from './dashboard/SalesMetrics';
 import { TechnicianMetrics } from './dashboard/TechnicianMetrics';
 import { TasksMetrics } from './dashboard/TasksMetrics';
 import { AIRecommendations } from './dashboard/AIRecommendations';
+import { FollowUpManager } from './FollowUpManager';
+import { WarrantiesAndAchievements } from './WarrantiesAndAchievements';
+import { TaskAssignmentManager } from './TaskAssignmentManager';
 
 export function AdminDashboard() {
   return (
@@ -60,12 +63,14 @@ export function AdminDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-8 text-xs">
           <TabsTrigger value="overview">Resumen</TabsTrigger>
           <TabsTrigger value="finances">Finanzas</TabsTrigger>
           <TabsTrigger value="sales">Ventas</TabsTrigger>
           <TabsTrigger value="technicians">Técnicos</TabsTrigger>
           <TabsTrigger value="tasks">Tareas</TabsTrigger>
+          <TabsTrigger value="followup">Seguimientos</TabsTrigger>
+          <TabsTrigger value="warranties">Garantías</TabsTrigger>
           <TabsTrigger value="ai">IA</TabsTrigger>
         </TabsList>
 
@@ -96,7 +101,15 @@ export function AdminDashboard() {
         </TabsContent>
 
         <TabsContent value="tasks">
-          <TasksMetrics />
+          <TaskAssignmentManager />
+        </TabsContent>
+
+        <TabsContent value="followup">
+          <FollowUpManager />
+        </TabsContent>
+
+        <TabsContent value="warranties">
+          <WarrantiesAndAchievements />
         </TabsContent>
 
         <TabsContent value="ai">
