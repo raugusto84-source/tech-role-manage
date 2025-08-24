@@ -10,14 +10,10 @@ import { AIRecommendations } from './dashboard/AIRecommendations';
 import { FollowUpManager } from './FollowUpManager';
 import { WarrantiesAndAchievements } from './WarrantiesAndAchievements';
 import { TaskAssignmentManager } from './TaskAssignmentManager';
-
 export function AdminDashboard() {
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Panel de Administración
-        </h1>
+        <h1 className="text-3xl font-bold text-foreground">Administración</h1>
         <p className="text-muted-foreground mt-2">
           Gestión completa del sistema y métricas en tiempo real
         </p>
@@ -116,6 +112,5 @@ export function AdminDashboard() {
           <AIRecommendations />
         </TabsContent>
       </Tabs>
-    </div>
-  );
+    </div>;
 }
