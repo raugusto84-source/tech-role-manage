@@ -5,10 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DatabaseAdminPanel } from '@/components/admin/DatabaseAdminPanel';
 import { Database, Settings as SettingsIcon, Shield, Users } from 'lucide-react';
-
 export default function Settings() {
-  return (
-    <AppLayout>
+  return <AppLayout>
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
@@ -24,18 +22,9 @@ export default function Settings() {
                 <Database className="h-4 w-4" />
                 Base de Datos
               </TabsTrigger>
-              <TabsTrigger value="general" className="flex items-center gap-2">
-                <SettingsIcon className="h-4 w-4" />
-                General
-              </TabsTrigger>
-              <TabsTrigger value="security" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Seguridad
-              </TabsTrigger>
-              <TabsTrigger value="users" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Usuarios
-              </TabsTrigger>
+              
+              
+              
             </TabsList>
 
             <TabsContent value="database" className="space-y-6">
@@ -86,6 +75,5 @@ export default function Settings() {
           </Tabs>
         </div>
       </div>
-    </AppLayout>
-  );
+    </AppLayout>;
 }
