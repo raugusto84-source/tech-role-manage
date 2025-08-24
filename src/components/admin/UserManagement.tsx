@@ -23,7 +23,6 @@ interface User {
   created_at: string;
   updated_at: string;
 }
-
 interface UserManagementProps {
   onUserSelect: (userId: string, role: string) => void;
 }
@@ -43,7 +42,9 @@ interface UserManagementProps {
  * - Selección de usuarios en otros módulos
  * - Asignación de roles y permisos
  */
-export function UserManagement({ onUserSelect }: UserManagementProps) {
+export function UserManagement({
+  onUserSelect
+}: UserManagementProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,7 +55,9 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [passwordChangeUser, setPasswordChangeUser] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
 
   // Estado del formulario
   const [formData, setFormData] = useState({
@@ -64,7 +67,6 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
     role: 'cliente' as User['role'],
     password: ''
   });
-
   useEffect(() => {
     loadUsers();
   }, []);
@@ -75,11 +77,12 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
    */
   const loadUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const {
+        data,
+        error
+      } = await supabase.from('profiles').select('*').order('created_at', {
+        ascending: false
+      });
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
@@ -99,8 +102,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
    * Búsqueda en nombre, email y rol
    */
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
     return matchesSearch && matchesRole;
   });
@@ -123,16 +125,17 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
       setLoading(true);
 
       // Crear usuario usando Edge Function
-      const { data: session } = await supabase.auth.getSession();
+      const {
+        data: session
+      } = await supabase.auth.getSession();
       if (!session.session) {
         throw new Error('No hay sesión activa');
       }
-
       const response = await fetch('https://exunjybsermnxvrvyxnj.supabase.co/functions/v1/create-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.session.access_token}`,
+          'Authorization': `Bearer ${session.session.access_token}`
         },
         body: JSON.stringify({
           email: formData.email,
@@ -142,9 +145,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
           role: formData.role
         })
       });
-
       const result = await response.json();
-
       if (!result.success) {
         throw new Error(result.error || 'Error al crear usuario');
       }
@@ -157,7 +158,6 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
         title: 'Usuario creado',
         description: `Usuario ${formData.full_name} creado exitosamente`
       });
-
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast({
@@ -176,22 +176,17 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
    */
   const handleUpdateUser = async () => {
     if (!editingUser) return;
-
     try {
       setLoading(true);
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone || null,
-          role: formData.role,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingUser.id);
-
+      const {
+        error
+      } = await supabase.from('profiles').update({
+        full_name: formData.full_name,
+        phone: formData.phone || null,
+        role: formData.role,
+        updated_at: new Date().toISOString()
+      }).eq('id', editingUser.id);
       if (error) throw error;
-
       loadUsers();
       resetForm();
       setIsDialogOpen(false);
@@ -199,7 +194,6 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
         title: 'Usuario actualizado',
         description: `Usuario ${formData.full_name} actualizado exitosamente`
       });
-
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast({
@@ -219,20 +213,15 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   const handleDeleteUser = async (userId: string) => {
     try {
       setLoading(true);
-
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
+      const {
+        error
+      } = await supabase.from('profiles').delete().eq('id', userId);
       if (error) throw error;
-
       loadUsers();
       toast({
         title: 'Usuario eliminado',
         description: 'Usuario eliminado exitosamente'
       });
-
     } catch (error: any) {
       console.error('Error deleting user:', error);
       toast({
@@ -251,32 +240,31 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   const handleDeleteUserFully = async (user: User) => {
     try {
       setLoading(true);
-
-      const { data: session } = await supabase.auth.getSession();
+      const {
+        data: session
+      } = await supabase.auth.getSession();
       if (!session.session) {
         throw new Error('No hay sesión activa');
       }
-
       const response = await fetch('https://exunjybsermnxvrvyxnj.supabase.co/functions/v1/delete-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.session.access_token}`,
+          'Authorization': `Bearer ${session.session.access_token}`
         },
-        body: JSON.stringify({ userId: user.user_id })
+        body: JSON.stringify({
+          userId: user.user_id
+        })
       });
-
       const result = await response.json();
       if (!result.success) {
         throw new Error(result.error || 'No se pudo eliminar el usuario');
       }
-
       await loadUsers();
       toast({
         title: 'Usuario eliminado',
         description: `Se eliminó ${user.full_name} (perfil y acceso)`
       });
-
     } catch (error: any) {
       console.error('Error deleting user fully:', error);
       toast({
@@ -292,53 +280,46 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
   /**
    * Maneja el cambio de contraseña de un usuario
    */
-   const handleChangePassword = async () => {
+  const handleChangePassword = async () => {
     if (!passwordChangeUser || !newPassword) return;
-
     try {
       setLoading(true);
-
-      const { data: session } = await supabase.auth.getSession();
+      const {
+        data: session
+      } = await supabase.auth.getSession();
       if (!session.session) {
         throw new Error('No hay sesión activa');
       }
-
       console.log('Changing password for user:', passwordChangeUser);
       console.log('User ID being sent:', passwordChangeUser.user_id);
-
       const response = await fetch('https://exunjybsermnxvrvyxnj.supabase.co/functions/v1/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.session.access_token}`,
+          'Authorization': `Bearer ${session.session.access_token}`
         },
         body: JSON.stringify({
           userId: passwordChangeUser.user_id,
           newPassword: newPassword
         })
       });
-
       const result = await response.json();
-
       if (!result.success) {
         throw new Error(result.error || 'Error al cambiar contraseña');
       }
-
       setIsPasswordDialogOpen(false);
       setPasswordChangeUser(null);
       setNewPassword('');
-      
+
       // Clear password visibility state
       setShowPasswords(prev => ({
         ...prev,
         change_password: false
       }));
-      
       toast({
         title: 'Contraseña actualizada',
         description: `Contraseña de ${passwordChangeUser.full_name} actualizada exitosamente`
       });
-
     } catch (error: any) {
       console.error('Error changing password:', error);
       toast({
@@ -402,12 +383,18 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
    */
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
-      case 'administrador': return 'default';
-      case 'supervisor': return 'default';
-      case 'vendedor': return 'secondary';
-      case 'tecnico': return 'outline';
-      case 'cliente': return 'secondary';
-      default: return 'outline';
+      case 'administrador':
+        return 'default';
+      case 'supervisor':
+        return 'default';
+      case 'vendedor':
+        return 'secondary';
+      case 'tecnico':
+        return 'outline';
+      case 'cliente':
+        return 'secondary';
+      default:
+        return 'outline';
     }
   };
 
@@ -424,24 +411,16 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
     };
     return translations[role as keyof typeof translations] || role;
   };
-
   if (loading && users.length === 0) {
     return <div className="text-center py-6">Cargando usuarios...</div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Controles de búsqueda y filtros */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-            <Input
-              placeholder="Buscar por nombre o email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+            <Input placeholder="Buscar por nombre o email..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
           </div>
         </div>
         <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -473,40 +452,31 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  disabled={!!editingUser}
-                  placeholder="usuario@ejemplo.com"
-                />
+                <Input id="email" type="email" value={formData.email} onChange={e => setFormData(prev => ({
+                ...prev,
+                email: e.target.value
+              }))} disabled={!!editingUser} placeholder="usuario@ejemplo.com" />
               </div>
               <div>
                 <Label htmlFor="full_name">Nombre Completo</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                  placeholder="Juan Pérez"
-                />
+                <Input id="full_name" value={formData.full_name} onChange={e => setFormData(prev => ({
+                ...prev,
+                full_name: e.target.value
+              }))} placeholder="Juan Pérez" />
               </div>
               <div>
                 <Label htmlFor="phone">Teléfono (Opcional)</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+1234567890"
-                />
+                <Input id="phone" value={formData.phone} onChange={e => setFormData(prev => ({
+                ...prev,
+                phone: e.target.value
+              }))} placeholder="+1234567890" />
               </div>
                 <div>
                 <Label htmlFor="role">Rol</Label>
-                <Select 
-                  value={formData.role} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as User['role'] }))}
-                  disabled={editingUser?.role === 'cliente'}
-                >
+                <Select value={formData.role} onValueChange={value => setFormData(prev => ({
+                ...prev,
+                role: value as User['role']
+              }))} disabled={editingUser?.role === 'cliente'}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
@@ -518,54 +488,33 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
-                {editingUser?.role === 'cliente' && (
-                  <p className="text-xs text-muted-foreground mt-1">
+                {editingUser?.role === 'cliente' && <p className="text-xs text-muted-foreground mt-1">
                     Los clientes no pueden cambiar su tipo de rol
-                  </p>
-                )}
+                  </p>}
               </div>
-              {!editingUser && (
-                <div>
+              {!editingUser && <div>
                   <Label htmlFor="password">Contraseña</Label>
                   <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPasswords['create_user'] ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                      placeholder="Mínimo 6 caracteres"
-                      className="pr-10"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => {
-                        console.log('Create user password toggle clicked, current state:', showPasswords['create_user']);
-                        setShowPasswords(prev => ({
-                          ...prev,
-                          create_user: !prev.create_user
-                        }));
-                      }}
-                    >
-                      {showPasswords['create_user'] ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      )}
+                    <Input id="password" type={showPasswords['create_user'] ? 'text' : 'password'} value={formData.password} onChange={e => setFormData(prev => ({
+                  ...prev,
+                  password: e.target.value
+                }))} placeholder="Mínimo 6 caracteres" className="pr-10" />
+                    <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => {
+                  console.log('Create user password toggle clicked, current state:', showPasswords['create_user']);
+                  setShowPasswords(prev => ({
+                    ...prev,
+                    create_user: !prev.create_user
+                  }));
+                }}>
+                      {showPasswords['create_user'] ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                     </Button>
                   </div>
-                </div>
-              )}
+                </div>}
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button 
-                  onClick={editingUser ? handleUpdateUser : handleCreateUser}
-                  disabled={!formData.email || !formData.full_name || (!editingUser && !formData.password)}
-                >
+                <Button onClick={editingUser ? handleUpdateUser : handleCreateUser} disabled={!formData.email || !formData.full_name || !editingUser && !formData.password}>
                   {editingUser ? 'Actualizar' : 'Crear'}
                 </Button>
               </div>
@@ -576,8 +525,7 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
 
       {/* Lista de usuarios agrupados por rol */}
       <div className="space-y-6">
-        {Object.entries(usersByRole).map(([role, roleUsers]) => (
-          <Card key={role}>
+        {Object.entries(usersByRole).map(([role, roleUsers]) => <Card key={role}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <UserCircle className="h-5 w-5" />
@@ -586,33 +534,18 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {roleUsers.map((user) => (
-                  <Card key={user.id} className="cursor-pointer hover:shadow-md transition-shadow">
+                {roleUsers.map(user => <Card key={user.id} className="cursor-pointer hover:shadow-md transition-shadow">
                     <CardContent className="p-4">
                        <div className="flex justify-between items-start mb-2">
                          <div className="flex-1">
                            <h4 className="font-medium text-foreground">{user.full_name}</h4>
                            <p className="text-sm text-muted-foreground">{user.email}</p>
-                           {user.phone && (
-                             <p className="text-xs text-muted-foreground">{user.phone}</p>
-                           )}
+                           {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                            
                            {/* Sección de contraseña */}
                            <div className="flex items-center gap-2 mt-2">
-                             <p className="text-xs text-muted-foreground">
-                               Contraseña: {getDisplayPassword(user.id)}
-                             </p>
-                             <Button
-                               size="sm"
-                               variant="ghost"
-                               onClick={() => togglePasswordVisibility(user.id)}
-                               className="h-5 w-5 p-0"
-                             >
-                               {showPasswords[user.id] ? 
-                                 <EyeOff className="h-3 w-3" /> : 
-                                 <Eye className="h-3 w-3" />
-                               }
-                             </Button>
+                             
+                             
                            </div>
                          </div>
                          <Badge variant={getRoleBadgeVariant(user.role)}>
@@ -627,23 +560,13 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                            Creado: {new Date(user.created_at).toLocaleDateString()}
                          </div>
                          <div className="flex gap-1">
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => startEdit(user)}
-                             title="Editar usuario"
-                           >
+                           <Button size="sm" variant="outline" onClick={() => startEdit(user)} title="Editar usuario">
                              <Edit className="h-3 w-3" />
                            </Button>
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => {
-                               setPasswordChangeUser(user);
-                               setIsPasswordDialogOpen(true);
-                             }}
-                             title="Cambiar contraseña"
-                           >
+                           <Button size="sm" variant="outline" onClick={() => {
+                      setPasswordChangeUser(user);
+                      setIsPasswordDialogOpen(true);
+                    }} title="Cambiar contraseña">
                              <Key className="h-3 w-3" />
                            </Button>
                            <AlertDialog>
@@ -671,24 +594,20 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
                          </div>
                        </div>
                     </CardContent>
-                  </Card>
-                ))}
+                  </Card>)}
               </div>
             </CardContent>
-          </Card>
-        ))}
+          </Card>)}
       </div>
 
-      {filteredUsers.length === 0 && (
-        <Card>
+      {filteredUsers.length === 0 && <Card>
           <CardContent className="text-center py-8">
             <UserCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
               {searchTerm ? 'No se encontraron usuarios con esos criterios' : 'No hay usuarios registrados'}
             </p>
           </CardContent>
-        </Card>
-      )}
+        </Card>}
 
       {/* Diálogo para cambiar contraseña */}
       <Dialog open={isPasswordDialogOpen} onOpenChange={setIsPasswordDialogOpen}>
@@ -709,57 +628,32 @@ export function UserManagement({ onUserSelect }: UserManagementProps) {
             <div>
               <Label htmlFor="new_password">Nueva Contraseña</Label>
               <div className="relative">
-                <Input
-                  id="new_password"
-                   type={showPasswords['change_password'] ? 'text' : 'password'}
-                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  autoComplete="new-password"
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                   onClick={() => {
-                     console.log('Toggle clicked, current state:', showPasswords['change_password']);
-                     setShowPasswords(prev => ({
-                       ...prev,
-                       change_password: !prev.change_password
-                     }));
-                   }}
-                >
-                  {showPasswords['change_password'] ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
+                <Input id="new_password" type={showPasswords['change_password'] ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" autoComplete="new-password" className="pr-10" />
+                <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent" onClick={() => {
+                console.log('Toggle clicked, current state:', showPasswords['change_password']);
+                setShowPasswords(prev => ({
+                  ...prev,
+                  change_password: !prev.change_password
+                }));
+              }}>
+                  {showPasswords['change_password'] ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
                 </Button>
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setIsPasswordDialogOpen(false);
-                  setPasswordChangeUser(null);
-                  setNewPassword('');
-                }}
-              >
+              <Button variant="outline" onClick={() => {
+              setIsPasswordDialogOpen(false);
+              setPasswordChangeUser(null);
+              setNewPassword('');
+            }}>
                 Cancelar
               </Button>
-              <Button 
-                onClick={handleChangePassword}
-                disabled={!newPassword || newPassword.length < 6 || loading}
-              >
+              <Button onClick={handleChangePassword} disabled={!newPassword || newPassword.length < 6 || loading}>
                 {loading ? 'Cambiando...' : 'Cambiar Contraseña'}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 }
