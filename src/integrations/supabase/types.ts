@@ -1093,9 +1093,13 @@ export type Database = {
           has_invoice: boolean | null
           id: string
           invoice_number: string | null
+          is_reversed: boolean | null
           payment_method: string | null
           project_id: string | null
           receipt_url: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
           status: string
           supplier_id: string | null
           taxable_amount: number | null
@@ -1118,9 +1122,13 @@ export type Database = {
           has_invoice?: boolean | null
           id?: string
           invoice_number?: string | null
+          is_reversed?: boolean | null
           payment_method?: string | null
           project_id?: string | null
           receipt_url?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
           status?: string
           supplier_id?: string | null
           taxable_amount?: number | null
@@ -1143,9 +1151,13 @@ export type Database = {
           has_invoice?: boolean | null
           id?: string
           invoice_number?: string | null
+          is_reversed?: boolean | null
           payment_method?: string | null
           project_id?: string | null
           receipt_url?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
           status?: string
           supplier_id?: string | null
           taxable_amount?: number | null
@@ -1442,6 +1454,36 @@ export type Database = {
           },
         ]
       }
+      general_chats: {
+        Row: {
+          attachment_url: string | null
+          created_at: string
+          id: string
+          message: string
+          message_type: string
+          read_by: Json | null
+          sender_id: string
+        }
+        Insert: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          message_type?: string
+          read_by?: Json | null
+          sender_id: string
+        }
+        Update: {
+          attachment_url?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string
+          read_by?: Json | null
+          sender_id?: string
+        }
+        Relationships: []
+      }
       incomes: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -1456,8 +1498,12 @@ export type Database = {
           income_date: string
           income_number: string
           invoice_number: string | null
+          is_reversed: boolean | null
           payment_method: string | null
           project_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          reversed_by: string | null
           status: string
           taxable_amount: number | null
           updated_at: string
@@ -1477,8 +1523,12 @@ export type Database = {
           income_date?: string
           income_number: string
           invoice_number?: string | null
+          is_reversed?: boolean | null
           payment_method?: string | null
           project_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
           status?: string
           taxable_amount?: number | null
           updated_at?: string
@@ -1498,8 +1548,12 @@ export type Database = {
           income_date?: string
           income_number?: string
           invoice_number?: string | null
+          is_reversed?: boolean | null
           payment_method?: string | null
           project_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
+          reversed_by?: string | null
           status?: string
           taxable_amount?: number | null
           updated_at?: string
@@ -2539,6 +2593,51 @@ export type Database = {
           period_week?: number | null
           period_year?: number
           status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pending_expenses: {
+        Row: {
+          amount: number
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          invoice_number: string
+          purchase_date: string
+          status: string
+          supplier_name: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          invoice_number: string
+          purchase_date?: string
+          status?: string
+          supplier_name: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          invoice_number?: string
+          purchase_date?: string
+          status?: string
+          supplier_name?: string
           updated_at?: string
         }
         Relationships: []
@@ -4216,6 +4315,42 @@ export type Database = {
         }
         Relationships: []
       }
+      task_categories: {
+        Row: {
+          allowed_roles: string[] | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_roles?: string[] | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_roles?: string[] | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_completion_history: {
         Row: {
           assignee_name: string
@@ -4269,6 +4404,7 @@ export type Database = {
       tasks: {
         Row: {
           assigned_to: string | null
+          category_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -4279,6 +4415,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -4289,6 +4426,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          category_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -4297,7 +4435,15 @@ export type Database = {
           title?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "task_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tax_definitions: {
         Row: {
@@ -5588,6 +5734,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      has_logged_time_today: {
+        Args: { user_id: string }
+        Returns: boolean
+      }
       log_financial_operation: {
         Args: {
           p_account_type?: string
@@ -5711,6 +5861,7 @@ export type Database = {
         | "vendedor"
         | "cliente"
         | "supervisor"
+        | "visor_tecnico"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5925,6 +6076,7 @@ export const Constants = {
         "vendedor",
         "cliente",
         "supervisor",
+        "visor_tecnico",
       ],
     },
   },

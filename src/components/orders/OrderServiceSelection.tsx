@@ -31,9 +31,10 @@ interface ServiceCategory {
 interface OrderServiceSelectionProps {
   onServiceAdd: (service: ServiceType, quantity?: number) => void;
   selectedServiceIds: string[];
+  filterByType?: string;
 }
 
-export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: OrderServiceSelectionProps) {
+export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filterByType }: OrderServiceSelectionProps) {
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,8 +99,9 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds }: Orde
       (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
+    const matchesType = !filterByType || service.item_type === filterByType;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   const formatCurrency = (amount: number) => {
