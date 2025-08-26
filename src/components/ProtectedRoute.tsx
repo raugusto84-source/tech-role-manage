@@ -36,7 +36,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       'tecnico': '/technician',
       'vendedor': '/dashboard',
       'supervisor': '/dashboard',
-      'administrador': '/dashboard'
+      'administrador': '/dashboard',
+      'visor_tecnico': '/technician-viewer'
     };
     
     const userDashboard = roleDashboards[profile.role];

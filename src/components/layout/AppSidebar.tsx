@@ -105,6 +105,11 @@ export function AppSidebar() {
           { title: 'Mis Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Mis Recompensas', url: '/recompensas', icon: Gift },
         ];
+      case 'visor_tecnico':
+        return [
+          { title: 'Visor Técnico', url: '/technician-viewer', icon: Wrench },
+          { title: 'Todas las Órdenes', url: '/orders', icon: ClipboardList },
+        ];
       default:
         return commonItems;
     }
@@ -156,6 +161,24 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              
+              {/* Chat Panel for all users except clients */}
+              {profile?.role !== 'cliente' && (
+                <SidebarMenuItem key="chat">
+                  <SidebarMenuButton asChild className="touch-target">
+                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group text-sidebar-foreground hover:text-sidebar-accent-foreground">
+                      <MessageSquare className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
+                        !collapsed ? '' : 'mx-auto'
+                      }`} />
+                      {!collapsed && (
+                        <span className="font-medium transition-all duration-200">
+                          Chat General
+                        </span>
+                      )}
+                    </div>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
