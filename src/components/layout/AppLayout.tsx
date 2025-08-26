@@ -1,7 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Header } from './Header';
+import { GeneralChatPanel } from '@/components/chat/GeneralChatPanel';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -12,6 +17,9 @@ interface AppLayoutProps {
  * Componente reutilizable para todas las páginas autenticadas
  */
 export function AppLayout({ children }: AppLayoutProps) {
+  const { profile } = useAuth();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
@@ -23,6 +31,24 @@ export function AppLayout({ children }: AppLayoutProps) {
               {children}
             </div>
           </main>
+          
+          {/* Chat Panel for all users except clients */}
+          {profile?.role !== 'cliente' && (
+            <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[400px] p-0">
+                <GeneralChatPanel />
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </SidebarProvider>

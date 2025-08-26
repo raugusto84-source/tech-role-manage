@@ -19,6 +19,7 @@ import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
+import { ProductServiceSeparator } from '@/components/orders/ProductServiceSeparator';
 import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, getTechnicianCurrentWorkload } from '@/utils/workScheduleCalculator';
 import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
@@ -962,14 +963,31 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 />
               </div>
 
-              {/* Selección de Servicios por Categoría */}
-              <div className="space-y-4">
-                <Label>Servicios y Productos *</Label>
-                <OrderServiceSelection 
-                  onServiceAdd={handleServiceAdd}
-                  selectedServiceIds={orderItems.map(item => item.service_type_id)}
-                />
-              </div>
+               {/* Selección de Servicios y Productos Separados */}
+               <div className="space-y-4">
+                 <Label>Servicios y Productos *</Label>
+                 <ProductServiceSeparator
+                   onServiceAdd={handleServiceAdd}
+                   selectedServiceIds={orderItems.map(item => item.service_type_id)}
+                   selectedServices={orderItems.map(item => ({
+                     service: {
+                       id: item.service_type_id,
+                       name: item.name,
+                       description: item.description,
+                       cost_price: null,
+                       base_price: item.unit_price || 0,
+                       vat_rate: item.vat_rate,
+                       item_type: item.item_type,
+                       category: '',
+                       estimated_hours: item.estimated_hours
+                     },
+                     quantity: item.quantity
+                   }))}
+                   onRemoveService={(serviceId: string) => {
+                     setOrderItems(prev => prev.filter(item => item.service_type_id !== serviceId));
+                   }}
+                 />
+               </div>
 
               {/* Lista de artículos seleccionados */}
               <OrderItemsList 
