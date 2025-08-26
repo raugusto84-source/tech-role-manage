@@ -19,7 +19,7 @@ interface User {
   email: string;
   full_name: string;
   phone?: string;
-  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente' | 'supervisor';
+  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente' | 'supervisor' | 'visor_tecnico';
   created_at: string;
   updated_at: string;
 }
@@ -407,7 +407,8 @@ export function UserManagement({
       'supervisor': 'Supervisor',
       'vendedor': 'Vendedor',
       'tecnico': 'Técnico',
-      'cliente': 'Cliente'
+      'cliente': 'Cliente',
+      'visor_tecnico': 'Visor Técnico'
     };
     return translations[role as keyof typeof translations] || role;
   };
@@ -433,6 +434,7 @@ export function UserManagement({
             <SelectItem value="supervisor">Supervisores</SelectItem>
             <SelectItem value="vendedor">Vendedores</SelectItem>
             <SelectItem value="tecnico">Técnicos</SelectItem>
+            <SelectItem value="visor_tecnico">Visores Técnicos</SelectItem>
             <SelectItem value="cliente">Clientes</SelectItem>
           </SelectContent>
         </Select>
@@ -485,6 +487,7 @@ export function UserManagement({
                     <SelectItem value="tecnico">Técnico</SelectItem>
                     <SelectItem value="vendedor">Vendedor</SelectItem>
                     <SelectItem value="supervisor">Supervisor</SelectItem>
+                    <SelectItem value="visor_tecnico">Visor Técnico</SelectItem>
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
