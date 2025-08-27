@@ -13,6 +13,7 @@ import Orders from "./pages/Orders";
 import Quotes from "./pages/Quotes";
 import Sales from "./pages/Sales";
 import TechnicianDashboard from "./pages/TechnicianDashboard";
+import TechnicianViewer from "./pages/TechnicianViewer";
 import NotFound from "./pages/NotFound";
 import ClientDashboard from "./pages/ClientDashboard";
 import Finance from "./pages/Finance";
@@ -82,6 +83,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['tecnico']}>
                   <TechnicianDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/technician-viewer" 
+              element={
+                <ProtectedRoute allowedRoles={['visor_tecnico', 'administrador', 'supervisor']}>
+                  <TechnicianViewer />
                 </ProtectedRoute>
               } 
             />

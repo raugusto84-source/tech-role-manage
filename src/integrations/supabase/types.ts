@@ -1185,6 +1185,45 @@ export type Database = {
           },
         ]
       }
+      financial_audit_logs: {
+        Row: {
+          change_reason: string | null
+          changed_at: string
+          changed_by: string | null
+          id: string
+          metadata: Json | null
+          new_data: Json | null
+          old_data: Json | null
+          operation_type: string
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          metadata?: Json | null
+          new_data?: Json | null
+          old_data?: Json | null
+          operation_type: string
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          change_reason?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          metadata?: Json | null
+          new_data?: Json | null
+          old_data?: Json | null
+          operation_type?: string
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       financial_history: {
         Row: {
           account_type: string | null
@@ -5739,16 +5778,26 @@ export type Database = {
         Returns: boolean
       }
       log_financial_operation: {
-        Args: {
-          p_account_type?: string
-          p_amount: number
-          p_operation_date?: string
-          p_operation_description: string
-          p_operation_type: string
-          p_record_data: Json
-          p_record_id: string
-          p_table_name: string
-        }
+        Args:
+          | {
+              p_account_type?: string
+              p_amount: number
+              p_operation_date?: string
+              p_operation_description: string
+              p_operation_type: string
+              p_record_data: Json
+              p_record_id: string
+              p_table_name: string
+            }
+          | {
+              p_change_reason?: string
+              p_metadata?: Json
+              p_new_data?: Json
+              p_old_data?: Json
+              p_operation_type: string
+              p_record_id: string
+              p_table_name: string
+            }
         Returns: string
       }
       process_scheduled_surveys: {

@@ -666,12 +666,44 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     );
   };
 
-  const handleHomeServiceChange = (checked: boolean) => {
+  const handleHomeServiceChange = async (checked: boolean) => {
     setFormData(prev => ({
       ...prev,
       is_home_service: checked,
       service_location: checked ? prev.service_location : null
     }));
+
+    // Automatically add/remove home service when checkbox is toggled
+    if (checked) {
+      // Find the "Servicio a Domicilio" service type
+      const homeService = serviceTypes.find(service => 
+        service.name.toLowerCase().includes('servicio a domicilio') || 
+        service.category === 'traslado'
+      );
+      
+      if (homeService && !orderItems.find(item => item.service_type_id === homeService.id)) {
+        await handleServiceAdd(homeService);
+        toast({
+          title: "Servicio agregado",
+          description: "Se agregó automáticamente el servicio a domicilio",
+        });
+      }
+    } else {
+      // Remove home service if it exists
+      const homeServiceItem = orderItems.find(item => 
+        item.name.toLowerCase().includes('servicio a domicilio') ||
+        item.name.toLowerCase().includes('traslado')
+      );
+      
+      if (homeServiceItem) {
+        const updatedItems = orderItems.filter(item => item.service_type_id !== homeServiceItem.service_type_id);
+        setOrderItems(updatedItems);
+        toast({
+          title: "Servicio removido",
+          description: "Se removió el servicio a domicilio",
+        });
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

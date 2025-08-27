@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { CollectionDialog } from "@/components/finance/CollectionDialog";
+import { CollectionDialog, DeleteCollectionDialog } from "@/components/finance/CollectionDialog";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -436,6 +436,10 @@ export default function Finance() {
   // Estados para el diálogo de cobro
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
+  
+  // Estados para eliminar cobranza
+  const [deleteCollectionDialogOpen, setDeleteCollectionDialogOpen] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState<string>('');
 
   // Función para registrar en historial financiero
   const logFinancialOperation = async (operationType: string, tableName: string, recordId: string, recordData: any, description: string, amount: number, accountType?: string, operationDate?: string) => {
@@ -3320,14 +3324,22 @@ export default function Finance() {
                                <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
                              </div>}
                          </TableCell>
-                         <TableCell>
-                           <Button size="sm" variant="default" onClick={() => {
-                        setSelectedCollection(item);
-                        setCollectionDialogOpen(true);
-                      }} className="bg-green-600 hover:bg-green-700">
-                             Cobrar
-                           </Button>
-                         </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="default" onClick={() => {
+                         setSelectedCollection(item);
+                         setCollectionDialogOpen(true);
+                       }} className="bg-green-600 hover:bg-green-700">
+                                Cobrar
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => {
+                                setCollectionToDelete(item.id);
+                                setDeleteCollectionDialogOpen(true);
+                              }}>
+                                Eliminar
+                              </Button>
+                            </div>
+                          </TableCell>
                        </TableRow>)}
                      {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && <TableRow>
                          <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
@@ -3528,5 +3540,16 @@ export default function Finance() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>;
+      
+      <DeleteCollectionDialog 
+        open={deleteCollectionDialogOpen} 
+        onOpenChange={setDeleteCollectionDialogOpen} 
+        collectionId={collectionToDelete}
+        onSuccess={() => {
+          collectionsQuery.refetch();
+          setCollectionToDelete('');
+        }} 
+      />
+    </AppLayout>
+  );
 }

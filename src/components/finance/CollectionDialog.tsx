@@ -400,7 +400,73 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+            </DialogContent>
+          </Dialog>
+        );
+      }
+
+      // Add delete functionality for collections
+      export function DeleteCollectionDialog({ 
+        open, 
+        onOpenChange, 
+        collectionId, 
+        onSuccess 
+      }: {
+        open: boolean;
+        onOpenChange: (open: boolean) => void;
+        collectionId: string;
+        onSuccess?: () => void;
+      }) {
+        const { toast } = useToast();
+        const [loading, setLoading] = useState(false);
+
+        const handleDelete = async () => {
+          setLoading(true);
+          try {
+            const { error } = await supabase
+              .from('order_payments')
+              .delete()
+              .eq('id', collectionId);
+
+            if (error) throw error;
+
+            toast({
+              title: "Cobro eliminado",
+              description: "El cobro pendiente ha sido eliminado exitosamente",
+            });
+
+            onSuccess?.();
+            onOpenChange(false);
+          } catch (error: any) {
+            console.error('Error deleting collection:', error);
+            toast({
+              title: "Error",
+              description: error.message || "No se pudo eliminar el cobro",
+              variant: "destructive",
+            });
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        return (
+          <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Eliminar Cobro Pendiente</DialogTitle>
+                <DialogDescription>
+                  ¿Estás seguro de que deseas eliminar este cobro pendiente? Esta acción no se puede deshacer.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+                  Cancelar
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+                  {loading ? "Eliminando..." : "Eliminar"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      }
