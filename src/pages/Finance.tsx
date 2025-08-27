@@ -1506,7 +1506,8 @@ export default function Finance() {
       title: "Cobro registrado exitosamente"
     });
   };
-  return <AppLayout>
+  return (
+    <AppLayout>
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos, Egresos y Cobranzas</h1>
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
