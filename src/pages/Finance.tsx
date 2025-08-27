@@ -14,6 +14,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { CollectionDialog, DeleteCollectionDialog } from "@/components/finance/CollectionDialog";
+import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
+import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -70,6 +72,12 @@ export default function Finance() {
   const [showWithdrawalDialog, setShowWithdrawalDialog] = useState(false);
   const [withdrawalConcept, setWithdrawalConcept] = useState('');
   const [withdrawalDescription, setWithdrawalDescription] = useState('');
+  
+  // Estado para diálogo de retiro fiscal individual
+  const [fiscalWithdrawalDialog, setFiscalWithdrawalDialog] = useState<{open: boolean, withdrawal: any}>({
+    open: false,
+    withdrawal: null
+  });
 
   // Función para establecer mes actual rápidamente
   const setCurrentMonth = () => {
@@ -1328,62 +1336,9 @@ export default function Finance() {
 
   // Funciones para retiro de gastos fiscales - removidas
 
-  const withdrawFiscalAmount = async (withdrawalId: string) => {
-    try {
-      // Get the withdrawal details first
-      const {
-        data: withdrawal,
-        error: fetchError
-      } = await supabase.from("fiscal_withdrawals").select("*").eq("id", withdrawalId).single();
-      if (fetchError) throw fetchError;
-
-      // Skip if amount is 0 or null
-      if (!withdrawal.amount || withdrawal.amount === 0) {
-        toast({
-          title: "Error",
-          description: "No se puede retirar un monto de $0",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Create the fiscal expense record
-      const {
-        error: expenseError
-      } = await supabase.from("expenses").insert({
-        amount: withdrawal.amount,
-        description: `Retiro individual: ${withdrawal.description}`,
-        category: 'retiro_fiscal',
-        account_type: 'fiscal' as any,
-        payment_method: 'transferencia',
-        expense_date: new Date().toISOString().split('T')[0],
-        status: 'pagado'
-      } as any);
-      if (expenseError) throw expenseError;
-
-      // Update the withdrawal status
-      const {
-        error
-      } = await supabase.from("fiscal_withdrawals").update({
-        withdrawal_status: "withdrawn",
-        withdrawn_at: new Date().toISOString(),
-        withdrawn_by: profile?.user_id
-      }).eq("id", withdrawalId);
-      if (error) throw error;
-      toast({
-        title: "Retiro realizado exitosamente",
-        description: `Se retiró $${withdrawal.amount.toLocaleString()} de la cuenta fiscal`
-      });
-      fiscalWithdrawalsQuery.refetch();
-      expensesQuery.refetch();
-      financialHistoryQuery.refetch();
-    } catch (e: any) {
-      toast({
-        title: "Error",
-        description: e?.message || "No fue posible realizar el retiro",
-        variant: "destructive"
-      });
-    }
+  const withdrawFiscalAmount = async (withdrawal: any) => {
+    // Abrir el diálogo para capturar factura y número
+    setFiscalWithdrawalDialog({ open: true, withdrawal });
   };
   const handleBulkWithdrawal = async () => {
     if (selectedWithdrawals.length === 0) {
@@ -2188,7 +2143,7 @@ export default function Finance() {
                             </span>}
                         </TableCell>
                         <TableCell>
-                          {withdrawal.withdrawal_status === 'available' ? <Button size="sm" onClick={() => withdrawFiscalAmount(withdrawal.id)} className="bg-green-600 hover:bg-green-700">
+                          {withdrawal.withdrawal_status === 'available' ? <Button size="sm" onClick={() => withdrawFiscalAmount(withdrawal)} className="bg-green-600 hover:bg-green-700">
                               Retirar
                             </Button> : <div className="text-sm text-muted-foreground">
                               {withdrawal.withdrawn_at && <span>Retirado {new Date(withdrawal.withdrawn_at).toLocaleDateString()}</span>}
@@ -3550,6 +3505,16 @@ export default function Finance() {
           collectionsQuery.refetch();
           setCollectionToDelete('');
         }} 
+      />
+
+      <FiscalWithdrawalDialog
+        open={fiscalWithdrawalDialog.open}
+        onOpenChange={(open) => setFiscalWithdrawalDialog({ open, withdrawal: null })}
+        withdrawal={fiscalWithdrawalDialog.withdrawal}
+        onSuccess={() => {
+          fiscalWithdrawalsQuery.refetch();
+          expensesQuery.refetch();
+        }}
       />
     </AppLayout>
   );
