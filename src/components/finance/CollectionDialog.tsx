@@ -22,7 +22,7 @@ interface CollectionDialogProps {
     total_vat_amount?: number;
     subtotal_without_vat?: number;
     total_with_vat?: number;
-    collection_type?: string;
+    collection_type?: string;      // 'policy_payment' | 'order_payment'?
     policy_payment_id?: string;
     policy_name?: string;
     payment_period?: string;
@@ -38,7 +38,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
   const [accountType, setAccountType] = useState<"fiscal" | "no_fiscal">("no_fiscal");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [description, setDescription] = useState("");
-  const [vatRate, setVatRate] = useState<string>("16");
+  const [vatRate, setVatRate] = useState<string>("16"); // por ahora fijo en 16
   const [invoiceNumber, setInvoiceNumber] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,152 +58,155 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
     setLoading(true);
     try {
       const finalAmount = Number(amount);
-      
-      if (collection.collection_type === 'policy_payment') {
-        // Handle policy payment collection
-        const finalDescription = description || `Cobro póliza ${collection.policy_name} - ${collection.payment_period} - ${collection.client_name}`;
-        
-        // Calculate VAT for fiscal income (always included)
+
+      if (collection.collection_type === "policy_payment") {
+        // Cobro de póliza
+        const finalDescription =
+          description ||
+          `Cobro póliza ${collection.policy_name} - ${collection.payment_period} - ${collection.client_name}`;
+
         let vatAmount = 0;
         let totalAmount = finalAmount;
-        
+
         if (accountType === "fiscal") {
           const vatRateNum = Number(vatRate);
           vatAmount = finalAmount * (vatRateNum / 100);
-          totalAmount = finalAmount + vatAmount; // Total = Subtotal + IVA
+          totalAmount = finalAmount + vatAmount;
         }
 
-        // Create the income record
         const { data: incomeData, error: incomeError } = await supabase
           .from("incomes")
-          .insert([{
-            amount: totalAmount,
-            description: finalDescription,
-            category: "poliza",
-            account_type: accountType,
-            payment_method: paymentMethod || null,
-            client_name: collection.client_name,
-            income_date: new Date().toISOString().split('T')[0],
-            income_number: "",
-            vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
-            vat_amount: accountType === "fiscal" ? vatAmount : null,
-            taxable_amount: accountType === "fiscal" ? finalAmount : null,
-            has_invoice: accountType === "fiscal",
-            invoice_number: accountType === "fiscal" ? invoiceNumber : null
-          }])
-          .select('id')
+          .insert([
+            {
+              amount: totalAmount,
+              description: finalDescription,
+              category: "poliza",
+              account_type: accountType,
+              payment_method: paymentMethod || null,
+              client_name: collection.client_name,
+              income_date: new Date().toISOString().split("T")[0],
+              income_number: "",
+              vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
+              vat_amount: accountType === "fiscal" ? vatAmount : null,
+              taxable_amount: accountType === "fiscal" ? finalAmount : null,
+              has_invoice: accountType === "fiscal",
+              invoice_number: accountType === "fiscal" ? invoiceNumber : null
+            }
+          ])
+          .select("id")
           .single();
 
         if (incomeError) throw incomeError;
 
-        // Mark policy payment as paid
         const { error: paymentUpdateError } = await supabase
-          .from('policy_payments')
+          .from("policy_payments")
           .update({
             is_paid: true,
-            payment_status: 'pagado',
-            payment_date: new Date().toISOString().split('T')[0],
+            payment_status: "pagado",
+            payment_date: new Date().toISOString().split("T")[0],
             payment_method: paymentMethod || null
           })
-          .eq('id', collection.policy_payment_id);
+          .eq("id", collection.policy_payment_id);
 
         if (paymentUpdateError) throw paymentUpdateError;
 
         toast({
           title: "Cobro de póliza registrado",
-          description: `Se registró el pago de la póliza ${collection.policy_name} por $${totalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`
+          description: `Se registró el pago de la póliza ${collection.policy_name} por $${Number(
+            totalAmount
+          ).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`
         });
-
       } else {
-        // Handle order payment collection (existing logic)
+        // Cobro de orden
         const finalDescription = description || `Cobro orden ${collection.order_number} - ${collection.client_name}`;
 
-        // Calculate VAT for fiscal income (always included)
         let vatAmount = 0;
         let totalAmount = finalAmount;
-        
+
         if (accountType === "fiscal") {
           const vatRateNum = Number(vatRate);
           vatAmount = finalAmount * (vatRateNum / 100);
-          totalAmount = finalAmount + vatAmount; // Total = Subtotal + IVA
+          totalAmount = finalAmount + vatAmount;
         }
 
-        // First, create the income record (income_number will be auto-generated)
         const { data: incomeData, error: incomeError } = await supabase
           .from("incomes")
-          .insert([{
-            amount: totalAmount, // Total amount including VAT for fiscal
-            description: finalDescription,
-            category: "cobro",
-            account_type: accountType,
-            payment_method: paymentMethod || null,
-            client_name: collection.client_name,
-            income_date: new Date().toISOString().split('T')[0],
-            income_number: "", // Will be auto-generated by trigger
-            vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
-            vat_amount: accountType === "fiscal" ? vatAmount : null,
-            taxable_amount: accountType === "fiscal" ? finalAmount : null, // Subtotal amount
-            has_invoice: accountType === "fiscal",
-            invoice_number: accountType === "fiscal" ? invoiceNumber : null
-          }])
-          .select('id')
+          .insert([
+            {
+              amount: totalAmount,
+              description: finalDescription,
+              category: "cobro",
+              account_type: accountType,
+              payment_method: paymentMethod || null,
+              client_name: collection.client_name,
+              income_date: new Date().toISOString().split("T")[0],
+              income_number: "",
+              vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
+              vat_amount: accountType === "fiscal" ? vatAmount : null,
+              taxable_amount: accountType === "fiscal" ? finalAmount : null,
+              has_invoice: accountType === "fiscal",
+              invoice_number: accountType === "fiscal" ? invoiceNumber : null
+            }
+          ])
+          .select("id")
           .single();
 
         if (incomeError) throw incomeError;
 
-        // Then, record the payment in order_payments table
-        const { error: paymentError } = await supabase
-          .from("order_payments")
-          .insert([{
+        const { error: paymentError } = await supabase.from("order_payments").insert([
+          {
             order_id: collection.id,
             order_number: collection.order_number,
             client_name: collection.client_name,
-            payment_amount: totalAmount, // Use total amount including VAT
-            payment_date: new Date().toISOString().split('T')[0],
+            payment_amount: totalAmount,
+            payment_date: new Date().toISOString().split("T")[0],
             payment_method: paymentMethod || null,
             account_type: accountType,
             description: finalDescription,
             income_id: incomeData?.id
-          }]);
+          }
+        ]);
 
         if (paymentError) throw paymentError;
 
-        // Check if this payment completes the order
         const { data: totalPayments } = await supabase
           .from("order_payments")
           .select("payment_amount")
           .eq("order_number", collection.order_number);
 
-        const totalPaid = (totalPayments || []).reduce((sum, payment) => sum + Number(payment.payment_amount), 0);
-        const isCompletelyPaid = totalPaid >= (collection.total_with_vat || collection.estimated_cost);
+        const totalPaid = (totalPayments || []).reduce(
+          (sum, p) => sum + Number(p.payment_amount),
+          0
+        );
+        const targetTotal = collection.total_with_vat || collection.estimated_cost;
+        const isCompletelyPaid = totalPaid >= targetTotal;
 
-        // Log the collection operation (optional - just skip if function doesn't exist)
-        try {
-          console.log('Collection registered:', {
-            order_number: collection.order_number,
-            client_name: collection.client_name,
-            amount: finalAmount,
-            is_completely_paid: isCompletelyPaid
-          });
-        } catch (error) {
-          console.error('Error logging collection operation:', error);
-        }
+        const vatMessage =
+          accountType === "fiscal"
+            ? ` (Subtotal: $${finalAmount.toLocaleString("es-MX", {
+                minimumFractionDigits: 2
+              })} + IVA: $${vatAmount.toLocaleString("es-MX", {
+                minimumFractionDigits: 2
+              })} = Total: $${totalAmount.toLocaleString("es-MX", {
+                minimumFractionDigits: 2
+              })} MXN)`
+            : "";
 
-        const vatMessage = accountType === "fiscal" 
-          ? ` (Subtotal: $${finalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} + IVA: $${vatAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} = Total: $${totalAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN)`
-          : '';
-          
         toast({
           title: "Cobro registrado",
           description: `Se registró el pago${vatMessage}${
-            isCompletelyPaid ? '. La orden está completamente pagada.' : `. Saldo pendiente: $${((collection.total_with_vat || collection.estimated_cost) - totalPaid).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`
+            isCompletelyPaid
+              ? ". La orden está completamente pagada."
+              : `. Saldo pendiente: $${(targetTotal - totalPaid).toLocaleString("es-MX", {
+                  minimumFractionDigits: 2
+                })} MXN`
           }`
         });
       }
 
       onOpenChange(false);
       onSuccess?.();
-      
+
       // Reset form
       setAmount("");
       setDescription("");
@@ -225,12 +228,18 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
   // Set default amount when collection changes
   useEffect(() => {
     if (collection && open) {
-      // For fiscal accounts, set the subtotal; for non-fiscal, set the total
-      const defaultAmount = accountType === "fiscal" 
-        ? (collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost)
-        : (collection.remaining_balance || collection.estimated_cost);
-      setAmount(defaultAmount.toString());
-      setDescription(`Cobro orden ${collection.order_number} - ${collection.client_name}`);
+      const defaultAmount =
+        accountType === "fiscal"
+          ? collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost
+          : collection.remaining_balance || collection.estimated_cost;
+
+      setAmount(String(defaultAmount ?? ""));
+      // Descripción por tipo
+      setDescription(
+        collection.collection_type === "policy_payment"
+          ? `Cobro póliza ${collection.policy_name} - ${collection.payment_period} - ${collection.client_name}`
+          : `Cobro orden ${collection.order_number} - ${collection.client_name}`
+      );
     }
   }, [collection, open, accountType]);
 
@@ -239,49 +248,80 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-              💰
-            </div>
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">💰</div>
             Registrar Cobro
           </DialogTitle>
           <DialogDescription>
             <div className="space-y-2">
-              <div>Registrar el cobro de la orden <strong>{collection?.order_number}</strong> para el cliente <strong>{collection?.client_name}</strong></div>
-              
+              <div>
+                Registrar el cobro de la orden <strong>{collection?.order_number}</strong> para el cliente{" "}
+                <strong>{collection?.client_name}</strong>
+              </div>
+
               {collection?.total_paid && collection.total_paid > 0 && (
                 <div className="bg-blue-50 p-3 rounded-lg text-sm">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-muted-foreground">Total de la orden:</span>
-                      <div className="font-medium">$${collection.estimated_cost.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                      <div className="font-medium">
+                        {"$"}
+                        {collection.estimated_cost.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                      </div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Ya pagado:</span>
-                      <div className="font-medium text-green-600">$${collection.total_paid.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                      <div className="font-medium text-green-600">
+                        {"$"}
+                        {collection.total_paid.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                      </div>
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t">
                     <span className="text-muted-foreground">Saldo pendiente:</span>
-                    <div className="font-bold text-red-600 text-lg">$${(collection.remaining_balance || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                    <div className="font-bold text-red-600 text-lg">
+                      {"$"}
+                      {(collection.remaining_balance || 0).toLocaleString("es-MX", {
+                        minimumFractionDigits: 2
+                      })}{" "}
+                      MXN
+                    </div>
                   </div>
                 </div>
               )}
-              
+
               {(!collection?.total_paid || collection.total_paid === 0) && (
                 <div className="bg-green-50 p-3 rounded-lg text-sm">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <div className="font-medium">${(collection?.subtotal_without_vat || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                      <div className="font-medium">
+                        {"$"}
+                        {(collection?.subtotal_without_vat || 0).toLocaleString("es-MX", {
+                          minimumFractionDigits: 2
+                        })}{" "}
+                        MXN
+                      </div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">IVA:</span>
-                      <div className="font-medium text-blue-600">${(collection?.total_vat_amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                      <div className="font-medium text-blue-600">
+                        {"$"}
+                        {(collection?.total_vat_amount || 0).toLocaleString("es-MX", {
+                          minimumFractionDigits: 2
+                        })}{" "}
+                        MXN
+                      </div>
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t">
                     <span className="text-muted-foreground">Total a cobrar:</span>
-                    <div className="font-bold text-green-600 text-lg">${(collection?.total_with_vat || collection?.estimated_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                    <div className="font-bold text-green-600 text-lg">
+                      {"$"}
+                      {(collection?.total_with_vat || collection?.estimated_cost || 0).toLocaleString("es-MX", {
+                        minimumFractionDigits: 2
+                      })}{" "}
+                      MXN
+                    </div>
                   </div>
                 </div>
               )}
@@ -325,13 +365,11 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {accountType === "fiscal" 
+              {accountType === "fiscal"
                 ? "Los ingresos fiscales incluyen IVA automáticamente. Ingrese el subtotal sin IVA."
-                : "Selecciona dónde se registrará este ingreso"
-              }
+                : "Selecciona dónde se registrará este ingreso"}
             </p>
-           </div>
-
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="paymentMethod">Método de Pago</Label>
@@ -359,9 +397,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
                 placeholder="A001-001-000001"
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Requerido para cuentas fiscales
-              </p>
+              <p className="text-xs text-muted-foreground">Requerido para cuentas fiscales</p>
             </div>
           )}
 
@@ -377,11 +413,11 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
           </div>
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading || !amount || (accountType === "fiscal" && !invoiceNumber.trim())}
               className="bg-green-600 hover:bg-green-700"
             >
@@ -389,73 +425,86 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
             </Button>
           </DialogFooter>
         </form>
-            </DialogContent>
-          </Dialog>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ======================= DELETE COLLECTION DIALOG =======================
+
+export function DeleteCollectionDialog({
+  open,
+  onOpenChange,
+  collectionId,
+  onSuccess
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  collectionId: string;
+  // Permitimos enviar el id eliminado por si el padre quiere filtrar estado local.
+  onSuccess?: (deletedId?: string) => void;
+}) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      // Intento principal: borrar por id y devolver la fila borrada
+      const { data, error } = await supabase
+        .from("order_payments")
+        .delete()
+        .eq("id", collectionId)
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        // No se borró nada: muy probablemente el identificador que recibes es otro campo.
+        // Si en tu lista usas 'collection_id' cambia la línea del .eq anterior a .eq('collection_id', collectionId)
+        throw new Error(
+          "No se encontró un cobro con ese ID en order_payments. Verifica si debes borrar por collection_id en lugar de id."
         );
       }
 
-      // Add delete functionality for collections
-      export function DeleteCollectionDialog({ 
-        open, 
-        onOpenChange, 
-        collectionId, 
-        onSuccess 
-      }: {
-        open: boolean;
-        onOpenChange: (open: boolean) => void;
-        collectionId: string;
-        onSuccess?: () => void;
-      }) {
-        const { toast } = useToast();
-        const [loading, setLoading] = useState(false);
+      toast({
+        title: "Cobro eliminado",
+        description: "El cobro pendiente ha sido eliminado exitosamente"
+      });
 
-        const handleDelete = async () => {
-          setLoading(true);
-          try {
-            const { error } = await supabase
-              .from('order_payments')
-              .delete()
-              .eq('id', collectionId);
+      onSuccess?.(data.id);
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error deleting collection:", error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el cobro",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            if (error) throw error;
-
-            toast({
-              title: "Cobro eliminado",
-              description: "El cobro pendiente ha sido eliminado exitosamente",
-            });
-
-            onSuccess?.();
-            onOpenChange(false);
-          } catch (error: any) {
-            console.error('Error deleting collection:', error);
-            toast({
-              title: "Error",
-              description: error.message || "No se pudo eliminar el cobro",
-              variant: "destructive",
-            });
-          } finally {
-            setLoading(false);
-          }
-        };
-
-        return (
-          <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Eliminar Cobro Pendiente</DialogTitle>
-                <DialogDescription>
-                  ¿Estás seguro de que deseas eliminar este cobro pendiente? Esta acción no se puede deshacer.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-                  Cancelar
-                </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-                  {loading ? "Eliminando..." : "Eliminar"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        );
-      }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Eliminar Cobro Pendiente</DialogTitle>
+          <DialogDescription>
+            ¿Estás seguro de que deseas eliminar este cobro pendiente? Esta acción no se puede deshacer.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+            {loading ? "Eliminando..." : "Eliminar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
