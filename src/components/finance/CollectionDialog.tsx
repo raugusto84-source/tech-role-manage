@@ -22,7 +22,7 @@ interface CollectionDialogProps {
     total_vat_amount?: number;
     subtotal_without_vat?: number;
     total_with_vat?: number;
-    collection_type?: string;      // 'policy_payment' | 'order_payment'
+    collection_type?: string;      // 'policy_payment' | 'order_payment'?
     policy_payment_id?: string;
     policy_name?: string;
     payment_period?: string;
@@ -38,18 +38,19 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
   const [accountType, setAccountType] = useState<"fiscal" | "no_fiscal">("no_fiscal");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [description, setDescription] = useState("");
-  const [vatRate, setVatRate] = useState<string>("16");
+  const [vatRate, setVatRate] = useState<string>("16"); // por ahora fijo en 16
   const [invoiceNumber, setInvoiceNumber] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!collection || !amount) return;
 
+    // Validar factura para cuentas fiscales
     if (accountType === "fiscal" && (!invoiceNumber || invoiceNumber.trim() === "")) {
       toast({
         title: "Error",
         description: "Para cuentas fiscales es obligatorio ingresar el número de factura",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -59,8 +60,10 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
       const finalAmount = Number(amount);
 
       if (collection.collection_type === "policy_payment") {
+        // Cobro de póliza
         const finalDescription =
-          description || `Cobro póliza ${collection.policy_name} - ${collection.payment_period} - ${collection.client_name}`;
+          description ||
+          `Cobro póliza ${collection.policy_name} - ${collection.payment_period} - ${collection.client_name}`;
 
         let vatAmount = 0;
         let totalAmount = finalAmount;
@@ -73,21 +76,23 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 
         const { data: incomeData, error: incomeError } = await supabase
           .from("incomes")
-          .insert([{
-            amount: totalAmount,
-            description: finalDescription,
-            category: "poliza",
-            account_type: accountType,
-            payment_method: paymentMethod || null,
-            client_name: collection.client_name,
-            income_date: new Date().toISOString().split("T")[0],
-            income_number: "",
-            vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
-            vat_amount: accountType === "fiscal" ? vatAmount : null,
-            taxable_amount: accountType === "fiscal" ? finalAmount : null,
-            has_invoice: accountType === "fiscal",
-            invoice_number: accountType === "fiscal" ? invoiceNumber : null,
-          }])
+          .insert([
+            {
+              amount: totalAmount,
+              description: finalDescription,
+              category: "poliza",
+              account_type: accountType,
+              payment_method: paymentMethod || null,
+              client_name: collection.client_name,
+              income_date: new Date().toISOString().split("T")[0],
+              income_number: "",
+              vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
+              vat_amount: accountType === "fiscal" ? vatAmount : null,
+              taxable_amount: accountType === "fiscal" ? finalAmount : null,
+              has_invoice: accountType === "fiscal",
+              invoice_number: accountType === "fiscal" ? invoiceNumber : null
+            }
+          ])
           .select("id")
           .single();
 
@@ -99,7 +104,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
             is_paid: true,
             payment_status: "pagado",
             payment_date: new Date().toISOString().split("T")[0],
-            payment_method: paymentMethod || null,
+            payment_method: paymentMethod || null
           })
           .eq("id", collection.policy_payment_id);
 
@@ -107,10 +112,12 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 
         toast({
           title: "Cobro de póliza registrado",
-          description: `Se registró el pago de la póliza ${collection.policy_name} por $${Number(totalAmount).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`,
+          description: `Se registró el pago de la póliza ${collection.policy_name} por $${Number(
+            totalAmount
+          ).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`
         });
-
       } else {
+        // Cobro de orden
         const finalDescription = description || `Cobro orden ${collection.order_number} - ${collection.client_name}`;
 
         let vatAmount = 0;
@@ -124,37 +131,41 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 
         const { data: incomeData, error: incomeError } = await supabase
           .from("incomes")
-          .insert([{
-            amount: totalAmount,
-            description: finalDescription,
-            category: "cobro",
-            account_type: accountType,
-            payment_method: paymentMethod || null,
-            client_name: collection.client_name,
-            income_date: new Date().toISOString().split("T")[0],
-            income_number: "",
-            vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
-            vat_amount: accountType === "fiscal" ? vatAmount : null,
-            taxable_amount: accountType === "fiscal" ? finalAmount : null,
-            has_invoice: accountType === "fiscal",
-            invoice_number: accountType === "fiscal" ? invoiceNumber : null,
-          }])
+          .insert([
+            {
+              amount: totalAmount,
+              description: finalDescription,
+              category: "cobro",
+              account_type: accountType,
+              payment_method: paymentMethod || null,
+              client_name: collection.client_name,
+              income_date: new Date().toISOString().split("T")[0],
+              income_number: "",
+              vat_rate: accountType === "fiscal" ? Number(vatRate) : null,
+              vat_amount: accountType === "fiscal" ? vatAmount : null,
+              taxable_amount: accountType === "fiscal" ? finalAmount : null,
+              has_invoice: accountType === "fiscal",
+              invoice_number: accountType === "fiscal" ? invoiceNumber : null
+            }
+          ])
           .select("id")
           .single();
 
         if (incomeError) throw incomeError;
 
-        const { error: paymentError } = await supabase.from("order_payments").insert([{
-          order_id: collection.id,
-          order_number: collection.order_number,
-          client_name: collection.client_name,
-          payment_amount: totalAmount,
-          payment_date: new Date().toISOString().split("T")[0],
-          payment_method: paymentMethod || null,
-          account_type: accountType,
-          description: finalDescription,
-          income_id: incomeData?.id,
-        }]);
+        const { error: paymentError } = await supabase.from("order_payments").insert([
+          {
+            order_id: collection.id,
+            order_number: collection.order_number,
+            client_name: collection.client_name,
+            payment_amount: totalAmount,
+            payment_date: new Date().toISOString().split("T")[0],
+            payment_method: paymentMethod || null,
+            account_type: accountType,
+            description: finalDescription,
+            income_id: incomeData?.id
+          }
+        ]);
 
         if (paymentError) throw paymentError;
 
@@ -163,20 +174,33 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
           .select("payment_amount")
           .eq("order_number", collection.order_number);
 
-        const totalPaid = (totalPayments || []).reduce((sum, p) => sum + Number(p.payment_amount), 0);
+        const totalPaid = (totalPayments || []).reduce(
+          (sum, p) => sum + Number(p.payment_amount),
+          0
+        );
         const targetTotal = collection.total_with_vat || collection.estimated_cost;
         const isCompletelyPaid = totalPaid >= targetTotal;
 
-        const vatMessage = accountType === "fiscal"
-          ? ` (Subtotal: $${finalAmount.toLocaleString("es-MX", { minimumFractionDigits: 2 })} + IVA: $${vatAmount.toLocaleString("es-MX", { minimumFractionDigits: 2 })} = Total: $${totalAmount.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN)`
-          : "";
+        const vatMessage =
+          accountType === "fiscal"
+            ? ` (Subtotal: $${finalAmount.toLocaleString("es-MX", {
+                minimumFractionDigits: 2
+              })} + IVA: $${vatAmount.toLocaleString("es-MX", {
+                minimumFractionDigits: 2
+              })} = Total: $${totalAmount.toLocaleString("es-MX", {
+                minimumFractionDigits: 2
+              })} MXN)`
+            : "";
 
         toast({
           title: "Cobro registrado",
           description: `Se registró el pago${vatMessage}${
             isCompletelyPaid
               ? ". La orden está completamente pagada."
-              : `. Saldo pendiente: $${(targetTotal - totalPaid).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN`}`,
+              : `. Saldo pendiente: $${(targetTotal - totalPaid).toLocaleString("es-MX", {
+                  minimumFractionDigits: 2
+                })} MXN`
+          }`
         });
       }
 
@@ -190,25 +214,27 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
       setAccountType("no_fiscal");
       setVatRate("16");
       setInvoiceNumber("");
-
     } catch (error: any) {
       toast({
         title: "Error",
         description: error.message || "No se pudo registrar el cobro",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
 
+  // Set default amount when collection changes
   useEffect(() => {
     if (collection && open) {
-      const defaultAmount = accountType === "fiscal"
-        ? (collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost)
-        : (collection.remaining_balance || collection.estimated_cost);
+      const defaultAmount =
+        accountType === "fiscal"
+          ? collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost
+          : collection.remaining_balance || collection.estimated_cost;
 
       setAmount(String(defaultAmount ?? ""));
+      // Descripción por tipo
       setDescription(
         collection.collection_type === "policy_payment"
           ? `Cobro póliza ${collection.policy_name} - ${collection.payment_period} - ${collection.client_name}`
@@ -238,20 +264,26 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
                     <div>
                       <span className="text-muted-foreground">Total de la orden:</span>
                       <div className="font-medium">
-                        {"$"}{collection.estimated_cost.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                        {"$"}
+                        {collection.estimated_cost.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
                       </div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Ya pagado:</span>
                       <div className="font-medium text-green-600">
-                        {"$"}{collection.total_paid.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                        {"$"}
+                        {collection.total_paid.toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
                       </div>
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t">
                     <span className="text-muted-foreground">Saldo pendiente:</span>
                     <div className="font-bold text-red-600 text-lg">
-                      {"$"}{(collection.remaining_balance || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                      {"$"}
+                      {(collection.remaining_balance || 0).toLocaleString("es-MX", {
+                        minimumFractionDigits: 2
+                      })}{" "}
+                      MXN
                     </div>
                   </div>
                 </div>
@@ -263,20 +295,32 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
                     <div>
                       <span className="text-muted-foreground">Subtotal:</span>
                       <div className="font-medium">
-                        {"$"}{(collection?.subtotal_without_vat || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                        {"$"}
+                        {(collection?.subtotal_without_vat || 0).toLocaleString("es-MX", {
+                          minimumFractionDigits: 2
+                        })}{" "}
+                        MXN
                       </div>
                     </div>
                     <div>
                       <span className="text-muted-foreground">IVA:</span>
                       <div className="font-medium text-blue-600">
-                        {"$"}{(collection?.total_vat_amount || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                        {"$"}
+                        {(collection?.total_vat_amount || 0).toLocaleString("es-MX", {
+                          minimumFractionDigits: 2
+                        })}{" "}
+                        MXN
                       </div>
                     </div>
                   </div>
                   <div className="mt-2 pt-2 border-t">
                     <span className="text-muted-foreground">Total a cobrar:</span>
                     <div className="font-bold text-green-600 text-lg">
-                      {"$"}{(collection?.total_with_vat || collection?.estimated_cost || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })} MXN
+                      {"$"}
+                      {(collection?.total_with_vat || collection?.estimated_cost || 0).toLocaleString("es-MX", {
+                        minimumFractionDigits: 2
+                      })}{" "}
+                      MXN
                     </div>
                   </div>
                 </div>
@@ -288,7 +332,15 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="amount">Monto</Label>
-            <Input id="amount" type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required />
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -313,7 +365,9 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {accountType === "fiscal" ? "Los ingresos fiscales incluyen IVA automáticamente. Ingrese el subtotal sin IVA." : "Selecciona dónde se registrará este ingreso"}
+              {accountType === "fiscal"
+                ? "Los ingresos fiscales incluyen IVA automáticamente. Ingrese el subtotal sin IVA."
+                : "Selecciona dónde se registrará este ingreso"}
             </p>
           </div>
 
@@ -336,19 +390,37 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
           {accountType === "fiscal" && (
             <div className="space-y-2">
               <Label htmlFor="invoiceNumber">Número de Factura *</Label>
-              <Input id="invoiceNumber" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="A001-001-000001" required />
+              <Input
+                id="invoiceNumber"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="A001-001-000001"
+                required
+              />
               <p className="text-xs text-muted-foreground">Requerido para cuentas fiscales</p>
             </div>
           )}
 
           <div className="space-y-2">
             <Label htmlFor="description">Descripción</Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descripción del cobro" rows={3} />
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descripción del cobro"
+              rows={3}
+            />
           </div>
 
           <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-            <Button type="submit" disabled={loading || !amount || (accountType === "fiscal" && !invoiceNumber.trim())} className="bg-green-600 hover:bg-green-700">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading || !amount || (accountType === "fiscal" && !invoiceNumber.trim())}
+              className="bg-green-600 hover:bg-green-700"
+            >
               {loading ? "Registrando..." : "Registrar Cobro"}
             </Button>
           </DialogFooter>
@@ -359,71 +431,76 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
 }
 
 // ======================= DELETE COLLECTION DIALOG =======================
-
-export function DeleteCollectionDialog({
-  open,
-  onOpenChange,
-  collectionId,
-  onSuccess,
+export function DeleteCollectionDialog({ 
+  open, 
+  onOpenChange, 
+  collectionId, 
+  onSuccess 
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   collectionId: string;
-  onSuccess?: (deletedId?: string) => void;
+  onSuccess?: () => void; // dejamos la firma original para no romper usos actuales
 }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Columnas típicas por las que suele venir el "id" desde la UI
-  const candidateColumns = ["id", "collection_id", "order_number", "order_id", "income_id"] as const;
+  // Solo columnas reales y comunes en order_payments
+  const candidateColumns = ["id", "order_id", "order_number", "income_id"] as const;
 
   const handleDelete = async () => {
     setLoading(true);
     try {
-      // 1) Localizar la fila exacta por cualquiera de las columnas candidatas
-      let foundId: string | null = null;
+      // 1) Encontrar el id real del registro a borrar
+      let foundPaymentId: string | null = null;
 
       for (const col of candidateColumns) {
         const { data, error } = await supabase
           .from("order_payments")
           .select("id")
           .eq(col, collectionId)
-          .maybeSingle();
+          .order("payment_date", { ascending: false })
+          .limit(2); // detecta ambigüedad
 
-        if (error) {
-          // Errores inesperados (no "0 rows") se reportan
-          console.error(`[Delete] Error buscando por ${col}:`, error);
-          throw error;
-        }
-        if (data?.id) {
-          foundId = data.id;
+        if (error) throw error;
+
+        if (data && data.length === 1) {
+          foundPaymentId = data[0].id;
           break;
         }
+        if (data && data.length > 1) {
+          throw new Error(
+            `Se encontraron ${data.length} pagos con ${col} = "${collectionId}". ` +
+            `Pasa el id exacto del pago (order_payments.id) para eliminar el registro correcto.`
+          );
+        }
+        // si 0 resultados, prueba siguiente columna
       }
 
-      if (!foundId) {
-        throw new Error("No se encontró un cobro con ese identificador en order_payments. Verifica si el valor que pasas es 'order_number', 'order_id', 'collection_id' o el 'id' real del pago.");
+      if (!foundPaymentId) {
+        throw new Error(
+          "No se encontró un cobro con ese identificador en order_payments. " +
+          "Verifica si estás pasando el order_payments.id, el order_id, el order_number o el income_id correspondiente."
+        );
       }
 
-      // 2) Borrar por el id real encontrado
+      // 2) Borrar por id real
       const { data: deleted, error: delErr } = await supabase
         .from("order_payments")
         .delete()
-        .eq("id", foundId)
+        .eq("id", foundPaymentId)
         .select("id")
-        .maybeSingle();
+        .single();
 
       if (delErr) throw delErr;
-      if (!deleted) {
-        throw new Error("No se pudo eliminar el cobro (no se devolvió ninguna fila). Revisa tus políticas RLS o permisos.");
-      }
+      if (!deleted) throw new Error("No se devolvió la fila eliminada. Revisa RLS/permiso de DELETE.");
 
       toast({
         title: "Cobro eliminado",
         description: "El cobro pendiente ha sido eliminado exitosamente",
       });
 
-      onSuccess?.(deleted.id);
+      onSuccess?.(); // si quieres refrescar lista, aquí re-fetch o invalidate queries
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error deleting collection:", error);
