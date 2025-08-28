@@ -43,6 +43,12 @@ export default function TechnicianViewer() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [technicianFilter, setTechnicianFilter] = useState('all');
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [orderCounts, setOrderCounts] = useState({
+    pendiente_aprobacion: 0,
+    pendiente: 0,
+    pendiente_entrega: 0,
+    total: 0
+  });
 
   useEffect(() => {
     document.title = "Visor Técnico | SYSLAG";
@@ -83,7 +89,7 @@ export default function TechnicianViewer() {
           client_id,
           service_type
         `)
-        .in('status', ['pendiente', 'en_camino', 'en_proceso', 'finalizada'])
+        .in('status', ['pendiente_aprobacion', 'pendiente', 'en_camino', 'en_proceso', 'pendiente_entrega', 'finalizada'])
         .order('updated_at', { ascending: false });
 
       if (error) throw error;
@@ -128,6 +134,15 @@ export default function TechnicianViewer() {
       }));
 
       setOrders(formattedOrders);
+      
+      // Calculate order counts
+      const counts = {
+        pendiente_aprobacion: formattedOrders.filter(o => o.status === 'pendiente_aprobacion').length,
+        pendiente: formattedOrders.filter(o => o.status === 'pendiente').length,
+        pendiente_entrega: formattedOrders.filter(o => o.status === 'pendiente_entrega').length,
+        total: formattedOrders.length
+      };
+      setOrderCounts(counts);
     } catch (error) {
       console.error('Error loading orders:', error);
       toast({
@@ -185,9 +200,11 @@ export default function TechnicianViewer() {
 
   const getStatusBadge = (status: string) => {
     const statusMap = {
+      'pendiente_aprobacion': { label: 'Pendiente Aprobación', variant: 'outline' as const, className: 'bg-red-50 text-red-700' },
       'pendiente': { label: 'Pendiente', variant: 'outline' as const, className: 'bg-yellow-50 text-yellow-700' },
       'en_camino': { label: 'En Camino', variant: 'default' as const, className: 'bg-blue-50 text-blue-700' },
       'en_proceso': { label: 'En Proceso', variant: 'default' as const, className: 'bg-orange-50 text-orange-700' },
+      'pendiente_entrega': { label: 'Pendiente Entrega', variant: 'default' as const, className: 'bg-purple-50 text-purple-700' },
       'finalizada': { label: 'Finalizada', variant: 'default' as const, className: 'bg-green-50 text-green-700' }
     };
 
@@ -231,6 +248,65 @@ export default function TechnicianViewer() {
           </p>
         </div>
 
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pendientes Aprobación</p>
+                  <p className="text-2xl font-bold text-red-600">{orderCounts.pendiente_aprobacion}</p>
+                </div>
+                <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                  ⏳
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pendientes</p>
+                  <p className="text-2xl font-bold text-yellow-600">{orderCounts.pendiente}</p>
+                </div>
+                <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                  📋
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Pendientes Entrega</p>
+                  <p className="text-2xl font-bold text-purple-600">{orderCounts.pendiente_entrega}</p>
+                </div>
+                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  🚚
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Órdenes</p>
+                  <p className="text-2xl font-bold text-blue-600">{orderCounts.total}</p>
+                </div>
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  📊
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Tabs defaultValue="orders" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="orders">Órdenes Activas</TabsTrigger>
@@ -269,9 +345,11 @@ export default function TechnicianViewer() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="pendiente_aprobacion">Pendiente Aprobación</SelectItem>
                       <SelectItem value="pendiente">Pendiente</SelectItem>
                       <SelectItem value="en_camino">En Camino</SelectItem>
                       <SelectItem value="en_proceso">En Proceso</SelectItem>
+                      <SelectItem value="pendiente_entrega">Pendiente Entrega</SelectItem>
                       <SelectItem value="finalizada">Finalizada</SelectItem>
                     </SelectContent>
                   </Select>
