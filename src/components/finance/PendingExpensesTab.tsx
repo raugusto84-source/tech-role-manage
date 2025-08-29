@@ -135,9 +135,11 @@ export function PendingExpensesTab() {
         amount: exp.amount,
         expense_date: exp.purchase_date,
         category: 'compras',
-        account_type: 'no_fiscal' as const,
+        account_type: 'fiscal' as const,
         payment_method: 'efectivo',
-        status: 'pagado'
+        status: 'pagado',
+        has_invoice: true,
+        invoice_number: exp.invoice_number
       }));
 
       const { error: expenseError } = await supabase

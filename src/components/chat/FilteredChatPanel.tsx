@@ -19,16 +19,19 @@ interface Message {
   created_at: string;
   read_by: string[];
   sender_name?: string;
-  sender_role?: string;
 }
 
 interface FilteredChatPanelProps {
-  selectedClientId?: string;
-  selectedClientName?: string;
+  selectedClientId: string;
+  selectedClientName: string;
   className?: string;
 }
 
-export function FilteredChatPanel({ selectedClientId, selectedClientName, className }: FilteredChatPanelProps) {
+export function FilteredChatPanel({ 
+  selectedClientId, 
+  selectedClientName, 
+  className 
+}: FilteredChatPanelProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,8 +43,10 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadMessages();
-    setupRealtimeSubscription();
+    if (user) {
+      loadMessages();
+      setupRealtimeSubscription();
+    }
     
     return () => {
       supabase.removeAllChannels();
@@ -70,33 +75,37 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
         .order('created_at', { ascending: true })
         .limit(100);
 
-      const { data, error } = await query;
+      // Filter messages based on selected client
+      if (selectedClientId) {
+        // Show only messages from/to this specific client
+        query = query.or(`sender_id.eq.${selectedClientId},sender_id.eq.${user.id}`);
+      }
+      // If no client selected, show all messages (general chat)
 
+      const { data, error } = await query;
       if (error) throw error;
 
-      // Fetch sender names and roles separately
+      // Fetch sender names separately
       const formattedMessages = await Promise.all((data || []).map(async (msg) => {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name, role')
+          .select('full_name')
           .eq('user_id', msg.sender_id)
           .single();
         
         return {
           ...msg,
           read_by: Array.isArray(msg.read_by) ? msg.read_by.map(id => String(id)) : [],
-          sender_name: profile?.full_name || 'Usuario',
-          sender_role: profile?.role || 'cliente'
+          sender_name: profile?.full_name || 'Usuario'
         };
       }));
 
-      // Filter messages based on selected client
+      // If filtering by client, only show messages between staff and that client
       let filteredMessages = formattedMessages;
       if (selectedClientId) {
-        // Show only messages from the selected client
         filteredMessages = formattedMessages.filter(msg => 
           msg.sender_id === selectedClientId || 
-          (msg.sender_role !== 'cliente') // Include staff responses
+          msg.sender_id === user.id
         );
       }
 
@@ -112,7 +121,7 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
 
       // Mark messages as read
       if (unread > 0) {
-        markMessagesAsRead(filteredMessages);
+        markMessagesAsRead();
       }
     } catch (error) {
       console.error('Error loading messages:', error);
@@ -123,48 +132,48 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
     if (!user) return;
 
     const channel = supabase
-      .channel(`chat-${selectedClientId || 'general'}`)
+      .channel(`filtered-chat-${selectedClientId || 'general'}`)
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
         (payload) => {
           const newMsg = payload.new as any;
           
-          // Add sender name and role
+          // Check if message should be shown based on current filter
+          if (selectedClientId && 
+              newMsg.sender_id !== selectedClientId && 
+              newMsg.sender_id !== user.id) {
+            return; // Skip messages not relevant to current filter
+          }
+          
+          // Add sender name
           supabase
             .from('profiles')
-            .select('full_name, role')
+            .select('full_name')
             .eq('user_id', newMsg.sender_id)
             .single()
             .then(({ data }) => {
               const messageWithSender = {
                 ...newMsg,
-                sender_name: data?.full_name || 'Usuario',
-                sender_role: data?.role || 'cliente'
+                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map(id => String(id)) : [],
+                sender_name: data?.full_name || 'Usuario'
               };
               
-              // Filter based on selected client
-              const shouldShowMessage = !selectedClientId || 
-                newMsg.sender_id === selectedClientId || 
-                data?.role !== 'cliente';
-
-              if (shouldShowMessage) {
-                setMessages(prev => [...prev, messageWithSender]);
+              setMessages(prev => [...prev, messageWithSender]);
+              
+              // If message is from another user, play sound and show notification
+              if (newMsg.sender_id !== user.id) {
+                setUnreadCount(prev => prev + 1);
                 
-                // If message is from another user, play sound and show notification
-                if (newMsg.sender_id !== user.id) {
-                  setUnreadCount(prev => prev + 1);
-                  
-                  if (soundEnabled) {
-                    playNotificationSound();
-                  }
-                  
-                  // Show desktop notification if permission granted
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification(`Nuevo mensaje${selectedClientName ? ` de ${selectedClientName}` : ''}`, {
-                      body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                      icon: '/favicon.ico'
-                    });
-                  }
+                if (soundEnabled) {
+                  playNotificationSound();
+                }
+                
+                // Show desktop notification if permission granted
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Nuevo mensaje', {
+                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
+                    icon: '/favicon.ico'
+                  });
                 }
               }
             });
@@ -177,12 +186,12 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
     };
   };
 
-  const markMessagesAsRead = async (messagesToMark: Message[]) => {
+  const markMessagesAsRead = async () => {
     if (!user) return;
 
     try {
       // Get unread messages
-      const unreadMessages = messagesToMark.filter(msg => 
+      const unreadMessages = messages.filter(msg => 
         msg.sender_id !== user.id && 
         (!msg.read_by || !msg.read_by.includes(user.id))
       );
@@ -270,7 +279,7 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
   }, []);
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('es-CO', {
+    return new Date(dateString).toLocaleTimeString('es-MX', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -287,7 +296,7 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
     } else if (date.toDateString() === yesterday.toDateString()) {
       return 'Ayer';
     } else {
-      return date.toLocaleDateString('es-CO', {
+      return date.toLocaleDateString('es-MX', {
         day: '2-digit',
         month: '2-digit'
       });
@@ -316,7 +325,7 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            {selectedClientName || "Chat General"}
+            {selectedClientName}
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {unreadCount}
@@ -332,11 +341,6 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
             {soundEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
           </Button>
         </div>
-        {selectedClientName && (
-          <p className="text-sm text-muted-foreground">
-            Conversación con {selectedClientName}
-          </p>
-        )}
       </CardHeader>
       
       <CardContent className="p-0">
@@ -371,16 +375,11 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
                       <div className={`rounded-lg p-3 ${
                         message.sender_id === user?.id
                           ? 'bg-primary text-primary-foreground'
-                          : message.sender_role === 'cliente'
-                          ? 'bg-blue-50 border border-blue-200'
                           : 'bg-muted'
                       }`}>
                         {message.sender_id !== user?.id && (
-                          <div className="text-xs font-medium mb-1 opacity-70 flex items-center gap-1">
+                          <div className="text-xs font-medium mb-1 opacity-70">
                             {message.sender_name}
-                            {message.sender_role === 'cliente' && (
-                              <Badge variant="secondary" className="text-xs">Cliente</Badge>
-                            )}
                           </div>
                         )}
                         <div className="text-sm">{message.message}</div>
@@ -410,7 +409,7 @@ export function FilteredChatPanel({ selectedClientId, selectedClientName, classN
         <div className="p-4 border-t">
           <div className="flex gap-2">
             <Input
-              placeholder={selectedClientName ? `Responder a ${selectedClientName}...` : "Escribir mensaje general..."}
+              placeholder="Escribir mensaje..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => {

@@ -5777,6 +5777,17 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      log_financial_audit_safe: {
+        Args: {
+          p_change_reason?: string
+          p_new_data?: Json
+          p_old_data?: Json
+          p_operation_type: string
+          p_record_id: string
+          p_table_name: string
+        }
+        Returns: undefined
+      }
       log_financial_operation: {
         Args:
           | {

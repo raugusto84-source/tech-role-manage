@@ -177,16 +177,23 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
         const totalPaid = (totalPayments || []).reduce((sum, payment) => sum + Number(payment.payment_amount), 0);
         const isCompletelyPaid = totalPaid >= (collection.total_with_vat || collection.estimated_cost);
 
-        // Log the collection operation (optional - just skip if function doesn't exist)
+        // Log the collection operation using safe audit function
         try {
-          console.log('Collection registered:', {
-            order_number: collection.order_number,
-            client_name: collection.client_name,
-            amount: finalAmount,
-            is_completely_paid: isCompletelyPaid
+          await supabase.rpc('log_financial_audit_safe', {
+            p_table_name: 'order_payments',
+            p_record_id: collection.id,
+            p_operation_type: 'collection_registered',
+            p_new_data: {
+              order_number: collection.order_number,
+              client_name: collection.client_name,
+              amount: finalAmount,
+              is_completely_paid: isCompletelyPaid
+            },
+            p_change_reason: 'Collection registered through CollectionDialog'
           });
         } catch (error) {
           console.error('Error logging collection operation:', error);
+          // Continue anyway, logging is optional
         }
 
         const vatMessage = accountType === "fiscal" 

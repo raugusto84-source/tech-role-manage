@@ -3539,7 +3539,13 @@ export default function Finance() {
         <MultipleFiscalWithdrawalsDialog
           open={multipleFiscalWithdrawalsDialog}
           onOpenChange={setMultipleFiscalWithdrawalsDialog}
-          withdrawals={fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0) || []}
+          withdrawals={fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).map(fw => ({
+            id: fw.id,
+            amount: fw.amount,
+            description: fw.description,
+            withdrawal_date: fw.created_at,
+            withdrawal_status: fw.withdrawal_status
+          })) || []}
           onSuccess={() => {
             fiscalWithdrawalsQuery.refetch();
             expensesQuery.refetch();

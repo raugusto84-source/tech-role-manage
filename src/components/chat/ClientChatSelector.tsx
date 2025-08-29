@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { MessageCircle, Users } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { MessageCircle } from 'lucide-react';
 
 interface ClientChat {
   client_id: string;
@@ -15,7 +15,6 @@ interface ClientChat {
   last_message: string;
   last_message_time: string;
   unread_count: number;
-  sender_name: string;
 }
 
 interface ClientChatSelectorProps {
@@ -29,19 +28,17 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadClientChats();
-    setupRealtimeSubscription();
-    
-    return () => {
-      supabase.removeAllChannels();
-    };
+    if (user) {
+      loadClientChats();
+      setupRealtimeSubscription();
+    }
   }, [user]);
 
   const loadClientChats = async () => {
-    if (!user) return;
-
     try {
-      // Get all unique clients who have sent messages
+      setLoading(true);
+      
+      // Get all messages from general_chats with sender information
       const { data: messages, error } = await supabase
         .from('general_chats')
         .select(`
@@ -55,58 +52,57 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
 
       if (error) throw error;
 
-      // Get profiles for all senders
+      // Get sender profiles for all unique sender IDs
       const senderIds = [...new Set(messages?.map(m => m.sender_id) || [])];
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, full_name, email, role')
         .in('user_id', senderIds);
 
-      // Filter messages from clients only and group by client
-      const clientMessages = messages?.filter(m => 
-        profiles?.find(p => p.user_id === m.sender_id)?.role === 'cliente'
-      ) || [];
+      if (profilesError) throw profilesError;
 
-      // Group messages by client
-      const clientGroups: { [key: string]: any[] } = {};
-      clientMessages.forEach(message => {
-        const profile = profiles?.find(p => p.user_id === message.sender_id);
-        if (profile) {
-          if (!clientGroups[profile.user_id]) {
-            clientGroups[profile.user_id] = [];
-          }
-          clientGroups[profile.user_id].push({
-            ...message,
-            sender_name: profile.full_name,
-            sender_email: profile.email
-          });
+      // Filter messages from clients only
+      const clientMessages = messages?.filter(msg => {
+        const profile = profiles?.find(p => p.user_id === msg.sender_id);
+        return profile?.role === 'cliente';
+      }) || [];
+
+      // Group messages by client (sender)
+      const clientGroups: { [key: string]: typeof clientMessages } = {};
+      clientMessages.forEach(msg => {
+        if (!clientGroups[msg.sender_id]) {
+          clientGroups[msg.sender_id] = [];
         }
+        clientGroups[msg.sender_id].push(msg);
       });
 
-      // Create client chat list
-      const chatList = Object.entries(clientGroups).map(([clientId, messages]) => {
-        const lastMessage = messages[0]; // Most recent message
-        const unreadCount = messages.filter(m => 
-          !m.read_by || !m.read_by.includes(user.id)
-        ).length;
+      // Create client chat entries
+      const clientChatList: ClientChat[] = Object.entries(clientGroups).map(([senderId, msgs]) => {
+        const profile = profiles?.find(p => p.user_id === senderId);
+        const latestMessage = msgs[0]; // Already sorted by created_at desc
+        
+        // Count unread messages from this client
+        const unreadCount = msgs.filter(msg => {
+          const readBy = Array.isArray(msg.read_by) ? msg.read_by : [];
+          return !readBy.includes(user.id);
+        }).length;
 
         return {
-          client_id: clientId,
-          client_name: lastMessage.sender_name,
-          client_email: lastMessage.sender_email,
-          last_message: lastMessage.message,
-          last_message_time: lastMessage.created_at,
-          unread_count: unreadCount,
-          sender_name: lastMessage.sender_name
+          client_id: senderId,
+          client_name: profile?.full_name || 'Cliente',
+          client_email: profile?.email || '',
+          last_message: latestMessage.message,
+          last_message_time: latestMessage.created_at,
+          unread_count: unreadCount
         };
       });
 
       // Sort by last message time
-      chatList.sort((a, b) => 
+      clientChatList.sort((a, b) => 
         new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
       );
 
-      setClientChats(chatList);
+      setClientChats(clientChatList);
     } catch (error) {
       console.error('Error loading client chats:', error);
     } finally {
@@ -115,13 +111,13 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   };
 
   const setupRealtimeSubscription = () => {
-    if (!user) return;
-
     const channel = supabase
-      .channel('client-chat-selector')
+      .channel('client-chat-updates')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'general_chats' }, 
-        () => loadClientChats()
+        () => {
+          loadClientChats(); // Reload when any chat message changes
+        }
       )
       .subscribe();
 
@@ -133,96 +129,107 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
 
     if (diffInMinutes < 1) return 'Ahora';
     if (diffInMinutes < 60) return `${diffInMinutes}m`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h`;
-    return date.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' });
+    if (diffInHours < 24) return `${diffInHours}h`;
+    if (diffInDays < 7) return `${diffInDays}d`;
+    
+    return date.toLocaleDateString('es-MX', { 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
 
+  const totalUnread = clientChats.reduce((sum, chat) => sum + chat.unread_count, 0);
+
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Clientes en Chat
-          {clientChats.reduce((sum, chat) => sum + chat.unread_count, 0) > 0 && (
-            <Badge variant="destructive" className="ml-2">
-              {clientChats.reduce((sum, chat) => sum + chat.unread_count, 0)}
-            </Badge>
+          <MessageCircle className="h-5 w-5" />
+          Chats de Clientes
+          {totalUnread > 0 && (
+            <Badge variant="destructive">{totalUnread}</Badge>
           )}
         </CardTitle>
       </CardHeader>
       
       <CardContent className="p-0">
         <ScrollArea className="h-96">
-          <div className="p-4 space-y-2">
+          <div className="space-y-1 p-4 pt-0">
             {/* General Chat Option */}
             <Button
-              variant={!selectedClientId ? "default" : "ghost"}
+              variant={selectedClientId === '' ? 'default' : 'ghost'}
               className="w-full justify-start h-auto p-3"
               onClick={() => onClientSelect('', 'Chat General')}
             >
               <div className="flex items-center gap-3 w-full">
                 <Avatar className="w-10 h-10">
-                  <AvatarFallback className="bg-blue-100 text-blue-600">
+                  <AvatarFallback className="bg-primary text-primary-foreground">
                     <MessageCircle className="h-5 w-5" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left">
                   <div className="font-medium">Chat General</div>
                   <div className="text-sm text-muted-foreground">
-                    Todos los mensajes del sistema
+                    Conversación grupal
                   </div>
                 </div>
               </div>
             </Button>
 
-            {/* Client Chats */}
-            {clientChats.map((chat) => (
-              <Button
-                key={chat.client_id}
-                variant={selectedClientId === chat.client_id ? "default" : "ghost"}
-                className="w-full justify-start h-auto p-3"
-                onClick={() => onClientSelect(chat.client_id, chat.client_name)}
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback>
-                      {chat.client_name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div className="font-medium truncate">{chat.client_name}</div>
-                      {chat.unread_count > 0 && (
-                        <Badge variant="destructive" className="text-xs">
-                          {chat.unread_count}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground truncate">
-                      {chat.last_message}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatTime(chat.last_message_time)}
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            ))}
-
+            {/* Loading state */}
             {loading && (
               <div className="text-center py-4 text-muted-foreground">
                 Cargando chats...
               </div>
             )}
 
+            {/* Client chats */}
+            {!loading && clientChats.map((chat) => (
+              <Button
+                key={chat.client_id}
+                variant={selectedClientId === chat.client_id ? 'default' : 'ghost'}
+                className="w-full justify-start h-auto p-3"
+                onClick={() => onClientSelect(chat.client_id, chat.client_name)}
+              >
+                <div className="flex items-center gap-3 w-full">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback>
+                      {chat.client_name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 text-left min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium truncate">{chat.client_name}</div>
+                      <div className="flex items-center gap-1">
+                        {chat.unread_count > 0 && (
+                          <Badge variant="destructive" className="h-5 min-w-5 text-xs">
+                            {chat.unread_count}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(chat.last_message_time)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-muted-foreground truncate">
+                      {chat.last_message}
+                    </div>
+                  </div>
+                </div>
+              </Button>
+            ))}
+
+            {/* Empty state */}
             {!loading && clientChats.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No hay mensajes de clientes aún</p>
+                No hay conversaciones con clientes
               </div>
             )}
           </div>

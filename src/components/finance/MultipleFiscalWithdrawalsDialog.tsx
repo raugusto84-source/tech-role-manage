@@ -1,19 +1,27 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
+
+interface FiscalWithdrawal {
+  id: string;
+  amount: number;
+  description: string;
+  withdrawal_date: string;
+  withdrawal_status: string;
+}
 
 interface MultipleFiscalWithdrawalsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  withdrawals: any[];
-  onSuccess: () => void;
+  withdrawals: FiscalWithdrawal[];
+  onSuccess?: () => void;
 }
 
 export function MultipleFiscalWithdrawalsDialog({ 
@@ -22,16 +30,25 @@ export function MultipleFiscalWithdrawalsDialog({
   withdrawals, 
   onSuccess 
 }: MultipleFiscalWithdrawalsDialogProps) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [concept, setConcept] = useState("");
   const [description, setDescription] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [selectedWithdrawals, setSelectedWithdrawals] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { toast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      setSelectedWithdrawals([]);
+      setConcept("");
+      setDescription("");
+      setInvoiceNumber("");
+    }
+  }, [open]);
 
   const handleWithdrawalToggle = (withdrawalId: string) => {
     setSelectedWithdrawals(prev => 
-      prev.includes(withdrawalId) 
+      prev.includes(withdrawalId)
         ? prev.filter(id => id !== withdrawalId)
         : [...prev, withdrawalId]
     );
@@ -39,27 +56,11 @@ export function MultipleFiscalWithdrawalsDialog({
 
   const selectedTotal = withdrawals
     .filter(w => selectedWithdrawals.includes(w.id))
-    .reduce((sum, w) => sum + Number(w.amount), 0);
+    .reduce((sum, w) => sum + w.amount, 0);
 
-  const handleSubmit = async () => {
-    if (!concept.trim()) {
-      toast({
-        title: "Error",
-        description: "El concepto es obligatorio",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!invoiceNumber.trim()) {
-      toast({
-        title: "Error", 
-        description: "El número de factura es obligatorio para transacciones fiscales múltiples",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (selectedWithdrawals.length === 0) {
       toast({
         title: "Error",
@@ -69,61 +70,67 @@ export function MultipleFiscalWithdrawalsDialog({
       return;
     }
 
+    if (!concept.trim() || !invoiceNumber.trim()) {
+      toast({
+        title: "Error", 
+        description: "El concepto y número de factura son obligatorios",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // Process each selected withdrawal
-      for (const withdrawalId of selectedWithdrawals) {
-        const withdrawal = withdrawals.find(w => w.id === withdrawalId);
-        if (!withdrawal) continue;
+      // Calculate VAT (16%)
+      const vatRate = 16;
+      const vatAmount = selectedTotal * (vatRate / 100);
+      const totalWithVat = selectedTotal + vatAmount;
 
-        // Calculate IVA for fiscal account (16%)
-        const amount = Number(withdrawal.amount);
-        const taxableAmount = amount / 1.16;
-        const vatAmount = amount - taxableAmount;
-
-        // Create the fiscal expense record with invoice info
-        const { error: expenseError } = await supabase.from("expenses").insert({
-          amount: amount,
-          description: `${concept}${description ? ' - ' + description : ''} (${withdrawal.description})`,
-          category: 'retiro_fiscal_multiple',
-          account_type: 'fiscal',
-          payment_method: 'transferencia',
+      // Create expense record for the combined withdrawals
+      const { data: expenseData, error: expenseError } = await supabase
+        .from("expenses")
+        .insert([{
+          expense_number: `EXP-${Date.now()}`,
+          amount: totalWithVat,
+          description: `[Retiro Fiscal] ${concept}${description ? ' - ' + description : ''}`,
+          category: "retiros_fiscales",
+          account_type: "fiscal",
+          payment_method: "transferencia",
           expense_date: new Date().toISOString().split('T')[0],
-          status: 'pagado',
           has_invoice: true,
-          invoice_number: invoiceNumber.trim(),
-          vat_rate: 16,
+          invoice_number: invoiceNumber,
+          vat_rate: vatRate,
           vat_amount: vatAmount,
-          taxable_amount: taxableAmount
-        } as any);
+          taxable_amount: selectedTotal
+        }])
+        .select('id')
+        .single();
 
-        if (expenseError) throw expenseError;
+      if (expenseError) throw expenseError;
 
-        // Update the withdrawal status
-        const { error: updateError } = await supabase.from("fiscal_withdrawals").update({
-          withdrawal_status: "withdrawn",
-          withdrawn_at: new Date().toISOString(),
-          withdrawn_by: (await supabase.auth.getUser()).data.user?.id
-        }).eq("id", withdrawalId);
+      // Update all selected withdrawals as processed
+      const { error: updateError } = await supabase
+        .from("fiscal_withdrawals")
+        .update({ 
+          withdrawal_status: "processed",
+          withdrawn_at: new Date().toISOString()
+        })
+        .in('id', selectedWithdrawals);
 
-        if (updateError) throw updateError;
-      }
+      if (updateError) throw updateError;
 
       toast({
-        title: "Retiros fiscales realizados exitosamente",
-        description: `Se procesaron ${selectedWithdrawals.length} retiros por un total de $${selectedTotal.toLocaleString()} con factura ${invoiceNumber}`
+        title: "Retiros procesados",
+        description: `Se procesaron ${selectedWithdrawals.length} retiros fiscales por $${totalWithVat.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN (incluye IVA)`
       });
 
-      setConcept("");
-      setDescription("");
-      setInvoiceNumber("");
-      setSelectedWithdrawals([]);
       onOpenChange(false);
-      onSuccess();
-    } catch (e: any) {
+      onSuccess?.();
+    } catch (error: any) {
+      console.error('Error processing withdrawals:', error);
       toast({
         title: "Error",
-        description: e?.message || "No fue posible realizar los retiros",
+        description: error.message || "No se pudieron procesar los retiros",
         variant: "destructive"
       });
     } finally {
@@ -133,110 +140,116 @@ export function MultipleFiscalWithdrawalsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Realizar Retiros Fiscales Múltiples</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+              📋
+            </div>
+            Procesar Múltiples Retiros Fiscales
+          </DialogTitle>
           <DialogDescription>
-            Seleccione los retiros que desea procesar con un solo concepto y factura
+            Procese varios retiros fiscales con un solo concepto y número de factura
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="concept">Concepto *</Label>
             <Input
               id="concept"
               value={concept}
               onChange={(e) => setConcept(e.target.value)}
-              placeholder="Ej: Retiro factura compra materiales múltiples"
+              placeholder="Ej: Compra de materiales de oficina"
+              required
             />
           </div>
 
-          <div>
-            <Label htmlFor="invoice-number">Número de Factura *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="invoiceNumber">Número de Factura *</Label>
             <Input
-              id="invoice-number"
+              id="invoiceNumber"
               value={invoiceNumber}
               onChange={(e) => setInvoiceNumber(e.target.value)}
-              placeholder="Ej: A123456789"
+              placeholder="A001-001-000001"
+              required
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Obligatorio para retiros fiscales múltiples
-            </p>
           </div>
 
-          <div>
-            <Label htmlFor="description">Descripción adicional</Label>
+          <div className="space-y-2">
+            <Label htmlFor="description">Descripción Adicional</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Detalles adicionales de los retiros (opcional)"
-              rows={3}
+              placeholder="Descripción opcional adicional"
+              rows={2}
             />
           </div>
 
           <div className="space-y-3">
-            <Label>Seleccionar Retiros Fiscales Disponibles</Label>
-            <div className="max-h-60 overflow-y-auto space-y-2">
+            <Label>Seleccionar Retiros a Procesar</Label>
+            <div className="border rounded-lg max-h-60 overflow-y-auto">
               {withdrawals.map((withdrawal) => (
-                <Card key={withdrawal.id} className="p-3">
-                  <CardContent className="p-0">
-                    <div className="flex items-center space-x-3">
-                      <Checkbox
-                        id={withdrawal.id}
-                        checked={selectedWithdrawals.includes(withdrawal.id)}
-                        onCheckedChange={() => handleWithdrawalToggle(withdrawal.id)}
-                      />
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="text-sm font-medium">
-                              ${Number(withdrawal.amount).toFixed(2)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {withdrawal.description}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(withdrawal.created_at).toLocaleDateString('es-CO')}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                <div
+                  key={withdrawal.id}
+                  className="flex items-center space-x-3 p-3 border-b last:border-b-0 hover:bg-gray-50"
+                >
+                  <Checkbox
+                    checked={selectedWithdrawals.includes(withdrawal.id)}
+                    onCheckedChange={() => handleWithdrawalToggle(withdrawal.id)}
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">${withdrawal.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
+                    <div className="text-sm text-muted-foreground">{withdrawal.description}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(withdrawal.withdrawal_date).toLocaleDateString('es-MX')}
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
           {selectedWithdrawals.length > 0 && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <div className="text-sm font-medium text-green-800 mb-1">
-                Resumen de Retiros Seleccionados
-              </div>
-              <div className="text-xs text-green-600 space-y-1">
-                <div>Cantidad de retiros: {selectedWithdrawals.length}</div>
-                <div>Total a retirar: ${selectedTotal.toFixed(2)}</div>
-                <div>Base gravable: ${(selectedTotal / 1.16).toFixed(2)}</div>
-                <div>IVA (16%): ${(selectedTotal - selectedTotal / 1.16).toFixed(2)}</div>
-              </div>
-            </div>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Resumen</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Retiros seleccionados:</span>
+                  <span className="font-medium">{selectedWithdrawals.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Monto gravable:</span>
+                  <span className="font-medium">${selectedTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>IVA (16%):</span>
+                  <span className="font-medium">${(selectedTotal * 0.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="font-bold">Total a registrar:</span>
+                  <span className="font-bold">${(selectedTotal * 1.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </CardContent>
+            </Card>
           )}
-        </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={loading || selectedWithdrawals.length === 0} 
-            className="bg-green-600 hover:bg-green-700"
-          >
-            {loading ? "Procesando..." : `Procesar ${selectedWithdrawals.length} Retiros`}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={loading || selectedWithdrawals.length === 0 || !concept.trim() || !invoiceNumber.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {loading ? "Procesando..." : "Procesar Retiros"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
