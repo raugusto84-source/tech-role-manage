@@ -3307,12 +3307,12 @@ export default function Finance() {
                        }} className="bg-green-600 hover:bg-green-700">
                                 Cobrar
                               </Button>
-                              <Button size="sm" variant="destructive" onClick={() => {
-                                setCollectionToDelete(item.id);
-                                setDeleteCollectionDialogOpen(true);
-                              }}>
-                                Eliminar
-                              </Button>
+                               <Button size="sm" variant="destructive" onClick={() => {
+                                 setCollectionToDelete(item.payment_id || item.id);
+                                 setDeleteCollectionDialogOpen(true);
+                               }}>
+                                 Eliminar
+                               </Button>
                             </div>
                           </TableCell>
                        </TableRow>)}
