@@ -3521,8 +3521,11 @@ export default function Finance() {
         onOpenChange={setDeleteCollectionDialogOpen} 
         collectionId={collectionToDelete}
         onSuccess={() => {
+          // Force immediate refetch to update UI
           collectionsQuery.refetch();
           setCollectionToDelete('');
+          // Close dialog immediately
+          setDeleteCollectionDialogOpen(false);
         }} 
       />
 
