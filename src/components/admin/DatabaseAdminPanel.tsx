@@ -5,28 +5,31 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Download, Upload, Trash2, AlertTriangle, Database, FileText } from 'lucide-react';
+import { Download, Upload, Trash2, AlertTriangle, RotateCcw, Power, Shield } from 'lucide-react';
 
 const DATABASE_MODULES = [
-  { id: 'profiles', name: 'Perfiles de Usuario', description: 'Información de usuarios del sistema' },
-  { id: 'clients', name: 'Clientes', description: 'Base de datos de clientes' },
-  { id: 'orders', name: 'Órdenes', description: 'Órdenes de trabajo y servicios' },
-  { id: 'order_items', name: 'Items de Órdenes', description: 'Detalles de servicios por orden' },
-  { id: 'quotes', name: 'Cotizaciones', description: 'Cotizaciones enviadas a clientes' },
-  { id: 'quote_items', name: 'Items de Cotizaciones', description: 'Detalles de servicios por cotización' },
-  { id: 'service_types', name: 'Tipos de Servicio', description: 'Catálogo de servicios disponibles' },
-  { id: 'incomes', name: 'Ingresos', description: 'Registro de ingresos' },
-  { id: 'expenses', name: 'Egresos', description: 'Registro de gastos' },
-  { id: 'order_payments', name: 'Pagos de Órdenes', description: 'Pagos realizados por órdenes' },
-  { id: 'financial_history', name: 'Historial Financiero', description: 'Registro de operaciones financieras' },
-  { id: 'fiscal_withdrawals', name: 'Retiros Fiscales', description: 'Retiros de montos fiscales' },
-  { id: 'technician_skills', name: 'Habilidades Técnicas', description: 'Habilidades de técnicos' },
-  { id: 'attendance_records', name: 'Registros de Asistencia', description: 'Control de asistencia de empleados' },
-  { id: 'employee_payments', name: 'Pagos a Empleados', description: 'Comisiones y bonos pagados' }
+  { id: 'profiles', name: 'Perfiles de Usuario', description: 'Información de usuarios del sistema', critical: true },
+  { id: 'clients', name: 'Clientes', description: 'Base de datos de clientes', critical: false },
+  { id: 'orders', name: 'Órdenes', description: 'Órdenes de trabajo y servicios', critical: false },
+  { id: 'order_items', name: 'Items de Órdenes', description: 'Detalles de servicios por orden', critical: false },
+  { id: 'quotes', name: 'Cotizaciones', description: 'Cotizaciones enviadas a clientes', critical: false },
+  { id: 'quote_items', name: 'Items de Cotizaciones', description: 'Detalles de servicios por cotización', critical: false },
+  { id: 'service_types', name: 'Tipos de Servicio', description: 'Catálogo de servicios disponibles', critical: false },
+  { id: 'incomes', name: 'Ingresos', description: 'Registro de ingresos', critical: false },
+  { id: 'expenses', name: 'Egresos', description: 'Registro de gastos', critical: false },
+  { id: 'order_payments', name: 'Pagos de Órdenes', description: 'Pagos realizados por órdenes', critical: false },
+  { id: 'financial_history', name: 'Historial Financiero', description: 'Registro de operaciones financieras', critical: false },
+  { id: 'fiscal_withdrawals', name: 'Retiros Fiscales', description: 'Retiros de montos fiscales', critical: false },
+  { id: 'technician_skills', name: 'Habilidades Técnicas', description: 'Habilidades de técnicos', critical: false },
+  { id: 'time_records', name: 'Registros de Tiempo', description: 'Control de tiempo de empleados', critical: false },
+  { id: 'employee_payments', name: 'Pagos a Empleados', description: 'Comisiones y bonos pagados', critical: false },
+  { id: 'client_rewards', name: 'Recompensas de Clientes', description: 'Sistema de recompensas', critical: false },
+  { id: 'reward_transactions', name: 'Transacciones de Recompensas', description: 'Historial de recompensas', critical: false },
+  { id: 'vehicles', name: 'Vehículos', description: 'Flota de vehículos', critical: false },
+  { id: 'insurance_policies', name: 'Pólizas de Seguro', description: 'Pólizas de seguros', critical: false }
 ];
 
 export function DatabaseAdminPanel() {
@@ -34,8 +37,13 @@ export function DatabaseAdminPanel() {
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [importData, setImportData] = useState<any>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const handleModuleSelect = (moduleId: string, checked: boolean) => {
     if (checked) {
@@ -120,10 +128,10 @@ export function DatabaseAdminPanel() {
 
     try {
       const text = await file.text();
-      const importData = JSON.parse(text);
+      const data = JSON.parse(text);
       
       // Show confirmation dialog with modules to import
-      const modulesToImport = Object.keys(importData).filter(key => 
+      const modulesToImport = Object.keys(data).filter(key => 
         DATABASE_MODULES.some(m => m.id === key)
       );
       
@@ -136,11 +144,8 @@ export function DatabaseAdminPanel() {
         return;
       }
 
-      // For now, just show what would be imported
-      toast({
-        title: "Archivo Cargado",
-        description: `Se encontraron ${modulesToImport.length} módulos para importar: ${modulesToImport.join(', ')}`,
-      });
+      setImportData(data);
+      setImportDialogOpen(true);
       
     } catch (error) {
       toast({
@@ -152,6 +157,134 @@ export function DatabaseAdminPanel() {
     
     // Reset file input
     event.target.value = '';
+  };
+
+  const performImport = async () => {
+    if (!importData) return;
+
+    setIsImporting(true);
+    try {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const [moduleId, data] of Object.entries(importData)) {
+        if (!DATABASE_MODULES.some(m => m.id === moduleId)) continue;
+        
+        try {
+          // Skip profiles table to avoid auth conflicts
+          if (moduleId === 'profiles') continue;
+
+          const records = data as any[];
+          if (!Array.isArray(records)) continue;
+
+          // Insert records in batches
+          for (let i = 0; i < records.length; i += 100) {
+            const batch = records.slice(i, i + 100);
+            const { error } = await supabase
+              .from(moduleId as any)
+              .upsert(batch, { onConflict: 'id' });
+            
+            if (error) {
+              console.error(`Error importing batch for ${moduleId}:`, error);
+              errorCount++;
+            } else {
+              successCount++;
+            }
+          }
+        } catch (err) {
+          console.error(`Error importing ${moduleId}:`, err);
+          errorCount++;
+        }
+      }
+
+      toast({
+        title: "Importación Completada",
+        description: `Módulos importados exitosamente: ${successCount}, Errores: ${errorCount}`,
+        variant: errorCount > 0 ? "destructive" : "default"
+      });
+      
+      setImportDialogOpen(false);
+      setImportData(null);
+    } catch (error) {
+      console.error('Import error:', error);
+      toast({
+        title: "Error en Importación",
+        description: "No se pudo completar la importación",
+        variant: "destructive"
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const resetSystem = async () => {
+    if (confirmText !== 'REINICIAR SISTEMA') {
+      toast({
+        title: "Confirmación Incorrecta",
+        description: "Debes escribir exactamente 'REINICIAR SISTEMA' para confirmar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      // Get current admin user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Error",
+          description: "No se pudo identificar el usuario administrador",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Delete all data except admin profile
+      const tablesToReset = DATABASE_MODULES.filter(m => m.id !== 'profiles');
+      
+      for (const module of tablesToReset) {
+        try {
+          const { error } = await supabase
+            .from(module.id as any)
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+          
+          if (error) {
+            console.error(`Error resetting ${module.id}:`, error);
+          }
+        } catch (err) {
+          console.error(`Error resetting ${module.id}:`, err);
+        }
+      }
+
+      // Keep only current admin profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .neq('user_id', user.id);
+
+      if (profileError) {
+        console.error('Error cleaning profiles:', profileError);
+      }
+
+      toast({
+        title: "Sistema Reiniciado",
+        description: "Todos los datos han sido eliminados. Solo se mantuvo tu perfil de administrador.",
+      });
+      
+      setResetDialogOpen(false);
+      setConfirmText('');
+    } catch (error) {
+      console.error('Reset error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo reiniciar completamente el sistema",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   const deleteSelectedData = async () => {
@@ -226,7 +359,7 @@ export function DatabaseAdminPanel() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {DATABASE_MODULES.map((module) => (
-              <div key={module.id} className="flex items-start space-x-2 p-3 border rounded-lg">
+              <div key={module.id} className={`flex items-start space-x-2 p-3 border rounded-lg ${module.critical ? 'border-amber-200 bg-amber-50' : ''}`}>
                 <Checkbox
                   id={module.id}
                   checked={selectedModules.includes(module.id)}
@@ -235,9 +368,10 @@ export function DatabaseAdminPanel() {
                 <div className="grid gap-1.5 leading-none">
                   <label
                     htmlFor={module.id}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-1"
                   >
                     {module.name}
+                    {module.critical && <Shield className="h-3 w-3 text-amber-600" />}
                   </label>
                   <p className="text-xs text-muted-foreground">
                     {module.description}
@@ -269,7 +403,7 @@ export function DatabaseAdminPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Importar Datos
+            Restaurar Datos
           </CardTitle>
           <CardDescription>
             Restaura datos desde un archivo de respaldo JSON
@@ -279,13 +413,13 @@ export function DatabaseAdminPanel() {
           <Alert>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Advertencia:</strong> La importación sobrescribirá los datos existentes. 
-              Asegúrate de hacer una copia de seguridad antes.
+              <strong>Advertencia:</strong> La restauración sobrescribirá los datos existentes. 
+              Se recomienda exportar antes de restaurar.
             </AlertDescription>
           </Alert>
 
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="import-file">Archivo JSON</Label>
+            <Label htmlFor="import-file">Archivo de Respaldo JSON</Label>
             <Input
               id="import-file"
               type="file"
@@ -293,6 +427,63 @@ export function DatabaseAdminPanel() {
               onChange={handleFileImport}
             />
           </div>
+
+          <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Upload className="h-5 w-5" />
+                  Confirmar Restauración
+                </DialogTitle>
+                <DialogDescription>
+                  Se encontraron los siguientes módulos para restaurar:
+                </DialogDescription>
+              </DialogHeader>
+              
+              {importData && (
+                <div className="space-y-4">
+                  <ul className="list-disc list-inside space-y-1 max-h-40 overflow-y-auto">
+                    {Object.keys(importData).filter(key => 
+                      DATABASE_MODULES.some(m => m.id === key)
+                    ).map(moduleId => {
+                      const module = DATABASE_MODULES.find(m => m.id === moduleId);
+                      const recordCount = Array.isArray(importData[moduleId]) ? importData[moduleId].length : 0;
+                      return (
+                        <li key={moduleId} className="text-sm">
+                          <strong>{module?.name}</strong> - {recordCount} registros
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Los datos existentes serán sobrescritos o fusionados con los datos del respaldo.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setImportDialogOpen(false);
+                    setImportData(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={performImport}
+                  disabled={isImporting}
+                >
+                  {isImporting ? 'Restaurando...' : 'Restaurar Datos'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </CardContent>
       </Card>
 
@@ -375,6 +566,103 @@ export function DatabaseAdminPanel() {
                   disabled={confirmText !== 'ELIMINAR DATOS' || isDeleting}
                 >
                   {isDeleting ? 'Eliminando...' : 'Eliminar Datos'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* System Reset Section */}
+      <Card className="border-red-500 bg-red-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-700">
+            <Power className="h-5 w-5" />
+            Reinicio Total del Sistema
+          </CardTitle>
+          <CardDescription className="text-red-600">
+            Elimina TODOS los datos del sistema excepto tu perfil de administrador
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert className="mb-4 border-red-200 bg-red-50">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-700">
+              <strong>MÁXIMO PELIGRO:</strong> Esta acción elimina permanentemente TODA la información 
+              del sistema incluyendo clientes, órdenes, finanzas, etc. Solo se preservará tu cuenta de administrador.
+              Esta acción es completamente irreversible.
+            </AlertDescription>
+          </Alert>
+
+          <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" className="w-full bg-red-600 hover:bg-red-700">
+                <Power className="h-4 w-4 mr-2" />
+                Reiniciar Sistema Completo
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-red-700 flex items-center gap-2">
+                  <Power className="h-5 w-5" />
+                  Confirmar Reinicio Total
+                </DialogTitle>
+                <DialogDescription className="text-red-600">
+                  Esta acción eliminará permanentemente TODOS los datos del sistema:
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                  <h4 className="font-semibold text-red-800 mb-2">Se eliminarán:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-red-700">
+                    <li>Todos los clientes y su información</li>
+                    <li>Todas las órdenes y cotizaciones</li>
+                    <li>Todo el historial financiero</li>
+                    <li>Todos los registros de empleados</li>
+                    <li>Toda la configuración del sistema</li>
+                    <li>Todos los demás datos</li>
+                  </ul>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-2">Se preservará:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-green-700">
+                    <li>Tu cuenta de administrador actual</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reset-confirm-text" className="text-red-700">
+                    Para confirmar el reinicio total, escribe: <strong>REINICIAR SISTEMA</strong>
+                  </Label>
+                  <Input
+                    id="reset-confirm-text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="REINICIAR SISTEMA"
+                    className="border-red-300 focus:border-red-500"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setResetDialogOpen(false);
+                    setConfirmText('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={resetSystem}
+                  disabled={confirmText !== 'REINICIAR SISTEMA' || isResetting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {isResetting ? 'Reiniciando...' : 'Reiniciar Sistema'}
                 </Button>
               </DialogFooter>
             </DialogContent>

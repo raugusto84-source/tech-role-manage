@@ -22,9 +22,18 @@ export default function Settings() {
                 <Database className="h-4 w-4" />
                 Base de Datos
               </TabsTrigger>
-              
-              
-              
+              <TabsTrigger value="general" className="flex items-center gap-2">
+                <SettingsIcon className="h-4 w-4" />
+                General
+              </TabsTrigger>
+              <TabsTrigger value="security" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Seguridad
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Usuarios
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="database" className="space-y-6">
