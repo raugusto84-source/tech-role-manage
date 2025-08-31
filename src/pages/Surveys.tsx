@@ -8,8 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Star, Calendar } from 'lucide-react';
+import { Search, Star, Calendar, MessageSquare, Settings, Plus, Edit, Trash2, Clock } from 'lucide-react';
 import { SurveyConfigurationManager } from '@/components/surveys/SurveyConfigurationManager';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ProgrammableSurveysContent } from '@/components/surveys/ProgrammableSurveysContent';
 
 interface OrderSatisfactionSurvey {
   id: string;
@@ -33,6 +39,30 @@ interface OrderSatisfactionSurvey {
   };
 }
 
+interface SurveyConfig {
+  id: string;
+  name: string;
+  description: string | null;
+  delay_days: number;
+  delay_hours: number;
+  is_active: boolean;
+  survey_questions: any[];
+  created_at: string;
+}
+
+interface ScheduledSurvey {
+  id: string;
+  order_id: string;
+  survey_config_id: string;
+  scheduled_date: string;
+  survey_token: string;
+  client_email: string;
+  client_name: string;
+  status: 'pending' | 'sent' | 'completed';
+  created_at: string;
+  order_number: string;
+}
+
 export default function Surveys() {
   const { profile } = useAuth();
   const { toast } = useToast();
@@ -42,18 +72,37 @@ export default function Surveys() {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  
+  // Programmable surveys state
+  const [surveyConfigs, setSurveyConfigs] = useState<SurveyConfig[]>([]);
+  const [scheduledSurveys, setScheduledSurveys] = useState<ScheduledSurvey[]>([]);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [editingConfig, setEditingConfig] = useState<SurveyConfig | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    delay_days: 1,
+    delay_hours: 0,
+    is_active: true,
+    survey_questions: [
+      { id: 1, question: '¿Cómo calificarías la calidad del servicio?', type: 'rating', required: true },
+      { id: 2, question: '¿Qué tan satisfecho estás con el tiempo de respuesta?', type: 'rating', required: true },
+      { id: 3, question: '¿Recomendarías nuestros servicios?', type: 'rating', required: true },
+      { id: 4, question: 'Comentarios adicionales', type: 'text', required: false }
+    ]
+  });
 
   useEffect(() => {
     if (profile?.role === 'administrador') {
-      loadSurveys();
+      loadAllData();
     }
   }, [profile]);
 
-  const loadSurveys = async () => {
+  const loadAllData = async () => {
     try {
       setLoading(true);
       
-      // Load order satisfaction surveys with simplified structure
+      // Load order satisfaction surveys
       const { data: surveys, error } = await supabase
         .from('order_satisfaction_surveys')
         .select(`
@@ -75,7 +124,7 @@ export default function Surveys() {
 
       if (error) throw error;
 
-      // Get technician and sales profiles
+      // Get technician profiles
       const surveyData = await Promise.all(
         (surveys || []).map(async (survey) => {
           let techProfile = null;
@@ -105,12 +154,46 @@ export default function Surveys() {
       );
 
       setOrderSurveys(surveyData);
+
+      // Load survey configurations
+      const { data: configsData, error: configsError } = await supabase
+        .from('survey_configurations')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (configsError) throw configsError;
+      
+      const processedConfigs = (configsData || []).map((config: any) => ({
+        ...config,
+        survey_questions: Array.isArray(config.survey_questions) ? config.survey_questions : []
+      }));
+      
+      setSurveyConfigs(processedConfigs);
+
+      // Load scheduled surveys
+      const { data: scheduledData, error: scheduledError } = await supabase
+        .from('scheduled_surveys')
+        .select(`
+          *,
+          orders (order_number)
+        `)
+        .order('scheduled_date', { ascending: false })
+        .limit(50);
+
+      if (scheduledError) throw scheduledError;
+      
+      const processedScheduled = scheduledData?.map((survey: any) => ({
+        ...survey,
+        order_number: survey.orders?.order_number || 'N/A'
+      })) || [];
+      
+      setScheduledSurveys(processedScheduled);
       
     } catch (error) {
-      console.error('Error loading surveys:', error);
+      console.error('Error loading data:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar las encuestas",
+        description: "No se pudieron cargar los datos de encuestas",
         variant: "destructive"
       });
     } finally {
@@ -191,13 +274,28 @@ export default function Surveys() {
         </header>
 
         <Tabs defaultValue="results" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="results">Resultados de Encuestas</TabsTrigger>
-            <TabsTrigger value="configuration">Configuración de Encuestas</TabsTrigger>
+            <TabsTrigger value="programmable">Encuestas Programables</TabsTrigger>
+            <TabsTrigger value="configuration">Configuración</TabsTrigger>
           </TabsList>
 
           <TabsContent value="configuration" className="space-y-6">
             <SurveyConfigurationManager />
+          </TabsContent>
+
+          <TabsContent value="programmable" className="space-y-6">
+            <ProgrammableSurveysContent 
+              surveyConfigs={surveyConfigs}
+              scheduledSurveys={scheduledSurveys}
+              showConfigDialog={showConfigDialog}
+              setShowConfigDialog={setShowConfigDialog}
+              editingConfig={editingConfig}
+              setEditingConfig={setEditingConfig}
+              formData={formData}
+              setFormData={setFormData}
+              onReload={loadAllData}
+            />
           </TabsContent>
 
           <TabsContent value="results" className="space-y-6">

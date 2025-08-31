@@ -65,7 +65,6 @@ export function AppSidebar() {
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
           { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
-          { title: 'Encuestas Programables', url: '/encuestas-programables', icon: MessageSquare },
           { title: 'Reportes', url: '/reports', icon: FileText },
           { title: 'Configuración', url: '/settings', icon: Settings },
         ];
@@ -91,7 +90,6 @@ export function AppSidebar() {
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
           { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
-          { title: 'Encuestas Programables', url: '/encuestas-programables', icon: MessageSquare },
         ];
       case 'tecnico':
         return [

@@ -18,6 +18,8 @@ const DATABASE_MODULES = [
   { id: 'quotes', name: 'Cotizaciones', description: 'Cotizaciones enviadas a clientes', critical: false },
   { id: 'quote_items', name: 'Items de Cotizaciones', description: 'Detalles de servicios por cotización', critical: false },
   { id: 'service_types', name: 'Tipos de Servicio', description: 'Catálogo de servicios disponibles', critical: false },
+  { id: 'sales_categories', name: 'Categorías de Ventas', description: 'Categorías de productos y servicios', critical: false },
+  { id: 'sales_products', name: 'Productos de Ventas', description: 'Catálogo de productos', critical: false },
   { id: 'incomes', name: 'Ingresos', description: 'Registro de ingresos', critical: false },
   { id: 'expenses', name: 'Egresos', description: 'Registro de gastos', critical: false },
   { id: 'order_payments', name: 'Pagos de Órdenes', description: 'Pagos realizados por órdenes', critical: false },
@@ -29,7 +31,14 @@ const DATABASE_MODULES = [
   { id: 'client_rewards', name: 'Recompensas de Clientes', description: 'Sistema de recompensas', critical: false },
   { id: 'reward_transactions', name: 'Transacciones de Recompensas', description: 'Historial de recompensas', critical: false },
   { id: 'vehicles', name: 'Vehículos', description: 'Flota de vehículos', critical: false },
-  { id: 'insurance_policies', name: 'Pólizas de Seguro', description: 'Pólizas de seguros', critical: false }
+  { id: 'insurance_policies', name: 'Pólizas de Seguro', description: 'Pólizas de seguros', critical: false },
+  { id: 'satisfaction_surveys', name: 'Encuestas de Satisfacción', description: 'Encuestas completadas por clientes', critical: false },
+  { id: 'survey_responses', name: 'Respuestas de Encuestas', description: 'Respuestas individuales a encuestas', critical: false },
+  { id: 'order_satisfaction_surveys', name: 'Encuestas de Órdenes', description: 'Encuestas de satisfacción por orden', critical: false },
+  { id: 'technician_satisfaction_surveys', name: 'Encuestas de Técnicos', description: 'Encuestas sobre técnicos', critical: false },
+  { id: 'sales_satisfaction_surveys', name: 'Encuestas de Ventas', description: 'Encuestas sobre vendedores', critical: false },
+  { id: 'survey_configurations', name: 'Configuraciones de Encuestas', description: 'Configuraciones programables de encuestas', critical: false },
+  { id: 'scheduled_surveys', name: 'Encuestas Programadas', description: 'Encuestas programadas automáticamente', critical: false }
 ];
 
 export function DatabaseAdminPanel() {
