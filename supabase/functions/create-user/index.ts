@@ -65,24 +65,25 @@ serve(async (req) => {
       throw new Error('User not authorized to create users')
     }
 
-    // Get request body
-    const { email, password, full_name, phone, role } = await req.json()
+  // Get request body
+  const { email, password, full_name, username, phone, role } = await req.json()
 
-    if (!email || !password || !full_name || !role) {
-      throw new Error('Missing required fields')
-    }
+  if (!email || !password || !full_name || !username || !role) {
+    throw new Error('Missing required fields')
+  }
 
-    // Create user with admin client
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      user_metadata: {
-        full_name,
-        role,
-        phone: phone || null
-      },
-      email_confirm: true // Auto-confirm email
-    })
+  // Create user with admin client
+  const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    user_metadata: {
+      full_name,
+      username,
+      role,
+      phone: phone || null
+    },
+    email_confirm: true // Auto-confirm email
+  })
 
     if (createError) {
       throw createError

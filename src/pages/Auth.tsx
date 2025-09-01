@@ -35,10 +35,10 @@ export default function Auth() {
     setIsLoading(true);
     
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
+    const username = formData.get('username') as string;
     const password = formData.get('password') as string;
     
-    await signIn(email, password);
+    await signIn(username, password);
     setIsLoading(false);
   };
 
@@ -50,9 +50,10 @@ export default function Auth() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
+    const username = formData.get('username') as string;
     const referralCode = formData.get('referralCode') as string;
     
-    await signUp(email, password, fullName, 'cliente', referralCode);
+    await signUp(email, password, fullName, username, 'cliente', referralCode);
     setIsLoading(false);
   };
 
@@ -92,12 +93,12 @@ export default function Auth() {
             <TabsContent value="login">
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="username">Usuario</Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="tu@email.com"
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="nombre_usuario"
                     required
                   />
                 </div>
@@ -130,6 +131,16 @@ export default function Auth() {
                     name="fullName"
                     type="text"
                     placeholder="Juan Pérez"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Usuario</Label>
+                  <Input
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="nombre_usuario"
                     required
                   />
                 </div>

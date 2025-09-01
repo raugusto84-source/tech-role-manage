@@ -9,6 +9,7 @@ interface Profile {
   id: string;
   user_id: string;
   email: string;
+  username: string;
   full_name: string;
   role: UserRole;
   phone?: string;
@@ -19,8 +20,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string, role?: UserRole, referralCode?: string) => Promise<{ error: any }>;
+  signIn: (username: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, username: string, role?: UserRole, referralCode?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   .insert({
                     user_id: session.user.id,
                     email: session.user.email || '',
+                    username: session.user.user_metadata?.username || `user${Date.now()}`,
                     full_name: session.user.user_metadata?.full_name || 'Usuario',
                     role: (session.user.user_metadata?.role as UserRole) || 'cliente'
                   })
@@ -128,9 +130,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
+    // First, find the email associated with the username
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email, role')
+      .eq('username', username)
+      .single();
+
+    if (profileError || !userProfile) {
+      toast({
+        title: "Error al iniciar sesión",
+        description: "Usuario no encontrado",
+        variant: "destructive",
+      });
+      return { error: new Error('Usuario no encontrado') };
+    }
+
+    // Now sign in with the email
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: userProfile.email,
       password,
     });
 
@@ -143,8 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       // Redirect based on user role after successful login
       setTimeout(() => {
-        const currentProfile = profile;
-        if (currentProfile?.role === 'cliente') {
+        if (userProfile.role === 'cliente') {
           window.location.href = '/client';
         } else {
           window.location.href = '/dashboard';
@@ -155,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, role: UserRole = 'cliente', referralCode?: string) => {
+  const signUp = async (email: string, password: string, fullName: string, username: string, role: UserRole = 'cliente', referralCode?: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
@@ -165,6 +183,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          username: username,
           role: role,
           referral_code: referralCode
         }

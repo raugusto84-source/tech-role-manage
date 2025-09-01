@@ -17,6 +17,7 @@ interface User {
   id: string;
   user_id: string;
   email: string;
+  username: string;
   full_name: string;
   phone?: string;
   role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente' | 'supervisor' | 'visor_tecnico';
@@ -62,6 +63,7 @@ export function UserManagement({
   // Estado del formulario
   const [formData, setFormData] = useState({
     email: '',
+    username: '',
     full_name: '',
     phone: '',
     role: 'cliente' as User['role'],
@@ -99,10 +101,12 @@ export function UserManagement({
 
   /**
    * Filtra usuarios por término de búsqueda y rol
-   * Búsqueda en nombre, email y rol
+   * Búsqueda en nombre, username, email y rol
    */
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.username?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
     return matchesSearch && matchesRole;
   });
@@ -139,6 +143,7 @@ export function UserManagement({
         },
         body: JSON.stringify({
           email: formData.email,
+          username: formData.username,
           password: formData.password,
           full_name: formData.full_name,
           phone: formData.phone,
@@ -181,6 +186,7 @@ export function UserManagement({
       const {
         error
       } = await supabase.from('profiles').update({
+        username: formData.username,
         full_name: formData.full_name,
         phone: formData.phone || null,
         role: formData.role,
@@ -355,6 +361,7 @@ export function UserManagement({
   const resetForm = () => {
     setFormData({
       email: '',
+      username: '',
       full_name: '',
       phone: '',
       role: 'cliente',
@@ -369,6 +376,7 @@ export function UserManagement({
   const startEdit = (user: User) => {
     setFormData({
       email: user.email,
+      username: user.username,
       full_name: user.full_name,
       phone: user.phone || '',
       role: user.role,
@@ -453,6 +461,24 @@ export function UserManagement({
             </DialogHeader>
             <div className="space-y-4">
               <div>
+                <Label htmlFor="username">Usuario</Label>
+                <Input 
+                  id="username" 
+                  value={formData.username} 
+                  onChange={e => setFormData(prev => ({
+                    ...prev,
+                    username: e.target.value
+                  }))} 
+                  disabled={!!editingUser} 
+                  placeholder="nombre_usuario" 
+                />
+                {!editingUser && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Este será el nombre de usuario para iniciar sesión
+                  </p>
+                )}
+              </div>
+              <div>
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" value={formData.email} onChange={e => setFormData(prev => ({
                 ...prev,
@@ -517,7 +543,7 @@ export function UserManagement({
                 <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={editingUser ? handleUpdateUser : handleCreateUser} disabled={!formData.email || !formData.full_name || !editingUser && !formData.password}>
+                <Button onClick={editingUser ? handleUpdateUser : handleCreateUser} disabled={!formData.username || !formData.email || !formData.full_name || !editingUser && !formData.password}>
                   {editingUser ? 'Actualizar' : 'Crear'}
                 </Button>
               </div>
@@ -541,9 +567,10 @@ export function UserManagement({
                     <CardContent className="p-4">
                        <div className="flex justify-between items-start mb-2">
                          <div className="flex-1">
-                           <h4 className="font-medium text-foreground">{user.full_name}</h4>
-                           <p className="text-sm text-muted-foreground">{user.email}</p>
-                           {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
+                            <h4 className="font-medium text-foreground">{user.full_name}</h4>
+                            <p className="text-sm text-muted-foreground">@{user.username}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
+                            {user.phone && <p className="text-xs text-muted-foreground">{user.phone}</p>}
                            
                            {/* Sección de contraseña */}
                            <div className="flex items-center gap-2 mt-2">

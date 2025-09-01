@@ -3092,6 +3092,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
           user_id: string
+          username: string
           whatsapp: string | null
         }
         Insert: {
@@ -3103,6 +3104,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id: string
+          username: string
           whatsapp?: string | null
         }
         Update: {
@@ -3114,6 +3116,7 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
+          username?: string
           whatsapp?: string | null
         }
         Relationships: []
