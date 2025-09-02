@@ -130,47 +130,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (username: string, password: string) => {
-    // First, find the email associated with the username
-    const { data: userProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('email, role')
-      .eq('username', username)
-      .single();
+  const signIn = async (usernameOrEmail: string, password: string) => {
+    try {
+      let emailToUse = '';
 
-    if (profileError || !userProfile) {
-      toast({
-        title: "Error al iniciar sesión",
-        description: "Usuario no encontrado",
-        variant: "destructive",
-      });
-      return { error: new Error('Usuario no encontrado') };
-    }
+      // If user typed an email, use it directly; otherwise resolve via RPC to bypass RLS
+      if (usernameOrEmail.includes('@')) {
+        emailToUse = usernameOrEmail;
+      } else {
+        const { data: resolvedEmail, error: resolveError } = await supabase.rpc('get_email_by_username', {
+          p_username: usernameOrEmail,
+        });
 
-    // Now sign in with the email
-    const { error } = await supabase.auth.signInWithPassword({
-      email: userProfile.email,
-      password,
-    });
-
-    if (error) {
-      toast({
-        title: "Error al iniciar sesión",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      // Redirect based on user role after successful login
-      setTimeout(() => {
-        if (userProfile.role === 'cliente') {
-          window.location.href = '/client';
-        } else {
-          window.location.href = '/dashboard';
+        if (resolveError) {
+          console.error('useAuth: Error resolving email by username:', resolveError);
+          toast({
+            title: 'Error al iniciar sesión',
+            description: 'No se pudo validar el usuario',
+            variant: 'destructive',
+          });
+          return { error: resolveError };
         }
-      }, 100);
-    }
 
-    return { error };
+        if (!resolvedEmail) {
+          toast({
+            title: 'Usuario no encontrado',
+            description: 'Verifica el nombre de usuario e intenta nuevamente',
+            variant: 'destructive',
+          });
+          return { error: new Error('Usuario no encontrado') };
+        }
+        emailToUse = resolvedEmail as string;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: emailToUse,
+        password,
+      });
+
+      if (signInError) {
+        toast({
+          title: 'Error al iniciar sesión',
+          description: signInError.message,
+          variant: 'destructive',
+        });
+        return { error: signInError };
+      }
+
+      // After successful sign-in, get the role and redirect
+      const { data: roleData, error: roleError } = await supabase.rpc('get_simple_user_role');
+      if (roleError) {
+        console.warn('useAuth: Could not fetch role after sign-in, defaulting to dashboard', roleError);
+        window.location.href = '/dashboard';
+        return { error: null };
+      }
+
+      const role = (roleData as string) || 'cliente';
+      const roleDashboards: Record<string, string> = {
+        cliente: '/client',
+        tecnico: '/technician',
+        vendedor: '/dashboard',
+        supervisor: '/dashboard',
+        administrador: '/dashboard',
+        visor_tecnico: '/technician-viewer',
+      };
+
+      window.location.href = roleDashboards[role] || '/dashboard';
+      return { error: null };
+    } catch (err: any) {
+      console.error('useAuth: Unexpected error during signIn:', err);
+      toast({
+        title: 'Error inesperado',
+        description: 'Ocurrió un error al iniciar sesión',
+        variant: 'destructive',
+      });
+      return { error: err };
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string, username: string, role: UserRole = 'cliente', referralCode?: string) => {

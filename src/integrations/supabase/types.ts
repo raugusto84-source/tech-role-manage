@@ -5757,6 +5757,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_email_by_username: {
+        Args: { p_username: string }
+        Returns: string
+      }
       get_simple_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
