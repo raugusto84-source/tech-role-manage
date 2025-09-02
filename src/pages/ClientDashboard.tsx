@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Gift, FileText, ClipboardList, Signature, CheckCircle, Clock, AlertCircle, Star, Copy } from "lucide-react";
+import { Plus, Search, Gift, FileText, ClipboardList, Signature, CheckCircle, Clock, AlertCircle, Star, Copy, MessageCircle } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
+import { ClientOfficeChat } from "@/components/chat/ClientOfficeChat";
 
 // Tipos locales para órdenes y cotizaciones
 interface Order {
@@ -319,7 +320,7 @@ export default function ClientDashboard() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 h-12 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-5 h-12 bg-muted/50">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
               <span className="hidden sm:inline">Resumen</span>
@@ -335,6 +336,10 @@ export default function ClientDashboard() {
             <TabsTrigger value="rewards" className="flex items-center gap-2">
               <Star className="h-4 w-4" />
               <span className="hidden sm:inline">Recompensas</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Chat</span>
             </TabsTrigger>
           </TabsList>
 
@@ -619,6 +624,10 @@ export default function ClientDashboard() {
                 </CardContent>
               </Card>
             </div>
+          </TabsContent>
+
+          <TabsContent value="chat" className="space-y-4">
+            <ClientOfficeChat />
           </TabsContent>
         </Tabs>
 

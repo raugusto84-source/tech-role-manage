@@ -10,7 +10,7 @@ interface ImprovedGeneralChatProps {
 
 export function ImprovedGeneralChat({ className }: ImprovedGeneralChatProps) {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
-  const [selectedClientName, setSelectedClientName] = useState<string>('Chat General');
+  const [selectedClientName, setSelectedClientName] = useState<string>('Chat Oficina');
 
   const handleClientSelect = (clientId: string, clientName: string) => {
     setSelectedClientId(clientId);

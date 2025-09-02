@@ -130,38 +130,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (usernameOrEmail: string, password: string) => {
+  const signIn = async (username: string, password: string) => {
     try {
-      let emailToUse = '';
+      // Only resolve username to email - no direct email login allowed
+      const { data: resolvedEmail, error: resolveError } = await supabase.rpc('get_email_by_username', {
+        p_username: username,
+      });
 
-      // If user typed an email, use it directly; otherwise resolve via RPC to bypass RLS
-      if (usernameOrEmail.includes('@')) {
-        emailToUse = usernameOrEmail;
-      } else {
-        const { data: resolvedEmail, error: resolveError } = await supabase.rpc('get_email_by_username', {
-          p_username: usernameOrEmail,
+      if (resolveError) {
+        console.error('useAuth: Error resolving email by username:', resolveError);
+        toast({
+          title: 'Error al iniciar sesión',
+          description: 'No se pudo validar el usuario',
+          variant: 'destructive',
         });
-
-        if (resolveError) {
-          console.error('useAuth: Error resolving email by username:', resolveError);
-          toast({
-            title: 'Error al iniciar sesión',
-            description: 'No se pudo validar el usuario',
-            variant: 'destructive',
-          });
-          return { error: resolveError };
-        }
-
-        if (!resolvedEmail) {
-          toast({
-            title: 'Usuario no encontrado',
-            description: 'Verifica el nombre de usuario e intenta nuevamente',
-            variant: 'destructive',
-          });
-          return { error: new Error('Usuario no encontrado') };
-        }
-        emailToUse = resolvedEmail as string;
+        return { error: resolveError };
       }
+
+      if (!resolvedEmail) {
+        toast({
+          title: 'Usuario no encontrado',
+          description: 'Verifica el nombre de usuario e intenta nuevamente',
+          variant: 'destructive',
+        });
+        return { error: new Error('Usuario no encontrado') };
+      }
+      
+      const emailToUse = resolvedEmail as string;
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: emailToUse,

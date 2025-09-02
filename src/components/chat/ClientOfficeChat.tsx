@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageCircle, Bell, BellOff } from 'lucide-react';
+import { Send, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface Message {
@@ -19,31 +19,33 @@ interface Message {
   created_at: string;
   read_by: string[];
   sender_name?: string;
+  sender_role?: string;
 }
 
-interface GeneralChatPanelProps {
+interface ClientOfficeChatProps {
   className?: string;
 }
 
-export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
+export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadMessages();
-    setupRealtimeSubscription();
+    if (user && profile?.role === 'cliente') {
+      loadMessages();
+      setupRealtimeSubscription();
+    }
     
     return () => {
       supabase.removeAllChannels();
     };
-  }, [user]);
+  }, [user, profile]);
 
   useEffect(() => {
     scrollToBottom();
@@ -69,26 +71,34 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
 
       if (error) throw error;
 
-      // Fetch sender names separately
+      // Fetch sender names and roles separately
       const formattedMessages = await Promise.all((data || []).map(async (msg) => {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('full_name')
+          .select('full_name, role')
           .eq('user_id', msg.sender_id)
           .single();
         
         return {
           ...msg,
           read_by: Array.isArray(msg.read_by) ? msg.read_by.map(id => String(id)) : [],
-          sender_name: profile?.full_name || 'Usuario'
+          sender_name: profile?.full_name || 'Usuario',
+          sender_role: profile?.role || 'cliente'
         };
       }));
 
-      setMessages(formattedMessages);
+      // Filter messages: show only messages between this client and office staff
+      const filteredMessages = formattedMessages.filter(msg => 
+        msg.sender_id === user.id || // Messages from this client
+        ['administrador', 'supervisor', 'vendedor'].includes(msg.sender_role) // Messages from office staff
+      );
+
+      setMessages(filteredMessages);
       
-      // Count unread messages
-      const unread = formattedMessages.filter(msg => 
+      // Count unread messages from office staff
+      const unread = filteredMessages.filter(msg => 
         msg.sender_id !== user.id && 
+        ['administrador', 'supervisor', 'vendedor'].includes(msg.sender_role) &&
         (!msg.read_by || !msg.read_by.includes(user.id))
       ).length;
       
@@ -107,40 +117,43 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
     if (!user) return;
 
     const channel = supabase
-      .channel('general-chat')
+      .channel('client-office-chat')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
         (payload) => {
           const newMsg = payload.new as any;
           
-          // Add sender name
+          // Add sender name and role
           supabase
             .from('profiles')
-            .select('full_name')
+            .select('full_name, role')
             .eq('user_id', newMsg.sender_id)
             .single()
             .then(({ data }) => {
               const messageWithSender = {
                 ...newMsg,
-                sender_name: data?.full_name || 'Usuario'
+                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map(id => String(id)) : [],
+                sender_name: data?.full_name || 'Usuario',
+                sender_role: data?.role || 'cliente'
               };
               
-              setMessages(prev => [...prev, messageWithSender]);
-              
-              // If message is from another user, play sound and show notification
-              if (newMsg.sender_id !== user.id) {
-                setUnreadCount(prev => prev + 1);
+              // Only show messages from this client or office staff
+              if (messageWithSender.sender_id === user.id || 
+                  ['administrador', 'supervisor', 'vendedor'].includes(messageWithSender.sender_role)) {
+                setMessages(prev => [...prev, messageWithSender]);
                 
-                if (soundEnabled) {
-                  playNotificationSound();
-                }
-                
-                // Show desktop notification if permission granted
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('Nuevo mensaje en chat general', {
-                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                    icon: '/favicon.ico'
-                  });
+                // If message is from office staff, increment unread count
+                if (messageWithSender.sender_id !== user.id && 
+                    ['administrador', 'supervisor', 'vendedor'].includes(messageWithSender.sender_role)) {
+                  setUnreadCount(prev => prev + 1);
+                  
+                  // Show desktop notification if permission granted
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Nuevo mensaje de oficina', {
+                      body: `${messageWithSender.sender_name}: ${newMsg.message}`,
+                      icon: '/favicon.ico'
+                    });
+                  }
                 }
               }
             });
@@ -157,9 +170,10 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
     if (!user) return;
 
     try {
-      // Get unread messages
+      // Get unread messages from office staff
       const unreadMessages = messages.filter(msg => 
         msg.sender_id !== user.id && 
+        ['administrador', 'supervisor', 'vendedor'].includes(msg.sender_role) &&
         (!msg.read_by || !msg.read_by.includes(user.id))
       );
 
@@ -175,31 +189,6 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
       setUnreadCount(0);
     } catch (error) {
       console.error('Error marking messages as read:', error);
-    }
-  };
-
-  const playNotificationSound = () => {
-    try {
-      const audio = new Audio('/notification.mp3');
-      audio.volume = 0.3;
-      audio.play().catch(() => {
-        // Fallback to system beep
-        const context = new AudioContext();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-        
-        oscillator.frequency.value = 800;
-        gainNode.gain.setValueAtTime(0.3, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
-        
-        oscillator.start(context.currentTime);
-        oscillator.stop(context.currentTime + 0.5);
-      });
-    } catch (error) {
-      console.log('Could not play notification sound');
     }
   };
 
@@ -234,16 +223,6 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  const requestNotificationPermission = async () => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      await Notification.requestPermission();
-    }
-  };
-
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('es-CO', {
@@ -286,28 +265,30 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
 
   const messageGroups = groupMessagesByDate(messages);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Chat Oficina
+            Chat con Oficina
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {unreadCount}
               </Badge>
             )}
           </CardTitle>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-          >
-            {soundEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
-          </Button>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Comunícate directamente con nuestro equipo de atención
+        </p>
       </CardHeader>
       
       <CardContent className="p-0">
@@ -321,7 +302,7 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
                   </Badge>
                 </div>
                 
-                {dayMessages.map((message, index) => (
+                {dayMessages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex gap-3 mb-4 ${
@@ -330,8 +311,8 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
                   >
                     {message.sender_id !== user?.id && (
                       <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">
-                          {message.sender_name?.charAt(0) || 'U'}
+                        <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                          {message.sender_name?.charAt(0) || 'O'}
                         </AvatarFallback>
                       </Avatar>
                     )}
@@ -346,7 +327,7 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
                       }`}>
                         {message.sender_id !== user?.id && (
                           <div className="text-xs font-medium mb-1 opacity-70">
-                            {message.sender_name}
+                            {message.sender_name} - Oficina
                           </div>
                         )}
                         <div className="text-sm">{message.message}</div>
@@ -361,7 +342,7 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
                     {message.sender_id === user?.id && (
                       <Avatar className="w-8 h-8">
                         <AvatarFallback className="text-xs">
-                          {profile?.full_name?.charAt(0) || 'T'}
+                          {profile?.full_name?.charAt(0) || 'C'}
                         </AvatarFallback>
                       </Avatar>
                     )}
@@ -376,7 +357,7 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
         <div className="p-4 border-t">
           <div className="flex gap-2">
             <Input
-              placeholder="Escribir mensaje..."
+              placeholder="Escribir mensaje a la oficina..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => {
