@@ -25,6 +25,7 @@ import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
 import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
 import { CashbackApplicationDialog } from './CashbackApplicationDialog';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 interface ServiceType {
   id: string;
@@ -80,6 +81,7 @@ interface SupportTechnicianEntry {
 export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -486,8 +488,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   };
 
   const calculateTotals = () => {
-    const totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    let totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    let totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    
+    // Apply cashback percentage to items if enabled in settings
+    if (rewardSettings?.apply_cashback_to_items) {
+      const cashbackPercent = rewardSettings.general_cashback_percent; // Could be new_client based on client status
+      const cashbackAmount = totalCostPrice * (cashbackPercent / 100);
+      totalCostPrice += cashbackAmount;
+      // Recalculate VAT on the new total
+      totalVATAmount = orderItems.reduce((sum, item) => {
+        const itemCashback = item.subtotal * (cashbackPercent / 100);
+        const newItemSubtotal = item.subtotal + itemCashback;
+        return sum + (newItemSubtotal * item.vat_rate / 100);
+      }, 0);
+    }
+    
     const totalAmount = totalCostPrice + totalVATAmount;
     return {
       totalCostPrice,

@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Gift, Users, TrendingUp, Clock, Search, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RewardSettingsManager } from "./RewardSettingsManager";
 
 interface ClientRewardsSummary {
   client_id: string;
@@ -193,6 +194,9 @@ export function RewardsAdminPanel() {
 
   return (
     <div className="space-y-6">
+      {/* Settings Configuration */}
+      <RewardSettingsManager />
+      
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -238,7 +242,11 @@ export function RewardsAdminPanel() {
       </div>
 
       <Tabs defaultValue="clients" className="w-full">
-         <TabsList className="grid w-full grid-cols-2 gap-1 p-1">
+         <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+           <TabsTrigger value="settings" className="text-xs md:text-sm">
+             <span className="md:hidden">Config</span>
+             <span className="hidden md:inline">Configuración</span>
+           </TabsTrigger>
            <TabsTrigger value="clients" className="text-xs md:text-sm">
              <span className="md:hidden">Clientes</span>
              <span className="hidden md:inline">Clientes</span>
@@ -247,7 +255,11 @@ export function RewardsAdminPanel() {
              <span className="md:hidden">Trans.</span>
              <span className="hidden md:inline">Transacciones</span>
            </TabsTrigger>
-         </TabsList>
+          </TabsList>
+
+        <TabsContent value="settings" className="space-y-4">
+          <RewardSettingsManager />
+        </TabsContent>
 
         <TabsContent value="clients" className="space-y-4">
           <Card>
