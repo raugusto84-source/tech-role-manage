@@ -3,16 +3,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ClientChatSelector } from './ClientChatSelector';
 import { FilteredChatPanel } from './FilteredChatPanel';
+import { ClientOfficeChat } from './ClientOfficeChat';
 import { MessageCircle, ArrowLeft } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ImprovedGeneralChatProps {
   className?: string;
 }
 
 export function ImprovedGeneralChat({ className }: ImprovedGeneralChatProps) {
+  const { profile } = useAuth();
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedClientName, setSelectedClientName] = useState<string>('Chat Oficina');
   const [showChatView, setShowChatView] = useState<boolean>(false);
+
+  // For client users, show their individual chat directly
+  if (profile?.role === 'cliente') {
+    return (
+      <div className={`space-y-4 ${className}`}>
+        <ClientOfficeChat />
+      </div>
+    );
+  }
 
   const handleClientSelect = (clientId: string, clientName: string) => {
     setSelectedClientId(clientId);

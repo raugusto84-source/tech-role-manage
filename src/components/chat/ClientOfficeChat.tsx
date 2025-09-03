@@ -311,7 +311,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Chat con Oficina
+            Atención a Clientes
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-2">
                 {unreadCount}
