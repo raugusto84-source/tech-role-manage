@@ -366,7 +366,7 @@ export default function ClientDashboard() {
             </TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              
+              <span className="hidden sm:inline">Cotizaciones</span>
             </TabsTrigger>
             <TabsTrigger value="rewards" className="flex items-center gap-2">
               <Star className="h-4 w-4" />
