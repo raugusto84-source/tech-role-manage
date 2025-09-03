@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Pencil, Trash2, Search, Package, Clock, Camera, Monitor, Computer, Zap, ShieldCheck, Key, Home, Wrench, Settings, Phone, Wifi, Lock, Users, Building, Car } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 /** ============================
  *  CATEGORÍAS / SUBCATEGORÍAS
@@ -74,6 +75,7 @@ const marginFromTiers = (service: Service): number =>
  */
 export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,12 +151,28 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
   };
 
   const getDisplayPrice = (service: Service): number => {
+    const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
     if (!isProduct(service)) {
-      return service.base_price * (1 + service.vat_rate / 100);
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = service.base_price || 0;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
     } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16; // IVA de compra fijo 16%
+      const baseCost = service.cost_price || 0;
       const profitMargin = marginFromTiers(service);
-      const priceWithMargin = service.cost_price * (1 + profitMargin / 100);
-      return priceWithMargin * (1 + service.vat_rate / 100);
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
     }
   };
 
@@ -417,7 +435,9 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                         <div className="text-sm font-medium text-blue-800">
                           Precio Final: {formatCurrency(getDisplayPrice(service))}
                         </div>
-                        <div className="text-xs text-blue-600">(Incluye IVA {service.vat_rate}%)</div>
+                        <div className="text-xs text-blue-600">
+                          (Incluye IVA {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -508,10 +528,16 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
                         </div>
                       </div>
                       <div className="p-3 bg-green-50 rounded">
-                        <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="grid grid-cols-3 gap-2 text-xs mb-2">
                           <div><span className="font-medium">Costo:</span> {formatCurrency(service.cost_price)}</div>
                           <div><span className="font-medium">Margen:</span> {getMarginText(service)}</div>
                           <div><span className="font-medium">IVA:</span> {service.vat_rate}%</div>
+                        </div>
+                        <div className="text-center text-sm font-medium text-green-800">
+                          Precio Final: {formatCurrency(getDisplayPrice(service))}
+                        </div>
+                        <div className="text-center text-xs text-green-600">
+                          (IVA compra 16% + Margen + IVA venta {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
                         </div>
                       </div>
                     </div>
