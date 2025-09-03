@@ -37,52 +37,60 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   const loadClientChats = async () => {
     setLoading(true);
     try {
-      // Get all clients first
-      const { data: clients, error: clientsError } = await supabase
-        .from('clients')
-        .select('id, name, email')
-        .order('name');
+      // Get clients that have messages only
+      const { data: clientsWithMessages, error } = await supabase
+        .from('general_chats')
+        .select(`
+          client_id,
+          message,
+          created_at,
+          sender_id,
+          clients!inner (
+            id,
+            name,
+            email
+          )
+        `)
+        .not('client_id', 'is', null)
+        .order('created_at', { ascending: false });
 
-      if (clientsError) throw clientsError;
+      if (error) throw error;
 
-      if (!clients || clients.length === 0) {
+      if (!clientsWithMessages || clientsWithMessages.length === 0) {
         setClientChats([]);
         setLoading(false);
         return;
       }
 
-      // Get latest message for each client and unread counts
-      const clientChatsData: ClientChat[] = [];
+      // Group messages by client and get latest message + unread count
+      const clientChatsMap = new Map<string, ClientChat>();
 
-      for (const client of clients) {
-        // Get latest message for this client
-        const { data: latestMessage } = await supabase
-          .from('general_chats')
-          .select('message, created_at, sender_id')
-          .eq('client_id', client.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+      for (const msg of clientsWithMessages) {
+        const client = msg.clients;
+        if (!client || !msg.client_id) continue;
 
-        // Count unread messages for this client
-        const { count: unreadCount } = await supabase
-          .from('general_chats')
-          .select('*', { count: 'exact', head: true })
-          .eq('client_id', client.id)
-          .not('sender_id', 'eq', user?.id || '')
-          .not('read_by', 'cs', JSON.stringify([user?.id || '']));
+        if (!clientChatsMap.has(msg.client_id)) {
+          // Count unread messages for this client
+          const { count: unreadCount } = await supabase
+            .from('general_chats')
+            .select('*', { count: 'exact', head: true })
+            .eq('client_id', msg.client_id)
+            .not('sender_id', 'eq', user?.id || '')
+            .not('read_by', 'cs', JSON.stringify([user?.id || '']));
 
-        clientChatsData.push({
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          lastMessage: latestMessage?.message || '',
-          lastMessageTime: latestMessage?.created_at || null,
-          unreadCount: unreadCount || 0
-        });
+          clientChatsMap.set(msg.client_id, {
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            lastMessage: msg.message,
+            lastMessageTime: msg.created_at,
+            unreadCount: unreadCount || 0
+          });
+        }
       }
 
-      // Sort by latest message time (most recent first)
+      // Convert to array and sort by latest message time (most recent first)
+      const clientChatsData = Array.from(clientChatsMap.values());
       clientChatsData.sort((a, b) => {
         if (!a.lastMessageTime && !b.lastMessageTime) return 0;
         if (!a.lastMessageTime) return 1;
@@ -136,95 +144,93 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   const totalUnread = clientChats.reduce((sum, chat) => sum + chat.unreadCount, 0);
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          Chats de Clientes
+    <div className="h-full flex flex-col">
+      {/* Header simplificado */}
+      <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="h-4 w-4" />
+          <span className="font-medium text-sm">Conversaciones</span>
           {totalUnread > 0 && (
-            <Badge variant="destructive">{totalUnread}</Badge>
+            <Badge variant="destructive" className="h-5 min-w-5 text-xs">
+              {totalUnread}
+            </Badge>
           )}
-        </CardTitle>
-      </CardHeader>
+        </div>
+      </div>
       
-      <CardContent className="p-0">
-        <ScrollArea className="h-96">
-          <div className="space-y-1 p-4 pt-0">
-            {/* Office Chat Option */}
+      {/* Lista de chats */}
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {/* Office Chat Option */}
+          <Button
+            variant={selectedClientId === '' ? 'secondary' : 'ghost'}
+            className="w-full justify-start h-auto p-2 text-left"
+            onClick={() => onClientSelect('', 'Chat Oficina')}
+          >
+            <div className="flex items-center gap-2 w-full min-w-0">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <MessageCircle className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm">Oficina</div>
+                <div className="text-xs text-muted-foreground">Chat interno</div>
+              </div>
+            </div>
+          </Button>
+
+          {/* Loading state */}
+          {loading && (
+            <div className="text-center py-4 text-muted-foreground text-sm">
+              Cargando...
+            </div>
+          )}
+
+          {/* Client chats */}
+          {!loading && clientChats.map((chat) => (
             <Button
-              variant={selectedClientId === '' ? 'default' : 'ghost'}
-              className="w-full justify-start h-auto p-3"
-              onClick={() => onClientSelect('', 'Chat Oficina')}
+              key={chat.id}
+              variant={selectedClientId === chat.id ? 'secondary' : 'ghost'}
+              className="w-full justify-start h-auto p-2 text-left"
+              onClick={() => onClientSelect(chat.id, chat.name)}
             >
-              <div className="flex items-center gap-3 w-full">
-                <Avatar className="w-10 h-10">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    <MessageCircle className="h-5 w-5" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 text-left">
-                  <div className="font-medium">Chat Oficina</div>
-                  <div className="text-sm text-muted-foreground">
-                    Conversación interna del equipo
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-medium text-primary">
+                    {chat.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-medium text-sm truncate">{chat.name}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {chat.unreadCount > 0 && (
+                        <Badge variant="destructive" className="h-4 min-w-4 text-xs px-1">
+                          {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                        </Badge>
+                      )}
+                      {chat.lastMessageTime && (
+                        <span className="text-xs text-muted-foreground">
+                          {formatTime(chat.lastMessageTime)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {chat.lastMessage || 'Sin mensajes'}
                   </div>
                 </div>
               </div>
             </Button>
+          ))}
 
-            {/* Loading state */}
-            {loading && (
-              <div className="text-center py-4 text-muted-foreground">
-                Cargando chats...
-              </div>
-            )}
-
-            {/* Client chats */}
-            {!loading && clientChats.map((chat) => (
-              <Button
-                key={chat.id}
-                variant={selectedClientId === chat.id ? 'default' : 'ghost'}
-                className="w-full justify-start h-auto p-3"
-                onClick={() => onClientSelect(chat.id, chat.name)}
-              >
-                <div className="flex items-center gap-3 w-full">
-                  <Avatar className="w-10 h-10">
-                    <AvatarFallback>
-                      {chat.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 text-left min-w-0">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium truncate">{chat.name}</div>
-                      <div className="flex items-center gap-1">
-                        {chat.unreadCount > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 text-xs">
-                            {chat.unreadCount}
-                          </Badge>
-                        )}
-                        {chat.lastMessageTime && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatTime(chat.lastMessageTime)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-sm text-muted-foreground truncate">
-                      {chat.lastMessage || 'Sin mensajes'}
-                    </div>
-                  </div>
-                </div>
-              </Button>
-            ))}
-
-            {/* Empty state */}
-            {!loading && clientChats.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No hay conversaciones con clientes
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+          {/* Empty state */}
+          {!loading && clientChats.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              Sin conversaciones
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }

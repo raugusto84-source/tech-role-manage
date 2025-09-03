@@ -342,116 +342,118 @@ export function FilteredChatPanel({
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            {selectedClientName}
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {unreadCount}
-              </Badge>
-            )}
-          </CardTitle>
-          
-          <Button
-            variant="outline"
+    <div className={`h-full flex flex-col border rounded-lg ${className}`}>
+      {/* Header simplificado */}
+      <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="h-4 w-4" />
+          <span className="font-medium text-sm">{selectedClientName}</span>
+          {unreadCount > 0 && (
+            <Badge variant="destructive" className="h-5 min-w-5 text-xs">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Badge>
+          )}
+        </div>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setSoundEnabled(!soundEnabled)}
+          className="h-7 w-7 p-0"
+        >
+          {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+        </Button>
+      </div>
+      
+      {/* Messages area */}
+      <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
+        <div className="space-y-3">
+          {Object.entries(messageGroups).map(([dateKey, dayMessages]) => (
+            <div key={dateKey}>
+              <div className="flex justify-center my-3">
+                <Badge variant="outline" className="text-xs px-2 py-1">
+                  {formatDate(dayMessages[0].created_at)}
+                </Badge>
+              </div>
+              
+              {dayMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex gap-2 mb-3 ${
+                    message.sender_id === user?.id ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  {message.sender_id !== user?.id && (
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-medium text-primary">
+                        {message.sender_name?.charAt(0) || 'U'}
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className={`max-w-[75%] ${
+                    message.sender_id === user?.id ? 'order-first' : ''
+                  }`}>
+                    <div className={`rounded-xl px-3 py-2 text-sm ${
+                      message.sender_id === user?.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}>
+                      {message.sender_id !== user?.id && (
+                        <div className="text-xs font-medium mb-1 opacity-70">
+                          {message.sender_name}
+                        </div>
+                      )}
+                      <div>{message.message}</div>
+                    </div>
+                    <div className={`text-xs text-muted-foreground mt-1 ${
+                      message.sender_id === user?.id ? 'text-right' : 'text-left'
+                    }`}>
+                      {formatTime(message.created_at)}
+                    </div>
+                  </div>
+                  
+                  {message.sender_id === user?.id && (
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-xs font-medium text-primary">
+                        {profile?.full_name?.charAt(0) || 'T'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+      
+      {/* Input area */}
+      <div className="p-3 border-t">
+        <div className="flex gap-2">
+          <Input
+            placeholder="Escribir mensaje..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
+            disabled={loading}
+            className="text-sm"
+          />
+          <Button 
+            onClick={sendMessage} 
+            disabled={loading || !newMessage.trim()}
             size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="px-3"
           >
-            {soundEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            <Send className="h-3 w-3" />
           </Button>
         </div>
-      </CardHeader>
-      
-      <CardContent className="p-0">
-        <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
-          <div className="space-y-4">
-            {Object.entries(messageGroups).map(([dateKey, dayMessages]) => (
-              <div key={dateKey}>
-                <div className="flex justify-center my-4">
-                  <Badge variant="outline" className="text-xs">
-                    {formatDate(dayMessages[0].created_at)}
-                  </Badge>
-                </div>
-                
-                {dayMessages.map((message, index) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-3 mb-4 ${
-                      message.sender_id === user?.id ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    {message.sender_id !== user?.id && (
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">
-                          {message.sender_name?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                    
-                    <div className={`max-w-[70%] ${
-                      message.sender_id === user?.id ? 'order-first' : ''
-                    }`}>
-                      <div className={`rounded-lg p-3 ${
-                        message.sender_id === user?.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}>
-                        {message.sender_id !== user?.id && (
-                          <div className="text-xs font-medium mb-1 opacity-70">
-                            {message.sender_name}
-                          </div>
-                        )}
-                        <div className="text-sm">{message.message}</div>
-                      </div>
-                      <div className={`text-xs text-muted-foreground mt-1 ${
-                        message.sender_id === user?.id ? 'text-right' : 'text-left'
-                      }`}>
-                        {formatTime(message.created_at)}
-                      </div>
-                    </div>
-                    
-                    {message.sender_id === user?.id && (
-                      <Avatar className="w-8 h-8">
-                        <AvatarFallback className="text-xs">
-                          {profile?.full_name?.charAt(0) || 'T'}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-        
-        <div className="p-4 border-t">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Escribir mensaje..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              disabled={loading}
-            />
-            <Button 
-              onClick={sendMessage} 
-              disabled={loading || !newMessage.trim()}
-              size="sm"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
