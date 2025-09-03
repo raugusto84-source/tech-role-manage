@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { OrderServiceSelection } from './OrderServiceSelection';
 import { Package, Wrench, ShoppingCart } from 'lucide-react';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 interface ServiceType {
   id: string;
@@ -32,6 +33,7 @@ export function ProductServiceSeparator({
   selectedServices,
   onRemoveService 
 }: ProductServiceSeparatorProps) {
+  const { settings: rewardSettings } = useRewardSettings();
   const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
 
   const formatCurrency = (amount: number) => {
@@ -42,19 +44,45 @@ export function ProductServiceSeparator({
     }).format(amount);
   };
 
+  const calculateServicePrice = (service: ServiceType, quantity: number): number => {
+    const salesVatRate = service.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    // Para servicios: precio base + IVA + cashback
+    const basePrice = (service.base_price || 0) * quantity;
+    const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+    const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+    return finalWithCashback;
+  };
+
+  const calculateProductPrice = (service: ServiceType, quantity: number): number => {
+    const purchaseVatRate = 16; // IVA de compra fijo 16%
+    const salesVatRate = service.vat_rate || 16;
+    const margin = 30; // 30% margen por defecto
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+    const baseCost = (service.cost_price || 0) * quantity;
+    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+    const afterMargin = afterPurchaseVat * (1 + margin / 100);
+    const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+    const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+    return finalWithCashback;
+  };
+
   const services = selectedServices.filter(item => item.service.item_type === 'servicio');
   const products = selectedServices.filter(item => item.service.item_type === 'articulo');
 
   const servicesTotal = services.reduce((total, item) => {
-    return total + ((item.service.base_price || 0) * item.quantity);
+    return total + calculateServicePrice(item.service, item.quantity);
   }, 0);
 
   const productsTotal = products.reduce((total, item) => {
-    const costPrice = item.service.cost_price || 0;
-    const margin = 0.30; // 30% margen por defecto para productos
-    const basePrice = costPrice + (costPrice * margin);
-    const vatAmount = basePrice * (item.service.vat_rate / 100);
-    return total + ((basePrice + vatAmount) * item.quantity);
+    return total + calculateProductPrice(item.service, item.quantity);
   }, 0);
 
   return (
@@ -138,28 +166,36 @@ export function ProductServiceSeparator({
                 </div>
                 
                 <div className="space-y-2">
-                  {services.map(({ service, quantity }) => (
-                    <div key={service.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium">{service.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Cantidad: {quantity} | Precio unitario: {formatCurrency(service.base_price || 0)}
+                  {services.map(({ service, quantity }) => {
+                    const finalPrice = calculateServicePrice(service, quantity);
+                    const unitPrice = calculateServicePrice(service, 1);
+                    
+                    return (
+                      <div key={service.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium">{service.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Cantidad: {quantity} | Precio unitario: {formatCurrency(unitPrice)}
+                            <span className="text-xs ml-1">
+                              (inc. IVA {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {formatCurrency(finalPrice)}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onRemoveService(service.id)}
+                          >
+                            Quitar
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {formatCurrency((service.base_price || 0) * quantity)}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onRemoveService(service.id)}
-                        >
-                          Quitar
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -184,24 +220,23 @@ export function ProductServiceSeparator({
                 
                 <div className="space-y-2">
                   {products.map(({ service, quantity }) => {
-                    const costPrice = service.cost_price || 0;
-                    const margin = 0.30;
-                    const basePrice = costPrice + (costPrice * margin);
-                    const vatAmount = basePrice * (service.vat_rate / 100);
-                    const totalPricePerUnit = basePrice + vatAmount;
+                    const finalPrice = calculateProductPrice(service, quantity);
+                    const unitPrice = calculateProductPrice(service, 1);
                     
                     return (
                       <div key={service.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                         <div className="flex-1">
                           <div className="font-medium">{service.name}</div>
                           <div className="text-sm text-muted-foreground">
-                            Cantidad: {quantity} | Precio unitario: {formatCurrency(totalPricePerUnit)} 
-                            <span className="text-xs ml-1">(inc. IVA {service.vat_rate}%)</span>
+                            Cantidad: {quantity} | Precio unitario: {formatCurrency(unitPrice)}
+                            <span className="text-xs ml-1">
+                              (IVA compra 16% + Margen + IVA venta {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {formatCurrency(totalPricePerUnit * quantity)}
+                            {formatCurrency(finalPrice)}
                           </span>
                           <Button
                             variant="outline"
