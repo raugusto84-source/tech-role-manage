@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Header } from './Header';
-import { GeneralChatPanel } from '@/components/chat/GeneralChatPanel';
+import { ImprovedGeneralChat } from '@/components/chat/ImprovedGeneralChat';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -44,8 +44,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <MessageSquare className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[400px] p-0">
-                <GeneralChatPanel />
+              <SheetContent side="right" className="w-[900px] p-0">
+                <div className="h-full p-4">
+                  <ImprovedGeneralChat />
+                </div>
               </SheetContent>
             </Sheet>
           )}
