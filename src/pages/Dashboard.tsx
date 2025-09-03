@@ -3,6 +3,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { PasswordChangeForm } from '@/components/auth/PasswordChangeForm';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
 
 /**
  * Dashboard principal personalizado por rol
@@ -155,15 +159,28 @@ export default function Dashboard() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Próximos Pasos</CardTitle>
-              <CardDescription>Qué hacer ahora</CardDescription>
+              <CardTitle>Configuración</CardTitle>
+              <CardDescription>Ajustes de tu cuenta</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-muted-foreground">
-                <p>
-                  El sistema está listo para expandirse con nuevas funcionalidades.
-                  Usa el menú lateral para navegar por las diferentes secciones.
-                </p>
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg bg-muted/50">
+                  <h3 className="font-medium mb-2">Cambiar Contraseña</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Actualiza tu contraseña para mantener tu cuenta segura
+                  </p>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Cambiar Contraseña
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <PasswordChangeForm onClose={() => {}} />
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <div className="mt-4 p-3 bg-muted rounded-lg">
                   <p className="font-medium">Sistema de Horarios:</p>
                   <p className="text-xs mt-1">

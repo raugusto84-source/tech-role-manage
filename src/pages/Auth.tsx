@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
+import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
 
 /**
  * Página de autenticación con login y registro
@@ -14,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 export default function Auth() {
   const { signIn, signUp, user, profile, loading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Redirect if already authenticated
   if (user && profile && !loading) {
@@ -64,6 +66,15 @@ export default function Auth() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Cargando...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Mostrar formulario de recuperación de contraseña
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
       </div>
     );
   }
@@ -119,6 +130,17 @@ export default function Auth() {
                 >
                   {isLoading ? 'Iniciando...' : 'Iniciar Sesión'}
                 </Button>
+                
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-sm text-muted-foreground hover:text-primary"
+                    onClick={() => setShowForgotPassword(true)}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Button>
+                </div>
               </form>
             </TabsContent>
             

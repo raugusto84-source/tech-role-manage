@@ -21,7 +21,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,7 +31,9 @@ import { OrderForm } from '@/components/orders/OrderForm';
 import { OrderStatusUpdate } from '@/components/orders/OrderStatusUpdate';
 import { OrderNoteForm } from '@/components/orders/OrderNoteForm';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
-import { Plus, RefreshCw, CheckCircle, ArrowLeft, Clock } from 'lucide-react';
+import { PasswordChangeForm } from '@/components/auth/PasswordChangeForm';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import { Plus, RefreshCw, CheckCircle, ArrowLeft, Clock, Settings } from 'lucide-react';
 
 // Interfaz para órdenes del técnico con nuevos campos
 interface TechnicianOrder {
@@ -524,10 +526,23 @@ export default function TechnicianDashboard() {
 
         {/* Tabs de órdenes */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="pendientes">Pendientes</TabsTrigger>
-            <TabsTrigger value="proceso">En Proceso</TabsTrigger>
-            <TabsTrigger value="terminadas">Terminadas</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="pendientes" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Pendientes ({getFilteredOrders('pendientes').length})
+            </TabsTrigger>
+            <TabsTrigger value="proceso" className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              En Proceso ({getFilteredOrders('proceso').length})
+            </TabsTrigger>
+            <TabsTrigger value="terminadas" className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Terminadas ({getFilteredOrders('terminadas').length})
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Ajustes</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pendientes" className="space-y-4">
@@ -620,14 +635,48 @@ export default function TechnicianDashboard() {
               </div>
             )}
           </TabsContent>
+
+          {/* Tab Ajustes */}
+          <TabsContent value="settings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración de Cuenta</CardTitle>
+                <CardDescription>
+                  Gestiona la configuración de tu cuenta y seguridad
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <h3 className="font-medium mb-2">Cambiar Contraseña</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Actualiza tu contraseña para mantener tu cuenta segura
+                    </p>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Cambiar Contraseña
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <PasswordChangeForm onClose={() => {}} />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
 
-        {/* Modales */}
+        {/* Modal de formulario para nueva orden */}
         {showOrderForm && (
-          <OrderForm
-            onSuccess={handleOrderUpdate}
-            onCancel={() => setShowOrderForm(false)}
-          />
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <OrderForm onSuccess={handleOrderUpdate} onCancel={() => setShowOrderForm(false)} />
+            </div>
+          </div>
         )}
       </div>
     </AppLayout>

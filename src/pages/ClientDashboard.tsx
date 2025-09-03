@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Gift, FileText, ClipboardList, Signature, CheckCircle, Clock, AlertCircle, Star, Copy, MessageCircle } from "lucide-react";
+import { Plus, Search, Gift, FileText, ClipboardList, Signature, CheckCircle, Clock, AlertCircle, Star, Copy, MessageCircle, Settings } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { ClientOfficeChat } from "@/components/chat/ClientOfficeChat";
+import { PasswordChangeForm } from "@/components/auth/PasswordChangeForm";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 // Tipos locales para órdenes y cotizaciones
 interface Order {
@@ -357,7 +359,7 @@ export default function ClientDashboard() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5 h-12 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-6 h-12 bg-muted/50">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
               <span className="hidden sm:inline">Resumen</span>
@@ -377,6 +379,10 @@ export default function ClientDashboard() {
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Chat</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Ajustes</span>
             </TabsTrigger>
           </TabsList>
 
@@ -659,6 +665,39 @@ export default function ClientDashboard() {
 
           <TabsContent value="chat" className="space-y-4">
             <ClientOfficeChat />
+          </TabsContent>
+
+          {/* Tab Ajustes */}
+          <TabsContent value="settings" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración de Cuenta</CardTitle>
+                <CardDescription>
+                  Gestiona la configuración de tu cuenta y seguridad
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg bg-muted/50">
+                    <h3 className="font-medium mb-2">Cambiar Contraseña</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Actualiza tu contraseña para mantener tu cuenta segura
+                    </p>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <Settings className="h-4 w-4 mr-2" />
+                          Cambiar Contraseña
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <PasswordChangeForm onClose={() => {}} />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
