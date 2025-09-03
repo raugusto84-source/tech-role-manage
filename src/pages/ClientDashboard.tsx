@@ -355,7 +355,7 @@ export default function ClientDashboard() {
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5 h-12 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-4 h-12 bg-muted/50">
             <TabsTrigger value="overview" className="flex items-center gap-2">
               <Gift className="h-4 w-4" />
               <span className="hidden sm:inline">Resumen</span>
@@ -367,10 +367,6 @@ export default function ClientDashboard() {
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">Cotizaciones</span>
-            </TabsTrigger>
-            <TabsTrigger value="rewards" className="flex items-center gap-2">
-              <Star className="h-4 w-4" />
-              <span className="hidden sm:inline">Recompensas</span>
             </TabsTrigger>
             <TabsTrigger value="chat" className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4" />
@@ -533,78 +529,6 @@ export default function ClientDashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="rewards" className="space-y-4">
-            <div className="grid gap-6">
-              {/* Tarjeta de recompensas principales */}
-              <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-purple-700">
-                    <Gift className="h-6 w-6" />
-                    Mis Recompensas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-center p-4 bg-white/60 rounded-lg">
-                    <p className="text-2xl font-bold text-purple-600">${rewards.totalCashback}</p>
-                    <p className="text-sm text-purple-600">Cashback Disponible</p>
-                  </div>
-                  
-                  {rewards.isNewClient && <div className="p-4 bg-gradient-to-r from-green-100 to-blue-100 rounded-lg border border-green-300">
-                      <h4 className="font-semibold text-green-800 mb-2">🎉 ¡Cliente Nuevo!</h4>
-                      <p className="text-sm text-green-700">
-                        Obtén 15% de descuento en tu primera orden de servicio
-                      </p>
-                    </div>}
-
-                  {/* Código de referido */}
-                  <div className="p-4 bg-white/60 rounded-lg">
-                    <h4 className="font-semibold mb-2">Tu código de referido</h4>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-gray-100 px-3 py-2 rounded text-sm font-mono flex-1">
-                        {rewards.referralCode}
-                      </code>
-                      
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Comparte tu código y obtén $200 por cada nuevo cliente referido
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Historial de recompensas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Historial de Recompensas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-green-800">Cashback por servicio</p>
-                        <p className="text-sm text-green-600">Orden #ORD-2024-001</p>
-                      </div>
-                      <p className="font-bold text-green-700">+$125</p>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-blue-800">Bono cliente nuevo</p>
-                        <p className="text-sm text-blue-600">Bienvenida</p>
-                      </div>
-                      <p className="font-bold text-blue-700">+$500</p>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                      <div>
-                        <p className="font-medium text-purple-800">Referido exitoso</p>
-                        <p className="text-sm text-purple-600">Juan Pérez</p>
-                      </div>
-                      <p className="font-bold text-purple-700">+$200</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
           <TabsContent value="chat" className="space-y-4">
             <ClientOfficeChat />
