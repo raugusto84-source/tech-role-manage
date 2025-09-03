@@ -26,6 +26,7 @@ import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculat
 import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
 import { CashbackApplicationDialog } from './CashbackApplicationDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { usePricingCalculation } from '@/hooks/usePricingCalculation';
 
 interface ServiceType {
   id: string;
@@ -113,6 +114,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [availableCashback, setAvailableCashback] = useState(0);
   const [appliedCashback, setAppliedCashback] = useState(0);
   const [showCashbackDialog, setShowCashbackDialog] = useState(false);
+
+  // Hook for pricing calculation with cashback adjustment
+  const pricing = usePricingCalculation(orderItems, formData.client_id);
 
   useEffect(() => {
     loadServiceTypes();
@@ -488,20 +492,49 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   };
 
   const calculateTotals = () => {
+    const totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    const totalAmount = totalCostPrice + totalVATAmount;
+    return {
+      totalCostPrice,
+      totalVATAmount,
+      totalAmount
+    };
+  };
+
+  const calculateTotalsWithCashbackAdjustment = async () => {
     let totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
     let totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
     
-    // Apply cashback percentage to items if enabled in settings
-    if (rewardSettings?.apply_cashback_to_items) {
-      const cashbackPercent = rewardSettings.general_cashback_percent; // Could be new_client based on client status
-      const cashbackAmount = totalCostPrice * (cashbackPercent / 100);
-      totalCostPrice += cashbackAmount;
-      // Recalculate VAT on the new total
-      totalVATAmount = orderItems.reduce((sum, item) => {
-        const itemCashback = item.subtotal * (cashbackPercent / 100);
-        const newItemSubtotal = item.subtotal + itemCashback;
-        return sum + (newItemSubtotal * item.vat_rate / 100);
-      }, 0);
+    // Only apply cashback percentage to items for GENERAL cashback (not new client)
+    // and only if the setting is enabled
+    if (rewardSettings?.apply_cashback_to_items && formData.client_id) {
+      try {
+        // Check if client is new (hasn't made any completed orders)
+        const { data: clientOrders } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('client_id', formData.client_id)
+          .eq('status', 'finalizada');
+        
+        const isNewClient = !clientOrders || clientOrders.length === 0;
+        
+        // Only apply to price if NOT a new client (use general cashback)
+        if (!isNewClient) {
+          const cashbackPercent = rewardSettings.general_cashback_percent;
+          const cashbackAmount = totalCostPrice * (cashbackPercent / 100);
+          totalCostPrice += cashbackAmount;
+          // Recalculate VAT on the new total
+          totalVATAmount = orderItems.reduce((sum, item) => {
+            const itemCashback = item.subtotal * (cashbackPercent / 100);
+            const newItemSubtotal = item.subtotal + itemCashback;
+            return sum + (newItemSubtotal * item.vat_rate / 100);
+          }, 0);
+        }
+        // If it's a new client, don't modify the price - cashback will be given as reward later
+      } catch (error) {
+        console.error('Error checking client status:', error);
+      }
     }
     
     const totalAmount = totalCostPrice + totalVATAmount;
@@ -791,8 +824,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
     // Apply cashback discount if any
     if (appliedCashback > 0) {
-      const { totalAmount } = calculateTotals();
-      if (appliedCashback > totalAmount) {
+      if (appliedCashback > pricing.totalAmount) {
         toast({
           title: "Error",
           description: "El descuento no puede ser mayor al total de la orden",
@@ -845,7 +877,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         service_type: orderItems[0].service_type_id,
         failure_description: formData.failure_description,
         delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        estimated_cost: totalAmount,
+        estimated_cost: pricing.totalAmount,
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
         assignment_reason: suggestionReason || null,
@@ -1248,14 +1280,26 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                    <Label>Total Estimado</Label>
                    <div className="p-4 border rounded-lg bg-muted/50">
                      <div className="space-y-2">
-                       <div className="flex justify-between text-sm">
-                         <span>Subtotal:</span>
-                         <span>${calculateTotals().totalCostPrice.toLocaleString()}</span>
-                       </div>
-                       <div className="flex justify-between text-sm">
-                         <span>IVA:</span>
-                         <span>${calculateTotals().totalVATAmount.toLocaleString()}</span>
-                       </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Subtotal:</span>
+                          <span>${pricing.totalCostPrice.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>IVA:</span>
+                          <span>${pricing.totalVATAmount.toLocaleString()}</span>
+                        </div>
+                        {pricing.hasCashbackAdjustment && (
+                          <div className="flex justify-between text-xs text-blue-600">
+                            <span>• Incluye {rewardSettings?.general_cashback_percent}% cashback aplicado al precio</span>
+                            <span></span>
+                          </div>
+                        )}
+                        {pricing.isNewClient && rewardSettings && (
+                          <div className="flex justify-between text-xs text-green-600">
+                            <span>• Cliente nuevo: {rewardSettings.new_client_cashback_percent}% cashback como recompensa</span>
+                            <span></span>
+                          </div>
+                        )}
                        {appliedCashback > 0 && (
                          <div className="flex justify-between text-sm text-green-600">
                            <span>Descuento Cashback:</span>
@@ -1265,7 +1309,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                        <div className="border-t pt-2">
                          <div className="flex justify-between font-bold">
                            <span>Total:</span>
-                           <span>${(calculateTotals().totalCostPrice + calculateTotals().totalVATAmount - appliedCashback).toLocaleString()}</span>
+                           <span>${(pricing.totalAmount - appliedCashback).toLocaleString()}</span>
                          </div>
                        </div>
                      </div>
@@ -1348,7 +1392,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           open={showCashbackDialog}
           onOpenChange={setShowCashbackDialog}
           availableCashback={availableCashback}
-          orderTotal={calculateTotals().totalCostPrice + calculateTotals().totalVATAmount}
+          orderTotal={pricing.totalAmount}
           onApply={handleApplyCashback}
         />
       </div>

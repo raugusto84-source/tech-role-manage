@@ -201,11 +201,11 @@ export function RewardSettingsManager() {
           <div className="space-y-1">
             <Label htmlFor="apply-to-items" className="flex items-center gap-2 text-base">
               <Calculator className="h-4 w-4" />
-              Aplicar al precio de los artículos
+              Aplicar cashback general al precio
             </Label>
             <p className="text-sm text-muted-foreground">
-              Si está activado, el porcentaje de cashback se suma al precio final del servicio/artículo.
-              Si está desactivado, se otorga como recompensa después de la compra.
+              Si está activado, el porcentaje de cashback GENERAL se suma al precio del servicio/artículo.
+              El cashback de cliente nuevo siempre se otorga como recompensa posterior (nunca se aplica al precio).
             </p>
           </div>
           <Switch
@@ -224,20 +224,31 @@ export function RewardSettingsManager() {
             <Calculator className="h-4 w-4" />
             Ejemplo de cálculo:
           </h4>
-          <div className="text-sm space-y-1">
-            <p>Servicio de $100.000 para cliente nuevo:</p>
-            {formData.apply_cashback_to_items ? (
-              <div className="pl-4">
-                <p>• Precio final: $100.000 + {formData.new_client_cashback_percent}% = ${(100000 * (1 + formData.new_client_cashback_percent / 100)).toLocaleString()}</p>
-                <Badge variant="outline">Aplicado al precio</Badge>
-              </div>
-            ) : (
-              <div className="pl-4">
-                <p>• Precio final: $100.000</p>
+          <div className="text-sm space-y-3">
+            <div>
+              <p className="font-medium">Servicio de $100.000 para cliente nuevo (primera orden):</p>
+              <div className="pl-4 mt-1">
+                <p>• Precio final: $100.000 (sin modificación)</p>
                 <p>• Cashback otorgado: ${(100000 * formData.new_client_cashback_percent / 100).toLocaleString()}</p>
-                <Badge variant="secondary">Recompensa posterior</Badge>
+                <Badge variant="secondary">Siempre como recompensa posterior</Badge>
               </div>
-            )}
+            </div>
+            
+            <div>
+              <p className="font-medium">Servicio de $100.000 para cliente existente:</p>
+              {formData.apply_cashback_to_items ? (
+                <div className="pl-4 mt-1">
+                  <p>• Precio final: $100.000 + {formData.general_cashback_percent}% = ${(100000 * (1 + formData.general_cashback_percent / 100)).toLocaleString()}</p>
+                  <Badge variant="outline">Aplicado al precio</Badge>
+                </div>
+              ) : (
+                <div className="pl-4 mt-1">
+                  <p>• Precio final: $100.000</p>
+                  <p>• Cashback otorgado: ${(100000 * formData.general_cashback_percent / 100).toLocaleString()}</p>
+                  <Badge variant="secondary">Recompensa posterior</Badge>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
