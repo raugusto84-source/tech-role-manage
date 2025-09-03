@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 /** ============================
  *  CATEGORÍAS / SUBCATEGORÍAS
@@ -118,6 +119,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const watchedProfitMargin = form.watch('profit_margin');
   const watchedVatRate = form.watch('vat_rate');
   const watchedMainCategory = form.watch('main_category');
+  const { settings: rewardSettings } = useRewardSettings();
 
   /** Si la categoría principal cambia, limpiar subcategoría */
   useEffect(() => {
@@ -266,12 +268,20 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
 
   /** Preview de precio */
   const calculatePreviewPrice = (): number => {
-    if (watchedKind === 'servicio') {
-      return watchedBasePrice * (1 + watchedVatRate / 100);
-    } else {
-      const priceWithMargin = watchedCostPrice * (1 + watchedProfitMargin / 100);
-      return priceWithMargin * (1 + watchedVatRate / 100);
-    }
+    const purchaseVatRate = 16; // IVA de compra fijo 16%
+    const salesVatRate = watchedVatRate || 16; // IVA de venta (configurable, por defecto 16%)
+
+    const baseCost = watchedCostPrice || 0;
+    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+    const afterMargin = afterPurchaseVat * (1 + (watchedProfitMargin || 0) / 100);
+    const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+    return finalWithCashback;
   };
 
   /** Guardar */
@@ -993,7 +1003,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           </Card>
 
           {/* Preview de precios */}
-          {(watchedKind === 'servicio' ? watchedBasePrice : watchedCostPrice) > 0 && (
+          {watchedCostPrice > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1006,19 +1016,27 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>{watchedKind === 'servicio' ? 'Precio Base:' : 'Costo Base:'}</span>
-                      <span>{formatCurrency(watchedKind === 'servicio' ? watchedBasePrice : watchedCostPrice)}</span>
+                      <span>Costo Base:</span>
+                      <span>{formatCurrency(watchedCostPrice)}</span>
                     </div>
-                    {watchedKind === 'articulo' && (
-                      <div className="flex justify-between text-green-600">
-                        <span>+ Margen ({watchedProfitMargin}%):</span>
-                        <span>{formatCurrency(watchedCostPrice * watchedProfitMargin / 100)}</span>
+                    <div className="flex justify-between text-blue-600">
+                      <span>+ IVA de compra (16%):</span>
+                      <span>{formatCurrency(watchedCostPrice * 0.16)}</span>
+                    </div>
+                    <div className="flex justify-between text-green-600">
+                      <span>+ Margen ({watchedProfitMargin}%):</span>
+                      <span>{formatCurrency((watchedCostPrice * 1.16) * (watchedProfitMargin / 100))}</span>
+                    </div>
+                    <div className="flex justify-between text-blue-600">
+                      <span>+ IVA de venta ({watchedVatRate}%):</span>
+                      <span>{formatCurrency(((watchedCostPrice * 1.16) * (1 + watchedProfitMargin / 100)) * (watchedVatRate / 100))}</span>
+                    </div>
+                    {rewardSettings?.apply_cashback_to_items && (
+                      <div className="flex justify-between text-primary">
+                        <span>+ Cashback general ({rewardSettings.general_cashback_percent}%):</span>
+                        <span>{formatCurrency((((watchedCostPrice * 1.16) * (1 + watchedProfitMargin / 100)) * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-blue-600">
-                      <span>+ IVA ({watchedVatRate}%):</span>
-                      <span>{formatCurrency((watchedKind === 'articulo' ? watchedCostPrice * (1 + watchedProfitMargin / 100) : watchedBasePrice) * watchedVatRate / 100)}</span>
-                    </div>
                     <hr />
                     <div className="flex justify-between text-lg font-bold text-green-600">
                       <span>Precio Final:</span>
