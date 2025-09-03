@@ -101,6 +101,7 @@ export function AppSidebar() {
           { title: 'Panel Cliente', url: '/client', icon: Home },
           { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Mis Cotizaciones', url: '/quotes', icon: FileText },
+          { title: 'Mis Recompensas', url: '/recompensas', icon: Gift },
         ];
       case 'visor_tecnico':
         return [
