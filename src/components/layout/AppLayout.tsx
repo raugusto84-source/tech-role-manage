@@ -6,7 +6,9 @@ import { ImprovedGeneralChat } from '@/components/chat/ImprovedGeneralChat';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useGlobalUnreadCount } from '@/hooks/useGlobalUnreadCount';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -19,6 +21,7 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { profile } = useAuth();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const unreadCount = useGlobalUnreadCount();
 
   return (
     <SidebarProvider>
@@ -32,25 +35,33 @@ export function AppLayout({ children }: AppLayoutProps) {
             </div>
           </main>
           
-          {/* Chat Panel for all users except clients */}
-          {profile?.role !== 'cliente' && (
-            <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
-                >
+          {/* Chat Panel for all users */}
+          <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
+              >
+                <div className="relative">
                   <MessageSquare className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[95vw] max-w-[1200px] p-0">
-                <div className="h-full p-2">
-                  <ImprovedGeneralChat />
+                  {unreadCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-2 -right-2 h-5 min-w-5 text-xs p-0 flex items-center justify-center"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
                 </div>
-              </SheetContent>
-            </Sheet>
-          )}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[95vw] max-w-[1200px] p-0">
+              <div className="h-full p-2">
+                <ImprovedGeneralChat />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </SidebarProvider>
