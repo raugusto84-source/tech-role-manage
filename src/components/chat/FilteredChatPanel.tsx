@@ -100,35 +100,23 @@ export function FilteredChatPanel({
 
       if (selectedClientId) {
         // Show ONLY messages between THIS specific client and staff
-        // This ensures complete conversation independence per client
+        // Simple and reliable filtering for complete client independence
         filteredMessages = formattedMessages.filter(msg => {
-          // Case 1: Message is FROM the selected client
+          // Include messages FROM the selected client
           if (msg.sender_id === selectedClientId) {
             return true;
           }
-          // Case 2: Message is FROM staff TO this conversation
-          // We determine this by checking if there are messages from this client
-          // before or after this staff message (indicating it's part of this client's conversation)
+          
+          // Include messages FROM staff (not from clients)
           if (msg.sender_role !== 'cliente') {
-            // For staff messages, we need to ensure they belong to this client's conversation
-            // We'll include staff messages that are part of this client thread
-            const msgIndex = formattedMessages.findIndex(m => m.id === msg.id);
-            
-            // Look for nearby client messages to determine conversation context
-            const nearbyMessages = formattedMessages.slice(
-              Math.max(0, msgIndex - 5), 
-              Math.min(formattedMessages.length, msgIndex + 5)
-            );
-            
-            // Check if this staff message is surrounded by messages from/to the selected client
-            const hasClientContext = nearbyMessages.some(m => m.sender_id === selectedClientId);
-            return hasClientContext;
+            return true;
           }
           
+          // Exclude messages from other clients
           return false;
         });
       } else {
-        // For general chat (no client selected), show only staff messages
+        // For office chat (no client selected), show only internal staff messages
         filteredMessages = formattedMessages.filter(msg => {
           const profile = profiles?.find(p => p.user_id === msg.sender_id);
           return profile?.role !== 'cliente';
@@ -164,55 +152,55 @@ export function FilteredChatPanel({
         (payload) => {
           const newMsg = payload.new as any;
           
-          // For client-specific chats, only show messages from that client or responses to that client
-          if (selectedClientId) {
-            // Only show messages from the selected client or staff responses in this conversation
-            if (newMsg.sender_id !== selectedClientId && newMsg.sender_id !== user.id) {
-              return; // Skip messages not relevant to this client conversation
-            }
-          } else {
-            // For general chat, only show staff messages (no client messages)
-            supabase
-              .from('profiles')
-              .select('role')
-              .eq('user_id', newMsg.sender_id)
-              .single()
-              .then(({ data }) => {
-                if (data?.role === 'cliente') {
-                  return; // Skip client messages in general chat
-                }
-              });
-          }
-          
-          // Add sender name
+          // Add sender profile data first
           supabase
             .from('profiles')
-            .select('full_name')
+            .select('full_name, role')
             .eq('user_id', newMsg.sender_id)
             .single()
             .then(({ data }) => {
               const messageWithSender = {
                 ...newMsg,
                 read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map(id => String(id)) : [],
-                sender_name: data?.full_name || 'Usuario'
+                sender_name: data?.full_name || 'Usuario',
+                sender_role: data?.role || 'cliente'
               };
               
-              setMessages(prev => [...prev, messageWithSender]);
+              // Apply the same filtering logic as loadMessages
+              let shouldShowMessage = false;
               
-              // If message is from another user, play sound and show notification
-              if (newMsg.sender_id !== user.id) {
-                setUnreadCount(prev => prev + 1);
-                
-                if (soundEnabled) {
-                  playNotificationSound();
+              if (selectedClientId) {
+                // Show messages from the selected client OR from staff
+                if (newMsg.sender_id === selectedClientId) {
+                  shouldShowMessage = true;
+                } else if (data?.role !== 'cliente') {
+                  shouldShowMessage = true;
                 }
+              } else {
+                // For office chat, only show staff messages
+                if (data?.role !== 'cliente') {
+                  shouldShowMessage = true;
+                }
+              }
+              
+              if (shouldShowMessage) {
+                setMessages(prev => [...prev, messageWithSender]);
                 
-                // Show desktop notification if permission granted
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('Nuevo mensaje', {
-                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                    icon: '/favicon.ico'
-                  });
+                // If message is from another user, play sound and show notification
+                if (newMsg.sender_id !== user.id) {
+                  setUnreadCount(prev => prev + 1);
+                  
+                  if (soundEnabled) {
+                    playNotificationSound();
+                  }
+                  
+                  // Show desktop notification if permission granted
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Nuevo mensaje', {
+                      body: `${messageWithSender.sender_name}: ${newMsg.message}`,
+                      icon: '/favicon.ico'
+                    });
+                  }
                 }
               }
             });
