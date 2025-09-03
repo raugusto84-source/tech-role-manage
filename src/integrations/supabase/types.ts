@@ -3578,6 +3578,39 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_settings: {
+        Row: {
+          apply_cashback_to_items: boolean
+          created_at: string
+          created_by: string | null
+          general_cashback_percent: number
+          id: string
+          is_active: boolean
+          new_client_cashback_percent: number
+          updated_at: string
+        }
+        Insert: {
+          apply_cashback_to_items?: boolean
+          created_at?: string
+          created_by?: string | null
+          general_cashback_percent?: number
+          id?: string
+          is_active?: boolean
+          new_client_cashback_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          apply_cashback_to_items?: boolean
+          created_at?: string
+          created_by?: string | null
+          general_cashback_percent?: number
+          id?: string
+          is_active?: boolean
+          new_client_cashback_percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reward_transactions: {
         Row: {
           amount: number
