@@ -59,7 +59,6 @@ export default function ClientDashboard() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [rewards, setRewards] = useState({
     totalCashback: 0,
-    totalPoints: 0,
     referralCode: "",
     isNewClient: true
   });
@@ -99,14 +98,52 @@ export default function ClientDashboard() {
 
   // Cargar recompensas del cliente
   const loadRewards = async () => {
-    if (!profile?.user_id) return;
-    // Simulado - aquí integrarías con tu sistema real de recompensas
-    setRewards({
-      totalCashback: 1250,
-      totalPoints: 450,
-      referralCode: "CLI" + profile.user_id.slice(-6).toUpperCase(),
-      isNewClient: true
-    });
+    if (!profile?.user_id || !profile?.email) return;
+    
+    try {
+      // Buscar cliente por email del perfil
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile.email)
+        .single();
+
+      if (!client) {
+        setRewards({
+          totalCashback: 0,
+          referralCode: "",
+          isNewClient: true
+        });
+        return;
+      }
+
+      // Obtener datos reales de recompensas
+      const { data: rewardsData } = await supabase
+        .from('client_rewards')
+        .select('*')
+        .eq('client_id', client.id)
+        .single();
+
+      // Obtener código de referido si existe
+      const { data: referralData } = await supabase
+        .from('client_referrals')
+        .select('referral_code')
+        .eq('referrer_client_id', client.id)
+        .single();
+
+      setRewards({
+        totalCashback: rewardsData?.total_cashback || 0,
+        referralCode: referralData?.referral_code || "",
+        isNewClient: rewardsData?.is_new_client || true
+      });
+    } catch (error) {
+      console.error('Error loading rewards:', error);
+      setRewards({
+        totalCashback: 0,
+        referralCode: "",
+        isNewClient: true
+      });
+    }
   };
 
   // Cargar órdenes del cliente usando user_id
@@ -547,15 +584,9 @@ export default function ClientDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-4 bg-white/60 rounded-lg">
-                      <p className="text-2xl font-bold text-purple-600">${rewards.totalCashback}</p>
-                      <p className="text-sm text-purple-600">Cashback Disponible</p>
-                    </div>
-                    <div className="text-center p-4 bg-white/60 rounded-lg">
-                      <p className="text-2xl font-bold text-pink-600">{rewards.totalPoints}</p>
-                      <p className="text-sm text-pink-600">Puntos Acumulados</p>
-                    </div>
+                  <div className="text-center p-4 bg-white/60 rounded-lg">
+                    <p className="text-2xl font-bold text-purple-600">${rewards.totalCashback}</p>
+                    <p className="text-sm text-purple-600">Cashback Disponible</p>
                   </div>
                   
                   {rewards.isNewClient && (

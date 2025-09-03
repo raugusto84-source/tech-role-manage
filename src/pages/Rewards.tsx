@@ -150,9 +150,9 @@ export default function Rewards() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-foreground">Mis Recompensas</h1>
-              <p className="text-muted-foreground">
-                Gestiona tus puntos, cashback y referidos
-              </p>
+            <p className="text-muted-foreground">
+              Gestiona tu cashback y referidos
+            </p>
             </div>
           </div>
 
