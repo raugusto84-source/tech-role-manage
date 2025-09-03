@@ -10,6 +10,7 @@ import { AIRecommendations } from './dashboard/AIRecommendations';
 import { FollowUpManager } from './FollowUpManager';
 import { WarrantiesAndAchievements } from './WarrantiesAndAchievements';
 import { TaskAssignmentManager } from './TaskAssignmentManager';
+import { ImprovedGeneralChat } from '@/components/chat/ImprovedGeneralChat';
 export function AdminDashboard() {
   return <div className="space-y-6">
       <div>
@@ -59,8 +60,9 @@ export function AdminDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-8 text-xs">
+        <TabsList className="grid w-full grid-cols-9 text-xs">
           <TabsTrigger value="overview">Resumen</TabsTrigger>
+          <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="finances">Finanzas</TabsTrigger>
           <TabsTrigger value="sales">Ventas</TabsTrigger>
           <TabsTrigger value="technicians">Técnicos</TabsTrigger>
@@ -78,6 +80,12 @@ export function AdminDashboard() {
             <TechnicianMetrics compact />
             <TasksMetrics compact />
             <AIRecommendations compact />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="chat" className="space-y-4">
+          <div className="h-[600px]">
+            <ImprovedGeneralChat />
           </div>
         </TabsContent>
 
