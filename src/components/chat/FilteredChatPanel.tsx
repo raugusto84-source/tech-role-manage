@@ -366,51 +366,55 @@ export function FilteredChatPanel({
 
   const messageGroups = groupMessagesByDate(messages);
 
+  const showHeader = !className?.includes('border-0');
+
   return (
     <Card className={className}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <MessageCircle className="h-5 w-5" />
-            {selectedClientName}
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="ml-2">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Badge>
-            )}
-          </CardTitle>
-          <div className="flex items-center gap-1">
-            {/* Scroll controls */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={scrollToTop}
-              className="h-7 w-7 p-0"
-              title="Ir al inicio"
-            >
-              <ChevronUp className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={scrollToBottom}
-              className="h-7 w-7 p-0"
-              title="Ir al final"
-            >
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="h-7 w-7 p-0"
-              title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
-            >
-              {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
-            </Button>
+      {showHeader && (
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              {selectedClientName}
+              {unreadCount > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
+            </CardTitle>
+            <div className="flex items-center gap-1">
+              {/* Scroll controls */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={scrollToTop}
+                className="h-7 w-7 p-0"
+                title="Ir al inicio"
+              >
+                <ChevronUp className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={scrollToBottom}
+                className="h-7 w-7 p-0"
+                title="Ir al final"
+              >
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSoundEnabled(!soundEnabled)}
+                className="h-7 w-7 p-0"
+                title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+              >
+                {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
+      )}
       
       <CardContent className="p-0">
         <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
