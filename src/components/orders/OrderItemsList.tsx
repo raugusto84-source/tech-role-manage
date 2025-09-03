@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 export interface OrderItem {
   id: string;
@@ -36,6 +37,29 @@ interface OrderItemsListProps {
 }
 
 export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
+  const { settings: rewardSettings } = useRewardSettings();
+  
+  const calculateFinalPrice = (item: OrderItem): number => {
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (item.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = item.subtotal;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: subtotal ya incluye el cálculo complejo, solo agregar cashback si aplica
+      const basePrice = item.subtotal;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
+  };
+
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeItem(itemId);
@@ -50,17 +74,22 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
         // por la cantidad como aproximación, pero esto debería idealmente
         // almacenarse como "horas_por_unidad" en el item.
         const baseTimePerUnit = item.estimated_hours / item.quantity;
-        const subtotal = newQuantity * item.unit_price;
-        const vatAmount = subtotal * 0.16; // Fixed 16% VAT
-        const total = subtotal + vatAmount;
+        const newSubtotal = newQuantity * item.unit_price;
+        const newVatAmount = newSubtotal * (item.vat_rate / 100);
+        const newTotal = calculateFinalPrice({
+          ...item,
+          quantity: newQuantity,
+          subtotal: newSubtotal,
+          vat_amount: newVatAmount
+        });
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
         
         return { 
           ...item, 
           quantity: newQuantity, 
-          subtotal, 
-          vat_amount: vatAmount, 
-          total,
+          subtotal: newSubtotal, 
+          vat_amount: newVatAmount, 
+          total: newTotal,
           estimated_hours: totalEstimatedHours
         };
       }
@@ -110,7 +139,7 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
   };
 
   const getTotalAmount = () => {
-    return items.reduce((sum, item) => sum + item.total, 0);
+    return items.reduce((sum, item) => sum + calculateFinalPrice(item), 0);
   };
 
   const getTotalHours = () => {
@@ -272,12 +301,15 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                        </div>
                      </div>
                      
-                     <div>
-                       <Label className="text-xs">Total</Label>
-                       <div className="font-bold text-primary mt-1">
-                         {formatCurrency(item.total)}
-                       </div>
-                     </div>
+                        <div>
+                          <Label className="text-xs">Total Final</Label>
+                          <div className="font-bold text-primary mt-1">
+                            {formatCurrency(calculateFinalPrice(item))}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            (inc. IVA {item.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
+                          </div>
+                        </div>
 
                      {item.status && (
                        <div>
@@ -322,13 +354,13 @@ export function OrderItemsList({ items, onItemsChange }: OrderItemsListProps) {
                             💰 Ahorro: {formatCurrency(item.policy_discount_amount)} 
                             ({item.policy_name || 'póliza'} - {item.policy_discount_percentage}%)
                           </span>
-                          <span className="text-primary font-medium">Precio final: {formatCurrency(item.subtotal)}</span>
-                          <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
+                          <span className="text-primary font-medium">Precio base: {formatCurrency(item.subtotal)}</span>
+                          <span>Final: {formatCurrency(calculateFinalPrice(item))}</span>
                         </>
                       ) : (
                        <>
                          <span>Subtotal: {formatCurrency(item.subtotal)}</span>
-                         <span>IVA ({item.vat_rate}%): {formatCurrency(item.vat_amount)}</span>
+                         <span>Final: {formatCurrency(calculateFinalPrice(item))}</span>
                        </>
                      )}
                    </div>
