@@ -135,6 +135,17 @@ export function FilteredChatPanel({
     }
   }, [user, selectedClientId, setupRealtimeSubscription]);
 
+  // Mark messages as read when chat is opened/selected
+  useEffect(() => {
+    if (user && messages.length > 0) {
+      const timer = setTimeout(() => {
+        markMessagesAsRead();
+      }, 1000); // Small delay to ensure messages are loaded
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, selectedClientId, messages.length]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -239,6 +250,8 @@ export function FilteredChatPanel({
         (!msg.read_by || !msg.read_by.includes(user.id))
       );
 
+      if (unreadMessages.length === 0) return;
+
       for (const message of unreadMessages) {
         const updatedReadBy = [...(message.read_by || []), user.id];
         
@@ -248,6 +261,17 @@ export function FilteredChatPanel({
           .eq('id', message.id);
       }
 
+      // Update local state immediately
+      setMessages(prev => prev.map(msg => {
+        if (msg.sender_id !== user.id && (!msg.read_by || !msg.read_by.includes(user.id))) {
+          return {
+            ...msg,
+            read_by: [...(msg.read_by || []), user.id]
+          };
+        }
+        return msg;
+      }));
+      
       setUnreadCount(0);
     } catch (error) {
       console.error('Error marking messages as read:', error);
