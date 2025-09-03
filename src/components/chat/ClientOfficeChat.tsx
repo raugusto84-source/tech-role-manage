@@ -7,8 +7,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageCircle } from 'lucide-react';
+import { Send, MessageCircle, Camera, MapPin } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useChatMedia } from '@/hooks/useChatMedia';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 interface Message {
   id: string;
@@ -29,6 +31,7 @@ interface ClientOfficeChatProps {
 export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { uploadPhoto, getCurrentLocation, uploading } = useChatMedia();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -211,8 +214,8 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     }
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !user || loading) return;
+  const sendMessage = async (messageType = 'text', messageContent = newMessage.trim(), attachmentUrl?: string) => {
+    if ((!messageContent && !attachmentUrl) || !user || loading) return;
 
     setLoading(true);
     try {
@@ -225,8 +228,9 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
 
       const messageData: any = {
         sender_id: user.id,
-        message: newMessage.trim(),
-        message_type: 'text'
+        message: messageContent,
+        message_type: messageType,
+        attachment_url: attachmentUrl
       };
 
       // Add client_id if we found the client record
@@ -240,7 +244,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
 
       if (error) throw error;
       
-      setNewMessage('');
+      if (messageType === 'text') setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -250,6 +254,28 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    const imageUrl = await uploadPhoto(file, user.id);
+    if (imageUrl) {
+      await sendMessage('image', 'Envió una imagen', imageUrl);
+    }
+    event.target.value = '';
+  };
+
+  const handleLocationShare = async () => {
+    if (!user) return;
+    
+    const location = await getCurrentLocation();
+    if (location) {
+      const locationMessage = `Ubicación compartida: ${location.address}`;
+      const locationUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+      await sendMessage('location', locationMessage, locationUrl);
     }
   };
 
@@ -362,9 +388,45 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
                           <div className="text-xs font-medium mb-1 opacity-70">
                             {message.sender_name} - Oficina
                           </div>
-                        )}
-                        <div className="text-sm">{message.message}</div>
-                      </div>
+                         )}
+                         
+                         {message.message_type === 'image' && message.attachment_url ? (
+                           <div className="space-y-2">
+                             <Dialog>
+                               <DialogTrigger asChild>
+                                 <img 
+                                   src={message.attachment_url} 
+                                   alt="Imagen compartida"
+                                   className="max-w-48 rounded cursor-pointer hover:opacity-80 transition-opacity"
+                                 />
+                               </DialogTrigger>
+                               <DialogContent className="max-w-3xl">
+                                 <img 
+                                   src={message.attachment_url} 
+                                   alt="Imagen compartida"
+                                   className="w-full h-auto rounded"
+                                 />
+                               </DialogContent>
+                             </Dialog>
+                             <div className="text-sm">{message.message}</div>
+                           </div>
+                         ) : message.message_type === 'location' && message.attachment_url ? (
+                           <div className="space-y-2">
+                             <a 
+                               href={message.attachment_url} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               className="flex items-center gap-2 p-2 bg-primary/10 rounded text-primary hover:bg-primary/20 transition-colors"
+                             >
+                               <MapPin className="h-4 w-4" />
+                               <span className="text-sm">Ver ubicación</span>
+                             </a>
+                             <div className="text-sm">{message.message}</div>
+                           </div>
+                         ) : (
+                           <div className="text-sm">{message.message}</div>
+                         )}
+                       </div>
                       <div className={`text-xs text-muted-foreground mt-1 ${
                         message.sender_id === user?.id ? 'text-right' : 'text-left'
                       }`}>
@@ -399,11 +461,41 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
                   sendMessage();
                 }
               }}
-              disabled={loading}
+              disabled={loading || uploading}
             />
+            
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              className="hidden"
+              id="client-photo-upload"
+              disabled={loading || uploading}
+            />
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('client-photo-upload')?.click()}
+              disabled={loading || uploading}
+              title="Enviar foto"
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLocationShare}
+              disabled={loading || uploading}
+              title="Compartir ubicación"
+            >
+              <MapPin className="h-4 w-4" />
+            </Button>
+            
             <Button 
-              onClick={sendMessage} 
-              disabled={loading || !newMessage.trim()}
+              onClick={() => sendMessage()} 
+              disabled={loading || uploading || !newMessage.trim()}
               size="sm"
             >
               <Send className="h-4 w-4" />
