@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Package, Clock, Calendar } from 'lucide-react';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 interface ServiceType {
   id: string;
@@ -35,6 +36,7 @@ interface OrderServiceSelectionProps {
 }
 
 export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filterByType }: OrderServiceSelectionProps) {
+  const { settings: rewardSettings } = useRewardSettings();
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -112,29 +114,29 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     }).format(amount);
   };
 
-  const calculateDisplayPrice = async (service: ServiceType, quantity: number = 1): Promise<number> => {
-    if (service.item_type === 'servicio') {
-      // Para servicios, usar el precio base establecido
-      return (service.base_price || 0) * quantity;
-    } else {
-      // Para artículos, usar la función de Supabase para calcular correctamente
-      try {
-        const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
-          p_service_type_id: service.id,
-          p_quantity: quantity
-        });
+  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
+    const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
 
-        if (error) throw error;
-        return data && data.length > 0 ? data[0].total_amount : 0;
-      } catch (error) {
-        console.error('Error calculating pricing:', error);
-        // Fallback calculation
-        const costPrice = service.cost_price || 0;
-        const margin = 0.30; // 30% margen por defecto
-        const basePrice = costPrice + (costPrice * margin);
-        const vatAmount = basePrice * (service.vat_rate / 100);
-        return (basePrice + vatAmount) * quantity;
-      }
+    if (service.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (service.base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16; // IVA de compra fijo 16%
+      const baseCost = (service.cost_price || 0) * quantity;
+      const margin = 30; // 30% margen por defecto, debería venir de configuración
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + margin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
     }
   };
 
@@ -144,30 +146,18 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
   // Función para obtener precio con cache
   const getDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
     const key = `${service.id}-${quantity}`;
-    return calculatedPrices[key] || 0;
+    return calculatedPrices[key] || calculateDisplayPrice(service, quantity);
   };
 
   // Calcular precios cuando cambian servicios o cantidades
   useEffect(() => {
-    const calculateAllPrices = async () => {
-      const pricePromises = services.map(async (service) => {
+    const calculateAllPrices = () => {
+      const newPrices: Record<string, number> = {};
+      
+      services.forEach((service) => {
         const quantity = quantities[service.id] || 1;
         const key = `${service.id}-${quantity}`;
-        
-        if (!calculatedPrices[key]) {
-          const price = await calculateDisplayPrice(service, quantity);
-          return { key, price };
-        }
-        return null;
-      });
-
-      const results = await Promise.all(pricePromises);
-      const newPrices = { ...calculatedPrices };
-      
-      results.forEach(result => {
-        if (result) {
-          newPrices[result.key] = result.price;
-        }
+        newPrices[key] = calculateDisplayPrice(service, quantity);
       });
 
       setCalculatedPrices(newPrices);
@@ -176,7 +166,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     if (services.length > 0) {
       calculateAllPrices();
     }
-  }, [services, quantities]);
+  }, [services, quantities, rewardSettings]);
 
   const formatEstimatedTime = (hours: number | null) => {
     if (!hours) return 'No especificado';
@@ -326,22 +316,20 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
                           )}
                           
                           <div className="flex flex-wrap gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <Package className="h-4 w-4 text-green-600" />
-                              <span className="font-medium text-green-600">
-                                Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
-                                {service.item_type === 'articulo' && (
-                                  <span className="text-xs text-muted-foreground ml-1">
-                                    (inc. IVA {service.vat_rate}%)
-                                  </span>
-                                )}
-                              </span>
-                              {(quantities[service.id] || 1) > 1 && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({formatCurrency(getDisplayPrice(service, 1))} c/u)
-                                </span>
-                              )}
-                            </div>
+                           <div className="flex items-center gap-1">
+                             <Package className="h-4 w-4 text-green-600" />
+                             <span className="font-medium text-green-600">
+                               Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
+                               <span className="text-xs text-muted-foreground ml-1">
+                                 (inc. IVA {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
+                               </span>
+                             </span>
+                             {(quantities[service.id] || 1) > 1 && (
+                               <span className="text-xs text-muted-foreground">
+                                 ({formatCurrency(getDisplayPrice(service, 1))} c/u)
+                               </span>
+                             )}
+                           </div>
                             
                             {service.estimated_hours && (
                               <div className="flex items-center gap-1">
@@ -436,22 +424,20 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
                         )}
                         
                         <div className="flex flex-wrap gap-4 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Package className="h-4 w-4 text-green-600" />
-                            <span className="font-medium text-green-600">
-                              Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
-                              {service.item_type === 'articulo' && (
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  (inc. IVA {service.vat_rate}%)
-                                </span>
-                              )}
-                            </span>
-                            {(quantities[service.id] || 1) > 1 && (
-                              <span className="text-xs text-muted-foreground">
-                                ({formatCurrency(getDisplayPrice(service, 1))} c/u)
-                              </span>
-                            )}
-                          </div>
+                           <div className="flex items-center gap-1">
+                             <Package className="h-4 w-4 text-green-600" />
+                             <span className="font-medium text-green-600">
+                               Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
+                               <span className="text-xs text-muted-foreground ml-1">
+                                 (inc. IVA {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
+                               </span>
+                             </span>
+                             {(quantities[service.id] || 1) > 1 && (
+                               <span className="text-xs text-muted-foreground">
+                                 ({formatCurrency(getDisplayPrice(service, 1))} c/u)
+                               </span>
+                             )}
+                           </div>
                           
                           {service.estimated_hours && (
                             <div className="flex items-center gap-1">
