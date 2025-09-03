@@ -1496,6 +1496,7 @@ export type Database = {
       general_chats: {
         Row: {
           attachment_url: string | null
+          client_id: string | null
           created_at: string
           id: string
           message: string
@@ -1505,6 +1506,7 @@ export type Database = {
         }
         Insert: {
           attachment_url?: string | null
+          client_id?: string | null
           created_at?: string
           id?: string
           message: string
@@ -1514,6 +1516,7 @@ export type Database = {
         }
         Update: {
           attachment_url?: string | null
+          client_id?: string | null
           created_at?: string
           id?: string
           message?: string
@@ -1521,7 +1524,15 @@ export type Database = {
           read_by?: Json | null
           sender_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "general_chats_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incomes: {
         Row: {

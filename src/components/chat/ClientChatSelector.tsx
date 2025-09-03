@@ -9,12 +9,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { MessageCircle } from 'lucide-react';
 
 interface ClientChat {
-  client_id: string;
-  client_name: string;
-  client_email: string;
-  last_message: string;
-  last_message_time: string;
-  unread_count: number;
+  id: string;
+  name: string;
+  email: string;  
+  lastMessage: string;
+  lastMessageTime: string | null;
+  unreadCount: number;
 }
 
 interface ClientChatSelectorProps {
@@ -35,74 +35,62 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   }, [user]);
 
   const loadClientChats = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      // Get all messages from general_chats with sender information
-      const { data: messages, error } = await supabase
-        .from('general_chats')
-        .select(`
-          id,
-          sender_id,
-          message,
-          created_at,
-          read_by
-        `)
-        .order('created_at', { ascending: false });
+      // Get all clients first
+      const { data: clients, error: clientsError } = await supabase
+        .from('clients')
+        .select('id, name, email')
+        .order('name');
 
-      if (error) throw error;
+      if (clientsError) throw clientsError;
 
-      // Get sender profiles for all unique sender IDs
-      const senderIds = [...new Set(messages?.map(m => m.sender_id) || [])];
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, email, role')
-        .in('user_id', senderIds);
+      if (!clients || clients.length === 0) {
+        setClientChats([]);
+        setLoading(false);
+        return;
+      }
 
-      if (profilesError) throw profilesError;
+      // Get latest message for each client and unread counts
+      const clientChatsData: ClientChat[] = [];
 
-      // Filter messages from clients only
-      const clientMessages = messages?.filter(msg => {
-        const profile = profiles?.find(p => p.user_id === msg.sender_id);
-        return profile?.role === 'cliente';
-      }) || [];
+      for (const client of clients) {
+        // Get latest message for this client
+        const { data: latestMessage } = await supabase
+          .from('general_chats')
+          .select('message, created_at, sender_id')
+          .eq('client_id', client.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
 
-      // Group messages by client (sender)
-      const clientGroups: { [key: string]: typeof clientMessages } = {};
-      clientMessages.forEach(msg => {
-        if (!clientGroups[msg.sender_id]) {
-          clientGroups[msg.sender_id] = [];
-        }
-        clientGroups[msg.sender_id].push(msg);
+        // Count unread messages for this client
+        const { count: unreadCount } = await supabase
+          .from('general_chats')
+          .select('*', { count: 'exact', head: true })
+          .eq('client_id', client.id)
+          .not('sender_id', 'eq', user?.id || '')
+          .not('read_by', 'cs', JSON.stringify([user?.id || '']));
+
+        clientChatsData.push({
+          id: client.id,
+          name: client.name,
+          email: client.email,
+          lastMessage: latestMessage?.message || '',
+          lastMessageTime: latestMessage?.created_at || null,
+          unreadCount: unreadCount || 0
+        });
+      }
+
+      // Sort by latest message time (most recent first)
+      clientChatsData.sort((a, b) => {
+        if (!a.lastMessageTime && !b.lastMessageTime) return 0;
+        if (!a.lastMessageTime) return 1;
+        if (!b.lastMessageTime) return -1;
+        return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
       });
 
-      // Create client chat entries
-      const clientChatList: ClientChat[] = Object.entries(clientGroups).map(([senderId, msgs]) => {
-        const profile = profiles?.find(p => p.user_id === senderId);
-        const latestMessage = msgs[0]; // Already sorted by created_at desc
-        
-        // Count unread messages from this client
-        const unreadCount = msgs.filter(msg => {
-          const readBy = Array.isArray(msg.read_by) ? msg.read_by : [];
-          return !readBy.includes(user.id);
-        }).length;
-
-        return {
-          client_id: senderId,
-          client_name: profile?.full_name || 'Cliente',
-          client_email: profile?.email || '',
-          last_message: latestMessage.message,
-          last_message_time: latestMessage.created_at,
-          unread_count: unreadCount
-        };
-      });
-
-      // Sort by last message time
-      clientChatList.sort((a, b) => 
-        new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
-      );
-
-      setClientChats(clientChatList);
+      setClientChats(clientChatsData);
     } catch (error) {
       console.error('Error loading client chats:', error);
     } finally {
@@ -145,7 +133,7 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
     });
   };
 
-  const totalUnread = clientChats.reduce((sum, chat) => sum + chat.unread_count, 0);
+  const totalUnread = clientChats.reduce((sum, chat) => sum + chat.unreadCount, 0);
 
   return (
     <Card>
@@ -193,33 +181,35 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
             {/* Client chats */}
             {!loading && clientChats.map((chat) => (
               <Button
-                key={chat.client_id}
-                variant={selectedClientId === chat.client_id ? 'default' : 'ghost'}
+                key={chat.id}
+                variant={selectedClientId === chat.id ? 'default' : 'ghost'}
                 className="w-full justify-start h-auto p-3"
-                onClick={() => onClientSelect(chat.client_id, chat.client_name)}
+                onClick={() => onClientSelect(chat.id, chat.name)}
               >
                 <div className="flex items-center gap-3 w-full">
                   <Avatar className="w-10 h-10">
                     <AvatarFallback>
-                      {chat.client_name.charAt(0).toUpperCase()}
+                      {chat.name.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 text-left min-w-0">
                     <div className="flex items-center justify-between">
-                      <div className="font-medium truncate">{chat.client_name}</div>
+                      <div className="font-medium truncate">{chat.name}</div>
                       <div className="flex items-center gap-1">
-                        {chat.unread_count > 0 && (
+                        {chat.unreadCount > 0 && (
                           <Badge variant="destructive" className="h-5 min-w-5 text-xs">
-                            {chat.unread_count}
+                            {chat.unreadCount}
                           </Badge>
                         )}
-                        <span className="text-xs text-muted-foreground">
-                          {formatTime(chat.last_message_time)}
-                        </span>
+                        {chat.lastMessageTime && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatTime(chat.lastMessageTime)}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground truncate">
-                      {chat.last_message}
+                      {chat.lastMessage || 'Sin mensajes'}
                     </div>
                   </div>
                 </div>

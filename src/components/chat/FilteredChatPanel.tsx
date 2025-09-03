@@ -18,7 +18,9 @@ interface Message {
   attachment_url?: string;
   created_at: string;
   read_by: string[];
+  client_id?: string | null;
   sender_name?: string;
+  sender_role?: string;
 }
 
 interface FilteredChatPanelProps {
@@ -61,8 +63,7 @@ export function FilteredChatPanel({
     if (!user) return;
 
     try {
-      // Get all messages first
-      const { data: allMessages, error } = await supabase
+      let query = supabase
         .from('general_chats')
         .select(`
           id,
@@ -71,22 +72,41 @@ export function FilteredChatPanel({
           message_type,
           attachment_url,
           created_at,
-          read_by
+          read_by,
+          client_id
         `)
         .order('created_at', { ascending: true })
         .limit(500);
 
+      // Filter by client_id for truly independent chats
+      if (selectedClientId) {
+        // Get actual client UUID from selectedClientId (which might be user_id)
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('id', selectedClientId)
+          .single();
+
+        if (clientData) {
+          query = query.eq('client_id', clientData.id);
+        }
+      } else {
+        // Office chat - messages with no client_id (internal chat)
+        query = query.is('client_id', null);
+      }
+
+      const { data: messages, error } = await query;
       if (error) throw error;
 
       // Get all unique sender IDs for profile lookup
-      const senderIds = [...new Set(allMessages?.map(msg => msg.sender_id) || [])];
+      const senderIds = [...new Set(messages?.map(msg => msg.sender_id) || [])];
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, full_name, role')
         .in('user_id', senderIds);
 
       // Format messages with sender info
-      const formattedMessages = (allMessages || []).map(msg => {
+      const formattedMessages = (messages || []).map(msg => {
         const profile = profiles?.find(p => p.user_id === msg.sender_id);
         return {
           ...msg,
@@ -96,37 +116,10 @@ export function FilteredChatPanel({
         };
       });
 
-      let filteredMessages = formattedMessages;
-
-      if (selectedClientId) {
-        // Show ONLY messages between THIS specific client and staff
-        // Simple and reliable filtering for complete client independence
-        filteredMessages = formattedMessages.filter(msg => {
-          // Include messages FROM the selected client
-          if (msg.sender_id === selectedClientId) {
-            return true;
-          }
-          
-          // Include messages FROM staff (not from clients)
-          if (msg.sender_role !== 'cliente') {
-            return true;
-          }
-          
-          // Exclude messages from other clients
-          return false;
-        });
-      } else {
-        // For office chat (no client selected), show only internal staff messages
-        filteredMessages = formattedMessages.filter(msg => {
-          const profile = profiles?.find(p => p.user_id === msg.sender_id);
-          return profile?.role !== 'cliente';
-        });
-      }
-
-      setMessages(filteredMessages);
+      setMessages(formattedMessages);
       
       // Count unread messages
-      const unread = filteredMessages.filter(msg => 
+      const unread = formattedMessages.filter(msg => 
         msg.sender_id !== user.id && 
         (!msg.read_by || !msg.read_by.includes(user.id))
       ).length;
@@ -152,7 +145,20 @@ export function FilteredChatPanel({
         (payload) => {
           const newMsg = payload.new as any;
           
-          // Add sender profile data first
+          // Check if message belongs to current chat context
+          let shouldIncludeMessage = false;
+          
+          if (selectedClientId) {
+            // For client chat, only show messages with matching client_id
+            shouldIncludeMessage = newMsg.client_id === selectedClientId;
+          } else {
+            // For office chat, only show messages with no client_id
+            shouldIncludeMessage = !newMsg.client_id;
+          }
+          
+          if (!shouldIncludeMessage) return;
+          
+          // Add sender profile data
           supabase
             .from('profiles')
             .select('full_name, role')
@@ -166,41 +172,22 @@ export function FilteredChatPanel({
                 sender_role: data?.role || 'cliente'
               };
               
-              // Apply the same filtering logic as loadMessages
-              let shouldShowMessage = false;
+              setMessages(prev => [...prev, messageWithSender]);
               
-              if (selectedClientId) {
-                // Show messages from the selected client OR from staff
-                if (newMsg.sender_id === selectedClientId) {
-                  shouldShowMessage = true;
-                } else if (data?.role !== 'cliente') {
-                  shouldShowMessage = true;
-                }
-              } else {
-                // For office chat, only show staff messages
-                if (data?.role !== 'cliente') {
-                  shouldShowMessage = true;
-                }
-              }
-              
-              if (shouldShowMessage) {
-                setMessages(prev => [...prev, messageWithSender]);
+              // If message is from another user, play sound and show notification
+              if (newMsg.sender_id !== user.id) {
+                setUnreadCount(prev => prev + 1);
                 
-                // If message is from another user, play sound and show notification
-                if (newMsg.sender_id !== user.id) {
-                  setUnreadCount(prev => prev + 1);
-                  
-                  if (soundEnabled) {
-                    playNotificationSound();
-                  }
-                  
-                  // Show desktop notification if permission granted
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Nuevo mensaje', {
-                      body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                      icon: '/favicon.ico'
-                    });
-                  }
+                if (soundEnabled) {
+                  playNotificationSound();
+                }
+                
+                // Show desktop notification if permission granted
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Nuevo mensaje', {
+                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
+                    icon: '/favicon.ico'
+                  });
                 }
               }
             });
@@ -268,13 +255,21 @@ export function FilteredChatPanel({
 
     setLoading(true);
     try {
+      const messageData: any = {
+        sender_id: user.id,
+        message: newMessage.trim(),
+        message_type: 'text'
+      };
+
+      // Add client_id if we're in a client chat
+      if (selectedClientId) {
+        messageData.client_id = selectedClientId;
+      }
+      // For office chat, client_id remains null
+
       const { error } = await supabase
         .from('general_chats')
-        .insert({
-          sender_id: user.id,
-          message: newMessage.trim(),
-          message_type: 'text'
-        });
+        .insert(messageData);
 
       if (error) throw error;
       
