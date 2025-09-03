@@ -30,7 +30,7 @@ interface GeneralChatPanelProps {
 export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { uploadPhoto, getCurrentLocation, uploading } = useChatMedia();
+  const { uploadPhoto, capturePhoto, getCurrentLocation, uploading } = useChatMedia();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -244,6 +244,15 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
       await sendMessage('image', 'Envió una imagen', imageUrl);
     }
     event.target.value = '';
+  };
+
+  const handleCameraCapture = async () => {
+    if (!user) return;
+    
+    const imageUrl = await capturePhoto(user.id);
+    if (imageUrl) {
+      await sendMessage('image', 'Envió una foto', imageUrl);
+    }
   };
 
   const handleLocationShare = async () => {
@@ -462,11 +471,21 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => document.getElementById('photo-upload')?.click()}
+              onClick={handleCameraCapture}
               disabled={loading || uploading}
-              title="Enviar foto"
+              title="Tomar foto"
             >
               <Camera className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('photo-upload')?.click()}
+              disabled={loading || uploading}
+              title="Subir imagen"
+            >
+              <Image className="h-4 w-4" />
             </Button>
             
             <Button

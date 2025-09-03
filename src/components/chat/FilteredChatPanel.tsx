@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageCircle, Bell, BellOff, ChevronUp, ChevronDown, Camera, MapPin } from 'lucide-react';
+import { Send, MessageCircle, Bell, BellOff, ChevronUp, ChevronDown, Camera, MapPin, Image } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useChatMedia } from '@/hooks/useChatMedia';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
@@ -38,7 +38,7 @@ export function FilteredChatPanel({
 }: FilteredChatPanelProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { uploadPhoto, getCurrentLocation, uploading } = useChatMedia();
+  const { uploadPhoto, capturePhoto, getCurrentLocation, uploading } = useChatMedia();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -354,6 +354,15 @@ export function FilteredChatPanel({
     event.target.value = '';
   };
 
+  const handleCameraCapture = async () => {
+    if (!user) return;
+    
+    const imageUrl = await capturePhoto(user.id);
+    if (imageUrl) {
+      await sendMessage('image', 'Envió una foto', imageUrl);
+    }
+  };
+
   const handleLocationShare = async () => {
     if (!user) return;
     
@@ -592,11 +601,21 @@ export function FilteredChatPanel({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => document.getElementById('filtered-photo-upload')?.click()}
+              onClick={handleCameraCapture}
               disabled={loading || uploading}
-              title="Enviar foto"
+              title="Tomar foto"
             >
               <Camera className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => document.getElementById('filtered-photo-upload')?.click()}
+              disabled={loading || uploading}
+              title="Subir imagen"
+            >
+              <Image className="h-4 w-4" />
             </Button>
             
             <Button

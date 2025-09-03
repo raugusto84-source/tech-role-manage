@@ -6,6 +6,58 @@ export function useChatMedia() {
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
 
+  const capturePhoto = async (userId: string): Promise<string | null> => {
+    try {
+      setUploading(true);
+      
+      // Request camera access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } // Use back camera on mobile
+      });
+      
+      // Create video element to display camera feed
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+      
+      return new Promise((resolve) => {
+        video.onloadedmetadata = () => {
+          // Create canvas to capture photo
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(video, 0, 0);
+          
+          // Stop camera stream
+          stream.getTracks().forEach(track => track.stop());
+          
+          // Convert to blob and upload
+          canvas.toBlob(async (blob) => {
+            if (!blob) {
+              resolve(null);
+              return;
+            }
+            
+            const file = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            const result = await uploadPhoto(file, userId);
+            resolve(result);
+          }, 'image/jpeg', 0.8);
+        };
+      });
+    } catch (error) {
+      console.error('Error capturing photo:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo acceder a la cámara",
+        variant: "destructive"
+      });
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const uploadPhoto = async (file: File, userId: string): Promise<string | null> => {
     try {
       setUploading(true);
@@ -51,19 +103,43 @@ export function useChatMedia() {
       }
 
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const { latitude, longitude } = position.coords;
           
-          // Try to get address from coordinates (optional)
-          fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=YOUR_MAPBOX_TOKEN&limit=1`)
-            .then(response => response.json())
-            .then(data => {
-              const address = data.features?.[0]?.place_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-              resolve({ lat: latitude, lng: longitude, address });
-            })
-            .catch(() => {
-              resolve({ lat: latitude, lng: longitude, address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` });
+          try {
+            // Use OpenStreetMap Nominatim for reverse geocoding (free service)
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+            );
+            const data = await response.json();
+            
+            let address = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            
+            if (data && data.display_name) {
+              // Extract street name and number if available
+              const addressParts = [];
+              if (data.address) {
+                if (data.address.house_number) addressParts.push(data.address.house_number);
+                if (data.address.road) addressParts.push(data.address.road);
+                if (data.address.neighbourhood) addressParts.push(data.address.neighbourhood);
+                if (data.address.city || data.address.town || data.address.village) {
+                  addressParts.push(data.address.city || data.address.town || data.address.village);
+                }
+              }
+              
+              address = addressParts.length > 0 ? addressParts.join(', ') : data.display_name;
+            }
+            
+            resolve({ lat: latitude, lng: longitude, address });
+          } catch (error) {
+            console.error('Geocoding error:', error);
+            // Fallback to coordinates
+            resolve({ 
+              lat: latitude, 
+              lng: longitude, 
+              address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
             });
+          }
         },
         (error) => {
           console.error('Geolocation error:', error);
@@ -76,7 +152,7 @@ export function useChatMedia() {
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 15000,
           maximumAge: 300000
         }
       );
@@ -85,6 +161,7 @@ export function useChatMedia() {
 
   return {
     uploadPhoto,
+    capturePhoto,
     getCurrentLocation,
     uploading
   };
