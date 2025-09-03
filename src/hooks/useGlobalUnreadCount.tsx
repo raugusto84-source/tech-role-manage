@@ -14,12 +14,38 @@ export function useGlobalUnreadCount() {
 
     const loadUnreadCount = async () => {
       try {
-        const { count } = await supabase
+        // Get user profile to check role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, email')
+          .eq('user_id', user.id)
+          .single();
+
+        let query = supabase
           .from('general_chats')
           .select('*', { count: 'exact', head: true })
           .not('sender_id', 'eq', user.id)
           .not('read_by', 'cs', JSON.stringify([user.id]));
 
+        // For client users, only count messages where they are involved as client
+        if (profile?.role === 'cliente') {
+          // Get client record for this user
+          const { data: client } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', profile.email)
+            .single();
+
+          if (client) {
+            query = query.eq('client_id', client.id);
+          } else {
+            // If no client record, no messages to count
+            setUnreadCount(0);
+            return;
+          }
+        }
+
+        const { count } = await query;
         setUnreadCount(count || 0);
       } catch (error) {
         console.error('Error loading unread count:', error);
