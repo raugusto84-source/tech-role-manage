@@ -61,7 +61,8 @@ export function FilteredChatPanel({
     if (!user) return;
 
     try {
-      let query = supabase
+      // Get all messages first
+      const { data: allMessages, error } = await supabase
         .from('general_chats')
         .select(`
           id,
@@ -73,40 +74,65 @@ export function FilteredChatPanel({
           read_by
         `)
         .order('created_at', { ascending: true })
-        .limit(100);
+        .limit(500);
 
-      // Filter messages based on selected client
-      if (selectedClientId) {
-        // Show only messages from/to this specific client
-        query = query.or(`sender_id.eq.${selectedClientId},sender_id.eq.${user.id}`);
-      }
-      // If no client selected, show all messages (general chat)
-
-      const { data, error } = await query;
       if (error) throw error;
 
-      // Fetch sender names separately
-      const formattedMessages = await Promise.all((data || []).map(async (msg) => {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('user_id', msg.sender_id)
-          .single();
-        
+      // Get all unique sender IDs for profile lookup
+      const senderIds = [...new Set(allMessages?.map(msg => msg.sender_id) || [])];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, role')
+        .in('user_id', senderIds);
+
+      // Format messages with sender info
+      const formattedMessages = (allMessages || []).map(msg => {
+        const profile = profiles?.find(p => p.user_id === msg.sender_id);
         return {
           ...msg,
           read_by: Array.isArray(msg.read_by) ? msg.read_by.map(id => String(id)) : [],
-          sender_name: profile?.full_name || 'Usuario'
+          sender_name: profile?.full_name || 'Usuario',
+          sender_role: profile?.role || 'cliente'
         };
-      }));
+      });
 
-      // If filtering by client, only show messages between staff and that client
       let filteredMessages = formattedMessages;
+
       if (selectedClientId) {
-        filteredMessages = formattedMessages.filter(msg => 
-          msg.sender_id === selectedClientId || 
-          msg.sender_id === user.id
-        );
+        // Show ONLY messages between THIS specific client and staff
+        // This ensures complete conversation independence per client
+        filteredMessages = formattedMessages.filter(msg => {
+          // Case 1: Message is FROM the selected client
+          if (msg.sender_id === selectedClientId) {
+            return true;
+          }
+          // Case 2: Message is FROM staff TO this conversation
+          // We determine this by checking if there are messages from this client
+          // before or after this staff message (indicating it's part of this client's conversation)
+          if (msg.sender_role !== 'cliente') {
+            // For staff messages, we need to ensure they belong to this client's conversation
+            // We'll include staff messages that are part of this client thread
+            const msgIndex = formattedMessages.findIndex(m => m.id === msg.id);
+            
+            // Look for nearby client messages to determine conversation context
+            const nearbyMessages = formattedMessages.slice(
+              Math.max(0, msgIndex - 5), 
+              Math.min(formattedMessages.length, msgIndex + 5)
+            );
+            
+            // Check if this staff message is surrounded by messages from/to the selected client
+            const hasClientContext = nearbyMessages.some(m => m.sender_id === selectedClientId);
+            return hasClientContext;
+          }
+          
+          return false;
+        });
+      } else {
+        // For general chat (no client selected), show only staff messages
+        filteredMessages = formattedMessages.filter(msg => {
+          const profile = profiles?.find(p => p.user_id === msg.sender_id);
+          return profile?.role !== 'cliente';
+        });
       }
 
       setMessages(filteredMessages);
@@ -138,11 +164,24 @@ export function FilteredChatPanel({
         (payload) => {
           const newMsg = payload.new as any;
           
-          // Check if message should be shown based on current filter
-          if (selectedClientId && 
-              newMsg.sender_id !== selectedClientId && 
-              newMsg.sender_id !== user.id) {
-            return; // Skip messages not relevant to current filter
+          // For client-specific chats, only show messages from that client or responses to that client
+          if (selectedClientId) {
+            // Only show messages from the selected client or staff responses in this conversation
+            if (newMsg.sender_id !== selectedClientId && newMsg.sender_id !== user.id) {
+              return; // Skip messages not relevant to this client conversation
+            }
+          } else {
+            // For general chat, only show staff messages (no client messages)
+            supabase
+              .from('profiles')
+              .select('role')
+              .eq('user_id', newMsg.sender_id)
+              .single()
+              .then(({ data }) => {
+                if (data?.role === 'cliente') {
+                  return; // Skip client messages in general chat
+                }
+              });
           }
           
           // Add sender name

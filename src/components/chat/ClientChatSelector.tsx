@@ -162,11 +162,11 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
       <CardContent className="p-0">
         <ScrollArea className="h-96">
           <div className="space-y-1 p-4 pt-0">
-            {/* General Chat Option */}
+            {/* Office Chat Option */}
             <Button
               variant={selectedClientId === '' ? 'default' : 'ghost'}
               className="w-full justify-start h-auto p-3"
-              onClick={() => onClientSelect('', 'Chat General')}
+              onClick={() => onClientSelect('', 'Chat Oficina')}
             >
               <div className="flex items-center gap-3 w-full">
                 <Avatar className="w-10 h-10">
@@ -175,9 +175,9 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 text-left">
-                  <div className="font-medium">Chat General</div>
+                  <div className="font-medium">Chat Oficina</div>
                   <div className="text-sm text-muted-foreground">
-                    Conversación grupal
+                    Conversación interna del equipo
                   </div>
                 </div>
               </div>

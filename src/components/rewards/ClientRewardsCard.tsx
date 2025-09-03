@@ -49,11 +49,19 @@ export function ClientRewardsCard() {
     try {
       setLoading(true);
 
-      // Get client data first
+      // Get client data using email from profile (each client is independent)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile?.email) return;
+
       const { data: client } = await supabase
         .from('clients')
         .select('id')
-        .eq('user_id', user?.id)
+        .eq('email', profile.email)
         .single();
 
       if (!client) return;
@@ -95,11 +103,19 @@ export function ClientRewardsCard() {
 
   const createReferralCode = async () => {
     try {
-      // Get client data
+      // Get client data using email from profile (ensures client independence)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile?.email) return;
+
       const { data: client } = await supabase
         .from('clients')
         .select('id')
-        .eq('user_id', user?.id)
+        .eq('email', profile.email)
         .single();
 
       if (!client) return;
