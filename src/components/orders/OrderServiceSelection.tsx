@@ -20,6 +20,11 @@ interface ServiceType {
   item_type: string;
   category: string;
   estimated_hours?: number | null;
+  profit_margin_tiers?: Array<{
+    min_qty: number;
+    max_qty: number;
+    margin: number;
+  }>;
 }
 
 interface ServiceCategory {
@@ -59,6 +64,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
         .eq('is_active', true)
         .order('category, name');
 
+      // Transform data to match interface
+      const transformedServices = (servicesData || []).map((service: any) => ({
+        ...service,
+        profit_margin_tiers: Array.isArray(service.profit_margin_tiers) ? service.profit_margin_tiers : []
+      }));
+
       // Extract unique categories from services
       const uniqueCategories = [...new Set(servicesData?.map(s => s.category).filter(Boolean) || [])];
       const categoriesFormatted = uniqueCategories.map(categoryName => ({
@@ -69,7 +80,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
       }));
 
       if (servicesData) {
-        setServices(servicesData);
+        setServices(transformedServices);
       }
       
       setCategories(categoriesFormatted);
@@ -130,12 +141,27 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
       const baseCost = (service.cost_price || 0) * quantity;
-      const margin = 30; // 30% margen por defecto, debería venir de configuración
+      
+      // Obtener margen real del producto, no usar valor fijo
+      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
+        ? service.profit_margin_tiers[0].margin 
+        : 30; // 30% solo como fallback
       
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + margin / 100);
+      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      console.log(`Cálculo para ${service.name}:`, {
+        baseCost,
+        afterPurchaseVat,
+        marginPercent,
+        afterMargin,
+        afterSalesVat,
+        cashbackPercent,
+        finalWithCashback
+      });
+      
       return finalWithCashback;
     }
   };

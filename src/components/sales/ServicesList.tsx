@@ -166,7 +166,7 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
       const baseCost = service.cost_price || 0;
-      const profitMargin = marginFromTiers(service);
+      const profitMargin = marginFromTiers(service); // Usar margen real del producto
       
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);

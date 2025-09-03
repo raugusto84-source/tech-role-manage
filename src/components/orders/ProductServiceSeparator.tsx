@@ -18,6 +18,11 @@ interface ServiceType {
   item_type: string;
   category: string;
   estimated_hours?: number | null;
+  profit_margin_tiers?: Array<{
+    min_qty: number;
+    max_qty: number;
+    margin: number;
+  }>;
 }
 
 interface ProductServiceSeparatorProps {
@@ -60,20 +65,15 @@ export function ProductServiceSeparator({
   const calculateProductPrice = (service: ServiceType, quantity: number): number => {
     const purchaseVatRate = 16; // IVA de compra fijo 16%
     const salesVatRate = service.vat_rate || 16;
-    const margin = 30; // 30% margen por defecto
+    
+    // Obtener margen real del producto, no usar valor fijo
+    const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
+      ? service.profit_margin_tiers[0].margin 
+      : 30; // 30% solo como fallback
+      
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
-
-    // Debug log
-    console.log('Product pricing debug:', {
-      serviceName: service.name,
-      costPrice: service.cost_price,
-      quantity,
-      vatRate: service.vat_rate,
-      margin,
-      cashbackPercent
-    });
 
     // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
     const baseCost = (service.cost_price || 0) * quantity;
@@ -82,15 +82,17 @@ export function ProductServiceSeparator({
     const effectiveCost = baseCost > 0 ? baseCost : ((service.base_price || 0) * quantity);
     
     const afterPurchaseVat = effectiveCost * (1 + purchaseVatRate / 100);
-    const afterMargin = afterPurchaseVat * (1 + margin / 100);
+    const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
     const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
     const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
     
-    console.log('Product price calculation:', {
+    console.log(`Producto ${service.name} - Cálculo:`, {
       effectiveCost,
+      marginPercent,
       afterPurchaseVat,
       afterMargin,
       afterSalesVat,
+      cashbackPercent,
       finalWithCashback
     });
     
