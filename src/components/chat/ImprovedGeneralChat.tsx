@@ -18,21 +18,25 @@ export function ImprovedGeneralChat({ className }: ImprovedGeneralChatProps) {
   };
 
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${className}`}>
-      {/* Client Selector - Left Side */}
-      <div className="lg:col-span-1">
-        <ClientChatSelector
-          onClientSelect={handleClientSelect}
-          selectedClientId={selectedClientId}
-        />
-      </div>
-      
-      {/* Chat Panel - Right Side */}
-      <div className="lg:col-span-2">
-        <FilteredChatPanel
-          selectedClientId={selectedClientId}
-          selectedClientName={selectedClientName}
-        />
+    <div className={`h-full flex flex-col ${className}`}>
+      {/* Fixed height grid for consistent sizing */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+        {/* Client Selector - Left Side */}
+        <div className="lg:col-span-1 h-full">
+          <ClientChatSelector
+            onClientSelect={handleClientSelect}
+            selectedClientId={selectedClientId}
+          />
+        </div>
+        
+        {/* Chat Panel - Right Side */}
+        <div className="lg:col-span-2 h-full">
+          <FilteredChatPanel
+            selectedClientId={selectedClientId}
+            selectedClientName={selectedClientName}
+            className="h-full"
+          />
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { Send, MessageCircle, Bell, BellOff } from 'lucide-react';
+import { Send, MessageCircle, Bell, BellOff, ChevronUp, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface Message {
@@ -43,21 +43,115 @@ export function FilteredChatPanel({
   const [soundEnabled, setSoundEnabled] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
+
+  // Cleanup previous channel and setup new one
+  const setupRealtimeSubscription = useCallback(() => {
+    if (!user) return;
+
+    // Clean up existing channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    // Create new channel with unique name
+    const channelName = `filtered-chat-${selectedClientId || 'general'}-${user.id}`;
+    
+    channelRef.current = supabase
+      .channel(channelName)
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
+        (payload) => {
+          const newMsg = payload.new as any;
+          
+          // Check if message belongs to current chat context
+          let shouldIncludeMessage = false;
+          
+          if (selectedClientId) {
+            // For client chat, only show messages with matching client_id
+            shouldIncludeMessage = newMsg.client_id === selectedClientId;
+          } else {
+            // For office chat, only show messages with no client_id
+            shouldIncludeMessage = !newMsg.client_id;
+          }
+          
+          if (!shouldIncludeMessage) return;
+          
+          // Add sender profile data
+          supabase
+            .from('profiles')
+            .select('full_name, role')
+            .eq('user_id', newMsg.sender_id)
+            .single()
+            .then(({ data }) => {
+              const messageWithSender = {
+                ...newMsg,
+                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map(id => String(id)) : [],
+                sender_name: data?.full_name || 'Usuario',
+                sender_role: data?.role || 'cliente'
+              };
+              
+              setMessages(prev => {
+                // Prevent duplicate messages
+                const exists = prev.some(msg => msg.id === messageWithSender.id);
+                if (exists) return prev;
+                return [...prev, messageWithSender];
+              });
+              
+              // If message is from another user, play sound and show notification
+              if (newMsg.sender_id !== user.id) {
+                setUnreadCount(prev => prev + 1);
+                
+                if (soundEnabled) {
+                  playNotificationSound();
+                }
+                
+                // Show desktop notification if permission granted
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Nuevo mensaje', {
+                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
+                    icon: '/favicon.ico'
+                  });
+                }
+              }
+            });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [user, selectedClientId, soundEnabled]);
 
   useEffect(() => {
     if (user) {
       loadMessages();
-      setupRealtimeSubscription();
+      const cleanup = setupRealtimeSubscription();
+      return cleanup;
     }
-    
-    return () => {
-      supabase.removeAllChannels();
-    };
-  }, [user, selectedClientId]);
+  }, [user, selectedClientId, setupRealtimeSubscription]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Scroll control functions
+  const scrollToTop = () => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const loadMessages = async () => {
     if (!user) return;
@@ -133,71 +227,6 @@ export function FilteredChatPanel({
     } catch (error) {
       console.error('Error loading messages:', error);
     }
-  };
-
-  const setupRealtimeSubscription = () => {
-    if (!user) return;
-
-    const channel = supabase
-      .channel(`filtered-chat-${selectedClientId || 'general'}`)
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
-        (payload) => {
-          const newMsg = payload.new as any;
-          
-          // Check if message belongs to current chat context
-          let shouldIncludeMessage = false;
-          
-          if (selectedClientId) {
-            // For client chat, only show messages with matching client_id
-            shouldIncludeMessage = newMsg.client_id === selectedClientId;
-          } else {
-            // For office chat, only show messages with no client_id
-            shouldIncludeMessage = !newMsg.client_id;
-          }
-          
-          if (!shouldIncludeMessage) return;
-          
-          // Add sender profile data
-          supabase
-            .from('profiles')
-            .select('full_name, role')
-            .eq('user_id', newMsg.sender_id)
-            .single()
-            .then(({ data }) => {
-              const messageWithSender = {
-                ...newMsg,
-                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map(id => String(id)) : [],
-                sender_name: data?.full_name || 'Usuario',
-                sender_role: data?.role || 'cliente'
-              };
-              
-              setMessages(prev => [...prev, messageWithSender]);
-              
-              // If message is from another user, play sound and show notification
-              if (newMsg.sender_id !== user.id) {
-                setUnreadCount(prev => prev + 1);
-                
-                if (soundEnabled) {
-                  playNotificationSound();
-                }
-                
-                // Show desktop notification if permission granted
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('Nuevo mensaje', {
-                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                    icon: '/favicon.ico'
-                  });
-                }
-              }
-            });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const markMessagesAsRead = async () => {
@@ -286,10 +315,6 @@ export function FilteredChatPanel({
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   const requestNotificationPermission = async () => {
     if ('Notification' in window && Notification.permission === 'default') {
       await Notification.requestPermission();
@@ -344,7 +369,7 @@ export function FilteredChatPanel({
   return (
     <div className={`h-full flex flex-col border rounded-lg ${className}`}>
       {/* Header simplificado */}
-      <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+      <div className="flex items-center justify-between p-3 border-b bg-muted/30 shrink-0">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4" />
           <span className="font-medium text-sm">{selectedClientName}</span>
@@ -355,81 +380,105 @@ export function FilteredChatPanel({
           )}
         </div>
         
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSoundEnabled(!soundEnabled)}
-          className="h-7 w-7 p-0"
-        >
-          {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
-        </Button>
+        <div className="flex items-center gap-1">
+          {/* Scroll controls */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={scrollToTop}
+            className="h-7 w-7 p-0"
+            title="Ir al inicio"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={scrollToBottom}
+            className="h-7 w-7 p-0"
+            title="Ir al final"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className="h-7 w-7 p-0"
+            title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+          >
+            {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+          </Button>
+        </div>
       </div>
       
-      {/* Messages area */}
-      <ScrollArea className="flex-1 p-3" ref={scrollAreaRef}>
-        <div className="space-y-3">
-          {Object.entries(messageGroups).map(([dateKey, dayMessages]) => (
-            <div key={dateKey}>
-              <div className="flex justify-center my-3">
-                <Badge variant="outline" className="text-xs px-2 py-1">
-                  {formatDate(dayMessages[0].created_at)}
-                </Badge>
-              </div>
-              
-              {dayMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-2 mb-3 ${
-                    message.sender_id === user?.id ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  {message.sender_id !== user?.id && (
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-medium text-primary">
-                        {message.sender_name?.charAt(0) || 'U'}
-                      </span>
-                    </div>
-                  )}
-                  
-                  <div className={`max-w-[75%] ${
-                    message.sender_id === user?.id ? 'order-first' : ''
-                  }`}>
-                    <div className={`rounded-xl px-3 py-2 text-sm ${
-                      message.sender_id === user?.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}>
-                      {message.sender_id !== user?.id && (
-                        <div className="text-xs font-medium mb-1 opacity-70">
-                          {message.sender_name}
-                        </div>
-                      )}
-                      <div>{message.message}</div>
-                    </div>
-                    <div className={`text-xs text-muted-foreground mt-1 ${
-                      message.sender_id === user?.id ? 'text-right' : 'text-left'
-                    }`}>
-                      {formatTime(message.created_at)}
-                    </div>
-                  </div>
-                  
-                  {message.sender_id === user?.id && (
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-medium text-primary">
-                        {profile?.full_name?.charAt(0) || 'T'}
-                      </span>
-                    </div>
-                  )}
+      {/* Messages area with fixed height */}
+      <div className="flex-1 min-h-0">
+        <ScrollArea className="h-full p-3" ref={scrollAreaRef}>
+          <div className="space-y-3 min-h-full">
+            {Object.entries(messageGroups).map(([dateKey, dayMessages]) => (
+              <div key={dateKey}>
+                <div className="flex justify-center my-3">
+                  <Badge variant="outline" className="text-xs px-2 py-1">
+                    {formatDate(dayMessages[0].created_at)}
+                  </Badge>
                 </div>
-              ))}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
+                
+                {dayMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex gap-2 mb-3 ${
+                      message.sender_id === user?.id ? 'justify-end' : 'justify-start'
+                    }`}
+                  >
+                    {message.sender_id !== user?.id && (
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-medium text-primary">
+                          {message.sender_name?.charAt(0) || 'U'}
+                        </span>
+                      </div>
+                    )}
+                    
+                    <div className={`max-w-[75%] ${
+                      message.sender_id === user?.id ? 'order-first' : ''
+                    }`}>
+                      <div className={`rounded-xl px-3 py-2 text-sm ${
+                        message.sender_id === user?.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}>
+                        {message.sender_id !== user?.id && (
+                          <div className="text-xs font-medium mb-1 opacity-70">
+                            {message.sender_name}
+                          </div>
+                        )}
+                        <div>{message.message}</div>
+                      </div>
+                      <div className={`text-xs text-muted-foreground mt-1 ${
+                        message.sender_id === user?.id ? 'text-right' : 'text-left'
+                      }`}>
+                        {formatTime(message.created_at)}
+                      </div>
+                    </div>
+                    
+                    {message.sender_id === user?.id && (
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-medium text-primary">
+                          {profile?.full_name?.charAt(0) || 'T'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+      </div>
       
       {/* Input area */}
-      <div className="p-3 border-t">
+      <div className="p-3 border-t shrink-0">
         <div className="flex gap-2">
           <Input
             placeholder="Escribir mensaje..."
