@@ -65,12 +65,35 @@ export function ProductServiceSeparator({
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
 
+    // Debug log
+    console.log('Product pricing debug:', {
+      serviceName: service.name,
+      costPrice: service.cost_price,
+      quantity,
+      vatRate: service.vat_rate,
+      margin,
+      cashbackPercent
+    });
+
     // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
     const baseCost = (service.cost_price || 0) * quantity;
-    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+    
+    // Si no hay costo base, usar precio base como fallback
+    const effectiveCost = baseCost > 0 ? baseCost : ((service.base_price || 0) * quantity);
+    
+    const afterPurchaseVat = effectiveCost * (1 + purchaseVatRate / 100);
     const afterMargin = afterPurchaseVat * (1 + margin / 100);
     const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
     const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+    
+    console.log('Product price calculation:', {
+      effectiveCost,
+      afterPurchaseVat,
+      afterMargin,
+      afterSalesVat,
+      finalWithCashback
+    });
+    
     return finalWithCashback;
   };
 
