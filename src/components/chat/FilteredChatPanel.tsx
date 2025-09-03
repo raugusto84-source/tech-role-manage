@@ -367,59 +367,58 @@ export function FilteredChatPanel({
   const messageGroups = groupMessagesByDate(messages);
 
   return (
-    <div className={`h-full flex flex-col border rounded-lg ${className}`}>
-      {/* Header simplificado */}
-      <div className="flex items-center justify-between p-3 border-b bg-muted/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4" />
-          <span className="font-medium text-sm">{selectedClientName}</span>
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="h-5 min-w-5 text-xs">
-              {unreadCount > 99 ? '99+' : unreadCount}
-            </Badge>
-          )}
+    <Card className={className}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5" />
+            {selectedClientName}
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Badge>
+            )}
+          </CardTitle>
+          <div className="flex items-center gap-1">
+            {/* Scroll controls */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={scrollToTop}
+              className="h-7 w-7 p-0"
+              title="Ir al inicio"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={scrollToBottom}
+              className="h-7 w-7 p-0"
+              title="Ir al final"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              className="h-7 w-7 p-0"
+              title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
+            >
+              {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
+            </Button>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-1">
-          {/* Scroll controls */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={scrollToTop}
-            className="h-7 w-7 p-0"
-            title="Ir al inicio"
-          >
-            <ChevronUp className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={scrollToBottom}
-            className="h-7 w-7 p-0"
-            title="Ir al final"
-          >
-            <ChevronDown className="h-3 w-3" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            className="h-7 w-7 p-0"
-            title={soundEnabled ? 'Desactivar sonido' : 'Activar sonido'}
-          >
-            {soundEnabled ? <Bell className="h-3 w-3" /> : <BellOff className="h-3 w-3" />}
-          </Button>
-        </div>
-      </div>
+      </CardHeader>
       
-      {/* Messages area with fixed height */}
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full p-3" ref={scrollAreaRef}>
-          <div className="space-y-3 min-h-full">
+      <CardContent className="p-0">
+        <ScrollArea className="h-96 px-4" ref={scrollAreaRef}>
+          <div className="space-y-4">
             {Object.entries(messageGroups).map(([dateKey, dayMessages]) => (
               <div key={dateKey}>
-                <div className="flex justify-center my-3">
-                  <Badge variant="outline" className="text-xs px-2 py-1">
+                <div className="flex justify-center my-4">
+                  <Badge variant="outline" className="text-xs">
                     {formatDate(dayMessages[0].created_at)}
                   </Badge>
                 </div>
@@ -427,22 +426,22 @@ export function FilteredChatPanel({
                 {dayMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`flex gap-2 mb-3 ${
+                    className={`flex gap-3 mb-4 ${
                       message.sender_id === user?.id ? 'justify-end' : 'justify-start'
                     }`}
                   >
                     {message.sender_id !== user?.id && (
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <span className="text-xs font-medium text-primary">
                           {message.sender_name?.charAt(0) || 'U'}
                         </span>
                       </div>
                     )}
                     
-                    <div className={`max-w-[75%] ${
+                    <div className={`max-w-[70%] ${
                       message.sender_id === user?.id ? 'order-first' : ''
                     }`}>
-                      <div className={`rounded-xl px-3 py-2 text-sm ${
+                      <div className={`rounded-lg p-3 ${
                         message.sender_id === user?.id
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'
@@ -452,7 +451,7 @@ export function FilteredChatPanel({
                             {message.sender_name}
                           </div>
                         )}
-                        <div>{message.message}</div>
+                        <div className="text-sm">{message.message}</div>
                       </div>
                       <div className={`text-xs text-muted-foreground mt-1 ${
                         message.sender_id === user?.id ? 'text-right' : 'text-left'
@@ -462,7 +461,7 @@ export function FilteredChatPanel({
                     </div>
                     
                     {message.sender_id === user?.id && (
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <span className="text-xs font-medium text-primary">
                           {profile?.full_name?.charAt(0) || 'T'}
                         </span>
@@ -475,34 +474,31 @@ export function FilteredChatPanel({
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
-      </div>
-      
-      {/* Input area */}
-      <div className="p-3 border-t shrink-0">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Escribir mensaje..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-              }
-            }}
-            disabled={loading}
-            className="text-sm"
-          />
-          <Button 
-            onClick={sendMessage} 
-            disabled={loading || !newMessage.trim()}
-            size="sm"
-            className="px-3"
-          >
-            <Send className="h-3 w-3" />
-          </Button>
+        
+        <div className="p-4 border-t">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Escribir mensaje..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              disabled={loading}
+            />
+            <Button 
+              onClick={sendMessage} 
+              disabled={loading || !newMessage.trim()}
+              size="sm"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
