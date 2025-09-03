@@ -69,25 +69,22 @@ export function ProductServiceSeparator({
     // Obtener margen real del producto, no usar valor fijo
     const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
       ? service.profit_margin_tiers[0].margin 
-      : 30; // 30% solo como fallback
+      : 20; // 20% como fallback, no 30%
       
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
 
-    // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+    // Para artículos: usar cost_price directamente
     const baseCost = (service.cost_price || 0) * quantity;
     
-    // Si no hay costo base, usar precio base como fallback
-    const effectiveCost = baseCost > 0 ? baseCost : ((service.base_price || 0) * quantity);
-    
-    const afterPurchaseVat = effectiveCost * (1 + purchaseVatRate / 100);
+    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
     const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
     const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
     const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
     
     console.log(`Producto ${service.name} - Cálculo:`, {
-      effectiveCost,
+      baseCost,
       marginPercent,
       afterPurchaseVat,
       afterMargin,
