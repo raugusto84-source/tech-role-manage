@@ -55,7 +55,14 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Get client_id for the current user first
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile?.email)
+        .single();
+
+      let query = supabase
         .from('general_chats')
         .select(`
           id,
@@ -64,11 +71,21 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
           message_type,
           attachment_url,
           created_at,
-          read_by
+          read_by,
+          client_id
         `)
         .order('created_at', { ascending: true })
         .limit(100);
 
+      // Filter messages for this client's conversation
+      if (clientData?.id) {
+        query = query.eq('client_id', clientData.id);
+      } else {
+        // If no client record found, show office-only messages (legacy behavior)
+        query = query.is('client_id', null);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       // Fetch sender names and roles separately
@@ -87,16 +104,10 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
         };
       }));
 
-      // Filter messages: show only messages between this client and office staff
-      const filteredMessages = formattedMessages.filter(msg => 
-        msg.sender_id === user.id || // Messages from this client
-        ['administrador', 'supervisor', 'vendedor'].includes(msg.sender_role) // Messages from office staff
-      );
-
-      setMessages(filteredMessages);
+      setMessages(formattedMessages);
       
       // Count unread messages from office staff
-      const unread = filteredMessages.filter(msg => 
+      const unread = formattedMessages.filter(msg => 
         msg.sender_id !== user.id && 
         ['administrador', 'supervisor', 'vendedor'].includes(msg.sender_role) &&
         (!msg.read_by || !msg.read_by.includes(user.id))
@@ -114,14 +125,26 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   };
 
   const setupRealtimeSubscription = () => {
-    if (!user) return;
+    if (!user || !profile) return;
 
     const channel = supabase
       .channel('client-office-chat')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
-        (payload) => {
+        async (payload) => {
           const newMsg = payload.new as any;
+          
+          // Get current client_id
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', profile.email)
+            .single();
+
+          // Only show messages for this client's conversation
+          if (clientData?.id && newMsg.client_id !== clientData.id) {
+            return; // Skip if not for this client
+          }
           
           // Add sender name and role
           supabase
@@ -137,23 +160,19 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
                 sender_role: data?.role || 'cliente'
               };
               
-              // Only show messages from this client or office staff
-              if (messageWithSender.sender_id === user.id || 
+              setMessages(prev => [...prev, messageWithSender]);
+              
+              // If message is from office staff, increment unread count
+              if (messageWithSender.sender_id !== user.id && 
                   ['administrador', 'supervisor', 'vendedor'].includes(messageWithSender.sender_role)) {
-                setMessages(prev => [...prev, messageWithSender]);
+                setUnreadCount(prev => prev + 1);
                 
-                // If message is from office staff, increment unread count
-                if (messageWithSender.sender_id !== user.id && 
-                    ['administrador', 'supervisor', 'vendedor'].includes(messageWithSender.sender_role)) {
-                  setUnreadCount(prev => prev + 1);
-                  
-                  // Show desktop notification if permission granted
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification('Nuevo mensaje de oficina', {
-                      body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                      icon: '/favicon.ico'
-                    });
-                  }
+                // Show desktop notification if permission granted
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification('Nuevo mensaje de oficina', {
+                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
+                    icon: '/favicon.ico'
+                  });
                 }
               }
             });
@@ -197,13 +216,27 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
 
     setLoading(true);
     try {
+      // Get client_id for the current user
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile?.email)
+        .single();
+
+      const messageData: any = {
+        sender_id: user.id,
+        message: newMessage.trim(),
+        message_type: 'text'
+      };
+
+      // Add client_id if we found the client record
+      if (clientData?.id) {
+        messageData.client_id = clientData.id;
+      }
+
       const { error } = await supabase
         .from('general_chats')
-        .insert({
-          sender_id: user.id,
-          message: newMessage.trim(),
-          message_type: 'text'
-        });
+        .insert(messageData);
 
       if (error) throw error;
       

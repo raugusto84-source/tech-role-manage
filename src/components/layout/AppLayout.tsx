@@ -44,8 +44,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <MessageSquare className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[900px] p-0">
-                <div className="h-full p-4">
+              <SheetContent side="right" className="w-[95vw] max-w-[1200px] p-0">
+                <div className="h-full p-2">
                   <ImprovedGeneralChat />
                 </div>
               </SheetContent>
