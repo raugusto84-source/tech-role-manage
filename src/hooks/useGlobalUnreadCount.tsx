@@ -44,6 +44,24 @@ export function useGlobalUnreadCount() {
             return;
           }
         }
+        
+        // For technicians and technical viewers, only count messages from clients assigned to them
+        if (profile?.role === 'tecnico' || profile?.role === 'visor_tecnico') {
+          // Get client IDs from orders assigned to this technician
+          const { data: assignedOrders } = await supabase
+            .from('orders')
+            .select('client_id')
+            .eq('assigned_technician', user.id);
+
+          if (assignedOrders && assignedOrders.length > 0) {
+            const clientIds = assignedOrders.map(order => order.client_id);
+            query = query.in('client_id', clientIds);
+          } else {
+            // If no assigned orders, no messages to count
+            setUnreadCount(0);
+            return;
+          }
+        }
 
         const { count } = await query;
         setUnreadCount(count || 0);
