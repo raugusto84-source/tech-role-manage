@@ -220,7 +220,7 @@ export function ClientRewardsCard() {
               <div>
                 <span className="font-bold text-warning-foreground text-sm">¡Bienvenido!</span>
                 <p className="text-xs text-warning-foreground/80">
-                  <strong>50% descuento</strong> en tu primer servicio.
+                  <strong>10% cashback</strong> en servicios en tu primera compra.
                 </p>
               </div>
             </div>

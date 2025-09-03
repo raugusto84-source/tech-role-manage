@@ -13,7 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, Plus, CalendarIcon, MapPin, Crosshair } from 'lucide-react';
+import { ArrowLeft, Save, Plus, CalendarIcon, MapPin, Crosshair, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClientForm } from '@/components/ClientForm';
 import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
@@ -24,6 +24,7 @@ import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTi
 import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
 import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
+import { CashbackApplicationDialog } from './CashbackApplicationDialog';
 
 interface ServiceType {
   id: string;
@@ -105,6 +106,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [showSupportSuggestion, setShowSupportSuggestion] = useState(false);
   const [suggestionReason, setSuggestionReason] = useState('');
   const [supportSuggestion, setSupportSuggestion] = useState<any>(null);
+  
+  // Estados para cashback
+  const [availableCashback, setAvailableCashback] = useState(0);
+  const [appliedCashback, setAppliedCashback] = useState(0);
+  const [showCashbackDialog, setShowCashbackDialog] = useState(false);
 
   useEffect(() => {
     loadServiceTypes();
@@ -117,6 +123,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     } else if (profile?.role === 'cliente') {
       loadCurrentClient();
       loadTechnicians();
+      loadClientCashback();
     }
   }, [profile?.role, profile?.email]);
 
@@ -313,6 +320,41 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
+  const loadClientCashback = async () => {
+    try {
+      // Only load for clients
+      if (profile?.role !== 'cliente') return;
+
+      // Get client data using email from profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profileData?.email) return;
+
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profileData.email)
+        .single();
+
+      if (!client) return;
+
+      // Get available cashback
+      const { data: rewardsData } = await supabase
+        .from('client_rewards')
+        .select('total_cashback')
+        .eq('client_id', client.id)
+        .single();
+
+      setAvailableCashback(rewardsData?.total_cashback || 0);
+    } catch (error) {
+      console.error('Error loading client cashback:', error);
+    }
+  };
+
   const calculateCorrectPricing = async (serviceTypeId: string, quantity: number) => {
     try {
       // Usar la nueva función que incluye descuentos de póliza
@@ -441,6 +483,28 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     const baseHours = calculateSharedTimeHours(orderItems);
     // Agregar 1 hora si es servicio a domicilio para tiempo de traslado
     return formData.is_home_service ? baseHours + 1 : baseHours;
+  };
+
+  const calculateTotals = () => {
+    const totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    const totalAmount = totalCostPrice + totalVATAmount;
+    return {
+      totalCostPrice,
+      totalVATAmount,
+      totalAmount
+    };
+  };
+
+  const handleApplyCashback = (amount: number) => {
+    setAppliedCashback(amount);
+    toast({
+      title: "Cashback aplicado",
+      description: `Se aplicaron ${new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP'
+      }).format(amount)} como descuento`,
+    });
   };
 
   const recalculateDeliveryAndSuggestSupport = () => {
@@ -708,6 +772,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Apply cashback discount if any
+    if (appliedCashback > 0) {
+      const { totalAmount } = calculateTotals();
+      if (appliedCashback > totalAmount) {
+        toast({
+          title: "Error",
+          description: "El descuento no puede ser mayor al total de la orden",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
     setLoading(true);
 
     try {
@@ -740,7 +817,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       }
 
       // Calcular totales de todos los items
-      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
+      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0) - appliedCashback;
       const totalHours = calculateTotalHours();
       
       // All orders start as pending authorization
@@ -1149,7 +1226,51 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               )}
 
-              {/* Mostrar técnico asignado para CLIENTES */}
+               {/* Total estimado y aplicación de cashback */}
+               {orderItems.length > 0 && (
+                 <div className="space-y-2">
+                   <Label>Total Estimado</Label>
+                   <div className="p-4 border rounded-lg bg-muted/50">
+                     <div className="space-y-2">
+                       <div className="flex justify-between text-sm">
+                         <span>Subtotal:</span>
+                         <span>${calculateTotals().totalCostPrice.toLocaleString()}</span>
+                       </div>
+                       <div className="flex justify-between text-sm">
+                         <span>IVA:</span>
+                         <span>${calculateTotals().totalVATAmount.toLocaleString()}</span>
+                       </div>
+                       {appliedCashback > 0 && (
+                         <div className="flex justify-between text-sm text-green-600">
+                           <span>Descuento Cashback:</span>
+                           <span>-${appliedCashback.toLocaleString()}</span>
+                         </div>
+                       )}
+                       <div className="border-t pt-2">
+                         <div className="flex justify-between font-bold">
+                           <span>Total:</span>
+                           <span>${(calculateTotals().totalCostPrice + calculateTotals().totalVATAmount - appliedCashback).toLocaleString()}</span>
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                   
+                   {/* Cashback Application Button for Clients */}
+                   {profile?.role === 'cliente' && availableCashback > 0 && (
+                     <Button
+                       type="button"
+                       variant="outline"
+                       onClick={() => setShowCashbackDialog(true)}
+                       className="w-full border-green-600 text-green-600 hover:bg-green-50"
+                     >
+                       <Gift className="h-4 w-4 mr-2" />
+                       Aplicar Cashback (${availableCashback.toLocaleString()} disponible)
+                     </Button>
+                   )}
+                 </div>
+               )}
+
+               {/* Mostrar técnico asignado para CLIENTES */}
               {profile?.role === 'cliente' && formData.assigned_technician && (
                 <div className="space-y-2">
                   <Label>Técnico Asignado</Label>
@@ -1205,6 +1326,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             </form>
           </CardContent>
         </Card>
+
+        {/* Cashback Application Dialog */}
+        <CashbackApplicationDialog
+          open={showCashbackDialog}
+          onOpenChange={setShowCashbackDialog}
+          availableCashback={availableCashback}
+          orderTotal={calculateTotals().totalCostPrice + calculateTotals().totalVATAmount}
+          onApply={handleApplyCashback}
+        />
       </div>
     </div>
   );
