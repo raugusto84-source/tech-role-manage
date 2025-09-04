@@ -416,7 +416,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       
       const cashbackAmountToUse = checked ? Math.min(availableCashback, total) : 0;
       
-      // Update the quote with cashback information
+      // Only update the quote with cashback information - NO CLIENT BALANCE CHANGES YET
       const { error } = await supabase
         .from('quotes')
         .update({
@@ -435,104 +435,20 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         return;
       }
 
-      // Find client by email
-      const { data: clientData } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', quote.client_email)
-        .single();
-        
-      if (!clientData) {
-        toast({
-          title: "Error",
-          description: "No se encontró el cliente",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Update local state only (no client balance changes yet)
+      setApplyCashback(checked);
+      setCashbackAmount(cashbackAmountToUse);
+      
       if (checked && cashbackAmountToUse > 0) {
-        // Apply cashback - create transaction record and update balance
-        try {
-          // Create reward transaction record
-          await supabase
-            .from('reward_transactions')
-            .insert({
-              client_id: clientData.id,
-              transaction_type: 'redeemed',
-              amount: -cashbackAmountToUse,
-              description: `Cashback aplicado en cotización ${quote.quote_number}`,
-              related_quote_id: quote.id
-            });
-
-          // Update client total cashback
-          await supabase
-            .from('client_rewards')
-            .update({ 
-              total_cashback: availableCashback - cashbackAmountToUse
-            })
-            .eq('client_id', clientData.id);
-            
-          // Update local state
-          setAvailableCashback(prev => prev - cashbackAmountToUse);
-          setApplyCashback(true);
-          setCashbackAmount(cashbackAmountToUse);
-          
-          toast({
-            title: "Cashback aplicado",
-            description: `Se aplicó un descuento de ${formatCurrency(cashbackAmountToUse)}`,
-          });
-        } catch (error) {
-          console.error('Error processing cashback transaction:', error);
-          toast({
-            title: "Error",
-            description: "Error al procesar la transacción de cashback",
-            variant: "destructive",
-          });
-        }
-      } else if (!checked && applyCashback && cashbackAmount > 0) {
-        // Remove cashback - reverse the transaction
-        try {
-          // Create reversal transaction record
-          await supabase
-            .from('reward_transactions')
-            .insert({
-              client_id: clientData.id,
-              transaction_type: 'earned',
-              amount: cashbackAmount,
-              description: `Cashback revertido de cotización ${quote.quote_number}`,
-              related_quote_id: quote.id
-            });
-
-          // Update client total cashback (restore the amount)
-          await supabase
-            .from('client_rewards')
-            .update({ 
-              total_cashback: availableCashback + cashbackAmount
-            })
-            .eq('client_id', clientData.id);
-            
-          // Update local state
-          setAvailableCashback(prev => prev + cashbackAmount);
-          setApplyCashback(false);
-          setCashbackAmount(0);
-          
-          toast({
-            title: "Cashback removido",
-            description: "El descuento ha sido removido",
-          });
-        } catch (error) {
-          console.error('Error reversing cashback transaction:', error);
-          toast({
-            title: "Error",
-            description: "Error al revertir la transacción de cashback",
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: "Cashback marcado para aplicar",
+          description: `Descuento de ${formatCurrency(cashbackAmountToUse)} se aplicará cuando la cotización sea aceptada`,
+        });
       } else {
-        // Simple state update when no cashback amount involved
-        setApplyCashback(checked);
-        setCashbackAmount(cashbackAmountToUse);
+        toast({
+          title: "Cashback removido",
+          description: "El descuento ha sido removido de la cotización",
+        });
       }
 
     } catch (error) {
