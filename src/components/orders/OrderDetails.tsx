@@ -289,70 +289,29 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
 
-  // Calculate total amount using the same logic as OrderItemsList
+  // Calculate total using persisted DB amounts to match selection
   const calculateTotalAmount = () => {
     if (!orderItems || orderItems.length === 0) {
-      return 0;
+      return order.estimated_cost || 0;
     }
 
+    // Prefer exact persisted totals; fallback to minimal recompute if missing
     return orderItems.reduce((sum, item) => {
-      // Log para debug
-      console.log('Calculando item:', item.name, {
-        item_type: item.item_type,
-        unit_price: item.unit_price,
-        cost_price: item.cost_price,
-        quantity: item.quantity,
-        vat_rate: item.vat_rate
-      });
-
-      const salesVatRate = item.vat_rate || 16;
-      const cashbackPercent = rewardSettings?.apply_cashback_to_items
-        ? (rewardSettings.general_cashback_percent || 0)
-        : 0;
-
-      if (item.item_type === 'servicio') {
-        // Para servicios: precio base + IVA + cashback
-        const basePrice = (item.unit_price || 0) * (item.quantity || 1);
-        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        
-        console.log('Servicio calculado:', {
-          basePrice,
-          afterSalesVat,
-          finalWithCashback
-        });
-        
-        return sum + finalWithCashback;
-      } else {
-        // Para artículos: usar cost_price si está disponible, sino usar unit_price
-        const purchaseVatRate = 16;
-        const baseCost = ((item.cost_price || item.unit_price || 0) * (item.quantity || 1));
-        
-        // Si no hay profit_margin_tiers, usar margen por defecto de 20%
-        let marginPercent = 20;
-        if (item.profit_margin_tiers && Array.isArray(item.profit_margin_tiers) && item.profit_margin_tiers.length > 0) {
-          marginPercent = item.profit_margin_tiers[0].margin || 20;
-        }
-        
-        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-        const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        
-        console.log('Artículo calculado:', {
-          baseCost,
-          marginPercent,
-          afterPurchaseVat,
-          afterMargin,
-          afterSalesVat,
-          finalWithCashback
-        });
-        
-        return sum + finalWithCashback;
-      }
+      const itemTotal =
+        (typeof item.total_amount === 'number' && !isNaN(item.total_amount))
+          ? item.total_amount
+          : (() => {
+              const subtotal = (item.subtotal || 0);
+              const vat = (item.vat_amount || 0);
+              if (subtotal + vat > 0) return subtotal + vat;
+              const qty = item.quantity || 1;
+              const unit = (item.unit_base_price || item.unit_cost_price || 0);
+              const vatRate = item.vat_rate || 0;
+              return (unit * qty) * (1 + vatRate / 100);
+            })();
+      return sum + itemTotal;
     }, 0);
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
