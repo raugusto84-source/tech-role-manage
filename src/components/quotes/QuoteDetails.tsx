@@ -192,21 +192,15 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  // Actualizar estado de la cotización
-  const updateQuoteStatus = async () => {
-    if (newStatus === quote.status) return;
-
+  // Aceptar cotización
+  const acceptQuote = async () => {
     try {
       setLoading(true);
 
-      const updateData: any = { status: newStatus };
-      
-      // Agregar timestamps según el estado
-      if (newStatus === 'enviada') {
-        updateData.quote_sent_at = new Date().toISOString();
-      } else if (newStatus === 'aceptada' || newStatus === 'rechazada') {
-        updateData.final_decision_date = new Date().toISOString();
-      }
+      const updateData = { 
+        status: 'aceptada' as const,
+        final_decision_date: new Date().toISOString()
+      };
 
       const { error } = await supabase
         .from('quotes')
@@ -216,23 +210,65 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       if (error) {
         toast({
           title: "Error",
-          description: `Error al actualizar estado: ${error.message}`,
+          description: `Error al aceptar cotización: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
 
       toast({
-        title: "Estado actualizado",
-        description: `La cotización ha sido marcada como ${getStatusText(newStatus)}`,
+        title: "Cotización aceptada",
+        description: "La cotización ha sido aceptada exitosamente",
       });
 
       onQuoteUpdated();
     } catch (error) {
-      console.error('Error updating quote status:', error);
+      console.error('Error accepting quote:', error);
       toast({
         title: "Error inesperado",
-        description: "No se pudo actualizar el estado",
+        description: "No se pudo aceptar la cotización",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Rechazar cotización
+  const rejectQuote = async () => {
+    try {
+      setLoading(true);
+
+      const updateData = { 
+        status: 'rechazada' as const,
+        final_decision_date: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('quotes')
+        .update(updateData)
+        .eq('id', quote.id);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: `Error al rechazar cotización: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Cotización rechazada",
+        description: "La cotización ha sido rechazada",
+      });
+
+      onQuoteUpdated();
+    } catch (error) {
+      console.error('Error rejecting quote:', error);
+      toast({
+        title: "Error inesperado",
+        description: "No se pudo rechazar la cotización",
         variant: "destructive",
       });
     } finally {
@@ -595,30 +631,45 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                 <CardTitle>Acciones</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Actualizar estado */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Cambiar Estado</label>
-                  <div className="flex gap-2">
-                    <Select value={newStatus} onValueChange={(value: any) => setNewStatus(value)}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
-                  <SelectItem value="solicitud">Nueva</SelectItem>
-                  <SelectItem value="enviada">Enviada</SelectItem>
-                  <SelectItem value="aceptada">Aceptada</SelectItem>
-                  <SelectItem value="rechazada">Rechazada</SelectItem>
-                </SelectContent>
-                    </Select>
-                    <Button 
-                      onClick={updateQuoteStatus}
-                      disabled={loading || newStatus === quote.status}
-                      size="sm"
-                    >
-                      Actualizar
-                    </Button>
-                  </div>
+                {/* Botones de acción */}
+                <div className="space-y-3">
+                  <label className="text-sm font-medium block">Acciones de Cotización</label>
+                  
+                  {/* Solo mostrar botones si no está ya aceptada o rechazada */}
+                  {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        onClick={acceptQuote}
+                        disabled={loading}
+                        variant="default"
+                        className="w-full"
+                        size="sm"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Aceptar
+                      </Button>
+                      <Button 
+                        onClick={rejectQuote}
+                        disabled={loading}
+                        variant="destructive"
+                        className="w-full"
+                        size="sm"
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Rechazar
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {/* Mostrar estado actual si ya está aceptada o rechazada */}
+                  {(quote.status === 'aceptada' || quote.status === 'rechazada') && (
+                    <div className="text-center py-2">
+                      <Badge className={getStatusColor(quote.status)}>
+                        <StatusIcon className="h-4 w-4 mr-2" />
+                        {getStatusText(quote.status)}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
