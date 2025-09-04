@@ -39,19 +39,30 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '' }: QuoteTotals
   // Calculate totals from selectedItems directly
   const subtotalGeneral = selectedItems.reduce((sum, item) => {
     // For the subtotal, we need the base price without VAT
-    const basePrice = item.unit_price * item.quantity;
-    const vatRate = item.vat_rate / 100;
-    // Calculate the base price from the total price (removing VAT)
-    const basePriceWithoutVat = basePrice / (1 + vatRate);
-    return sum + basePriceWithoutVat;
+    const totalPrice = item.unit_price * item.quantity;
+    const vatRate = (item.vat_rate || 0) / 100;
+    
+    if (vatRate > 0) {
+      // Calculate the base price from the total price (removing VAT)
+      const basePriceWithoutVat = totalPrice / (1 + vatRate);
+      return sum + basePriceWithoutVat;
+    } else {
+      // If no VAT, the total price is the base price
+      return sum + totalPrice;
+    }
   }, 0);
 
   const totalVAT = selectedItems.reduce((sum, item) => {
-    const basePrice = item.unit_price * item.quantity;
-    const vatRate = item.vat_rate / 100;
-    const basePriceWithoutVat = basePrice / (1 + vatRate);
-    const vatAmount = basePriceWithoutVat * vatRate;
-    return sum + vatAmount;
+    const totalPrice = item.unit_price * item.quantity;
+    const vatRate = (item.vat_rate || 0) / 100;
+    
+    if (vatRate > 0) {
+      const basePriceWithoutVat = totalPrice / (1 + vatRate);
+      const vatAmount = basePriceWithoutVat * vatRate;
+      return sum + vatAmount;
+    } else {
+      return sum; // No VAT to add
+    }
   }, 0);
 
   const totalFinal = subtotalGeneral + totalVAT;
