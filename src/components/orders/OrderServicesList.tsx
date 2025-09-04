@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -54,6 +57,7 @@ const statusConfig = {
 
 export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderServicesListProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
+  const [editingSerialInfo, setEditingSerialInfo] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { settings: rewardSettings } = useRewardSettings();
 
@@ -121,6 +125,42 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
     }
   };
 
+  const handleSerialInfoUpdate = async (itemId: string, serialNumber: string, supplierName: string) => {
+    setEditingSerialInfo(prev => new Set(prev).add(itemId));
+
+    try {
+      const { error } = await supabase
+        .from('order_items')
+        .update({ 
+          serial_number: serialNumber || null,
+          supplier_name: supplierName || null
+        })
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Información actualizada',
+        description: 'Los datos del artículo se han guardado correctamente.',
+      });
+
+      onItemUpdate?.();
+    } catch (error) {
+      console.error('Error updating serial info:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la información del artículo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEditingSerialInfo(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
+  };
+
   const getProgressPercentage = () => {
     if (orderItems.length === 0) return 0;
     const completedItems = orderItems.filter(item => 
@@ -172,89 +212,149 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
         {orderItems.map((item) => {
           const StatusIcon = statusConfig[item.status]?.icon || AlertCircle;
           const isUpdating = updatingItems.has(item.id);
+          const isEditingSerial = editingSerialInfo.has(item.id);
 
           return (
             <Card key={item.id} className="relative">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-medium">{item.service_name}</h4>
-                      <Badge 
-                        variant="secondary" 
-                        className={statusConfig[item.status]?.color}
-                      >
-                        <StatusIcon className="w-3 h-3 mr-1" />
-                        {statusConfig[item.status]?.label || item.status}
-                      </Badge>
-                    </div>
-                    
-                    {item.service_description && (
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {item.service_description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                      <span>
-                        <strong>Cantidad:</strong> {item.quantity}
-                      </span>
-                      <span>
-                        <strong>Precio:</strong> {formatCurrency(calculateItemCorrectPrice(item) / (item.quantity || 1))}
-                      </span>
-                      <span>
-                        <strong>Total:</strong> {formatCurrency(calculateItemCorrectPrice(item))}
-                      </span>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{item.service_name}</h4>
+                        <Badge 
+                          variant="secondary" 
+                          className={statusConfig[item.status]?.color}
+                        >
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {statusConfig[item.status]?.label || item.status}
+                        </Badge>
+                        {item.item_type === 'articulo' && (
+                          <Badge variant="outline">
+                            <Package className="w-3 h-3 mr-1" />
+                            Artículo
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {item.service_description && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {item.service_description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                        <span>
+                          <strong>Cantidad:</strong> {item.quantity}
+                        </span>
+                        <span>
+                          <strong>Precio:</strong> {formatCurrency(calculateItemCorrectPrice(item) / (item.quantity || 1))}
+                        </span>
+                        <span>
+                          <strong>Total:</strong> {formatCurrency(calculateItemCorrectPrice(item))}
+                        </span>
+                      </div>
+
+                      {/* Show serial number and supplier for articles */}
+                      {item.item_type === 'articulo' && (item.serial_number || item.supplier_name) && (
+                        <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
+                          {item.serial_number && (
+                            <span>
+                              <strong>Serie:</strong> {item.serial_number}
+                            </span>
+                          )}
+                          {item.supplier_name && (
+                            <span>
+                              <strong>Proveedor:</strong> {item.supplier_name}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Show serial number and supplier for articles */}
-                    {item.item_type === 'articulo' && (item.serial_number || item.supplier_name) && (
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
-                        {item.serial_number && (
-                          <span>
-                            <strong>Serie:</strong> {item.serial_number}
-                          </span>
-                        )}
-                        {item.supplier_name && (
-                          <span>
-                            <strong>Proveedor:</strong> {item.supplier_name}
-                          </span>
-                        )}
+                    {canEdit && (
+                      <div className="ml-4 w-40">
+                        <Select
+                          value={item.status}
+                          onValueChange={(value) => handleStatusChange(item.id, value)}
+                          disabled={isUpdating}
+                        >
+                          <SelectTrigger className="bg-background border z-50">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border z-50">
+                            <SelectItem value="pendiente">
+                              <div className="flex items-center">
+                                <Clock className="w-4 h-4 mr-2" />
+                                Pendiente
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="en_proceso">
+                              <div className="flex items-center">
+                                <Play className="w-4 h-4 mr-2" />
+                                En Proceso
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="finalizada">
+                              <div className="flex items-center">
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                Finalizada
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                   </div>
 
-                  {canEdit && (
-                    <div className="ml-4 w-40">
-                      <Select
-                        value={item.status}
-                        onValueChange={(value) => handleStatusChange(item.id, value)}
-                        disabled={isUpdating}
-                      >
-                        <SelectTrigger className="bg-background border z-50">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border z-50">
-                          <SelectItem value="pendiente">
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-2" />
-                              Pendiente
+                  {/* Serial number and supplier fields for articles - only in order details */}
+                  {item.item_type === 'articulo' && (
+                    <div className="border-t pt-3">
+                      <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        Información del Artículo
+                      </Label>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                          <Label className="text-xs">Número de Serie</Label>
+                          <Input
+                            value={item.serial_number || ''}
+                            onChange={(e) => {
+                              // Update immediately on change, will be saved when user stops typing
+                              const value = e.target.value;
+                              setTimeout(() => {
+                                handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
+                              }, 1000);
+                            }}
+                            placeholder="Ingrese número de serie"
+                            className="h-8 mt-1"
+                            disabled={isEditingSerial}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Proveedor</Label>
+                          <Input
+                            value={item.supplier_name || ''}
+                            onChange={(e) => {
+                              // Update immediately on change, will be saved when user stops typing
+                              const value = e.target.value;
+                              setTimeout(() => {
+                                handleSerialInfoUpdate(item.id, item.serial_number || '', value);
+                              }, 1000);
+                            }}
+                            placeholder="Nombre del proveedor"
+                            className="h-8 mt-1"
+                            disabled={isEditingSerial}
+                          />
+                        </div>
+                        <div className="flex justify-end">
+                          {isEditingSerial && (
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Save className="w-3 h-3 mr-1 animate-spin" />
+                              Guardando...
                             </div>
-                          </SelectItem>
-                          <SelectItem value="en_proceso">
-                            <div className="flex items-center">
-                              <Play className="w-4 h-4 mr-2" />
-                              En Proceso
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="finalizada">
-                            <div className="flex items-center">
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Finalizada
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
