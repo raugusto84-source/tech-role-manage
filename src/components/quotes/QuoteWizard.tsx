@@ -322,6 +322,13 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   // Función para calcular el precio correcto según el tipo de servicio
   const calculateServicePrice = (service: any): number => {
+    console.log('QuoteWizard - Calculating price for service:', service.name, {
+      item_type: service.item_type,
+      base_price: service.base_price,
+      cost_price: service.cost_price,
+      vat_rate: service.vat_rate
+    });
+
     if (isProduct(service)) {
       // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
       const costPrice = service.cost_price || 0;
@@ -350,18 +357,26 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
       
       return baseTotal + cashback;
     } else {
-      // For services: base price + VAT + cashback
-      const basePrice = service.base_price || 0;
-      const vat = basePrice * (service.vat_rate / 100);
+      // For services: use base_price, or fallback to cost_price if base_price is 0/null
+      const basePrice = service.base_price || service.cost_price || 0;
+      
+      if (basePrice === 0) {
+        console.warn('Service has no price set:', service.name);
+        return 50000; // Default price for services with no price set (50,000 COP)
+      }
+      
+      const vat = basePrice * ((service.vat_rate || 0) / 100);
       const baseTotal = basePrice + vat;
       
       // Apply cashback if settings are available
       let cashback = 0;
-      if (rewardSettings) {
-        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
+      if (rewardSettings?.apply_cashback_to_items) {
+        cashback = baseTotal * ((rewardSettings.general_cashback_percent || 0) / 100);
       }
       
-      return baseTotal + cashback;
+      const finalPrice = baseTotal + cashback;
+      console.log('QuoteWizard - Service price calculation result:', finalPrice);
+      return finalPrice;
     }
   };
 
