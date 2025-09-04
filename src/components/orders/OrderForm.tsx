@@ -373,73 +373,53 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  const calculateCorrectPricing = async (serviceTypeId: string, quantity: number) => {
-    console.log('=== CALCULATING PRICING ===');
-    console.log('Service ID:', serviceTypeId);
-    console.log('Quantity:', quantity);
-    console.log('Client ID:', formData.client_id);
+  // Calcular precios usando exactamente la misma lógica que ProductServiceSeparator
+  const calculateExactDisplayPrice = (service: ServiceType, quantity: number = 1) => {
+    const salesVatRate = service.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
 
-    try {
-      // Usar la nueva función que incluye descuentos de póliza
-      const { data, error } = await supabase.rpc('calculate_order_pricing_with_policy', {
-        p_client_id: formData.client_id,
-        p_service_type_id: serviceTypeId,
-        p_quantity: quantity
-      });
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        console.log('Policy pricing result:', data[0]);
-        return data[0];
-      }
-    } catch (error) {
-      console.error('Error calculating pricing with policy:', error);
-    }
-
-    // Fallback to regular pricing if policy pricing fails
-    try {
-      console.log('Using fallback pricing...');
-      const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
-        p_service_type_id: serviceTypeId,
-        p_quantity: quantity
-      });
-
-      if (error) throw error;
+    if (service.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (service.base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      // Si tenemos el precio base, aplicar cashback manualmente para productos
-      if (data && data.length > 0) {
-        const baseResult = data[0];
-        console.log('Base pricing result:', baseResult);
-        
-        const serviceTypeResult = await supabase
-          .from('service_types')
-          .select('item_type')
-          .eq('id', serviceTypeId)
-          .single();
-        
-        if (serviceTypeResult.data?.item_type === 'articulo' && rewardSettings?.apply_cashback_to_items) {
-          const cashbackPercent = rewardSettings.general_cashback_percent || 0;
-          const finalWithCashback = baseResult.total_amount * (1 + cashbackPercent / 100);
-          
-          const finalResult = {
-            ...baseResult,
-            total_amount: finalWithCashback
-          };
-          
-          console.log('Applied cashback:', cashbackPercent + '%');
-          console.log('Final pricing with cashback:', finalResult);
-          return finalResult;
-        }
-        
-        console.log('No cashback applied, returning base result');
-        return baseResult;
-      }
+      return {
+        subtotal: basePrice,
+        vatAmount: basePrice * salesVatRate / 100,
+        totalAmount: finalWithCashback
+      };
+    } else {
+      // Para artículos: utilizar SIEMPRE cost_price como costo base
+      const purchaseVatRate = 16;
+      const baseCost = (service.cost_price || 0) * quantity;
       
-      return null;
-    } catch (fallbackError) {
-      console.error('Error with fallback pricing:', fallbackError);
-      return null;
+      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
+        ? service.profit_margin_tiers[0].margin 
+        : 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      console.log(`Cálculo para ${service.name}:`, {
+        baseCost,
+        afterPurchaseVat,
+        marginPercent,
+        afterMargin,
+        afterSalesVat,
+        cashbackPercent,
+        finalWithCashback
+      });
+      
+      return {
+        subtotal: afterSalesVat - (afterSalesVat * salesVatRate / 100), // Subtotal sin IVA final
+        vatAmount: afterSalesVat * salesVatRate / 100,
+        totalAmount: finalWithCashback
+      };
     }
   };
 
@@ -454,16 +434,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const existingItem = updatedItems[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
       
-      // Recalcular precios con la nueva cantidad
-      const pricing = await calculateCorrectPricing(service.id, newQuantity);
-      if (!pricing) {
-        toast({
-          title: "Error",
-          description: "No se pudo calcular el precio del servicio",
-          variant: "destructive"
-        });
-        return;
-      }
+      // Recalcular precios usando la misma lógica que ProductServiceSeparator
+      const exactPricing = calculateExactDisplayPrice(service, newQuantity);
       
       // Calcular horas por unidad basándose en el servicio original
       const hoursPerUnit = (service.estimated_hours || 0);
@@ -472,15 +444,15 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         updatedItems[existingItemIndex] = {
           ...existingItem,
           quantity: newQuantity,
-          unit_price: pricing.unit_base_price,
-          subtotal: (pricing as any).final_subtotal || pricing.subtotal,
-          original_subtotal: (pricing as any).final_subtotal && (pricing as any).final_subtotal !== pricing.subtotal ? pricing.subtotal : undefined,
-          policy_discount_percentage: (pricing as any).policy_discount_percentage || 0,
-          policy_discount_amount: (pricing as any).policy_discount_amount || 0,
-          policy_name: (pricing as any).policy_name || undefined,
-          vat_rate: pricing.vat_rate,
-          vat_amount: pricing.vat_amount,
-          total: pricing.total_amount, // Este es el precio final con cashback incluido
+          unit_price: service.base_price || service.cost_price || 0,
+          subtotal: exactPricing.subtotal,
+          original_subtotal: undefined,
+          policy_discount_percentage: 0,
+          policy_discount_amount: 0,
+          policy_name: undefined,
+          vat_rate: service.vat_rate,
+          vat_amount: exactPricing.vatAmount,
+          total: exactPricing.totalAmount, // Este es el precio final correcto con cashback
           estimated_hours: totalEstimatedHours
         };
       
@@ -489,17 +461,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         description: `Se aumentó la cantidad de ${service.name} a ${newQuantity}`,
       });
     } else {
-      // Agregar nuevo item - calcular precios correctos
-      const pricing = await calculateCorrectPricing(service.id, quantity);
-      if (!pricing) {
-        toast({
-          title: "Error",
-          description: "No se pudo calcular el precio del servicio",
-          variant: "destructive"
-        });
-        return;
-      }
-
+      // Agregar nuevo item - usar cálculo exacto como ProductServiceSeparator
+      const exactPricing = calculateExactDisplayPrice(service, quantity);
       const estimatedHours = quantity * (service.estimated_hours || 0);
       
       const newItem: OrderItem = {
@@ -508,21 +471,21 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         name: service.name,
         description: service.description || '',
         quantity,
-        unit_price: pricing.unit_base_price,
-        cost_price: service.cost_price, // Agregar cost_price para productos
+        unit_price: service.base_price || service.cost_price || 0,
+        cost_price: service.cost_price,
         estimated_hours: estimatedHours,
-        subtotal: pricing.subtotal,
-        original_subtotal: (pricing as any).final_subtotal && (pricing as any).final_subtotal !== pricing.subtotal ? pricing.subtotal : undefined,
-        policy_discount_percentage: (pricing as any).policy_discount_percentage || 0,
-        policy_discount_amount: (pricing as any).policy_discount_amount || 0,
-        policy_name: (pricing as any).policy_name || undefined,
-        vat_rate: pricing.vat_rate,
-        vat_amount: pricing.vat_amount,
-        total: pricing.total_amount, // Este es el precio final con cashback incluido
+        subtotal: exactPricing.subtotal,
+        original_subtotal: undefined,
+        policy_discount_percentage: 0,
+        policy_discount_amount: 0,
+        policy_name: undefined,
+        vat_rate: service.vat_rate,
+        vat_amount: exactPricing.vatAmount,
+        total: exactPricing.totalAmount, // Este es el precio final correcto con cashback
         item_type: service.item_type,
         shared_time: (service as any).shared_time || false,
         status: 'pendiente',
-        profit_margin_tiers: service.profit_margin_tiers // Agregar profit_margin_tiers para productos
+        profit_margin_tiers: service.profit_margin_tiers
       };
       
       updatedItems = [...orderItems, newItem];
