@@ -306,7 +306,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   // Function to determine if an item is a product
   const isProduct = (item: QuoteItem): boolean => {
-    return item.item_type === 'producto' || (item.profit_margin_rate && item.profit_margin_rate > 0);
+    return item.item_type === 'articulo' || (item.profit_margin_rate && item.profit_margin_rate > 0);
   };
 
   // Function to calculate the correct price for an item
@@ -451,77 +451,46 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             <CardContent>
               {quoteItems.length > 0 ? (
                 <div className="space-y-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Imagen</TableHead>
-                          <TableHead>Artículo/Servicio</TableHead>
-                          <TableHead className="text-center">Cantidad</TableHead>
-                          <TableHead className="text-right">Precio Unitario</TableHead>
-                          <TableHead className="text-right">Subtotal</TableHead>
-                          <TableHead className="text-right">Impuestos</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {quoteItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="w-20">
-                              {item.image_url ? (
-                                <div className="w-16 h-16">
-                                  <img 
-                                    src={item.image_url} 
-                                    alt={item.name}
-                                    className="w-full h-full object-cover rounded-md border"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                    }}
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
-                                  <Package className="h-6 w-6 text-gray-400" />
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div>
-                                <p className="font-medium">{item.name}</p>
-                                {item.description && (
-                                  <p className="text-sm text-muted-foreground">{item.description}</p>
-                                )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Imagen</TableHead>
+                        <TableHead>Artículo/Servicio</TableHead>
+                        <TableHead className="text-center">Cantidad</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quoteItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="w-20">
+                            {item.image_url ? (
+                              <div className="w-16 h-16">
+                                <img 
+                                  src={item.image_url} 
+                                  alt={item.name}
+                                  className="w-full h-full object-cover rounded-md border"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
                               </div>
-                            </TableCell>
-                           <TableCell className="text-center">{item.quantity}</TableCell>
-                           <TableCell className="text-right">{formatCurrency(calculateItemCorrectPrice(item))}</TableCell>
-                           <TableCell className="text-right">{formatCurrency(calculateItemCorrectPrice(item) * item.quantity)}</TableCell>
-                          <TableCell className="text-right">
-                            <div className="space-y-1">
-                              {item.taxes && item.taxes.length > 0 ? (
-                                item.taxes.map((tax, index) => (
-                                  <div key={index} className="text-xs">
-                                    <span className={tax.tax_type === 'iva' ? 'text-green-600' : 'text-red-600'}>
-                                      {tax.tax_name}: {tax.tax_type === 'iva' ? '+' : '-'}{formatCurrency(tax.tax_amount)}
-                                    </span>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="space-y-1">
-                                  {item.vat_amount > 0 && (
-                                    <div className="text-xs text-green-600">
-                                      IVA ({item.vat_rate}%): +{formatCurrency(item.vat_amount)}
-                                    </div>
-                                  )}
-                                  {item.withholding_amount > 0 && (
-                                    <div className="text-xs text-red-600">
-                                      {item.withholding_type} ({item.withholding_rate}%): -{formatCurrency(item.withholding_amount)}
-                                    </div>
-                                  )}
-                                </div>
+                            ) : (
+                              <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
+                                <Package className="h-6 w-6 text-gray-400" />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium">{item.name}</p>
+                              {item.description && (
+                                <p className="text-sm text-muted-foreground">{item.description}</p>
                               )}
                             </div>
                           </TableCell>
+                          <TableCell className="text-center">{item.quantity}</TableCell>
                           <TableCell className="text-right font-medium">{formatCurrency(calculateItemCorrectPrice(item) * item.quantity)}</TableCell>
                         </TableRow>
                       ))}
