@@ -1289,62 +1289,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 </div>
               )}
 
-               {/* Total estimado y aplicación de cashback */}
-               {orderItems.length > 0 && (
-                 <div className="space-y-2">
-                   <Label>Total Estimado</Label>
-                   <div className="p-4 border rounded-lg bg-muted/50">
-                     <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Subtotal:</span>
-                          <span>${pricing.totalCostPrice.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>IVA:</span>
-                          <span>${pricing.totalVATAmount.toLocaleString()}</span>
-                        </div>
-                        {pricing.hasCashbackAdjustment && (
-                          <div className="flex justify-between text-xs text-blue-600">
-                            <span>• Incluye {rewardSettings?.general_cashback_percent}% cashback aplicado al precio</span>
-                            <span></span>
-                          </div>
-                        )}
-                        {pricing.isNewClient && rewardSettings && (
-                          <div className="flex justify-between text-xs text-green-600">
-                            <span>• Cliente nuevo: {rewardSettings.new_client_cashback_percent}% cashback como recompensa</span>
-                            <span></span>
-                          </div>
-                        )}
-                       {appliedCashback > 0 && (
-                         <div className="flex justify-between text-sm text-green-600">
-                           <span>Descuento Cashback:</span>
-                           <span>-${appliedCashback.toLocaleString()}</span>
-                         </div>
-                       )}
-                       <div className="border-t pt-2">
-                         <div className="flex justify-between font-bold">
-                           <span>Total:</span>
-                           <span>${(pricing.totalAmount - appliedCashback).toLocaleString()}</span>
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                   
-                   {/* Cashback Application Button for Clients */}
-                   {profile?.role === 'cliente' && availableCashback > 0 && (
-                     <Button
-                       type="button"
-                       variant="outline"
-                       onClick={() => setShowCashbackDialog(true)}
-                       className="w-full border-green-600 text-green-600 hover:bg-green-50"
-                     >
-                       <Gift className="h-4 w-4 mr-2" />
-                       Aplicar Cashback (${availableCashback.toLocaleString()} disponible)
-                     </Button>
-                   )}
-                 </div>
-               )}
-
                {/* Mostrar técnico asignado para CLIENTES */}
               {profile?.role === 'cliente' && formData.assigned_technician && (
                 <div className="space-y-2">
