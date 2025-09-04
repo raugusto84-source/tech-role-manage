@@ -28,44 +28,50 @@ interface QuoteTotalsSummaryProps {
 }
 
 export function QuoteTotalsSummary({ selectedItems, clientId = '' }: QuoteTotalsSummaryProps) {
-  // Convert QuoteItem to the format expected by usePricingCalculation
-  const orderItems = selectedItems.map(item => ({
-    subtotal: item.subtotal,
-    vat_amount: item.vat_amount,
-    vat_rate: item.vat_rate,
-    item_type: item.item_type || (item.is_custom ? 'servicio' : 'servicio'),
-    cost_price: item.cost_price,
-    base_price: item.base_price,
-    profit_margin_rate: item.profit_margin_rate,
-    quantity: item.quantity
-  }));
-
-  const pricing = usePricingCalculation(orderItems, clientId);
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 2,
     }).format(amount);
   };
+
+  // Calculate totals from selectedItems directly
+  const subtotalGeneral = selectedItems.reduce((sum, item) => {
+    // For the subtotal, we need the base price without VAT
+    const basePrice = item.unit_price * item.quantity;
+    const vatRate = item.vat_rate / 100;
+    // Calculate the base price from the total price (removing VAT)
+    const basePriceWithoutVat = basePrice / (1 + vatRate);
+    return sum + basePriceWithoutVat;
+  }, 0);
+
+  const totalVAT = selectedItems.reduce((sum, item) => {
+    const basePrice = item.unit_price * item.quantity;
+    const vatRate = item.vat_rate / 100;
+    const basePriceWithoutVat = basePrice / (1 + vatRate);
+    const vatAmount = basePriceWithoutVat * vatRate;
+    return sum + vatAmount;
+  }, 0);
+
+  const totalFinal = subtotalGeneral + totalVAT;
 
   return (
     <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
       <div className="flex justify-between items-center">
         <span>Subtotal General:</span>
-        <span>{formatCurrency(pricing.totalCostPrice)}</span>
+        <span>{formatCurrency(subtotalGeneral)}</span>
       </div>
       
       <div className="flex justify-between items-center text-green-600">
         <span>Total IVAs:</span>
-        <span>+{formatCurrency(pricing.totalVATAmount)}</span>
+        <span>+{formatCurrency(totalVAT)}</span>
       </div>
       
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total Final:</span>
-          <span>{formatCurrency(pricing.totalAmount)}</span>
+          <span>{formatCurrency(totalFinal)}</span>
         </div>
       </div>
     </div>
