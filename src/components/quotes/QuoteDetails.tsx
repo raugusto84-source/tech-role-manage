@@ -33,11 +33,14 @@ interface QuoteItem {
   item_type?: string;
   unit_cost_price?: number;
   profit_margin_rate?: number;
+  base_price?: number;
+  service_vat_rate?: number;
   service_types?: {
     image_url?: string | null;
     item_type?: string;
     cost_price?: number;
     base_price?: number;
+    vat_rate?: number;
   };
 }
 
@@ -95,7 +98,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
           .from('quote_items')
           .select(`
             *,
-            service_types!left(image_url, item_type, cost_price, base_price)
+            service_types!left(image_url, item_type, cost_price, base_price, vat_rate)
           `)
           .eq('quote_id', quote.id)
           .order('created_at', { ascending: true });
@@ -109,8 +112,11 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             image_url: item.service_types?.image_url || null,
             item_type: item.service_types?.item_type || 'servicio',
             unit_cost_price: item.service_types?.cost_price || 0,
+            base_price: item.service_types?.base_price || 0,
+            service_vat_rate: item.service_types?.vat_rate || item.vat_rate,
             profit_margin_rate: 30 // Default margin for products
           }));
+          console.log('Mapped quote items:', mappedItems);
           setQuoteItems(mappedItems);
         }
 
@@ -320,6 +326,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     console.log('QuoteDetails - Calculating price for item:', item.name, {
       item_type: item.item_type,
       unit_price: item.unit_price,
+      base_price: item.base_price,
       service_types: item.service_types
     });
 
@@ -343,15 +350,20 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       
       return baseTotal + cashback;
     } else {
-      // For services: use base_price from service_types, or fallback to unit_price
-      const basePrice = item.service_types?.base_price || item.service_types?.cost_price || item.unit_price || 0;
+      // For services: use base_price from mapped item, or fallback to unit_price
+      const basePrice = item.base_price || item.unit_price || 0;
       
       if (basePrice === 0) {
-        console.warn('Service has no price set:', item.name);
+        console.warn('Service has no price set:', item.name, {
+          base_price: item.base_price,
+          unit_price: item.unit_price,
+          service_types_base_price: item.service_types?.base_price
+        });
         return 0;
       }
       
-      const vat = basePrice * ((item.vat_rate || 0) / 100);
+      const vatRate = item.service_vat_rate || item.vat_rate || 0;
+      const vat = basePrice * (vatRate / 100);
       const baseTotal = basePrice + vat;
       
       // Apply cashback if settings are available and cashback is enabled for items
@@ -363,6 +375,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       const finalPrice = baseTotal + cashback;
       console.log('QuoteDetails - Service price calculation result:', {
         basePrice,
+        vatRate,
         vat,
         baseTotal,
         cashback,
