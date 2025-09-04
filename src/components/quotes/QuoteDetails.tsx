@@ -330,59 +330,9 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       service_types: item.service_types
     });
 
-    if (isProduct(item)) {
-      // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
-      const costPrice = item.unit_cost_price || 0;
-      const purchaseVAT = costPrice * 0.16; // 16% purchase VAT (matching other components)
-      const costWithPurchaseVAT = costPrice + purchaseVAT;
-      
-      const profitMargin = item.profit_margin_rate || 30;
-      const priceWithMargin = costWithPurchaseVAT * (1 + profitMargin / 100);
-      
-      const salesVAT = priceWithMargin * (item.vat_rate / 100);
-      const baseTotal = priceWithMargin + salesVAT;
-      
-      // Apply cashback if settings are available and cashback is enabled for items
-      let cashback = 0;
-      if (rewardSettings?.apply_cashback_to_items) {
-        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
-      }
-      
-      return baseTotal + cashback;
-    } else {
-      // For services: use base_price from mapped item, or fallback to unit_price
-      const basePrice = item.base_price || item.unit_price || 0;
-      
-      if (basePrice === 0) {
-        console.warn('Service has no price set:', item.name, {
-          base_price: item.base_price,
-          unit_price: item.unit_price,
-          service_types_base_price: item.service_types?.base_price
-        });
-        return 0;
-      }
-      
-      const vatRate = item.service_vat_rate || item.vat_rate || 0;
-      const vat = basePrice * (vatRate / 100);
-      const baseTotal = basePrice + vat;
-      
-      // Apply cashback if settings are available and cashback is enabled for items
-      let cashback = 0;
-      if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
-        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
-      }
-      
-      const finalPrice = baseTotal + cashback;
-      console.log('QuoteDetails - Service price calculation result:', {
-        basePrice,
-        vatRate,
-        vat,
-        baseTotal,
-        cashback,
-        finalPrice
-      });
-      return finalPrice;
-    }
+    // For quote items, use the already calculated unit_price from the database
+    // This was calculated when the quote was created and includes all pricing logic
+    return item.unit_price || 0;
   };
 
   // Calculate totals using correct pricing
@@ -530,7 +480,9 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                             </div>
                           </TableCell>
                           <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(calculateItemCorrectPrice(item) * item.quantity)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatCurrency(item.unit_price * item.quantity)}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
