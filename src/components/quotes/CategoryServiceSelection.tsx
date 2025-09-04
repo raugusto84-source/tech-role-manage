@@ -722,18 +722,18 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                                    {service.description}
                                  </p>
                                )}
-                               <div className="flex items-center justify-between">
-                                 <span className="font-medium text-sm">
-                                   {formatCurrency(service.base_price || 0)}
-                                 </span>
-                                 <Button
-                                   size="sm"
-                                   onClick={() => addService(service)}
-                                   className="h-7 px-2"
-                                 >
-                                   <Plus className="h-3 w-3" />
-                                 </Button>
-                               </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm">
+                                    {formatCurrency(calculateServicePrice(service))}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => addService(service)}
+                                    className="h-7 px-2"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                </div>
                              </div>
                            </CardContent>
                          </Card>
@@ -782,18 +782,18 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                                  {service.description}
                                </p>
                              )}
-                             <div className="flex items-center justify-between">
-                               <span className="font-medium text-sm">
-                                 {formatCurrency(service.base_price || 0)}
-                               </span>
-                               <Button
-                                 size="sm"
-                                 onClick={() => addService(service)}
-                                 className="h-7 px-2"
-                               >
-                                 <Plus className="h-3 w-3" />
-                               </Button>
-                             </div>
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-sm">
+                                  {formatCurrency(calculateServicePrice(service))}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  onClick={() => addService(service)}
+                                  className="h-7 px-2"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
                            </div>
                          </CardContent>
                        </Card>

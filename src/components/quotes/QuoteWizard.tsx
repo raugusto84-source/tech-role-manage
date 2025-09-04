@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { CategoryServiceSelection } from './CategoryServiceSelection';
 import { SimpleDiagnosticFlow } from './SimpleDiagnosticFlow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +54,7 @@ type WizardStep = 'client' | 'diagnostic' | 'items' | 'review';
  */
 export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const { profile } = useAuth();
+  const { settings: rewardSettings } = useRewardSettings();
   const [currentStep, setCurrentStep] = useState<WizardStep>('client');
   const [loading, setLoading] = useState(false);
   const [showServiceSelection, setShowServiceSelection] = useState(false);
@@ -311,26 +313,54 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     }).format(amount);
   };
 
+  // Function to determine if an item is a product
+  const isProduct = (service: any): boolean => {
+    return service.item_type === 'producto' || service.item_type === 'articulo' || 
+           (service.profit_margin_tiers && service.profit_margin_tiers.length > 0);
+  };
+
   // Función para calcular el precio correcto según el tipo de servicio
   const calculateServicePrice = (service: any): number => {
-    if (service.item_type === 'servicio') {
-      // Para servicios, usar base_price directamente
-      return service.base_price || 0;
-    } else {
-      // Para artículos, calcular precio basado en cost_price + margen
+    if (isProduct(service)) {
+      // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
       const costPrice = service.cost_price || 0;
       if (costPrice === 0) return 0;
       
-      // Obtener el margen de ganancia del primer tier (por defecto)
+      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const costWithPurchaseVAT = costPrice + purchaseVAT;
+      
+      // Get profit margin from first tier or default
       const profitMarginTiers = service.profit_margin_tiers;
-      let margin = 30; // margen por defecto
+      let margin = 30; // default margin
       
       if (Array.isArray(profitMarginTiers) && profitMarginTiers.length > 0) {
         margin = profitMarginTiers[0].margin || 30;
       }
       
-      // Calcular precio con margen
-      return costPrice * (1 + margin / 100);
+      const priceWithMargin = costWithPurchaseVAT * (1 + margin / 100);
+      const salesVAT = priceWithMargin * (service.vat_rate / 100);
+      const baseTotal = priceWithMargin + salesVAT;
+      
+      // Apply cashback if settings are available and cashback is enabled for items
+      let cashback = 0;
+      if (rewardSettings?.apply_cashback_to_items) {
+        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
+      }
+      
+      return baseTotal + cashback;
+    } else {
+      // For services: base price + VAT + cashback
+      const basePrice = service.base_price || 0;
+      const vat = basePrice * (service.vat_rate / 100);
+      const baseTotal = basePrice + vat;
+      
+      // Apply cashback if settings are available
+      let cashback = 0;
+      if (rewardSettings) {
+        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
+      }
+      
+      return baseTotal + cashback;
     }
   };
 
@@ -479,26 +509,24 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                    if (result.recommended_services && result.recommended_services.length > 0) {
                      const newItems = result.recommended_services.map(service => {
                        const calculatedPrice = calculateServicePrice(service);
-                       const vatAmount = (calculatedPrice * (service.vat_rate || 0)) / 100;
-                       const total = calculatedPrice + vatAmount;
                        
-                         return {
-                           id: `rec-${service.id}-${Date.now()}`,
-                           service_type_id: service.id,
-                           name: service.name,
-                           description: service.description || '',
-                           quantity: 1,
-                           unit_price: calculatedPrice,
-                           subtotal: calculatedPrice,
-                           vat_rate: service.vat_rate || 0,
-                           vat_amount: vatAmount,
-                           withholding_rate: 0,
-                           withholding_amount: 0,
-                           withholding_type: '',
-                           total: total,
-                           is_custom: false,
-                           image_url: (service as any).image_url || null
-                         };
+                       return {
+                         id: `rec-${service.id}-${Date.now()}`,
+                         service_type_id: service.id,
+                         name: service.name,
+                         description: service.description || '',
+                         quantity: 1,
+                         unit_price: calculatedPrice,
+                         subtotal: calculatedPrice,
+                         vat_rate: service.vat_rate || 0,
+                         vat_amount: 0, // VAT is included in calculatedPrice
+                         withholding_rate: 0,
+                         withholding_amount: 0,
+                         withholding_type: '',
+                         total: calculatedPrice, // Total is the same as calculated price (includes VAT and cashback)
+                         is_custom: false,
+                         image_url: (service as any).image_url || null
+                       };
                      });
                      setQuoteItems(prev => [...prev, ...newItems]);
                      toast({
