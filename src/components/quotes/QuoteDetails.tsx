@@ -794,12 +794,12 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                     {applyCashback && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <p className="text-sm text-green-800">
-                          Descuento aplicado: <span className="font-medium">
+                          Descuento marcado: <span className="font-medium">
                             -{formatCurrency(cashbackAmount)}
                           </span>
                         </p>
                         <p className="text-xs text-green-700 mt-1">
-                          Total final: {formatCurrency(total - cashbackAmount)}
+                          Se aplicará cuando la cotización sea aceptada
                         </p>
                       </div>
                     )}
