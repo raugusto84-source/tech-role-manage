@@ -13,13 +13,17 @@ import { Plus, Edit, Truck, Calendar } from 'lucide-react';
 
 interface Vehicle {
   id: string;
+  brand: string;
   model: string;
   license_plate: string;
-  year: number | null;
+  year: number;
   status: string;
-  current_mileage: number | null;
+  current_mileage: number;
+  estimated_consumption: number;
+  fuel_type: string;
   purchase_date: string | null;
-  notes: string | null;
+  insurance_expiry: string | null;
+  assigned_technician: string | null;
   created_at: string;
 }
 
@@ -29,13 +33,16 @@ export function VehicleManager() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [formData, setFormData] = useState({
+    brand: '',
     model: '',
     license_plate: '',
     year: '',
     status: 'activo',
     current_mileage: '',
+    estimated_consumption: '',
+    fuel_type: 'gasolina',
     purchase_date: '',
-    notes: ''
+    insurance_expiry: ''
   });
 
   useEffect(() => {
@@ -65,13 +72,16 @@ export function VehicleManager() {
 
   const resetForm = () => {
     setFormData({
+      brand: '',
       model: '',
       license_plate: '',
       year: '',
       status: 'activo',
       current_mileage: '',
+      estimated_consumption: '',
+      fuel_type: 'gasolina',
       purchase_date: '',
-      notes: ''
+      insurance_expiry: ''
     });
     setEditingVehicle(null);
   };
@@ -80,13 +90,16 @@ export function VehicleManager() {
     if (vehicle) {
       setEditingVehicle(vehicle);
       setFormData({
+        brand: vehicle.brand,
         model: vehicle.model,
         license_plate: vehicle.license_plate,
-        year: vehicle.year?.toString() || '',
+        year: vehicle.year.toString(),
         status: vehicle.status,
-        current_mileage: vehicle.current_mileage?.toString() || '',
+        current_mileage: vehicle.current_mileage.toString(),
+        estimated_consumption: vehicle.estimated_consumption.toString(),
+        fuel_type: vehicle.fuel_type,
         purchase_date: vehicle.purchase_date || '',
-        notes: vehicle.notes || ''
+        insurance_expiry: vehicle.insurance_expiry || ''
       });
     } else {
       resetForm();
@@ -102,10 +115,10 @@ export function VehicleManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.model.trim() || !formData.license_plate.trim()) {
+    if (!formData.brand.trim() || !formData.model.trim() || !formData.license_plate.trim() || !formData.estimated_consumption.trim()) {
       toast({
         title: "Error",
-        description: "Modelo y placa son campos obligatorios",
+        description: "Marca, modelo, placa y consumo estimado son campos obligatorios",
         variant: "destructive"
       });
       return;
@@ -113,13 +126,16 @@ export function VehicleManager() {
 
     try {
       const vehicleData = {
+        brand: formData.brand.trim(),
         model: formData.model.trim(),
         license_plate: formData.license_plate.trim(),
-        year: formData.year ? parseInt(formData.year) : null,
+        year: formData.year ? parseInt(formData.year) : new Date().getFullYear(),
         status: formData.status,
-        current_mileage: formData.current_mileage ? parseInt(formData.current_mileage) : null,
+        current_mileage: formData.current_mileage ? parseInt(formData.current_mileage) : 0,
+        estimated_consumption: parseFloat(formData.estimated_consumption),
+        fuel_type: formData.fuel_type,
         purchase_date: formData.purchase_date || null,
-        notes: formData.notes.trim() || null
+        insurance_expiry: formData.insurance_expiry || null
       };
 
       if (editingVehicle) {
@@ -210,15 +226,28 @@ export function VehicleManager() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
+                    <Label htmlFor="brand">Marca *</Label>
+                    <Input
+                      id="brand"
+                      value={formData.brand}
+                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                      placeholder="Ej: Toyota"
+                      required
+                    />
+                  </div>
+                  <div>
                     <Label htmlFor="model">Modelo *</Label>
                     <Input
                       id="model"
                       value={formData.model}
                       onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                      placeholder="Ej: Toyota Corolla"
+                      placeholder="Ej: Corolla"
                       required
                     />
                   </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="license_plate">Placa *</Label>
                     <Input
@@ -226,6 +255,18 @@ export function VehicleManager() {
                       value={formData.license_plate}
                       onChange={(e) => setFormData({ ...formData, license_plate: e.target.value.toUpperCase() })}
                       placeholder="ABC-123"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="estimated_consumption">Consumo Estimado (L/100km) *</Label>
+                    <Input
+                      id="estimated_consumption"
+                      type="number"
+                      step="0.1"
+                      value={formData.estimated_consumption}
+                      onChange={(e) => setFormData({ ...formData, estimated_consumption: e.target.value })}
+                      placeholder="8.5"
                       required
                     />
                   </div>
@@ -245,6 +286,23 @@ export function VehicleManager() {
                     />
                   </div>
                   <div>
+                    <Label htmlFor="fuel_type">Tipo de Combustible</Label>
+                    <Select value={formData.fuel_type} onValueChange={(value) => setFormData({ ...formData, fuel_type: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gasolina">Gasolina</SelectItem>
+                        <SelectItem value="diesel">Diésel</SelectItem>
+                        <SelectItem value="hibrido">Híbrido</SelectItem>
+                        <SelectItem value="electrico">Eléctrico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <Label htmlFor="status">Estado</Label>
                     <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
                       <SelectTrigger>
@@ -257,9 +315,6 @@ export function VehicleManager() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="current_mileage">Kilometraje Actual</Label>
                     <Input
@@ -270,6 +325,9 @@ export function VehicleManager() {
                       placeholder="50000"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="purchase_date">Fecha de Compra</Label>
                     <Input
@@ -279,16 +337,15 @@ export function VehicleManager() {
                       onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
                     />
                   </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="notes">Notas</Label>
-                  <Input
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Observaciones adicionales..."
-                  />
+                  <div>
+                    <Label htmlFor="insurance_expiry">Vencimiento Seguro</Label>
+                    <Input
+                      id="insurance_expiry"
+                      type="date"
+                      value={formData.insurance_expiry}
+                      onChange={(e) => setFormData({ ...formData, insurance_expiry: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-2">
@@ -317,36 +374,28 @@ export function VehicleManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Modelo</TableHead>
+                  <TableHead>Marca/Modelo</TableHead>
                   <TableHead>Placa</TableHead>
                   <TableHead>Año</TableHead>
+                  <TableHead>Combustible</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Kilometraje</TableHead>
-                  <TableHead>Fecha Compra</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {vehicles.map((vehicle) => (
                   <TableRow key={vehicle.id}>
-                    <TableCell className="font-medium">{vehicle.model}</TableCell>
+                    <TableCell className="font-medium">{vehicle.brand} {vehicle.model}</TableCell>
                     <TableCell>{vehicle.license_plate}</TableCell>
-                    <TableCell>{vehicle.year || 'N/A'}</TableCell>
+                    <TableCell>{vehicle.year}</TableCell>
+                    <TableCell className="capitalize">{vehicle.fuel_type}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={getStatusColor(vehicle.status)}>
                         {vehicle.status.charAt(0).toUpperCase() + vehicle.status.slice(1)}
                       </Badge>
                     </TableCell>
-                    <TableCell>{vehicle.current_mileage ? `${vehicle.current_mileage} km` : 'N/A'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {vehicle.purchase_date 
-                          ? new Date(vehicle.purchase_date).toLocaleDateString()
-                          : 'N/A'
-                        }
-                      </div>
-                    </TableCell>
+                    <TableCell>{vehicle.current_mileage} km</TableCell>
                     <TableCell className="text-right">
                       <Button
                         variant="ghost"
