@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Plus, CalendarIcon, MapPin, Crosshair, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClientForm } from '@/components/ClientForm';
-import { TechnicianSuggestion } from '@/components/orders/TechnicianSuggestion';
+import { FleetSuggestion } from '@/components/orders/FleetSuggestion';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
 import { ProductServiceSeparator } from '@/components/orders/ProductServiceSeparator';
@@ -68,6 +68,7 @@ interface OrderFormData {
   client_id: string;
   failure_description: string;
   delivery_date: string;
+  assigned_fleet: string;
   assigned_technician: string;
   estimated_cost: string;
   is_home_service: boolean;
@@ -101,6 +102,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     client_id: '',
     failure_description: '',
     delivery_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    assigned_fleet: '',
     assigned_technician: '',
     estimated_cost: '',
     is_home_service: false,
@@ -109,11 +111,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [supportTechnicians, setSupportTechnicians] = useState<SupportTechnicianEntry[]>([]);
 
-  // Estados para el sistema de sugerencias de técnicos
-  const [showTechnicianSuggestions, setShowTechnicianSuggestions] = useState(false);
-  const [showSupportSuggestion, setShowSupportSuggestion] = useState(false);
-  const [suggestionReason, setSuggestionReason] = useState('');
-  const [supportSuggestion, setSupportSuggestion] = useState<any>(null);
+  // Estados para el sistema de sugerencias de flotillas
+  const [showFleetSuggestions, setShowFleetSuggestions] = useState(false);
+  const [selectedFleetName, setSelectedFleetName] = useState('');
+  const [fleetSuggestionReason, setFleetSuggestionReason] = useState('');
   
   // Estados para cashback
   const [availableCashback, setAvailableCashback] = useState(0);
@@ -487,8 +488,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     
     setOrderItems(updatedItems);
     
-    // Asignación automática de técnico basada en habilidades y disponibilidad
-    await autoAssignOptimalTechnician(service.id, updatedItems);
+    // Asignación automática de flotilla para el servicio
+    await autoAssignOptimalFleet(service.id, updatedItems);
   };
 
   const calculateTotalHours = () => {
@@ -588,40 +589,143 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         delivery_date: deliveryDateString
       }));
       
-      // Sugerir técnico de apoyo si es necesario
-      const supportSugg = suggestSupportTechnician(
-        formData.assigned_technician,
-        totalHours,
-        technicians,
-        technicianWorkloads
-      );
-      
-      if (supportSugg.suggested) {
-        setSupportSuggestion(supportSugg);
-        setShowSupportSuggestion(true);
-      }
+      // Ya no se sugieren técnicos de apoyo en el sistema de flotillas
+      // La flotilla se encargará de gestionar la distribución de trabajo
     }
   };
 
   /**
-   * FUNCIÓN: handleTechnicianSuggestionSelect
+   * FUNCIÓN: handleFleetSuggestionSelect
    * 
    * PROPÓSITO:
-   * - Maneja la selección de un técnico desde las sugerencias automáticas
-   * - Actualiza el formulario con el técnico seleccionado
+   * - Maneja la selección de una flotilla desde las sugerencias automáticas
+   * - Actualiza el formulario con la flotilla seleccionada
    * - Guarda la razón de la sugerencia para mostrar al usuario
+   * - Asigna automáticamente el mejor técnico disponible de la flotilla
    * 
    * PARÁMETROS:
-   * - technicianId: ID del técnico seleccionado
-   * - reason: Razón por la cual fue sugerido este técnico
+   * - fleetId: ID de la flotilla seleccionada
+   * - fleetName: Nombre de la flotilla
+   * - reason: Razón por la cual fue sugerida esta flotilla
    */
   /**
-   * FUNCIÓN: autoAssignOptimalTechnician
+   * FUNCIÓN: autoAssignOptimalFleet
+   * 
+   * PROPÓSITO:
+   * - Asigna automáticamente la mejor flotilla para un tipo de servicio
+   * - Luego selecciona el mejor técnico disponible de esa flotilla
+   * - Basado en habilidades y disponibilidad
+   */
+  const autoAssignOptimalFleet = async (serviceTypeId: string, orderItems: OrderItem[]) => {
+    try {
+      console.log('Auto-assigning optimal fleet for service:', serviceTypeId);
+      
+      // Solo ejecutar para administrador o vendedor
+      if (profile?.role !== 'administrador' && profile?.role !== 'vendedor') {
+        console.log('Fleet auto-assignment only for admin/sales users');
+        return;
+      }
+
+      // Obtener sugerencias de flotilla
+      const { data: suggestions, error } = await supabase
+        .rpc('suggest_optimal_fleet', {
+          p_service_type_id: serviceTypeId,
+          p_delivery_date: formData.delivery_date || null
+        });
+
+      if (error) {
+        console.error('Error getting fleet suggestions:', error);
+        return;
+      }
+
+      if (!suggestions || suggestions.length === 0) {
+        console.log('No fleet suggestions available');
+        return;
+      }
+
+      // Seleccionar la mejor flotilla
+      const bestFleet = suggestions[0];
+      console.log('Best fleet selected:', bestFleet);
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        assigned_fleet: bestFleet.fleet_group_id
+      }));
+      setSelectedFleetName(bestFleet.fleet_name);
+      setFleetSuggestionReason(bestFleet.suggestion_reason);
+      
+      // Ahora asignar el mejor técnico de esa flotilla
+      await assignBestTechnicianFromFleet(bestFleet.fleet_group_id, serviceTypeId);
+      
+      toast({
+        title: "Flotilla asignada automáticamente",
+        description: `${bestFleet.fleet_name} - ${bestFleet.suggestion_reason}`,
+      });
+
+    } catch (error) {
+      console.error('Error in fleet auto-assignment:', error);
+    }
+  };
+
+  const assignBestTechnicianFromFleet = async (fleetId: string, serviceTypeId: string) => {
+    try {
+      // Obtener técnicos de la flotilla
+      const { data: fleetTechnicians, error: fleetError } = await supabase
+        .from('fleet_assignments')
+        .select(`
+          technician_id,
+          profiles!inner(full_name)
+        `)
+        .eq('fleet_group_id', fleetId)
+        .eq('is_active', true);
+
+      if (fleetError || !fleetTechnicians?.length) {
+        console.log('No technicians found in fleet');
+        return;
+      }
+
+      // Usar la función existente de sugerencia de técnicos pero solo para los de la flotilla
+      const technicianIds = fleetTechnicians.map(ft => ft.technician_id);
+      
+      // Obtener el mejor técnico de la flotilla usando suggest_optimal_technician
+      const { data: techSuggestions, error: techError } = await supabase
+        .rpc('suggest_optimal_technician', {
+          p_service_type_id: serviceTypeId,
+          p_delivery_date: formData.delivery_date || null
+        });
+
+      if (techError || !techSuggestions?.length) {
+        console.log('No technician suggestions available');
+        return;
+      }
+
+      // Filtrar solo técnicos de la flotilla y seleccionar el mejor
+      const fleetTechSuggestions = techSuggestions.filter(ts => 
+        technicianIds.includes(ts.technician_id)
+      );
+
+      if (fleetTechSuggestions.length > 0) {
+        const bestTechnician = fleetTechSuggestions[0];
+        setFormData(prev => ({ 
+          ...prev, 
+          assigned_technician: bestTechnician.technician_id
+        }));
+        
+        console.log('Best technician from fleet assigned:', bestTechnician);
+      }
+
+    } catch (error) {
+      console.error('Error assigning technician from fleet:', error);
+    }
+  };
+
+  /**
+   * FUNCIÓN: autoAssignOptimalTechnician (Legacy - mantenida para compatibilidad)
    * 
    * PROPÓSITO:
    * - Asignar automáticamente el mejor técnico basado en habilidades y disponibilidad
    * - Se ejecuta cuando se agrega un servicio a la orden
-   * - Considera todos los servicios de la orden para la asignación óptima
+   * - Ahora integrado con el sistema de flotillas
    */
   const autoAssignOptimalTechnician = async (serviceTypeId: string, currentItems: OrderItem[]) => {
     try {

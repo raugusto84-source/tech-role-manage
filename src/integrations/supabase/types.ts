@@ -1508,6 +1508,64 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_service_categories: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fleet_group_id: string
+          id: string
+          is_active: boolean
+          priority: number | null
+          service_category_id: string | null
+          service_type_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fleet_group_id: string
+          id?: string
+          is_active?: boolean
+          priority?: number | null
+          service_category_id?: string | null
+          service_type_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fleet_group_id?: string
+          id?: string
+          is_active?: boolean
+          priority?: number | null
+          service_category_id?: string | null
+          service_type_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fleet_service_categories_fleet_group_id_fkey"
+            columns: ["fleet_group_id"]
+            isOneToOne: false
+            referencedRelation: "fleet_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fleet_service_categories_service_category_id_fkey"
+            columns: ["service_category_id"]
+            isOneToOne: false
+            referencedRelation: "main_service_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fleet_service_categories_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_up_configurations: {
         Row: {
           created_at: string | null
@@ -6064,6 +6122,18 @@ export type Database = {
           p_related_type: string
         }
         Returns: undefined
+      }
+      suggest_optimal_fleet: {
+        Args: { p_delivery_date?: string; p_service_type_id: string }
+        Returns: {
+          available_technicians: number
+          average_skill_level: number
+          fleet_group_id: string
+          fleet_name: string
+          score: number
+          suggestion_reason: string
+          total_workload: number
+        }[]
       }
       suggest_optimal_technician: {
         Args: { p_delivery_date?: string; p_service_type_id: string }
