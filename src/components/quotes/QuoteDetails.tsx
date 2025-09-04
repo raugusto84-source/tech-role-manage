@@ -398,10 +398,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     
     try {
       setLoading(true);
-      setApplyCashback(checked);
       
       const cashbackAmountToUse = checked ? Math.min(availableCashback, total) : 0;
-      setCashbackAmount(cashbackAmountToUse);
       
       // Update the quote with cashback information
       const { error } = await supabase
@@ -419,68 +417,114 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
           description: `Error al actualizar cashback: ${error.message}`,
           variant: "destructive",
         });
-        // Revert the state
-        setApplyCashback(!checked);
-        setCashbackAmount(0);
         return;
       }
 
-      // If cashback was applied, create a transaction record
-      if (checked && cashbackAmountToUse > 0) {
-        try {
-          // Find client by email
-          const { data: clientData } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('email', quote.client_email)
-            .single();
-          
-          if (clientData) {
-            // Create reward transaction record
-            await supabase
-              .from('reward_transactions')
-              .insert({
-                client_id: clientData.id,
-                transaction_type: 'redeemed',
-                amount: -cashbackAmountToUse,
-                description: `Cashback aplicado en cotización ${quote.quote_number}`,
-                related_quote_id: quote.id
-              });
+      // Find client by email
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', quote.client_email)
+        .single();
+        
+      if (!clientData) {
+        toast({
+          title: "Error",
+          description: "No se encontró el cliente",
+          variant: "destructive",
+        });
+        return;
+      }
 
-            // Update client total cashback
-            await supabase
-              .from('client_rewards')
-              .update({ 
-                total_cashback: availableCashback - cashbackAmountToUse
-              })
-              .eq('client_id', clientData.id);
-              
-            // Update local state
-            setAvailableCashback(prev => prev - cashbackAmountToUse);
-          }
+      if (checked && cashbackAmountToUse > 0) {
+        // Apply cashback - create transaction record and update balance
+        try {
+          // Create reward transaction record
+          await supabase
+            .from('reward_transactions')
+            .insert({
+              client_id: clientData.id,
+              transaction_type: 'redeemed',
+              amount: -cashbackAmountToUse,
+              description: `Cashback aplicado en cotización ${quote.quote_number}`,
+              related_quote_id: quote.id
+            });
+
+          // Update client total cashback
+          await supabase
+            .from('client_rewards')
+            .update({ 
+              total_cashback: availableCashback - cashbackAmountToUse
+            })
+            .eq('client_id', clientData.id);
+            
+          // Update local state
+          setAvailableCashback(prev => prev - cashbackAmountToUse);
+          setApplyCashback(true);
+          setCashbackAmount(cashbackAmountToUse);
+          
+          toast({
+            title: "Cashback aplicado",
+            description: `Se aplicó un descuento de ${formatCurrency(cashbackAmountToUse)}`,
+          });
         } catch (error) {
           console.error('Error processing cashback transaction:', error);
           toast({
-            title: "Advertencia",
-            description: "Cashback aplicado pero hubo un error al registrar la transacción",
+            title: "Error",
+            description: "Error al procesar la transacción de cashback",
             variant: "destructive",
           });
         }
+      } else if (!checked && applyCashback && cashbackAmount > 0) {
+        // Remove cashback - reverse the transaction
+        try {
+          // Create reversal transaction record
+          await supabase
+            .from('reward_transactions')
+            .insert({
+              client_id: clientData.id,
+              transaction_type: 'earned',
+              amount: cashbackAmount,
+              description: `Cashback revertido de cotización ${quote.quote_number}`,
+              related_quote_id: quote.id
+            });
+
+          // Update client total cashback (restore the amount)
+          await supabase
+            .from('client_rewards')
+            .update({ 
+              total_cashback: availableCashback + cashbackAmount
+            })
+            .eq('client_id', clientData.id);
+            
+          // Update local state
+          setAvailableCashback(prev => prev + cashbackAmount);
+          setApplyCashback(false);
+          setCashbackAmount(0);
+          
+          toast({
+            title: "Cashback removido",
+            description: "El descuento ha sido removido",
+          });
+        } catch (error) {
+          console.error('Error reversing cashback transaction:', error);
+          toast({
+            title: "Error",
+            description: "Error al revertir la transacción de cashback",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // Simple state update when no cashback amount involved
+        setApplyCashback(checked);
+        setCashbackAmount(cashbackAmountToUse);
       }
 
-      toast({
-        title: checked ? "Cashback aplicado" : "Cashback removido",
-        description: checked 
-          ? `Se aplicó un descuento de ${formatCurrency(cashbackAmountToUse)}` 
-          : "El cashback ha sido removido de la cotización",
-      });
-
-      onQuoteUpdated();
     } catch (error) {
-      console.error('Error handling cashback:', error);
+      console.error('Error handling cashback toggle:', error);
       toast({
-        title: "Error inesperado",
-        description: "No se pudo procesar el cashback",
+        title: "Error",
+        description: "Error inesperado al procesar cashback",
         variant: "destructive",
       });
     } finally {
@@ -542,6 +586,9 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   };
 
   const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();
+  
+  // Calculate final total with cashback discount
+  const finalTotal = applyCashback ? total - cashbackAmount : total;
 
   const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
   const StatusIcon = getStatusIcon(quote.status);
@@ -680,8 +727,21 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                           <span>Total:</span>
-                          <span>{formatCurrency(total)}</span>
+                          <span>{formatCurrency(finalTotal)}</span>
                         </div>
+                        
+                        {applyCashback && cashbackAmount > 0 && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
+                            <div className="flex justify-between text-sm text-green-800">
+                              <span>Total original:</span>
+                              <span>{formatCurrency(total)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-medium text-green-800">
+                              <span>Descuento cashback:</span>
+                              <span>-{formatCurrency(cashbackAmount)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
