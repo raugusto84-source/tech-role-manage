@@ -63,9 +63,9 @@ export function ProductServiceSeparator({
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       return finalWithCashback;
     } else {
-      // Para artículos: usar base_price si cost_price no está disponible
+      // Para artículos: utilizar SIEMPRE cost_price como costo base
       const purchaseVatRate = 16;
-      const baseCost = (service.cost_price || service.base_price || 0) * quantity;
+      const baseCost = (service.cost_price || 0) * quantity;
       
       const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
         ? service.profit_margin_tiers[0].margin 
