@@ -100,6 +100,21 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   useEffect(() => {
     const loadQuoteDetails = async () => {
       try {
+        // Load quote details with cashback information
+        const { data: quoteData, error: quoteError } = await supabase
+          .from('quotes')
+          .select('cashback_applied, cashback_amount_used')
+          .eq('id', quote.id)
+          .single();
+
+        if (quoteError) {
+          console.error('Error loading quote cashback details:', quoteError);
+        } else if (quoteData) {
+          // Initialize cashback state from database
+          setApplyCashback(quoteData.cashback_applied || false);
+          setCashbackAmount(quoteData.cashback_amount_used || 0);
+        }
+
         // Load quote items with service type images and pricing info
         const { data: items, error: itemsError } = await supabase
           .from('quote_items')
