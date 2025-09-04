@@ -395,7 +395,30 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         });
 
         if (error) throw error;
-        return data && data.length > 0 ? data[0] : null;
+        
+        // Si tenemos el precio base, aplicar cashback manualmente para productos
+        if (data && data.length > 0) {
+          const baseResult = data[0];
+          const serviceTypeResult = await supabase
+            .from('service_types')
+            .select('item_type')
+            .eq('id', serviceTypeId)
+            .single();
+          
+          if (serviceTypeResult.data?.item_type === 'articulo' && rewardSettings?.apply_cashback_to_items) {
+            const cashbackPercent = rewardSettings.general_cashback_percent || 0;
+            const finalWithCashback = baseResult.total_amount * (1 + cashbackPercent / 100);
+            
+            return {
+              ...baseResult,
+              total_amount: finalWithCashback
+            };
+          }
+          
+          return baseResult;
+        }
+        
+        return null;
       } catch (fallbackError) {
         console.error('Error with fallback pricing:', fallbackError);
         return null;
@@ -471,7 +494,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         unit_price: pricing.unit_base_price,
         cost_price: service.cost_price, // Agregar cost_price para productos
         estimated_hours: estimatedHours,
-        subtotal: (pricing as any).final_subtotal || pricing.subtotal,
+        subtotal: pricing.subtotal,
         original_subtotal: (pricing as any).final_subtotal && (pricing as any).final_subtotal !== pricing.subtotal ? pricing.subtotal : undefined,
         policy_discount_percentage: (pricing as any).policy_discount_percentage || 0,
         policy_discount_amount: (pricing as any).policy_discount_amount || 0,
