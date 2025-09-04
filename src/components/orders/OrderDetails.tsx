@@ -291,7 +291,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   // Calculate total amount using the same logic as OrderItemsList
   const calculateTotalAmount = () => {
+    if (!orderItems || orderItems.length === 0) {
+      return 0;
+    }
+
     return orderItems.reduce((sum, item) => {
+      // Log para debug
+      console.log('Calculando item:', item.name, {
+        item_type: item.item_type,
+        unit_price: item.unit_price,
+        cost_price: item.cost_price,
+        quantity: item.quantity,
+        vat_rate: item.vat_rate
+      });
+
       const salesVatRate = item.vat_rate || 16;
       const cashbackPercent = rewardSettings?.apply_cashback_to_items
         ? (rewardSettings.general_cashback_percent || 0)
@@ -302,6 +315,13 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         const basePrice = (item.unit_price || 0) * (item.quantity || 1);
         const afterSalesVat = basePrice * (1 + salesVatRate / 100);
         const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        
+        console.log('Servicio calculado:', {
+          basePrice,
+          afterSalesVat,
+          finalWithCashback
+        });
+        
         return sum + finalWithCashback;
       } else {
         // Para artículos: usar cost_price si está disponible, sino usar unit_price
@@ -318,6 +338,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
         const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
         const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        
+        console.log('Artículo calculado:', {
+          baseCost,
+          marginPercent,
+          afterPurchaseVat,
+          afterMargin,
+          afterSalesVat,
+          finalWithCashback
+        });
         
         return sum + finalWithCashback;
       }
