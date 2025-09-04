@@ -5,6 +5,8 @@ import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle, Users
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OrderCardProps {
   order: {
@@ -54,6 +56,38 @@ interface OrderCardProps {
 }
 
 export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+
+  // Cargar los items de la orden para calcular el total correcto
+  useEffect(() => {
+    const loadOrderItems = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('order_items')
+          .select('total_amount')
+          .eq('order_id', order.id);
+
+        if (error) throw error;
+        setOrderItems(data || []);
+      } catch (error) {
+        console.error('Error loading order items for card:', error);
+        setOrderItems([]);
+      }
+    };
+
+    loadOrderItems();
+  }, [order.id]);
+
+  // Calcular el total correcto usando los items de la orden
+  const calculateCorrectTotal = () => {
+    if (!orderItems || orderItems.length === 0) {
+      return order.estimated_cost || 0;
+    }
+
+    return orderItems.reduce((sum, item) => {
+      return sum + (item.total_amount || 0);
+    }, 0);
+  };
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
@@ -172,12 +206,10 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         )}
         
         <div className="flex justify-between items-center text-xs">
-          {order.estimated_cost && (
-            <div className="flex items-center text-muted-foreground">
-              <DollarSign className="h-3 w-3 mr-1 text-primary" />
-              <span>${order.estimated_cost.toLocaleString()}</span>
-            </div>
-          )}
+          <div className="flex items-center text-muted-foreground">
+            <DollarSign className="h-3 w-3 mr-1 text-primary" />
+            <span>${calculateCorrectTotal().toLocaleString()}</span>
+          </div>
           
           {order.average_service_time && (
             <div className="flex items-center text-muted-foreground">

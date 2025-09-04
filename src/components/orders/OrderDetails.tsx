@@ -289,27 +289,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
 
-  // Calculate total using persisted DB amounts to match selection
+  // Calculate total using correct pricing logic
   const calculateTotalAmount = () => {
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
 
-    // Prefer exact persisted totals; fallback to minimal recompute if missing
+    // Use the stored total_amount which already includes correct pricing calculation
     return orderItems.reduce((sum, item) => {
-      const itemTotal =
-        (typeof item.total_amount === 'number' && !isNaN(item.total_amount))
-          ? item.total_amount
-          : (() => {
-              const subtotal = (item.subtotal || 0);
-              const vat = (item.vat_amount || 0);
-              if (subtotal + vat > 0) return subtotal + vat;
-              const qty = item.quantity || 1;
-              const unit = (item.unit_base_price || item.unit_cost_price || 0);
-              const vatRate = item.vat_rate || 0;
-              return (unit * qty) * (1 + vatRate / 100);
-            })();
-      return sum + itemTotal;
+      return sum + (item.total_amount || 0);
     }, 0);
   };
   const getStatusColor = (status: string) => {
