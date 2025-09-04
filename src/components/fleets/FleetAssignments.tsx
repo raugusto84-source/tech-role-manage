@@ -67,31 +67,45 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
       setGroupName(groupData.name);
 
       // Cargar técnicos asignados con habilidades
-      const { data: assignedTechData } = await supabase
+      const { data: assignedTechData, error: assignedTechError } = await supabase
         .from('fleet_group_technicians')
         .select(`
           id,
           assigned_at,
           assigned_by,
-          profiles!inner(user_id, full_name, email)
+          technician_id
         `)
         .eq('fleet_group_id', groupId)
         .eq('is_active', true);
 
-      const technicianIds = assignedTechData?.map(t => (t.profiles as any).user_id) || [];
+      console.log('assignedTechData:', assignedTechData);
+      console.log('assignedTechError:', assignedTechError);
+
+      const technicianIds = assignedTechData?.map(t => t.technician_id) || [];
       
-      // Cargar habilidades de técnicos asignados
+      // Cargar información de perfiles y habilidades de técnicos asignados
       const assignedWithSkills = await Promise.all(
         (assignedTechData || []).map(async (assignment) => {
-          const profile = assignment.profiles as any;
-          
+          // Obtener perfil del técnico
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_id, full_name, email')
+            .eq('user_id', assignment.technician_id)
+            .single();
+
+          if (!profile) {
+            console.log('No profile found for technician:', assignment.technician_id);
+            return null;
+          }
+
+          // Obtener habilidades del técnico
           const { data: skills } = await supabase
             .from('technician_skills')
             .select(`
               skill_level,
               service_types!inner(name)
             `)
-            .eq('technician_id', profile.user_id);
+            .eq('technician_id', assignment.technician_id);
 
           return {
             id: assignment.id,
@@ -108,7 +122,11 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
         })
       );
 
-      setAssignedTechnicians(assignedWithSkills);
+      // Filtrar los nulos y actualizar estado
+      const validAssignedTechnicians = assignedWithSkills.filter(t => t !== null);
+
+      setAssignedTechnicians(validAssignedTechnicians);
+      console.log('validAssignedTechnicians:', validAssignedTechnicians);
 
       // Cargar vehículos asignados
       const { data: assignedVehData } = await supabase
