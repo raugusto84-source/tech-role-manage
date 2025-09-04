@@ -152,16 +152,6 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      console.log(`Cálculo para ${service.name}:`, {
-        baseCost,
-        afterPurchaseVat,
-        marginPercent,
-        afterMargin,
-        afterSalesVat,
-        cashbackPercent,
-        finalWithCashback
-      });
-      
       return finalWithCashback;
     }
   };

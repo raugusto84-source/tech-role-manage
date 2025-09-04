@@ -405,16 +405,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      console.log(`Cálculo para ${service.name}:`, {
-        baseCost,
-        afterPurchaseVat,
-        marginPercent,
-        afterMargin,
-        afterSalesVat,
-        cashbackPercent,
-        finalWithCashback
-      });
-      
       return {
         subtotal: afterSalesVat - (afterSalesVat * salesVatRate / 100), // Subtotal sin IVA final
         vatAmount: afterSalesVat * salesVatRate / 100,

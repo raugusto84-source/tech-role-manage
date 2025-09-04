@@ -6,6 +6,11 @@ interface OrderItem {
   subtotal: number;
   vat_amount: number;
   vat_rate: number;
+  item_type?: string;
+  cost_price?: number;
+  base_price?: number;
+  profit_margin_rate?: number;
+  quantity?: number;
 }
 
 interface PricingTotals {
@@ -30,13 +35,66 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     calculatePricing();
   }, [orderItems, clientId, rewardSettings]);
 
+  // Helper function to determine if item is a product
+  const isProduct = (item: OrderItem): boolean => {
+    return item.item_type === 'articulo' || (item.profit_margin_rate && item.profit_margin_rate > 0);
+  };
+
+  // Calculate correct price for an item using the same logic as catalog
+  const calculateItemCorrectPrice = (item: OrderItem): { subtotal: number; vat_amount: number; total: number } => {
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+    const quantity = item.quantity || 1;
+
+    if (!isProduct(item)) {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (item.base_price || item.subtotal / quantity) || 0;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      const vatAmount = (finalWithCashback - basePrice * (1 + cashbackPercent / 100));
+      
+      return {
+        subtotal: finalWithCashback - vatAmount,
+        vat_amount: vatAmount,
+        total: finalWithCashback
+      };
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16; // IVA de compra fijo 16%
+      const baseCost = item.cost_price || 0;
+      const profitMargin = item.profit_margin_rate || 30;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      const vatAmount = (finalWithCashback - afterMargin * (1 + cashbackPercent / 100));
+      
+      return {
+        subtotal: finalWithCashback - vatAmount,
+        vat_amount: vatAmount,
+        total: finalWithCashback
+      };
+    }
+  };
+
   const calculatePricing = async () => {
-    let totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
-    let totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
+    let totalCostPrice = 0;
+    let totalVATAmount = 0;
     let hasCashbackAdjustment = false;
     let isNewClient = false;
 
-    // Check if client is new and if cashback should be applied to price
+    // Calculate totals using correct pricing logic for each item
+    orderItems.forEach(item => {
+      const quantity = item.quantity || 1;
+      const itemPricing = calculateItemCorrectPrice(item);
+      totalCostPrice += itemPricing.subtotal * quantity;
+      totalVATAmount += itemPricing.vat_amount * quantity;
+    });
+
+    // Check if client is new
     if (rewardSettings?.apply_cashback_to_items && clientId) {
       try {
         const { data: clientOrders } = await supabase
@@ -46,20 +104,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
           .eq('status', 'finalizada');
         
         isNewClient = !clientOrders || clientOrders.length === 0;
-        
-        // Only apply to price if NOT a new client (use general cashback)
-        if (!isNewClient) {
-          const cashbackPercent = rewardSettings.general_cashback_percent;
-          const cashbackAmount = totalCostPrice * (cashbackPercent / 100);
-          totalCostPrice += cashbackAmount;
-          // Recalculate VAT on the new total
-          totalVATAmount = orderItems.reduce((sum, item) => {
-            const itemCashback = item.subtotal * (cashbackPercent / 100);
-            const newItemSubtotal = item.subtotal + itemCashback;
-            return sum + (newItemSubtotal * item.vat_rate / 100);
-          }, 0);
-          hasCashbackAdjustment = true;
-        }
+        hasCashbackAdjustment = rewardSettings.general_cashback_percent > 0;
       } catch (error) {
         console.error('Error checking client status:', error);
       }

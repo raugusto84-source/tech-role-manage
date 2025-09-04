@@ -82,22 +82,54 @@ export function OrderItemsList({
     }
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
-        // En lugar de dividir las horas actuales por la cantidad actual,
-        // necesitamos obtener las horas base del servicio original.
-        // Como no tenemos acceso directo al servicio, usaremos las horas divididas
-        // por la cantidad como aproximación, pero esto debería idealmente
-        // almacenarse como "horas_por_unidad" en el item.
+        // Calcular las horas base por unidad
         const baseTimePerUnit = item.estimated_hours / item.quantity;
-        const subtotal = newQuantity * item.unit_price;
-        const vatAmount = subtotal * 0.16; // Fixed 16% VAT
-        const total = subtotal + vatAmount;
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
+        
+        // Calcular precios usando la misma lógica de calculateItemDisplayPrice
+        const salesVatRate = item.vat_rate || 16;
+        const cashbackPercent = rewardSettings?.apply_cashback_to_items
+          ? (rewardSettings.general_cashback_percent || 0)
+          : 0;
+
+        let subtotal: number;
+        let vatAmount: number;
+        let total: number;
+
+        if (item.item_type === 'servicio') {
+          // Para servicios: precio base + IVA + cashback
+          const basePrice = item.unit_price * newQuantity;
+          const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+          const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+          
+          subtotal = basePrice * (1 + cashbackPercent / 100);
+          vatAmount = finalWithCashback - subtotal;
+          total = finalWithCashback;
+        } else {
+          // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+          const purchaseVatRate = 16;
+          const baseCost = (item.cost_price || 0) * newQuantity;
+          
+          const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
+            ? item.profit_margin_tiers[0].margin 
+            : 20;
+          
+          const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+          const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+          const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+          const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+          
+          subtotal = afterMargin * (1 + cashbackPercent / 100);
+          vatAmount = finalWithCashback - subtotal;
+          total = finalWithCashback;
+        }
+
         return {
           ...item,
           quantity: newQuantity,
           subtotal,
           vat_amount: vatAmount,
-          total,
+          total_amount: total,
           estimated_hours: totalEstimatedHours
         };
       }
