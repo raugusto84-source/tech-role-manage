@@ -3633,6 +3633,7 @@ export type Database = {
           expires_at: string | null
           id: string
           order_id: string | null
+          related_quote_id: string | null
           service_discount_percentage: number | null
           transaction_type: string
         }
@@ -3645,6 +3646,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           order_id?: string | null
+          related_quote_id?: string | null
           service_discount_percentage?: number | null
           transaction_type: string
         }
@@ -3657,6 +3659,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           order_id?: string | null
+          related_quote_id?: string | null
           service_discount_percentage?: number | null
           transaction_type?: string
         }
@@ -3680,6 +3683,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_transactions_related_quote_id_fkey"
+            columns: ["related_quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
         ]
