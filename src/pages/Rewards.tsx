@@ -18,14 +18,11 @@ interface ClientRewardsSummary {
   total_cashback: number;
   is_new_client: boolean;
   new_client_discount_used: boolean;
-  referral_code: string | null;
-  referral_count: number;
 }
 
 interface RewardsStats {
   total_clients: number;
   total_cashback: number;
-  active_referrals: number;
   new_clients: number;
 }
 
@@ -36,7 +33,6 @@ export default function Rewards() {
   const [stats, setStats] = useState<RewardsStats>({
     total_clients: 0,
     total_cashback: 0,
-    active_referrals: 0,
     new_clients: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -60,45 +56,30 @@ export default function Rewards() {
         .from('client_rewards')
         .select(`
           *,
-          clients (name, email),
-          client_referrals (referral_code)
+          clients (name, email)
         `);
 
       if (error) throw error;
 
-      const rewardsWithReferrals = await Promise.all(
-        data.map(async (reward: any) => {
-          // Get referral count
-          const { count } = await supabase
-            .from('client_referrals')
-            .select('*', { count: 'exact', head: true })
-            .eq('referrer_client_id', reward.client_id);
+      const clientRewardsData = data.map((reward: any) => ({
+        client_id: reward.client_id,
+        client_name: reward.clients.name,
+        client_email: reward.clients.email,
+        total_cashback: reward.total_cashback,
+        is_new_client: reward.is_new_client,
+        new_client_discount_used: reward.new_client_discount_used,
+      }));
 
-          return {
-            client_id: reward.client_id,
-            client_name: reward.clients.name,
-            client_email: reward.clients.email,
-            total_cashback: reward.total_cashback,
-            is_new_client: reward.is_new_client,
-            new_client_discount_used: reward.new_client_discount_used,
-            referral_code: reward.client_referrals?.[0]?.referral_code || null,
-            referral_count: count || 0,
-          };
-        })
-      );
-
-      setClientRewards(rewardsWithReferrals);
+      setClientRewards(clientRewardsData);
 
       // Calculate stats
-      const totalClients = rewardsWithReferrals.length;
-      const totalCashback = rewardsWithReferrals.reduce((sum, r) => sum + (r.total_cashback || 0), 0);
-      const activeReferrals = rewardsWithReferrals.reduce((sum, r) => sum + r.referral_count, 0);
-      const newClients = rewardsWithReferrals.filter(r => r.is_new_client).length;
+      const totalClients = clientRewardsData.length;
+      const totalCashback = clientRewardsData.reduce((sum, r) => sum + (r.total_cashback || 0), 0);
+      const newClients = clientRewardsData.filter(r => r.is_new_client).length;
 
       setStats({
         total_clients: totalClients,
         total_cashback: totalCashback,
-        active_referrals: activeReferrals,
         new_clients: newClients,
       });
 
@@ -151,7 +132,7 @@ export default function Rewards() {
             <div>
               <h1 className="text-3xl font-bold text-foreground">Mis Recompensas</h1>
             <p className="text-muted-foreground">
-              Gestiona tu cashback y referidos
+              Gestiona tu cashback y recompensas
             </p>
             </div>
           </div>
@@ -174,13 +155,13 @@ export default function Rewards() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Sistema de Recompensas</h1>
             <p className="text-muted-foreground">
-              Gestiona recompensas, cashback y programas de referidos
+              Gestiona recompensas y cashback para clientes
             </p>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="border-l-4 border-l-primary">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -201,18 +182,6 @@ export default function Rewards() {
                   <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.total_cashback)}</p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-success" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-warning">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Referidos Activos</p>
-                  <p className="text-2xl font-bold text-foreground">{stats.active_referrals}</p>
-                </div>
-                <Trophy className="h-8 w-8 text-warning" />
               </div>
             </CardContent>
           </Card>

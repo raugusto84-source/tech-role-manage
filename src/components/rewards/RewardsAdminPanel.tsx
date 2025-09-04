@@ -19,8 +19,6 @@ interface ClientRewardsSummary {
   total_cashback: number;
   is_new_client: boolean;
   new_client_discount_used: boolean;
-  referral_code: string | null;
-  referrals_count: number;
 }
 
 interface RewardTransaction {
@@ -35,7 +33,6 @@ interface RewardTransaction {
 
 interface RewardsStats {
   total_cashback_given: number;
-  active_referrals: number;
   new_clients_this_month: number;
   expired_cashback: number;
 }
@@ -46,7 +43,6 @@ export function RewardsAdminPanel() {
   const [transactions, setTransactions] = useState<RewardTransaction[]>([]);
   const [stats, setStats] = useState<RewardsStats>({
     total_cashback_given: 0,
-    active_referrals: 0,
     new_clients_this_month: 0,
     expired_cashback: 0
   });
@@ -77,33 +73,20 @@ export function RewardsAdminPanel() {
       .from('client_rewards')
       .select(`
         *,
-        clients!inner(id, name, email),
-        client_referrals!referrer_client_id(referral_code)
+        clients!inner(id, name, email)
       `);
 
     if (data) {
-      const rewardsWithReferrals = await Promise.all(
-        data.map(async (reward: any) => {
-          // Count referrals for this client
-          const { count } = await supabase
-            .from('client_referrals')
-            .select('*', { count: 'exact' })
-            .eq('referrer_client_id', reward.client_id);
-
-          return {
-            client_id: reward.client_id,
-            client_name: reward.clients.name,
-            client_email: reward.clients.email,
-            total_cashback: reward.total_cashback,
-            is_new_client: reward.is_new_client,
-            new_client_discount_used: reward.new_client_discount_used,
-            referral_code: reward.client_referrals?.[0]?.referral_code || null,
-            referrals_count: count || 0
-          };
-        })
-      );
+      const clientRewardsData = data.map((reward: any) => ({
+        client_id: reward.client_id,
+        client_name: reward.clients.name,
+        client_email: reward.clients.email,
+        total_cashback: reward.total_cashback,
+        is_new_client: reward.is_new_client,
+        new_client_discount_used: reward.new_client_discount_used,
+      }));
       
-      setClientRewards(rewardsWithReferrals);
+      setClientRewards(clientRewardsData);
     }
   };
 
@@ -130,13 +113,7 @@ export function RewardsAdminPanel() {
     const { data: cashbackData } = await supabase
       .from('reward_transactions')
       .select('amount')
-      .in('transaction_type', ['earned', 'referral_bonus']);
-
-    // Active referrals
-    const { count: activeReferrals } = await supabase
-      .from('client_referrals')
-      .select('*', { count: 'exact' })
-      .eq('status', 'active');
+      .eq('transaction_type', 'earned');
 
     // New clients this month
     const startOfMonth = new Date();
@@ -155,7 +132,6 @@ export function RewardsAdminPanel() {
 
     setStats({
       total_cashback_given: cashbackData?.reduce((sum, tx) => sum + tx.amount, 0) || 0,
-      active_referrals: activeReferrals || 0,
       new_clients_this_month: newClients || 0,
       expired_cashback: expiredData?.reduce((sum, tx) => sum + tx.amount, 0) || 0
     });
@@ -194,53 +170,6 @@ export function RewardsAdminPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Settings Configuration */}
-      <RewardSettingsManager />
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cashback Total</CardTitle>
-            <Gift className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.total_cashback_given)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Referencias Activas</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.active_referrals}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Nuevos Clientes</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.new_clients_this_month}</div>
-            <p className="text-xs text-muted-foreground">Este mes</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cashback Expirado</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.expired_cashback)}</div>
-          </CardContent>
-        </Card>
-      </div>
-
       <Tabs defaultValue="clients" className="w-full">
          <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
            <TabsTrigger value="settings" className="text-xs md:text-sm">
@@ -266,9 +195,9 @@ export function RewardsAdminPanel() {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Recompensas de Clientes</CardTitle>
+                  <CardTitle>Clientes con Cashback</CardTitle>
                   <CardDescription>
-                    Gestiona las recompensas y referencias de tus clientes
+                    Todos los clientes que tienen o han tenido cashback
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -318,10 +247,8 @@ export function RewardsAdminPanel() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Cashback</TableHead>
+                    <TableHead>Cashback Disponible</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Código Referido</TableHead>
-                    <TableHead>Referencias</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -333,25 +260,22 @@ export function RewardsAdminPanel() {
                           <div className="text-sm text-muted-foreground">{client.client_email}</div>
                         </div>
                       </TableCell>
-                      <TableCell>{formatCurrency(client.total_cashback)}</TableCell>
+                      <TableCell>
+                        <span className="font-medium text-green-600">
+                          {formatCurrency(client.total_cashback)}
+                        </span>
+                      </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           {client.is_new_client && (
                             <Badge variant={client.new_client_discount_used ? "secondary" : "default"}>
-                              {client.new_client_discount_used ? "Usado" : "Nuevo Cliente"}
+                              {client.new_client_discount_used ? "Descuento Usado" : "Nuevo Cliente"}
                             </Badge>
                           )}
+                          {client.total_cashback > 0 && (
+                            <Badge variant="outline">Con Cashback</Badge>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {client.referral_code ? (
-                          <code className="text-xs">{client.referral_code}</code>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{client.referrals_count}</Badge>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -388,21 +312,19 @@ export function RewardsAdminPanel() {
                       <TableCell>
                         <Badge variant={
                           transaction.transaction_type === 'earned' ? "default" :
-                          transaction.transaction_type === 'referral_bonus' ? "secondary" :
                           transaction.transaction_type === 'expired' ? "destructive" : "outline"
                         }>
                           {transaction.transaction_type === 'earned' ? 'Ganado' :
-                           transaction.transaction_type === 'referral_bonus' ? 'Referido' :
                            transaction.transaction_type === 'expired' ? 'Expirado' : 'Redimido'}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <span className={
-                          transaction.transaction_type === 'earned' || transaction.transaction_type === 'referral_bonus' 
+                          transaction.transaction_type === 'earned' 
                             ? 'text-green-600' 
                             : 'text-red-600'
                         }>
-                          {transaction.transaction_type === 'earned' || transaction.transaction_type === 'referral_bonus' ? '+' : '-'}
+                          {transaction.transaction_type === 'earned' ? '+' : '-'}
                           {formatCurrency(transaction.amount)}
                         </span>
                       </TableCell>
