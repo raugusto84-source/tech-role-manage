@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, User, Calendar, DollarSign, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -88,6 +89,12 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const [newStatus, setNewStatus] = useState<'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion'>(quote.status);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [salesperson, setSalesperson] = useState<string>('');
+  
+  // Cashback state
+  const [availableCashback, setAvailableCashback] = useState(0);
+  const [applyCashback, setApplyCashback] = useState(false);
+  const [cashbackAmount, setCashbackAmount] = useState(0);
+  const [cashbackLoading, setCashbackLoading] = useState(false);
 
   // Load quote items and salesperson information
   useEffect(() => {
@@ -141,6 +148,42 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
     loadQuoteDetails();
   }, [quote.id, quote.assigned_to, quote.created_by]);
+
+  // Load available cashback for the client
+  useEffect(() => {
+    const loadCashback = async () => {
+      setCashbackLoading(true);
+      try {
+        // Find client by email
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id, email')
+          .eq('email', quote.client_email)
+          .single();
+        
+        if (clientData) {
+          // Get client rewards
+          const { data: rewardsData } = await supabase
+            .from('client_rewards')
+            .select('total_cashback')
+            .eq('client_id', clientData.id)
+            .single();
+
+          if (rewardsData) {
+            setAvailableCashback(rewardsData.total_cashback || 0);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading cashback:', error);
+      } finally {
+        setCashbackLoading(false);
+      }
+    };
+
+    if (quote.client_email) {
+      loadCashback();
+    }
+  }, [quote.client_email]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -349,8 +392,101 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
-  const StatusIcon = getStatusIcon(quote.status);
+  // Handle cashback toggle
+  const handleCashbackToggle = async (checked: boolean) => {
+    if (loading) return;
+    
+    try {
+      setLoading(true);
+      setApplyCashback(checked);
+      
+      const cashbackAmountToUse = checked ? Math.min(availableCashback, total) : 0;
+      setCashbackAmount(cashbackAmountToUse);
+      
+      // Update the quote with cashback information
+      const { error } = await supabase
+        .from('quotes')
+        .update({
+          cashback_applied: checked,
+          cashback_amount_used: cashbackAmountToUse,
+          estimated_amount: total - cashbackAmountToUse
+        })
+        .eq('id', quote.id);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: `Error al actualizar cashback: ${error.message}`,
+          variant: "destructive",
+        });
+        // Revert the state
+        setApplyCashback(!checked);
+        setCashbackAmount(0);
+        return;
+      }
+
+      // If cashback was applied, create a transaction record
+      if (checked && cashbackAmountToUse > 0) {
+        try {
+          // Find client by email
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', quote.client_email)
+            .single();
+          
+          if (clientData) {
+            // Create reward transaction record
+            await supabase
+              .from('reward_transactions')
+              .insert({
+                client_id: clientData.id,
+                transaction_type: 'redeemed',
+                amount: -cashbackAmountToUse,
+                description: `Cashback aplicado en cotización ${quote.quote_number}`,
+                related_quote_id: quote.id
+              });
+
+            // Update client total cashback
+            await supabase
+              .from('client_rewards')
+              .update({ 
+                total_cashback: availableCashback - cashbackAmountToUse
+              })
+              .eq('client_id', clientData.id);
+              
+            // Update local state
+            setAvailableCashback(prev => prev - cashbackAmountToUse);
+          }
+        } catch (error) {
+          console.error('Error processing cashback transaction:', error);
+          toast({
+            title: "Advertencia",
+            description: "Cashback aplicado pero hubo un error al registrar la transacción",
+            variant: "destructive",
+          });
+        }
+      }
+
+      toast({
+        title: checked ? "Cashback aplicado" : "Cashback removido",
+        description: checked 
+          ? `Se aplicó un descuento de ${formatCurrency(cashbackAmountToUse)}` 
+          : "El cashback ha sido removido de la cotización",
+      });
+
+      onQuoteUpdated();
+    } catch (error) {
+      console.error('Error handling cashback:', error);
+      toast({
+        title: "Error inesperado",
+        description: "No se pudo procesar el cashback",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Function to determine if an item is a product
   const isProduct = (item: QuoteItem): boolean => {
@@ -406,6 +542,9 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   };
 
   const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();
+
+  const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
+  const StatusIcon = getStatusIcon(quote.status);
 
   return (
     <div className="space-y-6">
@@ -623,6 +762,61 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
             </CardContent>
           </Card>
+
+          {/* Cashback Section */}
+          {availableCashback > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Cashback Disponible
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {formatCurrency(availableCashback)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Disponible para usar
+                  </p>
+                </div>
+
+                {availableCashback > 0 && canManageQuotes && (
+                  <div className="space-y-3">
+                    <Separator />
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="apply-cashback"
+                        checked={applyCashback}
+                        onCheckedChange={handleCashbackToggle}
+                        disabled={loading || cashbackLoading}
+                      />
+                      <label 
+                        htmlFor="apply-cashback" 
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Aplicar cashback
+                      </label>
+                    </div>
+                    
+                    {applyCashback && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <p className="text-sm text-green-800">
+                          Descuento aplicado: <span className="font-medium">
+                            -{formatCurrency(cashbackAmount)}
+                          </span>
+                        </p>
+                        <p className="text-xs text-green-700 mt-1">
+                          Total final: {formatCurrency(total - cashbackAmount)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Acciones */}
           {canManageQuotes && (
