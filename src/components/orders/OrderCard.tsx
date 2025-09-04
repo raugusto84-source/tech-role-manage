@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 interface OrderCardProps {
   order: {
@@ -57,14 +58,23 @@ interface OrderCardProps {
 
 export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
+  const { settings: rewardSettings } = useRewardSettings();
 
-  // Cargar los items de la orden para calcular el total correcto
+  // Cargar los items de la orden con todos los datos necesarios para el recálculo
   useEffect(() => {
     const loadOrderItems = async () => {
       try {
         const { data, error } = await supabase
           .from('order_items')
-          .select('total_amount')
+          .select(`
+            quantity,
+            unit_cost_price,
+            unit_base_price, 
+            vat_rate,
+            item_type,
+            profit_margin_rate,
+            total_amount
+          `)
           .eq('order_id', order.id);
 
         if (error) throw error;
@@ -78,14 +88,38 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     loadOrderItems();
   }, [order.id]);
 
-  // Calcular el total correcto usando los items de la orden
+  // Calcular el precio correcto usando la lógica completa
   const calculateCorrectTotal = () => {
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
 
     return orderItems.reduce((sum, item) => {
-      return sum + (item.total_amount || 0);
+      const quantity = item.quantity || 1;
+      const salesVatRate = item.vat_rate || 16;
+      const cashbackPercent = rewardSettings?.apply_cashback_to_items
+        ? (rewardSettings.general_cashback_percent || 0)
+        : 0;
+
+      if (item.item_type === 'servicio') {
+        // Para servicios: precio base + IVA + cashback
+        const basePrice = (item.unit_base_price || 0) * quantity;
+        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        return sum + finalWithCashback;
+      } else {
+        // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+        const purchaseVatRate = 16;
+        const baseCost = (item.unit_cost_price || 0) * quantity;
+        const profitMargin = item.profit_margin_rate || 20;
+        
+        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        
+        return sum + finalWithCashback;
+      }
     }, 0);
   };
   const formatDate = (dateString: string) => {
