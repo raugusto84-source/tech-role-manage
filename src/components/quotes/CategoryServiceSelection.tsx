@@ -9,10 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Package, Search, Settings, Trash2 } from 'lucide-react';
-import { TaxConfiguration } from './TaxConfiguration';
+import { Plus, Package, Search } from 'lucide-react';
 
 interface ServiceType {
   id: string;
@@ -39,14 +37,6 @@ interface ServiceCategory {
   icon?: string;
 }
 
-interface Tax {
-  id: string;
-  tax_type: 'iva' | 'retencion';
-  tax_name: string;
-  tax_rate: number;
-  tax_amount: number;
-}
-
 interface QuoteItem {
   id: string;
   service_type_id?: string;
@@ -63,15 +53,6 @@ interface QuoteItem {
   total: number;
   is_custom: boolean;
   image_url?: string | null;
-  taxes?: Tax[];
-}
-
-interface TaxDefinition {
-  id: string;
-  tax_name: string;
-  tax_type: string;
-  tax_rate: number;
-  is_active: boolean;
 }
 
 interface CategoryServiceSelectionProps {
@@ -85,13 +66,8 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
   const { settings: rewardSettings } = useRewardSettings();
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [globalTaxes, setGlobalTaxes] = useState<TaxDefinition[]>([]);
-  const [selectedTaxes, setSelectedTaxes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Determinar si el usuario es cliente para ocultar impuestos
-  const isClient = profile?.role === 'cliente';
   
   // Custom item form
   const [customItem, setCustomItem] = useState({
@@ -125,13 +101,6 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
         icon: getCategoryIcon(categoryName)
       }));
 
-      // Load global taxes
-      const { data: taxesData } = await supabase
-        .from('tax_definitions')
-        .select('*')
-        .eq('is_active', true)
-        .order('tax_type, tax_rate');
-
       if (servicesData) {
         setServices(servicesData.map((service: any) => ({
           id: service.id,
@@ -150,36 +119,10 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
       }
       
       setCategories(categoriesFormatted);
-      if (taxesData) setGlobalTaxes(taxesData as TaxDefinition[]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const updateTaxDefinition = async (taxId: string, field: string, value: string | number) => {
-    const { error } = await supabase
-      .from('tax_definitions')
-      .update({ [field]: value })
-      .eq('id', taxId);
-    
-    if (!error) {
-      setGlobalTaxes(taxes => taxes.map(tax => 
-        tax.id === taxId ? { ...tax, [field]: value } : tax
-      ));
-    }
-  };
-
-  const deleteTaxDefinition = async (taxId: string) => {
-    const { error } = await supabase
-      .from('tax_definitions')
-      .delete()
-      .eq('id', taxId);
-    
-    if (!error) {
-      setGlobalTaxes(taxes => taxes.filter(tax => tax.id !== taxId));
-      setSelectedTaxes(selected => selected.filter(id => id !== taxId));
     }
   };
 
@@ -248,95 +191,49 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
     }
   };
 
-  const calculateItemTotals = (baseItem: Omit<QuoteItem, 'total' | 'subtotal' | 'vat_amount' | 'withholding_amount' | 'taxes'>) => {
-    const subtotal = baseItem.quantity * baseItem.unit_price;
-    
-    // Aplicar IVA automáticamente basándose en vat_rate del servicio
-    const vatAmount = subtotal * (baseItem.vat_rate / 100);
-    
-    // Calculate taxes based on selected global taxes (solo si hay impuestos adicionales seleccionados)
-    const appliedTaxes: Tax[] = selectedTaxes.map(taxId => {
-      const taxDef = globalTaxes.find(t => t.id === taxId);
-      if (!taxDef) return null;
-      
-      return {
-        id: `${taxDef.tax_type}-${Date.now()}-${Math.random()}`,
-        tax_type: taxDef.tax_type,
-        tax_name: taxDef.tax_name,
-        tax_rate: taxDef.tax_rate,
-        tax_amount: subtotal * (taxDef.tax_rate / 100)
-      };
-    }).filter(Boolean) as Tax[];
-
-    // Agregar el IVA base del servicio si no está ya incluido en los impuestos seleccionados
-    if (baseItem.vat_rate > 0 && !appliedTaxes.some(tax => tax.tax_type === 'iva')) {
-      appliedTaxes.push({
-        id: `iva-base-${Date.now()}`,
-        tax_type: 'iva',
-        tax_name: `IVA ${baseItem.vat_rate}%`,
-        tax_rate: baseItem.vat_rate,
-        tax_amount: vatAmount
-      });
-    }
-
-    const totalIva = appliedTaxes
-      .filter(tax => tax.tax_type === 'iva')
-      .reduce((sum, tax) => sum + tax.tax_amount, 0);
-    
-    const totalRetenciones = appliedTaxes
-      .filter(tax => tax.tax_type === 'retencion')
-      .reduce((sum, tax) => sum + tax.tax_amount, 0);
-
-    const total = subtotal + totalIva - totalRetenciones;
-
-    return {
-      ...baseItem,
-      subtotal,
-      vat_amount: totalIva,
-      withholding_amount: totalRetenciones,
-      withholding_type: appliedTaxes.find(t => t.tax_type === 'retencion')?.tax_name || '',
-      total,
-      taxes: appliedTaxes
-    };
-  };
-
   const addService = (service: ServiceType) => {
     const calculatedPrice = calculateServicePrice(service);
     
-    const baseItem = {
+    const newItem: QuoteItem = {
       id: `service-${Date.now()}-${Math.random()}`,
       service_type_id: service.id,
       name: service.name,
       description: service.description || '',
       quantity: 1,
       unit_price: calculatedPrice,
+      subtotal: calculatedPrice,
       vat_rate: service.vat_rate,
+      vat_amount: 0, // VAT is included in calculatedPrice
       withholding_rate: 0,
+      withholding_amount: 0,
       withholding_type: '',
+      total: calculatedPrice,
       is_custom: false,
       image_url: service.image_url
     };
 
-    const newItem = calculateItemTotals(baseItem);
     onItemsChange([...selectedItems, newItem]);
   };
 
   const addCustomItem = () => {
     if (!customItem.name || customItem.unit_price <= 0) return;
 
-    const baseItem = {
+    const newItem: QuoteItem = {
       id: `custom-${Date.now()}-${Math.random()}`,
       name: customItem.name,
       description: customItem.description,
       quantity: customItem.quantity,
       unit_price: customItem.unit_price,
+      subtotal: customItem.unit_price * customItem.quantity,
       vat_rate: 16, // Fixed 16% VAT for all items
+      vat_amount: (customItem.unit_price * customItem.quantity) * 0.16,
       withholding_rate: 0,
+      withholding_amount: 0,
       withholding_type: '',
+      total: (customItem.unit_price * customItem.quantity) * 1.16,
       is_custom: true
     };
 
-    const newItem = calculateItemTotals(baseItem);
     onItemsChange([...selectedItems, newItem]);
     
     // Reset form
@@ -350,12 +247,6 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
 
   const removeItem = (itemId: string) => {
     onItemsChange(selectedItems.filter(item => item.id !== itemId));
-  };
-
-  const updateItem = (updatedItem: QuoteItem) => {
-    onItemsChange(selectedItems.map(item => 
-      item.id === updatedItem.id ? updatedItem : item
-    ));
   };
 
   const filteredServices = services.filter(service =>
@@ -383,7 +274,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
   return (
     <div className="space-y-6">
       <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 gap-1 p-1">
+        <TabsList className="grid w-full grid-cols-2 gap-1 p-1">
           <TabsTrigger value="services" className="text-xs md:text-sm">
             <span className="md:hidden">Serv.</span>
             <span className="hidden md:inline">Servicios</span>
@@ -392,207 +283,21 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
             <span className="md:hidden">Prod.</span>
             <span className="hidden md:inline">Productos</span>
           </TabsTrigger>
-          {!simplifiedView && !isClient && (
-            <TabsTrigger value="taxes" className="text-xs md:text-sm">
-              <span className="md:hidden">Imp.</span>
-              <span className="hidden md:inline">Impuestos</span>
-            </TabsTrigger>
-          )}
         </TabsList>
 
-        {/* Global Tax Configuration */}
-        {!simplifiedView && (
-          <TabsContent value="taxes" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Configuración Global de Impuestos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Selecciona los impuestos que se aplicarán automáticamente a todos los artículos añadidos.
-                </p>
-                
-                {/* Gestión de impuestos editables */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h4 className="font-medium">Impuestos Disponibles</h4>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const { error } = await supabase
-                          .from('tax_definitions')
-                          .insert({
-                            tax_name: 'Nuevo Impuesto',
-                            tax_type: 'iva',
-                            tax_rate: 0,
-                            is_active: true
-                          });
-                        if (!error) loadData();
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Agregar Impuesto
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="font-medium text-green-700 mb-3">IVAs Disponibles</h4>
-                      <div className="space-y-2">
-                        {globalTaxes.filter(tax => tax.tax_type === 'iva').map(tax => (
-                          <div key={tax.id} className="flex items-center space-x-2 p-2 border rounded">
-                            <Checkbox
-                              id={`tax-${tax.id}`}
-                              checked={selectedTaxes.includes(tax.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedTaxes([...selectedTaxes, tax.id]);
-                                } else {
-                                  setSelectedTaxes(selectedTaxes.filter(id => id !== tax.id));
-                                }
-                              }}
-                            />
-                            <Input
-                              value={tax.tax_name}
-                              onChange={(e) => updateTaxDefinition(tax.id, 'tax_name', e.target.value)}
-                              className="flex-1 h-8"
-                            />
-                            <Input
-                              type="number"
-                              value={tax.tax_rate}
-                              onChange={(e) => updateTaxDefinition(tax.id, 'tax_rate', parseFloat(e.target.value) || 0)}
-                              className="w-20 h-8"
-                              min="0"
-                              max="100"
-                              step="0.01"
-                            />
-                            <span className="text-xs text-green-600">%</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteTaxDefinition(tax.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium text-red-700 mb-3">Retenciones Disponibles</h4>
-                      <div className="space-y-2">
-                        {globalTaxes.filter(tax => tax.tax_type === 'retencion').map(tax => (
-                          <div key={tax.id} className="flex items-center space-x-2 p-2 border rounded">
-                            <Checkbox
-                              id={`tax-${tax.id}`}
-                              checked={selectedTaxes.includes(tax.id)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedTaxes([...selectedTaxes, tax.id]);
-                                } else {
-                                  setSelectedTaxes(selectedTaxes.filter(id => id !== tax.id));
-                                }
-                              }}
-                            />
-                            <Input
-                              value={tax.tax_name}
-                              onChange={(e) => updateTaxDefinition(tax.id, 'tax_name', e.target.value)}
-                              className="flex-1 h-8"
-                            />
-                            <Input
-                              type="number"
-                              value={tax.tax_rate}
-                              onChange={(e) => updateTaxDefinition(tax.id, 'tax_rate', parseFloat(e.target.value) || 0)}
-                              className="w-20 h-8"
-                              min="0"
-                              max="100"
-                              step="0.01"
-                            />
-                            <span className="text-xs text-red-600">%</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => deleteTaxDefinition(tax.id)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const { error } = await supabase
-                          .from('tax_definitions')
-                          .insert({
-                            tax_name: 'IVA ' + (globalTaxes.filter(t => t.tax_type === 'iva').length + 1),
-                            tax_type: 'iva',
-                            tax_rate: 19,
-                            is_active: true
-                          });
-                        if (!error) loadData();
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Agregar IVA
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const { error } = await supabase
-                          .from('tax_definitions')
-                          .insert({
-                            tax_name: 'Retención ' + (globalTaxes.filter(t => t.tax_type === 'retencion').length + 1),
-                            tax_type: 'retencion',
-                            tax_rate: 1,
-                            is_active: true
-                          });
-                        if (!error) loadData();
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Agregar Retención
-                    </Button>
-                  </div>
-                </div>
-
-                {selectedTaxes.length > 0 && (
-                  <div className="mt-4 p-3 bg-muted rounded-lg">
-                    <p className="text-sm font-medium">Impuestos seleccionados: {selectedTaxes.length}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Estos impuestos se aplicarán automáticamente a todos los nuevos artículos.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        )}
-
-        {/* Custom Item */}
+        {/* Custom Item Section */}
         {!simplifiedView && (
           <TabsContent value="custom" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Crear Artículo Personalizado
+                  <Plus className="h-5 w-5" />
+                  Agregar Artículo Personalizado
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label htmlFor="custom-name">Nombre del Artículo</Label>
+                  <Label htmlFor="custom-name">Nombre</Label>
                   <Input
                     id="custom-name"
                     value={customItem.name}
@@ -998,39 +703,22 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
                           <Badge variant="secondary" className="text-xs">Personalizado</Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.total)}
-                      </p>
-                      {/* Solo mostrar detalles de impuestos si no es cliente */}
-                      {!isClient && item.taxes && item.taxes.length > 0 && (
-                        <div className="flex gap-1 mt-1">
-                          {item.taxes.map((tax, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tax.tax_type === 'iva' ? 'IVA' : 'RET'} {tax.tax_rate}%
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                       <p className="text-sm text-muted-foreground">
+                         {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.total)}
+                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* Solo mostrar configuración de impuestos si no es cliente */}
-                    {!isClient && (
-                      <TaxConfiguration 
-                        item={item}
-                        onItemChange={updateItem}
-                      />
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(item.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <span className="sr-only">Eliminar</span>
-                      ×
-                    </Button>
-                  </div>
+                   <div className="flex items-center gap-2">
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => removeItem(item.id)}
+                       className="text-destructive hover:text-destructive"
+                     >
+                       <span className="sr-only">Eliminar</span>
+                       ×
+                     </Button>
+                   </div>
                 </div>
               ))}
             </div>
