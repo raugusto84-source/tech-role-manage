@@ -3213,6 +3213,60 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_items: {
+        Row: {
+          brand: string | null
+          created_at: string
+          expense_id: string
+          id: string
+          item_name: string
+          model: string | null
+          notes: string | null
+          quantity: number
+          serial_number: string
+          total_price: number
+          unit_price: number
+          updated_at: string
+          warranty_end_date: string | null
+          warranty_months: number | null
+          warranty_start_date: string | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          expense_id: string
+          id?: string
+          item_name: string
+          model?: string | null
+          notes?: string | null
+          quantity?: number
+          serial_number: string
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+          warranty_end_date?: string | null
+          warranty_months?: number | null
+          warranty_start_date?: string | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          expense_id?: string
+          id?: string
+          item_name?: string
+          model?: string | null
+          notes?: string | null
+          quantity?: number
+          serial_number?: string
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+          warranty_end_date?: string | null
+          warranty_months?: number | null
+          warranty_start_date?: string | null
+        }
+        Relationships: []
+      }
       purchases: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]

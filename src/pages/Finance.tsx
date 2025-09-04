@@ -17,6 +17,8 @@ import { CollectionDialog, DeleteCollectionDialog } from "@/components/finance/C
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
+import { PurchaseItemsDialog } from "@/components/finance/PurchaseItemsDialog";
+import { SerialNumberSearch } from "@/components/finance/SerialNumberSearch";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -452,6 +454,10 @@ export default function Finance() {
   // Estados para eliminar cobranza
   const [deleteCollectionDialogOpen, setDeleteCollectionDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<string>('');
+
+  // Estados para compras con artículos
+  const [purchaseItemsDialogOpen, setPurchaseItemsDialogOpen] = useState(false);
+  const [serialSearchOpen, setSerialSearchOpen] = useState(false);
 
   // Función para registrar en historial financiero
   const logFinancialOperation = async (operationType: string, tableName: string, recordId: string, recordData: any, description: string, amount: number, accountType?: string, operationDate?: string) => {
@@ -1919,6 +1925,17 @@ export default function Finance() {
 
         {/* Compras */}
         <TabsContent value="purchases" className="space-y-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">Gestión de Compras</h2>
+            <div className="flex space-x-2">
+              <Button onClick={() => setPurchaseItemsDialogOpen(true)} className="bg-primary">
+                <Plus className="w-4 h-4 mr-2" />
+                Registrar Compra con Artículos
+              </Button>
+              <SerialNumberSearch />
+            </div>
+          </div>
+          
           <div className="grid gap-4 md:grid-cols-2">
             {/* Formulario de registro de compras */}
             <Card>
@@ -3413,6 +3430,15 @@ export default function Finance() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <PurchaseItemsDialog 
+        open={purchaseItemsDialogOpen} 
+        onClose={() => setPurchaseItemsDialogOpen(false)}
+        onSuccess={() => {
+          purchasesQuery.refetch();
+          expensesQuery.refetch();
+        }}
+      />
 
       <CollectionDialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen} collection={selectedCollection} onSuccess={() => {
       incomesQuery.refetch();
