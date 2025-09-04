@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Package, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 /**
  * Interface para servicios simplificada para la calculadora
@@ -59,6 +60,7 @@ interface PriceCalculation {
  */
 export function PriceCalculator() {
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [services, setServices] = useState<Service[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
@@ -70,6 +72,45 @@ export function PriceCalculator() {
     savings: number;
   }>>([]);
 
+  /**
+   * Calculate correct price with cashback consideration
+   */
+  const calculateCorrectPrice = (service: Service, basePrice: number): number => {
+    const isProduct = service.item_type === 'articulo' || (service.profit_margin_tiers && service.profit_margin_tiers.length > 0);
+    
+    if (isProduct) {
+      // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
+      const costPrice = service.cost_price || 0;
+      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const costWithPurchaseVAT = costPrice + purchaseVAT;
+      
+      const profitMargin = service.profit_margin_tiers?.[0]?.margin || 30;
+      const priceWithMargin = costWithPurchaseVAT * (1 + profitMargin / 100);
+      
+      const salesVAT = priceWithMargin * (service.vat_rate / 100);
+      const basePriceWithVAT = priceWithMargin + salesVAT;
+      
+      // Apply cashback if settings are available and cashback is enabled for items
+      let cashback = 0;
+      if (rewardSettings?.apply_cashback_to_items) {
+        cashback = basePriceWithVAT * (rewardSettings.general_cashback_percent / 100);
+      }
+      
+      return basePriceWithVAT + cashback;
+    } else {
+      // For services: base price + VAT + cashback
+      const vat = basePrice * (service.vat_rate / 100);
+      const basePriceWithVAT = basePrice + vat;
+      
+      // Apply cashback if settings are available
+      let cashback = 0;
+      if (rewardSettings) {
+        cashback = basePriceWithVAT * (rewardSettings.general_cashback_percent / 100);
+      }
+      
+      return basePriceWithVAT + cashback;
+    }
+  };
   /**
    * Carga la lista de servicios activos
    */
@@ -298,10 +339,8 @@ export function PriceCalculator() {
                 <SelectContent>
                   {services.map((service) => (
                     <SelectItem key={service.id} value={service.id}>
-                      {service.name} - {service.item_type === 'servicio' 
-                        ? formatCurrency(service.base_price) 
-                        : formatCurrency(service.cost_price)
-                      }/{service.unit}
+                      {service.name} - {formatCurrency(calculateCorrectPrice(service, service.base_price))}
+                      /{service.unit}
                     </SelectItem>
                   ))}
                 </SelectContent>
