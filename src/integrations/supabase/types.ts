@@ -1919,11 +1919,13 @@ export type Database = {
           policy_name: string | null
           profit_margin_rate: number
           quantity: number
+          serial_number: string | null
           service_description: string | null
           service_name: string
           service_type_id: string
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
+          supplier_name: string | null
           total_amount: number
           unit_base_price: number
           unit_cost_price: number
@@ -1945,11 +1947,13 @@ export type Database = {
           policy_name?: string | null
           profit_margin_rate?: number
           quantity?: number
+          serial_number?: string | null
           service_description?: string | null
           service_name: string
           service_type_id: string
           status?: Database["public"]["Enums"]["order_status"]
           subtotal: number
+          supplier_name?: string | null
           total_amount: number
           unit_base_price: number
           unit_cost_price: number
@@ -1971,11 +1975,13 @@ export type Database = {
           policy_name?: string | null
           profit_margin_rate?: number
           quantity?: number
+          serial_number?: string | null
           service_description?: string | null
           service_name?: string
           service_type_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
+          supplier_name?: string | null
           total_amount?: number
           unit_base_price?: number
           unit_cost_price?: number
@@ -3210,6 +3216,60 @@ export type Database = {
           start_date?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_items: {
+        Row: {
+          brand: string | null
+          created_at: string
+          expense_id: string
+          id: string
+          item_name: string
+          model: string | null
+          notes: string | null
+          quantity: number
+          serial_number: string
+          total_price: number
+          unit_price: number
+          updated_at: string
+          warranty_end_date: string | null
+          warranty_months: number | null
+          warranty_start_date: string | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string
+          expense_id: string
+          id?: string
+          item_name: string
+          model?: string | null
+          notes?: string | null
+          quantity?: number
+          serial_number: string
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+          warranty_end_date?: string | null
+          warranty_months?: number | null
+          warranty_start_date?: string | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string
+          expense_id?: string
+          id?: string
+          item_name?: string
+          model?: string | null
+          notes?: string | null
+          quantity?: number
+          serial_number?: string
+          total_price?: number
+          unit_price?: number
+          updated_at?: string
+          warranty_end_date?: string | null
+          warranty_months?: number | null
+          warranty_start_date?: string | null
         }
         Relationships: []
       }

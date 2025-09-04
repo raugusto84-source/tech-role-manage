@@ -19,6 +19,8 @@ interface OrderItem {
   item_type?: string;
   profit_margin_rate?: number;
   status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
+  serial_number?: string;
+  supplier_name?: string;
 }
 
 interface OrderServicesListProps {
@@ -204,6 +206,22 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
                         <strong>Total:</strong> {formatCurrency(calculateItemCorrectPrice(item))}
                       </span>
                     </div>
+
+                    {/* Show serial number and supplier for articles */}
+                    {item.item_type === 'articulo' && (item.serial_number || item.supplier_name) && (
+                      <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
+                        {item.serial_number && (
+                          <span>
+                            <strong>Serie:</strong> {item.serial_number}
+                          </span>
+                        )}
+                        {item.supplier_name && (
+                          <span>
+                            <strong>Proveedor:</strong> {item.supplier_name}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {canEdit && (

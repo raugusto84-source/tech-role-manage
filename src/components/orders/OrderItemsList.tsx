@@ -29,6 +29,8 @@ export interface OrderItem {
   item_type: string;
   shared_time: boolean; // Nueva propiedad para tiempo compartido
   status?: 'pendiente' | 'en_proceso' | 'completado'; // Estado individual del artículo
+  serial_number?: string; // Número de serie del artículo
+  supplier_name?: string; // Nombre del proveedor
   profit_margin_tiers?: Array<{
     min_qty: number;
     max_qty: number;
@@ -131,6 +133,20 @@ export function OrderItemsList({
           vat_amount: vatAmount,
           total_amount: total,
           estimated_hours: totalEstimatedHours
+        };
+      }
+      return item;
+    });
+    onItemsChange(updatedItems);
+  };
+
+  const updateItemSerialInfo = (itemId: string, serialNumber: string, supplierName: string) => {
+    const updatedItems = items.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          serial_number: serialNumber || undefined,
+          supplier_name: supplierName || undefined
         };
       }
       return item;
@@ -262,7 +278,7 @@ export function OrderItemsList({
           {items.map((item, index) => <div key={item.id}>
               {index > 0 && <Separator />}
               <div className="flex justify-between items-start py-2">
-                <div className="flex-1">
+                  <div className="flex-1">
                    <div className="flex items-center gap-2 mb-2">
                       <h4 className="font-medium">{item.name}</h4>
                       <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
@@ -279,7 +295,7 @@ export function OrderItemsList({
                       {item.description}
                     </p>}
                   
-                   <div className="grid grid-cols-3 gap-4 text-sm">
+                   <div className="grid grid-cols-3 gap-4 text-sm mb-3">
                      <div>
                        <Label className="text-xs">Cantidad</Label>
                        <Input type="number" min="1" value={item.quantity} onChange={e => updateItemQuantity(item.id, parseInt(e.target.value) || 1)} className="w-20 h-8 mt-1" />
@@ -302,6 +318,30 @@ export function OrderItemsList({
                        </div>
                      </div>
                    </div>
+
+                   {/* Serial number and supplier fields for articles */}
+                   {item.item_type === 'articulo' && (
+                     <div className="grid grid-cols-2 gap-4 text-sm">
+                       <div>
+                         <Label className="text-xs">Número de Serie</Label>
+                         <Input 
+                           value={item.serial_number || ''} 
+                           onChange={e => updateItemSerialInfo(item.id, e.target.value, item.supplier_name || '')}
+                           placeholder="Opcional"
+                           className="h-8 mt-1" 
+                         />
+                       </div>
+                       <div>
+                         <Label className="text-xs">Proveedor</Label>
+                         <Input 
+                           value={item.supplier_name || ''} 
+                           onChange={e => updateItemSerialInfo(item.id, item.serial_number || '', e.target.value)}
+                           placeholder="Nombre del proveedor"
+                           className="h-8 mt-1" 
+                         />
+                       </div>
+                     </div>
+                   )}
                  </div>
                  
                  <Button variant="outline" size="sm" onClick={() => removeItem(item.id)} className="text-destructive hover:text-destructive ml-4">

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { Shield, Clock, AlertTriangle, CheckCircle, Calendar } from 'lucide-react';
+import { Shield, Clock, AlertTriangle, CheckCircle, Calendar, Search } from 'lucide-react';
 
 interface WarrantyItem {
   id: string;
@@ -25,6 +25,8 @@ interface WarrantyItem {
   client_name: string;
   days_remaining: number;
   status: string;
+  serial_number?: string;
+  supplier_name?: string;
 }
 
 interface WarrantyClaim {
@@ -48,6 +50,8 @@ export function WarrantyManager() {
   const [activeTab, setActiveTab] = useState('active');
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
   const [claimDialogOpen, setClaimDialogOpen] = useState(false);
+  const [serialSearchTerm, setSerialSearchTerm] = useState('');
+  const [serialSearchResults, setSerialSearchResults] = useState<WarrantyItem[]>([]);
 
   useEffect(() => {
     loadWarranties();
@@ -64,6 +68,8 @@ export function WarrantyManager() {
           warranty_start_date,
           warranty_end_date,
           warranty_conditions,
+          serial_number,
+          supplier_name,
           orders!inner(
             id,
             order_number,
@@ -93,7 +99,9 @@ export function WarrantyManager() {
           warranty_conditions: item.warranty_conditions || 'Sin condiciones específicas',
           client_name: item.orders.clients.name,
           days_remaining: daysRemaining,
-          status: daysRemaining > 0 ? 'vigente' : 'vencida'
+          status: daysRemaining > 0 ? 'vigente' : 'vencida',
+          serial_number: item.serial_number,
+          supplier_name: item.supplier_name
         };
       }) || [];
 
@@ -202,6 +210,69 @@ export function WarrantyManager() {
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
+  const searchBySerialNumber = async (serialNumber: string) => {
+    if (!serialNumber.trim()) {
+      setSerialSearchResults([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select(`
+          id,
+          service_name,
+          warranty_start_date,
+          warranty_end_date,
+          warranty_conditions,
+          serial_number,
+          supplier_name,
+          orders!inner(
+            id,
+            order_number,
+            status,
+            clients!inner(
+              name
+            )
+          )
+        `)
+        .ilike('serial_number', `%${serialNumber}%`)
+        .not('serial_number', 'is', null);
+
+      if (error) throw error;
+
+      const processedResults = data?.map(item => {
+        const endDate = item.warranty_end_date ? new Date(item.warranty_end_date) : null;
+        const today = new Date();
+        const daysRemaining = endDate ? Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        
+        return {
+          id: item.id,
+          order_id: item.orders.id,
+          order_number: item.orders.order_number,
+          service_name: item.service_name,
+          warranty_start_date: item.warranty_start_date,
+          warranty_end_date: item.warranty_end_date,
+          warranty_conditions: item.warranty_conditions || 'Sin condiciones específicas',
+          client_name: item.orders.clients.name,
+          days_remaining: daysRemaining,
+          status: endDate && daysRemaining > 0 ? 'vigente' : 'vencida',
+          serial_number: item.serial_number,
+          supplier_name: item.supplier_name
+        };
+      }) || [];
+
+      setSerialSearchResults(processedResults);
+    } catch (error) {
+      console.error('Error searching by serial number:', error);
+      toast({
+        title: "Error",
+        description: "Error al buscar por número de serie",
+        variant: "destructive"
+      });
+    }
+  };
+
   const activeWarranties = warranties.filter(w => w.status === 'vigente');
   const expiredWarranties = warranties.filter(w => w.status === 'vencida');
 
@@ -229,10 +300,11 @@ export function WarrantyManager() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="active">Garantías Vigentes ({activeWarranties.length})</TabsTrigger>
               <TabsTrigger value="expired">Garantías Vencidas ({expiredWarranties.length})</TabsTrigger>
               <TabsTrigger value="claims">Reclamos ({claims.length})</TabsTrigger>
+              <TabsTrigger value="search">Buscar por Serie</TabsTrigger>
             </TabsList>
 
             <TabsContent value="active" className="mt-6">
@@ -242,6 +314,8 @@ export function WarrantyManager() {
                     <TableHead>Orden</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Servicio</TableHead>
+                    <TableHead>Serie</TableHead>
+                    <TableHead>Proveedor</TableHead>
                     <TableHead>Inicio</TableHead>
                     <TableHead>Vencimiento</TableHead>
                     <TableHead>Días Restantes</TableHead>
@@ -254,6 +328,8 @@ export function WarrantyManager() {
                       <TableCell className="font-medium">{warranty.order_number}</TableCell>
                       <TableCell>{warranty.client_name}</TableCell>
                       <TableCell>{warranty.service_name}</TableCell>
+                      <TableCell>{warranty.serial_number || '-'}</TableCell>
+                      <TableCell>{warranty.supplier_name || '-'}</TableCell>
                       <TableCell>{new Date(warranty.warranty_start_date).toLocaleDateString()}</TableCell>
                       <TableCell>{new Date(warranty.warranty_end_date).toLocaleDateString()}</TableCell>
                       <TableCell>
@@ -276,6 +352,8 @@ export function WarrantyManager() {
                     <TableHead>Orden</TableHead>
                     <TableHead>Cliente</TableHead>
                     <TableHead>Servicio</TableHead>
+                    <TableHead>Serie</TableHead>
+                    <TableHead>Proveedor</TableHead>
                     <TableHead>Vencimiento</TableHead>
                     <TableHead>Estado</TableHead>
                   </TableRow>
@@ -286,6 +364,8 @@ export function WarrantyManager() {
                       <TableCell className="font-medium">{warranty.order_number}</TableCell>
                       <TableCell>{warranty.client_name}</TableCell>
                       <TableCell>{warranty.service_name}</TableCell>
+                      <TableCell>{warranty.serial_number || '-'}</TableCell>
+                      <TableCell>{warranty.supplier_name || '-'}</TableCell>
                       <TableCell>{new Date(warranty.warranty_end_date).toLocaleDateString()}</TableCell>
                       <TableCell>{getWarrantyStatusBadge(warranty.status, warranty.days_remaining)}</TableCell>
                     </TableRow>
@@ -373,6 +453,79 @@ export function WarrantyManager() {
                   ))}
                 </TableBody>
               </Table>
+            </TabsContent>
+
+            <TabsContent value="search" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Search className="h-5 w-5" />
+                    Buscar por Número de Serie
+                  </CardTitle>
+                  <CardDescription>
+                    Encuentra artículos por su número de serie para verificar proveedores y garantías
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4">
+                    <Input
+                      placeholder="Ingresa el número de serie"
+                      value={serialSearchTerm}
+                      onChange={(e) => setSerialSearchTerm(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Button onClick={() => searchBySerialNumber(serialSearchTerm)}>
+                      <Search className="h-4 w-4 mr-2" />
+                      Buscar
+                    </Button>
+                  </div>
+
+                  {serialSearchResults.length > 0 && (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Orden</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Artículo</TableHead>
+                          <TableHead>Serie</TableHead>
+                          <TableHead>Proveedor</TableHead>
+                          <TableHead>Estado Garantía</TableHead>
+                          <TableHead>Vencimiento</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {serialSearchResults.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.order_number}</TableCell>
+                            <TableCell>{item.client_name}</TableCell>
+                            <TableCell>{item.service_name}</TableCell>
+                            <TableCell>{item.serial_number}</TableCell>
+                            <TableCell>{item.supplier_name || '-'}</TableCell>
+                            <TableCell>
+                              {item.warranty_end_date ? 
+                                getWarrantyStatusBadge(item.status, item.days_remaining) : 
+                                <Badge variant="secondary">Sin garantía</Badge>
+                              }
+                            </TableCell>
+                            <TableCell>
+                              {item.warranty_end_date ? 
+                                new Date(item.warranty_end_date).toLocaleDateString() : 
+                                '-'
+                              }
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+
+                  {serialSearchTerm && serialSearchResults.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No se encontraron artículos con ese número de serie
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </TabsContent>
           </Tabs>
         </CardContent>
