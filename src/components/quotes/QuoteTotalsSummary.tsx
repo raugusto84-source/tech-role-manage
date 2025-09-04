@@ -37,31 +37,44 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '' }: QuoteTotals
   };
 
   // Calculate totals from selectedItems directly
+  console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
+  
   const subtotalGeneral = selectedItems.reduce((sum, item) => {
-    const totalPrice = item.unit_price * item.quantity;
+    const unitPrice = item.unit_price || 0;
+    const quantity = item.quantity || 1;
     const vatRate = item.vat_rate || 0;
     
+    // Calculate base price (without VAT)
+    let basePriceWithoutVat;
+    
     if (vatRate > 0) {
-      // Calculate the base price from the total price (removing VAT)
-      const basePriceWithoutVat = totalPrice / (1 + vatRate / 100);
-      return sum + basePriceWithoutVat;
+      // If there's VAT rate, assume unit_price includes VAT and extract base price
+      basePriceWithoutVat = (unitPrice * quantity) / (1 + vatRate / 100);
     } else {
-      // If no VAT, the total price is the subtotal
-      return sum + totalPrice;
+      // If no VAT, the unit price is the base price
+      basePriceWithoutVat = unitPrice * quantity;
     }
+    
+    console.log(`Item ${item.name} - Unit price: ${unitPrice}, VAT rate: ${vatRate}%, Base without VAT: ${basePriceWithoutVat}`);
+    return sum + basePriceWithoutVat;
   }, 0);
 
   const totalVAT = selectedItems.reduce((sum, item) => {
-    const totalPrice = item.unit_price * item.quantity;
+    const unitPrice = item.unit_price || 0;
+    const quantity = item.quantity || 1;
     const vatRate = item.vat_rate || 0;
     
+    let vatAmount = 0;
+    
     if (vatRate > 0) {
+      // Calculate VAT from the unit price
+      const totalPrice = unitPrice * quantity;
       const basePriceWithoutVat = totalPrice / (1 + vatRate / 100);
-      const vatAmount = totalPrice - basePriceWithoutVat;
-      return sum + vatAmount;
-    } else {
-      return sum; // No VAT to add
+      vatAmount = totalPrice - basePriceWithoutVat;
     }
+    
+    console.log(`Item ${item.name} - VAT amount: ${vatAmount}`);
+    return sum + vatAmount;
   }, 0);
 
   const totalFinal = subtotalGeneral + totalVAT;
