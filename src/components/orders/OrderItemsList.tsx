@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 export interface OrderItem {
   id: string;
   service_type_id: string;
@@ -15,6 +16,7 @@ export interface OrderItem {
   description?: string;
   quantity: number;
   unit_price: number;
+  cost_price?: number; // Add cost_price for proper calculation
   estimated_hours: number;
   subtotal: number;
   original_subtotal?: number; // Precio original antes de descuento de póliza
@@ -27,6 +29,11 @@ export interface OrderItem {
   item_type: string;
   shared_time: boolean; // Nueva propiedad para tiempo compartido
   status?: 'pendiente' | 'en_proceso' | 'completado'; // Estado individual del artículo
+  profit_margin_tiers?: Array<{
+    min_qty: number;
+    max_qty: number;
+    margin: number;
+  }>; // Add profit margin tiers for proper calculation
 }
 interface OrderItemsListProps {
   items: OrderItem[];
@@ -36,6 +43,38 @@ export function OrderItemsList({
   items,
   onItemsChange
 }: OrderItemsListProps) {
+  const { settings: rewardSettings } = useRewardSettings();
+
+  // Calculate display price using same logic as ProductServiceSeparator
+  const calculateItemDisplayPrice = (item: OrderItem): number => {
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (item.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = item.unit_price * item.quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: utilizar cost_price como costo base
+      const purchaseVatRate = 16;
+      const baseCost = (item.cost_price || item.unit_price) * item.quantity;
+      
+      const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
+        ? item.profit_margin_tiers[0].margin 
+        : 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return finalWithCashback;
+    }
+  };
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
       removeItem(itemId);
@@ -108,7 +147,7 @@ export function OrderItemsList({
     return `${hours} h`;
   };
   const getTotalAmount = () => {
-    return items.reduce((sum, item) => sum + item.total, 0);
+    return items.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
   };
   const getTotalHours = () => {
     let totalHours = 0;
@@ -227,7 +266,7 @@ export function OrderItemsList({
                      <div>
                        <Label className="text-xs">Total</Label>
                        <div className="font-bold text-primary mt-1">
-                         {formatCurrency(item.total)}
+                         {formatCurrency(calculateItemDisplayPrice(item))}
                        </div>
                      </div>
                    </div>
