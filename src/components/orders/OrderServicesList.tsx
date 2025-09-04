@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -58,6 +58,7 @@ const statusConfig = {
 export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderServicesListProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [editingSerialInfo, setEditingSerialInfo] = useState<Set<string>>(new Set());
+  const [editableSerialFields, setEditableSerialFields] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { settings: rewardSettings } = useRewardSettings();
 
@@ -310,54 +311,120 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
                   {/* Serial number and supplier fields for articles - only in order details */}
                   {item.item_type === 'articulo' && (
                     <div className="border-t pt-3">
-                      <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        Información del Artículo
-                      </Label>
+                      <div className="flex justify-between items-center mb-2">
+                        <Label className="text-sm font-medium text-muted-foreground">
+                          Información del Artículo
+                        </Label>
+                        {canEdit && (
+                          <div className="flex items-center gap-2">
+                            {editableSerialFields.has(item.id) ? (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => {
+                                    // Cancelar edición, revertir cambios
+                                    setEditableSerialFields(prev => {
+                                      const newSet = new Set(prev);
+                                      newSet.delete(item.id);
+                                      return newSet;
+                                    });
+                                  }}
+                                  disabled={isEditingSerial}
+                                  className="h-7 px-2"
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditableSerialFields(prev => new Set(prev).add(item.id));
+                                }}
+                                disabled={isEditingSerial}
+                                className="h-7 px-2"
+                              >
+                                <Edit3 className="w-3 h-3 mr-1" />
+                                {(item.serial_number || item.supplier_name) ? 'Editar' : 'Agregar'}
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                         <div>
                           <Label className="text-xs">Número de Serie</Label>
                           <Input
+                            key={`serial-${item.id}-${editableSerialFields.has(item.id)}`}
                             defaultValue={item.serial_number || ''}
                             onBlur={(e) => {
-                              const value = e.target.value;
-                              if (value !== item.serial_number) {
-                                handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
+                              if (editableSerialFields.has(item.id)) {
+                                const value = e.target.value;
+                                if (value !== item.serial_number) {
+                                  handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
+                                }
+                                setEditableSerialFields(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(item.id);
+                                  return newSet;
+                                });
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === 'Enter' && editableSerialFields.has(item.id)) {
                                 const value = e.currentTarget.value;
                                 if (value !== item.serial_number) {
                                   handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
                                 }
+                                setEditableSerialFields(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(item.id);
+                                  return newSet;
+                                });
                               }
                             }}
                             placeholder="Ingrese número de serie"
                             className="h-8 mt-1"
-                            disabled={isEditingSerial}
+                            disabled={!editableSerialFields.has(item.id) || isEditingSerial}
                           />
                         </div>
                         <div>
                           <Label className="text-xs">Proveedor</Label>
                           <Input
+                            key={`supplier-${item.id}-${editableSerialFields.has(item.id)}`}
                             defaultValue={item.supplier_name || ''}
                             onBlur={(e) => {
-                              const value = e.target.value;
-                              if (value !== item.supplier_name) {
-                                handleSerialInfoUpdate(item.id, item.serial_number || '', value);
+                              if (editableSerialFields.has(item.id)) {
+                                const value = e.target.value;
+                                if (value !== item.supplier_name) {
+                                  handleSerialInfoUpdate(item.id, item.serial_number || '', value);
+                                }
+                                setEditableSerialFields(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(item.id);
+                                  return newSet;
+                                });
                               }
                             }}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === 'Enter' && editableSerialFields.has(item.id)) {
                                 const value = e.currentTarget.value;
                                 if (value !== item.supplier_name) {
                                   handleSerialInfoUpdate(item.id, item.serial_number || '', value);
                                 }
+                                setEditableSerialFields(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(item.id);
+                                  return newSet;
+                                });
                               }
                             }}
                             placeholder="Nombre del proveedor"
                             className="h-8 mt-1"
-                            disabled={isEditingSerial}
+                            disabled={!editableSerialFields.has(item.id) || isEditingSerial}
                           />
                         </div>
                         <div className="flex justify-end">
