@@ -239,106 +239,24 @@ export function WarrantiesAndAchievements() {
         </TabsList>
 
         <TabsContent value="warranties" className="space-y-4">
-          {/* Warranty Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Garantías</CardTitle>
-                <Shield className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{warrantyStats.total}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Activas</CardTitle>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{warrantyStats.active}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Por Vencer</CardTitle>
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">{warrantyStats.expiring_soon}</div>
-                <p className="text-xs text-muted-foreground">Próximos 30 días</p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Vencidas</CardTitle>
-                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{warrantyStats.expired}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Reclamadas</CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{warrantyStats.claimed}</div>
-              </CardContent>
-            </Card>
-          </div>
-
           <Card>
             <CardHeader>
-              <CardTitle>Lista de Garantías</CardTitle>
-              <CardDescription>Todas las garantías activas y su estado actual</CardDescription>
+              <CardTitle>Gestión de Garantías</CardTitle>
+              <CardDescription>
+                La gestión completa de garantías se ha movido a la sección principal de Garantías
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-2 mb-4">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar garantías..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="max-w-sm"
-                />
+              <div className="text-center py-8">
+                <Shield className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Lista de Garantías Movida</h3>
+                <p className="text-muted-foreground mb-4">
+                  La lista de garantías y su gestión ahora se encuentra en la sección principal de Garantías
+                </p>
+                <Button onClick={() => window.location.href = '/garantias'} className="mt-4">
+                  Ir a Gestión de Garantías
+                </Button>
               </div>
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Orden</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Servicio</TableHead>
-                    <TableHead>Inicio</TableHead>
-                    <TableHead>Fin</TableHead>
-                    <TableHead>Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredWarranties.map((warranty) => (
-                    <TableRow key={warranty.id}>
-                      <TableCell className="font-medium">{warranty.order_number}</TableCell>
-                      <TableCell>{warranty.client_name}</TableCell>
-                      <TableCell>{warranty.service_name}</TableCell>
-                      <TableCell>
-                        {new Date(warranty.warranty_start_date).toLocaleDateString('es-ES')}
-                      </TableCell>
-                      <TableCell>
-                        {new Date(warranty.warranty_end_date).toLocaleDateString('es-ES')}
-                      </TableCell>
-                      <TableCell>
-                        {getWarrantyStatusBadge(warranty.warranty_status, warranty.days_remaining)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
             </CardContent>
           </Card>
         </TabsContent>
