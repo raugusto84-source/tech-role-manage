@@ -5,7 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { Search, ShoppingCart, Calendar, DollarSign, User, Wrench, Eye } from 'lucide-react';
+
+interface OrderItem {
+  service_name: string;
+  quantity: number;
+  subtotal: number;
+  vat_amount: number;
+  total_amount: number;
+}
 
 interface OrderWithDetails {
   id: string;
@@ -18,11 +27,7 @@ interface OrderWithDetails {
     email: string;
   } | null;
   technician_name?: string;
-  items: {
-    service_name: string;
-    quantity: number;
-    total_amount: number;
-  }[];
+  items: OrderItem[];
 }
 
 /**
@@ -35,6 +40,7 @@ export function ClientServicesHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
 
   useEffect(() => {
     loadOrders();
@@ -66,10 +72,10 @@ export function ClientServicesHistory() {
             clientInfo = clientData;
           }
 
-          // Cargar ítems de la orden
+          // Cargar ítems de la orden - usar solo columnas que existen
           const { data: itemsData } = await supabase
             .from('order_items')
-            .select('service_name, quantity, total_amount')
+            .select('service_name, quantity, subtotal, vat_amount, total_amount')
             .eq('order_id', order.id);
 
           // Cargar información del técnico si existe
@@ -147,6 +153,15 @@ export function ClientServicesHistory() {
       style: 'currency',
       currency: 'COP'
     }).format(amount);
+  };
+
+  // For client view, use the stored total_amount which should already include current pricing
+  const calculateItemDisplayPrice = (item: OrderItem): number => {
+    return item.total_amount || 0;
+  };
+
+  const calculateOrderTotal = (items: OrderItem[]): number => {
+    return items.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
   };
 
   const filteredOrders = orders.filter(order => {
@@ -236,7 +251,7 @@ export function ClientServicesHistory() {
                     <p className="text-sm font-medium">Servicios:</p>
                     {order.items.map((item, index) => (
                       <div key={index} className="text-sm text-muted-foreground ml-4">
-                        • {item.service_name} (x{item.quantity}) - {formatCurrency(item.total_amount)}
+                        • {item.service_name} (x{item.quantity}) - {formatCurrency(calculateItemDisplayPrice(item))}
                       </div>
                     ))}
                   </div>
@@ -252,7 +267,7 @@ export function ClientServicesHistory() {
                 <div className="text-right space-y-2">
                   <div className="flex items-center gap-1 text-lg font-bold text-green-600">
                     <DollarSign className="h-4 w-4" />
-                    {formatCurrency(order.estimated_amount)}
+                    {formatCurrency(calculateOrderTotal(order.items))}
                   </div>
                   <Button size="sm" variant="outline">
                     <Eye className="h-4 w-4 mr-1" />
