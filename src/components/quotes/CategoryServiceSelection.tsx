@@ -188,25 +188,31 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
       
       return baseTotal + cashback;
     } else {
-      // For services: use base_price, or fallback to cost_price if base_price is 0/null
+      // For services: use base_price first, then cost_price as fallback
       const basePrice = service.base_price || service.cost_price || 0;
       
       if (basePrice === 0) {
         console.warn('Service has no price set:', service.name);
-        return 50000; // Default price for services with no price set (50,000 COP)
+        return 0; // Return 0 instead of default price to identify the issue
       }
       
       const vat = basePrice * ((service.vat_rate || 0) / 100);
       const baseTotal = basePrice + vat;
       
-      // Apply cashback if settings are available
+      // Apply cashback if settings are available and cashback is enabled for items
       let cashback = 0;
-      if (rewardSettings?.apply_cashback_to_items) {
-        cashback = baseTotal * ((rewardSettings.general_cashback_percent || 0) / 100);
+      if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
+        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
       }
       
       const finalPrice = baseTotal + cashback;
-      console.log('Service price calculation result:', finalPrice);
+      console.log('Service price calculation result:', {
+        basePrice,
+        vat,
+        baseTotal,
+        cashback,
+        finalPrice
+      });
       return finalPrice;
     }
   };
