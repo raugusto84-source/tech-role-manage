@@ -14,7 +14,8 @@ import {
   Gift,
   ShieldCheck,
   MessageSquare,
-  ClipboardCheck
+  ClipboardCheck,
+  Truck
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -61,6 +62,7 @@ export function AppSidebar() {
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
+          { title: 'Flotillas', url: '/flotillas', icon: Truck },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
@@ -86,6 +88,7 @@ export function AppSidebar() {
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
+          { title: 'Flotillas', url: '/flotillas', icon: Truck },
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },

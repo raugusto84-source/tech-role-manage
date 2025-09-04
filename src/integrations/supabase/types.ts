@@ -1401,6 +1401,113 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_group_technicians: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          fleet_group_id: string
+          id: string
+          is_active: boolean
+          technician_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          fleet_group_id: string
+          id?: string
+          is_active?: boolean
+          technician_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          fleet_group_id?: string
+          id?: string
+          is_active?: boolean
+          technician_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fleet_group_technicians_fleet_group_id_fkey"
+            columns: ["fleet_group_id"]
+            isOneToOne: false
+            referencedRelation: "fleet_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fleet_group_vehicles: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          fleet_group_id: string
+          id: string
+          is_active: boolean
+          vehicle_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          fleet_group_id: string
+          id?: string
+          is_active?: boolean
+          vehicle_id: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          fleet_group_id?: string
+          id?: string
+          is_active?: boolean
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fleet_group_vehicles_fleet_group_id_fkey"
+            columns: ["fleet_group_id"]
+            isOneToOne: false
+            referencedRelation: "fleet_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fleet_group_vehicles_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fleet_groups: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       follow_up_configurations: {
         Row: {
           created_at: string | null
