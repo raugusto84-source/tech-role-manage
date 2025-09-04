@@ -36,17 +36,66 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '' }: QuoteTotals
     }).format(amount);
   };
 
-  // Calculate total final from selectedItems directly
-  const totalFinal = selectedItems.reduce((sum, item) => {
-    const totalPrice = item.unit_price * item.quantity;
-    return sum + totalPrice;
+  // Calculate totals from selectedItems directly
+  console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
+  
+  const subtotalGeneral = selectedItems.reduce((sum, item) => {
+    const unitPrice = item.unit_price || 0;
+    const quantity = item.quantity || 1;
+    const vatRate = item.vat_rate || 0;
+    
+    // Calculate base price (without VAT)
+    let basePriceWithoutVat;
+    
+    if (vatRate > 0) {
+      // If there's VAT rate, assume unit_price includes VAT and extract base price
+      basePriceWithoutVat = (unitPrice * quantity) / (1 + vatRate / 100);
+    } else {
+      // If no VAT, the unit price is the base price
+      basePriceWithoutVat = unitPrice * quantity;
+    }
+    
+    console.log(`Item ${item.name} - Unit price: ${unitPrice}, VAT rate: ${vatRate}%, Base without VAT: ${basePriceWithoutVat}`);
+    return sum + basePriceWithoutVat;
   }, 0);
+
+  const totalVAT = selectedItems.reduce((sum, item) => {
+    const unitPrice = item.unit_price || 0;
+    const quantity = item.quantity || 1;
+    const vatRate = item.vat_rate || 0;
+    
+    let vatAmount = 0;
+    
+    if (vatRate > 0) {
+      // Calculate VAT from the unit price
+      const totalPrice = unitPrice * quantity;
+      const basePriceWithoutVat = totalPrice / (1 + vatRate / 100);
+      vatAmount = totalPrice - basePriceWithoutVat;
+    }
+    
+    console.log(`Item ${item.name} - VAT amount: ${vatAmount}`);
+    return sum + vatAmount;
+  }, 0);
+
+  const totalFinal = subtotalGeneral + totalVAT;
 
   return (
     <div className="space-y-2 bg-muted/50 p-4 rounded-lg">
-      <div className="flex justify-between items-center text-lg font-bold text-primary">
-        <span>Total Final:</span>
-        <span>{formatCurrency(totalFinal)}</span>
+      <div className="flex justify-between items-center">
+        <span>Subtotal General:</span>
+        <span>{formatCurrency(subtotalGeneral)}</span>
+      </div>
+      
+      <div className="flex justify-between items-center text-green-600">
+        <span>Total IVAs:</span>
+        <span>+{formatCurrency(totalVAT)}</span>
+      </div>
+      
+      <div className="border-t pt-2">
+        <div className="flex justify-between items-center text-lg font-bold text-primary">
+          <span>Total Final:</span>
+          <span>{formatCurrency(totalFinal)}</span>
+        </div>
       </div>
     </div>
   );
