@@ -317,13 +317,20 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
                         <div>
                           <Label className="text-xs">Número de Serie</Label>
                           <Input
-                            value={item.serial_number || ''}
-                            onChange={(e) => {
-                              // Update immediately on change, will be saved when user stops typing
+                            defaultValue={item.serial_number || ''}
+                            onBlur={(e) => {
                               const value = e.target.value;
-                              setTimeout(() => {
+                              if (value !== item.serial_number) {
                                 handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
-                              }, 1000);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const value = e.currentTarget.value;
+                                if (value !== item.serial_number) {
+                                  handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
+                                }
+                              }
                             }}
                             placeholder="Ingrese número de serie"
                             className="h-8 mt-1"
@@ -333,13 +340,20 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
                         <div>
                           <Label className="text-xs">Proveedor</Label>
                           <Input
-                            value={item.supplier_name || ''}
-                            onChange={(e) => {
-                              // Update immediately on change, will be saved when user stops typing
+                            defaultValue={item.supplier_name || ''}
+                            onBlur={(e) => {
                               const value = e.target.value;
-                              setTimeout(() => {
+                              if (value !== item.supplier_name) {
                                 handleSerialInfoUpdate(item.id, item.serial_number || '', value);
-                              }, 1000);
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                const value = e.currentTarget.value;
+                                if (value !== item.supplier_name) {
+                                  handleSerialInfoUpdate(item.id, item.serial_number || '', value);
+                                }
+                              }
                             }}
                             placeholder="Nombre del proveedor"
                             className="h-8 mt-1"
