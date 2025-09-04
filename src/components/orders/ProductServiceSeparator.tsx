@@ -63,9 +63,9 @@ export function ProductServiceSeparator({
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       return finalWithCashback;
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para artículos: usar base_price si cost_price no está disponible
       const purchaseVatRate = 16;
-      const baseCost = (service.cost_price || 0) * quantity;
+      const baseCost = (service.cost_price || service.base_price || 0) * quantity;
       
       const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
         ? service.profit_margin_tiers[0].margin 
@@ -75,6 +75,16 @@ export function ProductServiceSeparator({
       const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      console.log(`Cálculo para ${service.name}:`, {
+        baseCost,
+        afterPurchaseVat,
+        marginPercent,
+        afterMargin,
+        afterSalesVat,
+        cashbackPercent,
+        finalWithCashback
+      });
       
       return finalWithCashback;
     }
