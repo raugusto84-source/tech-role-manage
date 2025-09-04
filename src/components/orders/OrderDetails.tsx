@@ -79,6 +79,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   } | null>(null);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
+  const [cashbackInfo, setCashbackInfo] = useState<{
+    amount: number;
+    quoteName: string;
+  } | null>(null);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -95,6 +99,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadAssignedTechnician();
     checkExistingAuthorization();
     calculateDeliveryTime();
+    loadCashbackInfo();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -239,6 +244,56 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       setOrderItems(data || []);
     } catch (error) {
       console.error('Error loading order items:', error);
+    }
+  };
+
+  const loadCashbackInfo = async () => {
+    try {
+      // Find cashback transactions related to this order
+      const { data, error } = await supabase
+        .from('reward_transactions')
+        .select(`
+          amount,
+          description,
+          quotes:related_quote_id(quote_number)
+        `)
+        .eq('transaction_type', 'redeemed')
+        .not('related_quote_id', 'is', null);
+
+      if (error) throw error;
+
+      // Filter transactions that might be related to this order
+      // by looking at the client_id match
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('id', order.client_id)
+        .maybeSingle();
+
+      if (clientData) {
+        const { data: cashbackData } = await supabase
+          .from('reward_transactions')
+          .select(`
+            amount,
+            description,
+            quotes:related_quote_id(quote_number)
+          `)
+          .eq('client_id', clientData.id)
+          .eq('transaction_type', 'redeemed')
+          .not('related_quote_id', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (cashbackData && cashbackData.amount < 0) {
+          setCashbackInfo({
+            amount: Math.abs(cashbackData.amount),
+            quoteName: cashbackData.quotes?.quote_number || 'Cotización aplicada'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cashback info:', error);
     }
   };
 
@@ -552,41 +607,57 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {orderItems.length > 0 && (
-                    <div>
-                      <Label className="text-sm font-medium text-muted-foreground flex items-center">
-                        <DollarSign className="h-4 w-4 mr-1" />
-                        Costo Total Final
-                      </Label>
-                      <p className="text-foreground font-medium text-lg text-green-600">
-                        ${calculateTotalAmount().toLocaleString('es-CO', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
-                      </p>
-                    </div>
-                  )}
+                   {orderItems.length > 0 && (
+                     <div>
+                       <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                         <DollarSign className="h-4 w-4 mr-1" />
+                         Costo Total Final
+                       </Label>
+                       <p className="text-foreground font-medium text-lg text-green-600">
+                         ${calculateTotalAmount().toLocaleString('es-CO', {
+                           minimumFractionDigits: 2,
+                           maximumFractionDigits: 2
+                         })}
+                       </p>
+                     </div>
+                   )}
 
-                  {order.average_service_time && (
-                    <div>
-                      <Label className="text-sm font-medium text-muted-foreground flex items-center">
-                        <Clock className="h-4 w-4 mr-1" />
-                        Tiempo Total Estimado
-                        {isEarlyCompletion && (
-                          <Trophy className="h-4 w-4 ml-2 text-green-600 animate-pulse" />
-                        )}
-                      </Label>
-                      <p className="text-foreground font-medium flex items-center gap-2 text-lg text-blue-600">
-                        {formatTime(order.average_service_time)}
-                        {isEarlyCompletion && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
-                            ¡Completado antes de tiempo!
-                          </Badge>
-                        )}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                   {order.average_service_time && (
+                     <div>
+                       <Label className="text-sm font-medium text-muted-foreground flex items-center">
+                         <Clock className="h-4 w-4 mr-1" />
+                         Tiempo Total Estimado
+                         {isEarlyCompletion && (
+                           <Trophy className="h-4 w-4 ml-2 text-green-600 animate-pulse" />
+                         )}
+                       </Label>
+                       <p className="text-foreground font-medium flex items-center gap-2 text-lg text-blue-600">
+                         {formatTime(order.average_service_time)}
+                         {isEarlyCompletion && (
+                           <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs">
+                             ¡Completado antes de tiempo!
+                           </Badge>
+                         )}
+                       </p>
+                     </div>
+                   )}
+                 </div>
+
+                 {/* Información de Cashback Aplicado */}
+                 {cashbackInfo && (
+                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                     <div className="flex items-center gap-2 mb-2">
+                       <DollarSign className="h-4 w-4 text-green-600" />
+                       <span className="text-sm font-medium text-green-800">Cashback Aplicado</span>
+                     </div>
+                     <p className="text-sm text-green-700">
+                       Descuento de <span className="font-medium">-${cashbackInfo.amount.toLocaleString('es-CO', {
+                         minimumFractionDigits: 2,
+                         maximumFractionDigits: 2
+                       })}</span> aplicado desde {cashbackInfo.quoteName}
+                     </p>
+                   </div>
+                 )}
 
                 {/* Fecha de Entrega */}
                 <div className="space-y-2">
