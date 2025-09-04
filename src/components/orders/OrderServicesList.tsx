@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play } from 'lucide-react';
 
 interface OrderItem {
@@ -12,7 +13,11 @@ interface OrderItem {
   service_description?: string;
   quantity: number;
   unit_base_price: number;
+  unit_cost_price?: number;
   total_amount: number;
+  vat_rate?: number;
+  item_type?: string;
+  profit_margin_rate?: number;
   status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
 }
 
@@ -48,6 +53,36 @@ const statusConfig = {
 export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderServicesListProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
+
+  // Calcular precio correcto para un item
+  const calculateItemCorrectPrice = (item: OrderItem): number => {
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (item.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return finalWithCashback;
+    }
+  };
 
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     if (!canEdit) return;
@@ -163,10 +198,10 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
                         <strong>Cantidad:</strong> {item.quantity}
                       </span>
                       <span>
-                        <strong>Precio:</strong> {formatCurrency(item.total_amount / item.quantity)}
+                        <strong>Precio:</strong> {formatCurrency(calculateItemCorrectPrice(item) / (item.quantity || 1))}
                       </span>
                       <span>
-                        <strong>Total:</strong> {formatCurrency(item.total_amount)}
+                        <strong>Total:</strong> {formatCurrency(calculateItemCorrectPrice(item))}
                       </span>
                     </div>
                   </div>

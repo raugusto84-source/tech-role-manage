@@ -222,13 +222,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         .select(`
           *,
           service_name,
+          service_description,
           quantity,
           unit_cost_price,
           unit_base_price, 
           vat_rate,
           item_type,
           profit_margin_rate,
-          total_amount
+          total_amount,
+          status
         `)
         .eq('order_id', order.id)
         .order('created_at', { ascending: true });
