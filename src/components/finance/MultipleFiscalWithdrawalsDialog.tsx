@@ -81,10 +81,11 @@ export function MultipleFiscalWithdrawalsDialog({
 
     setLoading(true);
     try {
-      // Calculate VAT (16%)
+      // Calculate VAT included in total (16%)
       const vatRate = 16;
-      const vatAmount = selectedTotal * (vatRate / 100);
-      const totalWithVat = selectedTotal + vatAmount;
+      const totalWithVat = selectedTotal; // The selected total already includes VAT
+      const taxableAmount = selectedTotal / (1 + vatRate / 100); // Calculate subtotal without VAT
+      const vatAmount = selectedTotal - taxableAmount; // VAT is the difference
 
       // Create expense record for the combined withdrawals
       const { data: expenseData, error: expenseError } = await supabase
@@ -101,7 +102,7 @@ export function MultipleFiscalWithdrawalsDialog({
           invoice_number: invoiceNumber,
           vat_rate: vatRate,
           vat_amount: vatAmount,
-          taxable_amount: selectedTotal
+          taxable_amount: taxableAmount
         }])
         .select('id')
         .single();
@@ -223,15 +224,15 @@ export function MultipleFiscalWithdrawalsDialog({
                 </div>
                 <div className="flex justify-between">
                   <span>Monto gravable:</span>
-                  <span className="font-medium">${selectedTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-medium">${(selectedTotal / 1.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>IVA (16%):</span>
-                  <span className="font-medium">${(selectedTotal * 0.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-medium">${(selectedTotal - (selectedTotal / 1.16)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
                 </div>
                 <div className="flex justify-between border-t pt-2">
                   <span className="font-bold">Total a registrar:</span>
-                  <span className="font-bold">${(selectedTotal * 1.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                  <span className="font-bold">${selectedTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
                 </div>
               </CardContent>
             </Card>
