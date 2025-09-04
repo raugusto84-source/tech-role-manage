@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Minus, ShoppingCart, CheckCircle2 } from 'lucide-react';
 
@@ -27,6 +28,7 @@ interface ServiceType {
   base_price?: number;
   vat_rate?: number;
   item_type: string;
+  profit_margin_rate?: number;
 }
 
 interface NewItem {
@@ -40,6 +42,7 @@ interface NewItem {
   vat_amount: number;
   total_amount: number;
   item_type: string;
+  profit_margin_rate: number;
 }
 
 export function AddOrderItemsDialog({ 
@@ -50,6 +53,7 @@ export function AddOrderItemsDialog({
   onItemsAdded 
 }: AddOrderItemsDialogProps) {
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [newItems, setNewItems] = useState<NewItem[]>([]);
@@ -81,6 +85,35 @@ export function AddOrderItemsDialog({
     }
   };
 
+  // Calcular precio correcto para un item
+  const calculateItemCorrectPrice = (item: NewItem): number => {
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (item.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return finalWithCashback;
+    }
+  };
+
   const addNewItem = () => {
     setNewItems([...newItems, {
       service_type_id: '',
@@ -92,7 +125,8 @@ export function AddOrderItemsDialog({
       vat_rate: 0,
       vat_amount: 0,
       total_amount: 0,
-      item_type: 'servicio'
+      item_type: 'servicio',
+      profit_margin_rate: 0
     }]);
   };
 
@@ -112,23 +146,27 @@ export function AddOrderItemsDialog({
         updated[index].item_type = serviceType.item_type;
         updated[index].unit_cost_price = serviceType.cost_price || serviceType.base_price || 0;
         updated[index].unit_base_price = serviceType.base_price || serviceType.cost_price || 0;
-        updated[index].vat_rate = serviceType.vat_rate || 0;
+        updated[index].vat_rate = serviceType.vat_rate || 16;
+        updated[index].profit_margin_rate = 20; // Valor por defecto
       }
     }
 
-    // Recalcular totales
+    // Recalcular totales usando la lógica correcta de precios
     if (field === 'quantity' || field === 'unit_base_price' || field === 'service_type_id') {
+      const correctPrice = calculateItemCorrectPrice(updated[index]);
+      updated[index].total_amount = correctPrice;
+      
+      // Para mantener compatibilidad con la base de datos
       const item = updated[index];
       item.subtotal = item.unit_base_price * item.quantity;
       item.vat_amount = (item.subtotal * item.vat_rate) / 100;
-      item.total_amount = item.subtotal + item.vat_amount;
     }
 
     setNewItems(updated);
   };
 
   const calculateTotalChange = () => {
-    return newItems.reduce((sum, item) => sum + item.total_amount, 0);
+    return newItems.reduce((sum, item) => sum + calculateItemCorrectPrice(item), 0);
   };
 
   const handleSubmit = async () => {
@@ -255,13 +293,14 @@ export function AddOrderItemsDialog({
             service_name: item.service_name,
             quantity: item.quantity,
             unit_cost_price: item.unit_cost_price,
-            unit_base_price: item.unit_base_price,
-            subtotal: item.subtotal,
-            vat_rate: item.vat_rate,
-            vat_amount: item.vat_amount,
-            total_amount: item.total_amount,
-            item_type: item.item_type,
-            status: 'pendiente' as const
+             unit_base_price: item.unit_base_price,
+             subtotal: item.subtotal,
+             vat_rate: item.vat_rate,
+             vat_amount: item.vat_amount,
+             total_amount: calculateItemCorrectPrice(item),
+             item_type: item.item_type,
+             profit_margin_rate: item.profit_margin_rate,
+             status: 'pendiente' as const
           });
 
         if (itemError) throw itemError;
@@ -392,7 +431,7 @@ export function AddOrderItemsDialog({
                         <div>
                           <Label>Total</Label>
                           <div className="font-medium text-lg">
-                            ${item.total_amount.toLocaleString()}
+                            ${calculateItemCorrectPrice(item).toLocaleString()}
                           </div>
                         </div>
                         <Button
@@ -404,12 +443,6 @@ export function AddOrderItemsDialog({
                         </Button>
                       </div>
                     </div>
-
-                    {item.vat_amount > 0 && (
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        Subtotal: ${item.subtotal.toLocaleString()} + IVA ({item.vat_rate}%): ${item.vat_amount.toLocaleString()}
-                      </div>
-                    )}
                   </Card>
                 ))
               )}
