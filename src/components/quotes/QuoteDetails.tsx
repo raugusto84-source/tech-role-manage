@@ -344,30 +344,26 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
     quoteItems.forEach(item => {
       const correctPrice = calculateItemCorrectPrice(item);
-      const itemSubtotal = correctPrice * item.quantity;
+      const itemTotal = correctPrice * item.quantity;
       
-      if (isProduct(item)) {
-        // For products, VAT is included in the correct price
-        const costPrice = item.unit_cost_price || 0;
-        const purchaseVAT = costPrice * 0.19;
-        const costWithPurchaseVAT = costPrice + purchaseVAT;
-        const profitMargin = item.profit_margin_rate || 30;
-        const priceWithMargin = costWithPurchaseVAT * (1 + profitMargin / 100);
-        const salesVAT = priceWithMargin * (item.vat_rate / 100);
-        
-        subtotal += (priceWithMargin * item.quantity);
-        totalVat += (salesVAT * item.quantity);
+      // Calculate base price (without VAT) from unit_price that includes VAT
+      let basePriceWithoutVat;
+      let vatAmount = 0;
+      
+      if (item.vat_rate > 0) {
+        // If there's VAT rate, assume unit_price includes VAT and extract base price
+        basePriceWithoutVat = (correctPrice * item.quantity) / (1 + item.vat_rate / 100);
+        vatAmount = itemTotal - basePriceWithoutVat;
       } else {
-        // For services
-        const basePrice = item.unit_price * item.quantity;
-        const vat = basePrice * (item.vat_rate / 100);
-        
-        subtotal += basePrice;
-        totalVat += vat;
+        // If no VAT, the unit price is the base price
+        basePriceWithoutVat = itemTotal;
+        vatAmount = 0;
       }
       
+      subtotal += basePriceWithoutVat;
+      totalVat += vatAmount;
       totalWithholdings += item.withholding_amount * item.quantity;
-      total += itemSubtotal;
+      total += itemTotal;
     });
 
     return { subtotal, totalVat, totalWithholdings, total };
