@@ -166,7 +166,7 @@ export default function Finance() {
       const {
         data: orderCollections,
         error: orderError
-      } = await supabase.from("pending_collections").select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat").order("delivery_date", {
+      } = await supabase.from("pending_collections").select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat").gt("remaining_balance", 0).order("delivery_date", {
         ascending: true
       });
       if (orderError) throw orderError;
