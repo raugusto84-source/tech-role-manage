@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Package, Settings, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,15 +62,6 @@ const isProduct = (service: Service) => {
   return hasTiers || service.item_type === 'articulo';
 };
 const marginFromTiers = (service: Service): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
-const getDisplayPrice = (service: Service): number => {
-  if (!isProduct(service)) {
-    return (service.base_price || 0) * (1 + (service.vat_rate || 0) / 100);
-  } else {
-    const profitMargin = marginFromTiers(service);
-    const priceWithMargin = (service.cost_price || 0) * (1 + profitMargin / 100);
-    return priceWithMargin * (1 + (service.vat_rate || 0) / 100);
-  }
-};
 const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
@@ -96,6 +88,34 @@ export default function Sales() {
   const {
     profile
   } = useAuth();
+  const { settings: rewardSettings } = useRewardSettings();
+
+  // Function to calculate display price with cashback
+  const getDisplayPrice = (service: Service): number => {
+    const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (!isProduct(service)) {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = service.base_price || 0;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16; // IVA de compra fijo 16%
+      const baseCost = service.cost_price || 0;
+      const profitMargin = marginFromTiers(service); // Usar margen real del producto
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
+  };
   const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics' | 'categories' | 'subcategories'>('list');
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
