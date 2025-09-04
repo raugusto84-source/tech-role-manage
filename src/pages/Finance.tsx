@@ -237,7 +237,7 @@ export default function Finance() {
           withdrawal_status,
           created_at,
           withdrawn_at
-        `).order("created_at", {
+        `).like('description', 'Factura pendiente:%').order("created_at", {
         ascending: false
       });
       if (error) {
