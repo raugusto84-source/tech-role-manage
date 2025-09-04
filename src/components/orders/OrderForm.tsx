@@ -374,6 +374,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   };
 
   const calculateCorrectPricing = async (serviceTypeId: string, quantity: number) => {
+    console.log('=== CALCULATING PRICING ===');
+    console.log('Service ID:', serviceTypeId);
+    console.log('Quantity:', quantity);
+    console.log('Client ID:', formData.client_id);
+
     try {
       // Usar la nueva función que incluye descuentos de póliza
       const { data, error } = await supabase.rpc('calculate_order_pricing_with_policy', {
@@ -384,45 +389,57 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       if (error) throw error;
 
-      return data && data.length > 0 ? data[0] : null;
+      if (data && data.length > 0) {
+        console.log('Policy pricing result:', data[0]);
+        return data[0];
+      }
     } catch (error) {
       console.error('Error calculating pricing with policy:', error);
-      // Fallback to regular pricing if policy pricing fails
-      try {
-        const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
-          p_service_type_id: serviceTypeId,
-          p_quantity: quantity
-        });
+    }
 
-        if (error) throw error;
+    // Fallback to regular pricing if policy pricing fails
+    try {
+      console.log('Using fallback pricing...');
+      const { data, error } = await supabase.rpc('calculate_order_item_pricing', {
+        p_service_type_id: serviceTypeId,
+        p_quantity: quantity
+      });
+
+      if (error) throw error;
+      
+      // Si tenemos el precio base, aplicar cashback manualmente para productos
+      if (data && data.length > 0) {
+        const baseResult = data[0];
+        console.log('Base pricing result:', baseResult);
         
-        // Si tenemos el precio base, aplicar cashback manualmente para productos
-        if (data && data.length > 0) {
-          const baseResult = data[0];
-          const serviceTypeResult = await supabase
-            .from('service_types')
-            .select('item_type')
-            .eq('id', serviceTypeId)
-            .single();
+        const serviceTypeResult = await supabase
+          .from('service_types')
+          .select('item_type')
+          .eq('id', serviceTypeId)
+          .single();
+        
+        if (serviceTypeResult.data?.item_type === 'articulo' && rewardSettings?.apply_cashback_to_items) {
+          const cashbackPercent = rewardSettings.general_cashback_percent || 0;
+          const finalWithCashback = baseResult.total_amount * (1 + cashbackPercent / 100);
           
-          if (serviceTypeResult.data?.item_type === 'articulo' && rewardSettings?.apply_cashback_to_items) {
-            const cashbackPercent = rewardSettings.general_cashback_percent || 0;
-            const finalWithCashback = baseResult.total_amount * (1 + cashbackPercent / 100);
-            
-            return {
-              ...baseResult,
-              total_amount: finalWithCashback
-            };
-          }
+          const finalResult = {
+            ...baseResult,
+            total_amount: finalWithCashback
+          };
           
-          return baseResult;
+          console.log('Applied cashback:', cashbackPercent + '%');
+          console.log('Final pricing with cashback:', finalResult);
+          return finalResult;
         }
         
-        return null;
-      } catch (fallbackError) {
-        console.error('Error with fallback pricing:', fallbackError);
-        return null;
+        console.log('No cashback applied, returning base result');
+        return baseResult;
       }
+      
+      return null;
+    } catch (fallbackError) {
+      console.error('Error with fallback pricing:', fallbackError);
+      return null;
     }
   };
 
@@ -463,7 +480,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           policy_name: (pricing as any).policy_name || undefined,
           vat_rate: pricing.vat_rate,
           vat_amount: pricing.vat_amount,
-          total: pricing.total_amount,
+          total: pricing.total_amount, // Este es el precio final con cashback incluido
           estimated_hours: totalEstimatedHours
         };
       
@@ -501,7 +518,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         policy_name: (pricing as any).policy_name || undefined,
         vat_rate: pricing.vat_rate,
         vat_amount: pricing.vat_amount,
-        total: pricing.total_amount,
+        total: pricing.total_amount, // Este es el precio final con cashback incluido
         item_type: service.item_type,
         shared_time: (service as any).shared_time || false,
         status: 'pendiente',
