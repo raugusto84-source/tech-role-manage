@@ -215,10 +215,10 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
   // Set default amount when collection changes
   useEffect(() => {
     if (collection && open) {
-      // For fiscal accounts, set the subtotal; for non-fiscal, set the total
+      // For fiscal accounts, set the subtotal; for non-fiscal, set the total with VAT
       const defaultAmount = accountType === "fiscal" 
         ? (collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost)
-        : (collection.remaining_balance || collection.estimated_cost);
+        : (collection.remaining_balance || collection.total_with_vat || collection.estimated_cost);
       setAmount(defaultAmount.toString());
       setDescription(`Cobro orden ${collection.order_number} - ${collection.client_name}`);
     }
