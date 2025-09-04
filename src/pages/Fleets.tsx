@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,7 +6,8 @@ import { FleetGroupManager } from '@/components/fleets/FleetGroupManager';
 import { FleetGroupList } from '@/components/fleets/FleetGroupList';
 import { FleetAssignments } from '@/components/fleets/FleetAssignments';
 import { VehicleManager } from '@/components/fleets/VehicleManager';
-import { Truck, Users, Settings, ClipboardList } from 'lucide-react';
+import { Truck, Users, Settings, ClipboardList, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 /**
  * Página principal del módulo de Flotillas
@@ -14,6 +15,20 @@ import { Truck, Users, Settings, ClipboardList } from 'lucide-react';
  */
 export default function Fleets() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedGroupName, setSelectedGroupName] = useState<string>('');
+  const [activeTab, setActiveTab] = useState('grupos');
+
+  const handleGroupSelect = (groupId: string, groupName?: string) => {
+    setSelectedGroupId(groupId);
+    setSelectedGroupName(groupName || '');
+    setActiveTab('asignaciones');
+  };
+
+  const handleBackToList = () => {
+    setSelectedGroupId(null);
+    setSelectedGroupName('');
+    setActiveTab('lista');
+  };
 
   return (
     <AppLayout>
@@ -32,8 +47,8 @@ export default function Fleets() {
             </div>
           </div>
 
-          <Tabs defaultValue="grupos" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="grupos" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Gestión de Grupos
@@ -42,7 +57,11 @@ export default function Fleets() {
                 <ClipboardList className="h-4 w-4" />
                 Lista de Flotillas
               </TabsTrigger>
-              <TabsTrigger value="asignaciones" className="flex items-center gap-2">
+              <TabsTrigger value="vehiculos" className="flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Vehículos
+              </TabsTrigger>
+              <TabsTrigger value="asignaciones" className="flex items-center gap-2" disabled={!selectedGroupId}>
                 <Users className="h-4 w-4" />
                 Asignaciones
               </TabsTrigger>
@@ -57,18 +76,48 @@ export default function Fleets() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <FleetGroupManager onGroupSelect={setSelectedGroupId} />
+                  <FleetGroupManager onGroupSelect={handleGroupSelect} />
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="lista" className="space-y-6">
-              <FleetGroupList onGroupSelect={setSelectedGroupId} />
+              <FleetGroupList onGroupSelect={handleGroupSelect} />
+            </TabsContent>
+
+            <TabsContent value="vehiculos" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Truck className="h-5 w-5" />
+                    Gestión de Vehículos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <VehicleManager />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="asignaciones" className="space-y-6">
               {selectedGroupId ? (
-                <FleetAssignments groupId={selectedGroupId} />
+                <div className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Users className="h-5 w-5" />
+                          Asignaciones - {selectedGroupName}
+                        </CardTitle>
+                        <Button variant="outline" onClick={handleBackToList} className="flex items-center gap-2">
+                          <ArrowLeft className="h-4 w-4" />
+                          Volver a la Lista
+                        </Button>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                  <FleetAssignments groupId={selectedGroupId} />
+                </div>
               ) : (
                 <Card>
                   <CardContent className="py-8">

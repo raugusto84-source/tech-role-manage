@@ -26,7 +26,7 @@ interface FleetGroupWithDetails {
 }
 
 interface FleetGroupListProps {
-  onGroupSelect?: (groupId: string) => void;
+  onGroupSelect?: (groupId: string, groupName?: string) => void;
 }
 
 export function FleetGroupList({ onGroupSelect }: FleetGroupListProps) {
@@ -127,7 +127,7 @@ export function FleetGroupList({ onGroupSelect }: FleetGroupListProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onGroupSelect?.(group.id)}
+                  onClick={() => onGroupSelect?.(group.id, group.name)}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   Ver Detalles

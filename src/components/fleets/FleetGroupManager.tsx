@@ -21,7 +21,7 @@ interface FleetGroup {
 }
 
 interface FleetGroupManagerProps {
-  onGroupSelect?: (groupId: string) => void;
+  onGroupSelect?: (groupId: string, groupName?: string) => void;
 }
 
 export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
@@ -278,7 +278,7 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent onClick={() => onGroupSelect?.(group.id)}>
+            <CardContent onClick={() => onGroupSelect?.(group.id, group.name)}>
               <div className="space-y-3">
                 {group.description && (
                   <p className="text-sm text-muted-foreground">
