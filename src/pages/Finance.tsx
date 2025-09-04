@@ -73,13 +73,16 @@ export default function Finance() {
   const [showWithdrawalDialog, setShowWithdrawalDialog] = useState(false);
   const [withdrawalConcept, setWithdrawalConcept] = useState('');
   const [withdrawalDescription, setWithdrawalDescription] = useState('');
-  
+
   // Estado para diálogo de retiro fiscal individual
-  const [fiscalWithdrawalDialog, setFiscalWithdrawalDialog] = useState<{open: boolean, withdrawal: any}>({
+  const [fiscalWithdrawalDialog, setFiscalWithdrawalDialog] = useState<{
+    open: boolean;
+    withdrawal: any;
+  }>({
     open: false,
     withdrawal: null
   });
-  
+
   // Estado para diálogo de retiros fiscales múltiples
   const [multipleFiscalWithdrawalsDialog, setMultipleFiscalWithdrawalsDialog] = useState(false);
 
@@ -448,7 +451,7 @@ export default function Finance() {
   // Estados para el diálogo de cobro
   const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] = useState<any>(null);
-  
+
   // Estados para eliminar cobranza
   const [deleteCollectionDialogOpen, setDeleteCollectionDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<string>('');
@@ -669,7 +672,7 @@ export default function Finance() {
         vat_amount: vatAmount || null,
         taxable_amount: taxableAmount || null,
         has_invoice: purchaseAccount === 'fiscal' ? true : purchaseHasInvoice,
-        invoice_number: purchaseAccount === 'fiscal' ? purchaseInvoiceNumber.trim() : (purchaseHasInvoice ? purchaseInvoiceNumber.trim() : null),
+        invoice_number: purchaseAccount === 'fiscal' ? purchaseInvoiceNumber.trim() : purchaseHasInvoice ? purchaseInvoiceNumber.trim() : null,
         status: "pagado"
       } as any).select().single();
       if (expenseError) throw expenseError;
@@ -1349,7 +1352,10 @@ export default function Finance() {
 
   const withdrawFiscalAmount = async (withdrawal: any) => {
     // Abrir el diálogo para capturar factura y número
-    setFiscalWithdrawalDialog({ open: true, withdrawal });
+    setFiscalWithdrawalDialog({
+      open: true,
+      withdrawal
+    });
   };
   const handleBulkWithdrawal = async () => {
     if (selectedWithdrawals.length === 0) {
@@ -1472,8 +1478,7 @@ export default function Finance() {
       title: "Cobro registrado exitosamente"
     });
   };
-  return (
-    <AppLayout>
+  return <AppLayout>
       <header className="mb-6">
         <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos, Egresos y Cobranzas</h1>
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
@@ -1568,8 +1573,8 @@ export default function Finance() {
       </section>
 
       <Tabs defaultValue="incomes">
-        <TabsList>
-          <TabsTrigger value="incomes">Ingresos</TabsTrigger>
+        <TabsList className="bg-lime-400 rounded-none">
+          <TabsTrigger value="incomes" className="text-gray-950">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
@@ -2125,12 +2130,7 @@ export default function Finance() {
                   </span>
                 </div>
                 <div>
-                  <Button
-                    size="sm"
-                    onClick={() => setMultipleFiscalWithdrawalsDialog(true)}
-                    className="bg-green-600 hover:bg-green-700"
-                    disabled={(fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length || 0) === 0}
-                  >
+                  <Button size="sm" onClick={() => setMultipleFiscalWithdrawalsDialog(true)} className="bg-green-600 hover:bg-green-700" disabled={(fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).length || 0) === 0}>
                     Retiros Múltiples
                   </Button>
                 </div>
@@ -2166,9 +2166,9 @@ export default function Finance() {
                         </TableCell>
                         <TableCell>
                           {withdrawal.withdrawal_status === 'available' ? <Button size="sm" onClick={() => setFiscalWithdrawalDialog({
-                              open: true,
-                              withdrawal
-                            })} className="bg-green-600 hover:bg-green-700">
+                        open: true,
+                        withdrawal
+                      })} className="bg-green-600 hover:bg-green-700">
                               Retirar Compra
                             </Button> : <div className="text-sm text-muted-foreground">
                               {withdrawal.withdrawn_at && <span>Retirado {new Date(withdrawal.withdrawn_at).toLocaleDateString()}</span>}
@@ -2790,15 +2790,15 @@ export default function Finance() {
                           <TableCell>
                             <div className="flex gap-2">
                               <Button size="sm" variant="default" onClick={() => {
-                         setSelectedCollection(item);
-                         setCollectionDialogOpen(true);
-                       }} className="bg-green-600 hover:bg-green-700">
+                          setSelectedCollection(item);
+                          setCollectionDialogOpen(true);
+                        }} className="bg-green-600 hover:bg-green-700">
                                 Cobrar
                               </Button>
                                <Button size="sm" variant="destructive" onClick={() => {
-                                 setCollectionToDelete(item.payment_id || item.id);
-                                 setDeleteCollectionDialogOpen(true);
-                               }}>
+                          setCollectionToDelete(item.payment_id || item.id);
+                          setDeleteCollectionDialogOpen(true);
+                        }}>
                                  Eliminar
                                </Button>
                             </div>
@@ -3004,44 +3004,31 @@ export default function Finance() {
         </DialogContent>
       </Dialog>
       
-      <DeleteCollectionDialog 
-        open={deleteCollectionDialogOpen} 
-        onOpenChange={setDeleteCollectionDialogOpen} 
-        collectionId={collectionToDelete}
-        onSuccess={() => {
-          // Force immediate refetch to update UI
-          collectionsQuery.refetch();
-          setCollectionToDelete('');
-          // Close dialog immediately
-          setDeleteCollectionDialogOpen(false);
-        }} 
-      />
+      <DeleteCollectionDialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen} collectionId={collectionToDelete} onSuccess={() => {
+      // Force immediate refetch to update UI
+      collectionsQuery.refetch();
+      setCollectionToDelete('');
+      // Close dialog immediately
+      setDeleteCollectionDialogOpen(false);
+    }} />
 
-        <FiscalWithdrawalDialog
-          open={fiscalWithdrawalDialog.open}
-          onOpenChange={(open) => setFiscalWithdrawalDialog({ open, withdrawal: null })}
-          withdrawal={fiscalWithdrawalDialog.withdrawal}
-          onSuccess={() => {
-            fiscalWithdrawalsQuery.refetch();
-            expensesQuery.refetch();
-          }}
-        />
+        <FiscalWithdrawalDialog open={fiscalWithdrawalDialog.open} onOpenChange={open => setFiscalWithdrawalDialog({
+      open,
+      withdrawal: null
+    })} withdrawal={fiscalWithdrawalDialog.withdrawal} onSuccess={() => {
+      fiscalWithdrawalsQuery.refetch();
+      expensesQuery.refetch();
+    }} />
 
-        <MultipleFiscalWithdrawalsDialog
-          open={multipleFiscalWithdrawalsDialog}
-          onOpenChange={setMultipleFiscalWithdrawalsDialog}
-          withdrawals={fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).map(fw => ({
-            id: fw.id,
-            amount: fw.amount,
-            description: fw.description,
-            withdrawal_date: fw.created_at,
-            withdrawal_status: fw.withdrawal_status
-          })) || []}
-          onSuccess={() => {
-            fiscalWithdrawalsQuery.refetch();
-            expensesQuery.refetch();
-          }}
-        />
-    </AppLayout>
-  );
+        <MultipleFiscalWithdrawalsDialog open={multipleFiscalWithdrawalsDialog} onOpenChange={setMultipleFiscalWithdrawalsDialog} withdrawals={fiscalWithdrawalsQuery.data?.filter(fw => fw.withdrawal_status === 'available' && fw.amount > 0).map(fw => ({
+      id: fw.id,
+      amount: fw.amount,
+      description: fw.description,
+      withdrawal_date: fw.created_at,
+      withdrawal_status: fw.withdrawal_status
+    })) || []} onSuccess={() => {
+      fiscalWithdrawalsQuery.refetch();
+      expensesQuery.refetch();
+    }} />
+    </AppLayout>;
 }
