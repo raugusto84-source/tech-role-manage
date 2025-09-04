@@ -38,6 +38,11 @@ interface ServiceType {
   vat_rate: number;
   item_type: string;
   category: string;
+  profit_margin_tiers?: Array<{
+    min_qty: number;
+    max_qty: number;
+    margin: number;
+  }>;
 }
 
 interface Technician {
@@ -142,7 +147,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         .order('name');
 
       if (error) throw error;
-      setServiceTypes(data || []);
+      
+      // Transform data to match ServiceType interface
+      const transformedData = (data || []).map((service: any) => ({
+        ...service,
+        profit_margin_tiers: Array.isArray(service.profit_margin_tiers) ? service.profit_margin_tiers : []
+      }));
+      
+      setServiceTypes(transformedData);
     } catch (error) {
       console.error('Error loading service types:', error);
     }
@@ -457,6 +469,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         description: service.description || '',
         quantity,
         unit_price: pricing.unit_base_price,
+        cost_price: service.cost_price, // Agregar cost_price para productos
         estimated_hours: estimatedHours,
         subtotal: (pricing as any).final_subtotal || pricing.subtotal,
         original_subtotal: (pricing as any).final_subtotal && (pricing as any).final_subtotal !== pricing.subtotal ? pricing.subtotal : undefined,
@@ -468,7 +481,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         total: pricing.total_amount,
         item_type: service.item_type,
         shared_time: (service as any).shared_time || false,
-        status: 'pendiente'
+        status: 'pendiente',
+        profit_margin_tiers: service.profit_margin_tiers // Agregar profit_margin_tiers para productos
       };
       
       updatedItems = [...orderItems, newItem];
@@ -1126,20 +1140,21 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                  <ProductServiceSeparator
                    onServiceAdd={handleServiceAdd}
                    selectedServiceIds={orderItems.map(item => item.service_type_id)}
-                   selectedServices={orderItems.map(item => ({
-                     service: {
-                       id: item.service_type_id,
-                       name: item.name,
-                       description: item.description,
-                       cost_price: null,
-                       base_price: item.unit_price || 0,
-                       vat_rate: item.vat_rate,
-                       item_type: item.item_type,
-                       category: '',
-                       estimated_hours: item.estimated_hours
-                     },
-                     quantity: item.quantity
-                   }))}
+                    selectedServices={orderItems.map(item => ({
+                      service: {
+                        id: item.service_type_id,
+                        name: item.name,
+                        description: item.description,
+                        cost_price: item.cost_price, // Usar el cost_price del item
+                        base_price: item.unit_price || 0,
+                        vat_rate: item.vat_rate,
+                        item_type: item.item_type,
+                        category: '',
+                        estimated_hours: item.estimated_hours,
+                        profit_margin_tiers: item.profit_margin_tiers // Usar los profit_margin_tiers del item
+                      },
+                      quantity: item.quantity
+                    }))}
                    onRemoveService={(serviceId: string) => {
                      setOrderItems(prev => prev.filter(item => item.service_type_id !== serviceId));
                    }}
