@@ -377,23 +377,26 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             {assignedTechnicians.map((tech) => (
-              <div key={tech.id} className="p-3 border rounded-lg">
+              <div key={tech.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <Wrench className="h-4 w-4 text-primary" />
-                      <p className="font-medium">{tech.full_name}</p>
+                      <p className="font-medium text-lg">{tech.full_name}</p>
+                      <Badge variant="outline" className="text-xs">
+                        Asignado
+                      </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{tech.email}</p>
                     
                     {/* Habilidades */}
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Habilidades:</p>
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">Habilidades técnicas:</p>
                       <div className="flex flex-wrap gap-1">
                         {tech.skills.map((skill, idx) => (
                           <Badge key={idx} variant="secondary" className="text-xs flex items-center gap-1">
-                            <Star className="h-3 w-3" />
-                            {skill.service_name} (Nv.{skill.skill_level})
+                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                            {skill.service_name} (Nivel {skill.skill_level})
                           </Badge>
                         ))}
                         {tech.skills.length === 0 && (
@@ -402,18 +405,24 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
                       </div>
                     </div>
                     
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Asignado: {new Date(tech.assigned_at).toLocaleDateString()}
-                    </p>
+                    <div className="mt-3 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        Asignado el {new Date(tech.assigned_at).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => unassignTechnician(tech.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-col gap-2 ml-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => unassignTechnician(tech.id)}
+                      className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
+                    >
+                      <X className="h-4 w-4 mr-1" />
+                      Desasignar
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
