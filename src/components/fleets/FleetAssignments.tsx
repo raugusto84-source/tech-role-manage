@@ -132,16 +132,11 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
       setAssignedVehicles(assignedVehiclesWithDetails);
 
       // Cargar técnicos disponibles (no asignados a este grupo)
-      let availableTechniciansQuery = supabase
+      const { data: allTechnicians } = await supabase
         .from('profiles')
         .select('user_id, full_name, email')
-        .eq('role', 'tecnico');
-        
-      if (technicianIds.length > 0) {
-        availableTechniciansQuery = availableTechniciansQuery.not('user_id', 'in', `(${technicianIds.join(',')})`);
-      }
-      
-      const { data: allTechnicians } = await availableTechniciansQuery;
+        .eq('role', 'tecnico')
+        .not('user_id', 'in', technicianIds.length > 0 ? `(${technicianIds.join(',')})` : '(00000000-0000-0000-0000-000000000000)');
 
       // Cargar habilidades de técnicos disponibles
       const availableWithSkills = await Promise.all(
@@ -168,16 +163,11 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
 
       // Cargar vehículos disponibles
       const vehicleIds = assignedVehiclesWithDetails.map(v => v.id);
-      let availableVehiclesQuery = supabase
+      const { data: allVehicles } = await supabase
         .from('vehicles')
         .select('id, model, license_plate, year, status')
-        .eq('status', 'activo');
-        
-      if (vehicleIds.length > 0) {
-        availableVehiclesQuery = availableVehiclesQuery.not('id', 'in', `(${vehicleIds.join(',')})`);
-      }
-      
-      const { data: allVehicles } = await availableVehiclesQuery;
+        .eq('status', 'activo')
+        .not('id', 'in', vehicleIds.length > 0 ? `(${vehicleIds.join(',')})` : '(00000000-0000-0000-0000-000000000000)');
 
       setAvailableVehicles(allVehicles || []);
 
@@ -195,6 +185,23 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
 
   const assignTechnician = async (technicianId: string) => {
     try {
+      // Verificar si ya está asignado
+      const { data: existing } = await supabase
+        .from('fleet_group_technicians')
+        .select('id')
+        .eq('fleet_group_id', groupId)
+        .eq('technician_id', technicianId)
+        .eq('is_active', true);
+
+      if (existing && existing.length > 0) {
+        toast({
+          title: "Error",
+          description: "Este técnico ya está asignado al grupo",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('fleet_group_technicians')
         .insert({
@@ -223,6 +230,23 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
 
   const assignVehicle = async (vehicleId: string) => {
     try {
+      // Verificar si ya está asignado
+      const { data: existing } = await supabase
+        .from('fleet_group_vehicles')
+        .select('id')
+        .eq('fleet_group_id', groupId)
+        .eq('vehicle_id', vehicleId)
+        .eq('is_active', true);
+
+      if (existing && existing.length > 0) {
+        toast({
+          title: "Error",
+          description: "Este vehículo ya está asignado al grupo",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('fleet_group_vehicles')
         .insert({
