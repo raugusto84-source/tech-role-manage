@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FleetGroupManager } from '@/components/fleets/FleetGroupManager';
 import { FleetGroupList } from '@/components/fleets/FleetGroupList';
 import { FleetAssignments } from '@/components/fleets/FleetAssignments';
+import { VehicleManager } from '@/components/fleets/VehicleManager';
 import { Truck, Users, Settings, ClipboardList } from 'lucide-react';
 
 /**

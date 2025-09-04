@@ -132,11 +132,16 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
       setAssignedVehicles(assignedVehiclesWithDetails);
 
       // Cargar técnicos disponibles (no asignados a este grupo)
-      const { data: allTechnicians } = await supabase
+      let availableTechniciansQuery = supabase
         .from('profiles')
         .select('user_id, full_name, email')
-        .eq('role', 'tecnico')
-        .not('user_id', 'in', `(${technicianIds.join(',')})`);
+        .eq('role', 'tecnico');
+        
+      if (technicianIds.length > 0) {
+        availableTechniciansQuery = availableTechniciansQuery.not('user_id', 'in', `(${technicianIds.join(',')})`);
+      }
+      
+      const { data: allTechnicians } = await availableTechniciansQuery;
 
       // Cargar habilidades de técnicos disponibles
       const availableWithSkills = await Promise.all(
@@ -163,11 +168,16 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
 
       // Cargar vehículos disponibles
       const vehicleIds = assignedVehiclesWithDetails.map(v => v.id);
-      const { data: allVehicles } = await supabase
+      let availableVehiclesQuery = supabase
         .from('vehicles')
         .select('id, model, license_plate, year, status')
-        .eq('status', 'activo')
-        .not('id', 'in', `(${vehicleIds.join(',')})`);
+        .eq('status', 'activo');
+        
+      if (vehicleIds.length > 0) {
+        availableVehiclesQuery = availableVehiclesQuery.not('id', 'in', `(${vehicleIds.join(',')})`);
+      }
+      
+      const { data: allVehicles } = await availableVehiclesQuery;
 
       setAvailableVehicles(allVehicles || []);
 
