@@ -59,10 +59,27 @@ export function FleetGroupList({ onGroupSelect }: FleetGroupListProps) {
             .select(`
               id,
               assigned_at,
-              profiles!inner(full_name)
+              technician_id
             `)
             .eq('fleet_group_id', group.id)
             .eq('is_active', true);
+
+          // Obtener información de perfiles para técnicos asignados
+          const techniciansWithProfiles = await Promise.all(
+            (techniciansData || []).map(async (assignment) => {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('full_name')
+                .eq('user_id', assignment.technician_id)
+                .single();
+
+              return {
+                id: assignment.id,
+                full_name: profile?.full_name || 'Sin nombre',
+                assigned_at: assignment.assigned_at
+              };
+            })
+          );
 
           // Cargar vehículos del grupo  
           const { data: vehiclesData } = await supabase
@@ -77,11 +94,7 @@ export function FleetGroupList({ onGroupSelect }: FleetGroupListProps) {
 
           return {
             ...group,
-            technicians: (techniciansData || []).map(t => ({
-              id: t.id,
-              full_name: (t.profiles as any)?.full_name || 'Sin nombre',
-              assigned_at: t.assigned_at
-            })),
+            technicians: techniciansWithProfiles,
             vehicles: (vehiclesData || []).map(v => ({
               id: v.id,
               model: (v.vehicles as any)?.model || 'Sin modelo',
