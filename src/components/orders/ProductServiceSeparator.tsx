@@ -49,62 +49,46 @@ export function ProductServiceSeparator({
     }).format(amount);
   };
 
-  const calculateServicePrice = (service: ServiceType, quantity: number): number => {
+  // Usar la misma lógica de cálculo que OrderServiceSelection
+  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
     const salesVatRate = service.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
 
-    // Para servicios: precio base + IVA + cashback
-    const basePrice = (service.base_price || 0) * quantity;
-    const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-    const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-    return finalWithCashback;
-  };
-
-  const calculateProductPrice = (service: ServiceType, quantity: number): number => {
-    const purchaseVatRate = 16; // IVA de compra fijo 16%
-    const salesVatRate = service.vat_rate || 16;
-    
-    // Obtener margen real del producto, no usar valor fijo
-    const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
-      ? service.profit_margin_tiers[0].margin 
-      : 20; // 20% como fallback, no 30%
+    if (service.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (service.base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16;
+      const baseCost = (service.cost_price || 0) * quantity;
       
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-
-    // Para artículos: usar cost_price directamente
-    const baseCost = (service.cost_price || 0) * quantity;
-    
-    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-    const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-    const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-    const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-    
-    console.log(`Producto ${service.name} - Cálculo:`, {
-      baseCost,
-      marginPercent,
-      afterPurchaseVat,
-      afterMargin,
-      afterSalesVat,
-      cashbackPercent,
-      finalWithCashback
-    });
-    
-    return finalWithCashback;
+      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
+        ? service.profit_margin_tiers[0].margin 
+        : 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return finalWithCashback;
+    }
   };
 
   const services = selectedServices.filter(item => item.service.item_type === 'servicio');
   const products = selectedServices.filter(item => item.service.item_type === 'articulo');
 
   const servicesTotal = services.reduce((total, item) => {
-    return total + calculateServicePrice(item.service, item.quantity);
+    return total + calculateDisplayPrice(item.service, item.quantity);
   }, 0);
 
   const productsTotal = products.reduce((total, item) => {
-    return total + calculateProductPrice(item.service, item.quantity);
+    return total + calculateDisplayPrice(item.service, item.quantity);
   }, 0);
 
   return (
@@ -189,8 +173,8 @@ export function ProductServiceSeparator({
                 
                 <div className="space-y-2">
                   {services.map(({ service, quantity }) => {
-                    const finalPrice = calculateServicePrice(service, quantity);
-                    const unitPrice = calculateServicePrice(service, 1);
+                    const finalPrice = calculateDisplayPrice(service, quantity);
+                    const unitPrice = calculateDisplayPrice(service, 1);
                     
                     return (
                       <div key={service.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
@@ -242,8 +226,8 @@ export function ProductServiceSeparator({
                 
                 <div className="space-y-2">
                   {products.map(({ service, quantity }) => {
-                    const finalPrice = calculateProductPrice(service, quantity);
-                    const unitPrice = calculateProductPrice(service, 1);
+                    const finalPrice = calculateDisplayPrice(service, quantity);
+                    const unitPrice = calculateDisplayPrice(service, 1);
                     
                     return (
                       <div key={service.id} className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
