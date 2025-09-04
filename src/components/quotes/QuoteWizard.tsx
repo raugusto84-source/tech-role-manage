@@ -326,7 +326,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
       const costPrice = service.cost_price || 0;
       if (costPrice === 0) return 0;
       
-      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const purchaseVAT = costPrice * 0.16; // 16% purchase VAT (matching other components)
       const costWithPurchaseVAT = costPrice + purchaseVAT;
       
       // Get profit margin from first tier or default

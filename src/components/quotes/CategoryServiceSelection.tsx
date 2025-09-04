@@ -210,7 +210,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
       const costPrice = service.cost_price || 0;
       if (costPrice === 0) return 0;
       
-      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const purchaseVAT = costPrice * 0.16; // 16% purchase VAT (matching other components)
       const costWithPurchaseVAT = costPrice + purchaseVAT;
       
       // Get profit margin from first tier or default
@@ -233,7 +233,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
       
       return baseTotal + cashback;
     } else {
-      // For services: base price + VAT + cashback
+      // For services: base price + VAT + cashback  
       const basePrice = service.base_price || 0;
       const vat = basePrice * (service.vat_rate / 100);
       const baseTotal = basePrice + vat;
