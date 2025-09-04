@@ -21,6 +21,7 @@ import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { OrderAssistanceRecords } from './OrderAssistanceRecords';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 interface OrderDetailsProps {
   order: {
@@ -61,6 +62,7 @@ interface OrderDetailsProps {
 export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [orderNotes, setOrderNotes] = useState<any[]>([]);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -287,6 +289,39 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
 
+  // Calculate total amount using the same logic as OrderItemsList
+  const calculateTotalAmount = () => {
+    return orderItems.reduce((sum, item) => {
+      const salesVatRate = item.vat_rate || 16;
+      const cashbackPercent = rewardSettings?.apply_cashback_to_items
+        ? (rewardSettings.general_cashback_percent || 0)
+        : 0;
+
+      if (item.item_type === 'servicio') {
+        // Para servicios: precio base + IVA + cashback
+        const basePrice = item.unit_price * item.quantity;
+        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        return sum + finalWithCashback;
+      } else {
+        // Para artículos: utilizar SIEMPRE cost_price como costo base
+        const purchaseVatRate = 16;
+        const baseCost = (item.cost_price || 0) * item.quantity;
+        
+        const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
+          ? item.profit_margin_tiers[0].margin 
+          : 20;
+        
+        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+        const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        
+        return sum + finalWithCashback;
+      }
+    }, 0);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
@@ -504,14 +539,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {order.estimated_cost && (
+                  {orderItems.length > 0 && (
                     <div>
                       <Label className="text-sm font-medium text-muted-foreground flex items-center">
                         <DollarSign className="h-4 w-4 mr-1" />
-                        Costo Total Estimado
+                        Costo Total Final
                       </Label>
                       <p className="text-foreground font-medium text-lg text-green-600">
-                        ${order.estimated_cost.toLocaleString()}
+                        ${calculateTotalAmount().toLocaleString('es-CO', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
                       </p>
                     </div>
                   )}
