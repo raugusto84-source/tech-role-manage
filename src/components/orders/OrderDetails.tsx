@@ -43,6 +43,8 @@ interface OrderDetailsProps {
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
+    cashback_applied?: boolean;
+    cashback_amount_used?: number;
     service_types?: {
       name: string;
       description?: string;
@@ -79,10 +81,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   } | null>(null);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
-  const [cashbackInfo, setCashbackInfo] = useState<{
-    amount: number;
-    quoteName: string;
-  } | null>(null);
 
   // Función para actualizar el contador de mensajes no leídos localmente
   const handleMessagesRead = () => {
@@ -99,7 +97,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadAssignedTechnician();
     checkExistingAuthorization();
     calculateDeliveryTime();
-    loadCashbackInfo();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -247,56 +244,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
-  const loadCashbackInfo = async () => {
-    try {
-      // Find cashback transactions related to this order
-      const { data, error } = await supabase
-        .from('reward_transactions')
-        .select(`
-          amount,
-          description,
-          quotes:related_quote_id(quote_number)
-        `)
-        .eq('transaction_type', 'redeemed')
-        .not('related_quote_id', 'is', null);
-
-      if (error) throw error;
-
-      // Filter transactions that might be related to this order
-      // by looking at the client_id match
-      const { data: clientData } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('id', order.client_id)
-        .maybeSingle();
-
-      if (clientData) {
-        const { data: cashbackData } = await supabase
-          .from('reward_transactions')
-          .select(`
-            amount,
-            description,
-            quotes:related_quote_id(quote_number)
-          `)
-          .eq('client_id', clientData.id)
-          .eq('transaction_type', 'redeemed')
-          .not('related_quote_id', 'is', null)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (cashbackData && cashbackData.amount < 0) {
-          setCashbackInfo({
-            amount: Math.abs(cashbackData.amount),
-            quoteName: cashbackData.quotes?.quote_number || 'Cotización aplicada'
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error loading cashback info:', error);
-    }
-  };
-
   const checkSurveyStatus = async () => {
     if (profile?.role === 'cliente' && orderStatus === 'finalizada') {
       const { data } = await supabase
@@ -359,10 +306,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   // Calculate total using correct pricing logic in real time
   const calculateTotalAmount = () => {
     if (!orderItems || orderItems.length === 0) {
-      return order.estimated_cost || 0;
+      const baseTotal = order.estimated_cost || 0;
+      // Aplicar descuento de cashback si existe
+      return order.cashback_applied && order.cashback_amount_used
+        ? Math.max(0, baseTotal - order.cashback_amount_used)
+        : baseTotal;
     }
 
-    return orderItems.reduce((sum, item) => {
+    const subtotal = orderItems.reduce((sum, item) => {
       const quantity = item.quantity || 1;
       const salesVatRate = item.vat_rate || 16;
       const cashbackPercent = rewardSettings?.apply_cashback_to_items
@@ -389,6 +340,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         return sum + finalWithCashback;
       }
     }, 0);
+
+    // Aplicar descuento de cashback si existe
+    return order.cashback_applied && order.cashback_amount_used
+      ? Math.max(0, subtotal - order.cashback_amount_used)
+      : subtotal;
   };
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -644,17 +600,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                  </div>
 
                  {/* Información de Cashback Aplicado */}
-                 {cashbackInfo && (
+                 {order.cashback_applied && order.cashback_amount_used && (
                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                      <div className="flex items-center gap-2 mb-2">
                        <DollarSign className="h-4 w-4 text-green-600" />
                        <span className="text-sm font-medium text-green-800">Cashback Aplicado</span>
                      </div>
                      <p className="text-sm text-green-700">
-                       Descuento de <span className="font-medium">-${cashbackInfo.amount.toLocaleString('es-CO', {
+                       Descuento de <span className="font-medium">-${order.cashback_amount_used.toLocaleString('es-CO', {
                          minimumFractionDigits: 2,
                          maximumFractionDigits: 2
-                       })}</span> aplicado desde {cashbackInfo.quoteName}
+                       })}</span> aplicado desde cotización previa
                      </p>
                    </div>
                  )}
