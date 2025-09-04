@@ -33,6 +33,12 @@ interface QuoteItem {
   item_type?: string;
   unit_cost_price?: number;
   profit_margin_rate?: number;
+  service_types?: {
+    image_url?: string | null;
+    item_type?: string;
+    cost_price?: number;
+    base_price?: number;
+  };
 }
 
 interface ConvertQuoteResult {
@@ -311,10 +317,16 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   // Function to calculate the correct price for an item
   const calculateItemCorrectPrice = (item: QuoteItem) => {
+    console.log('QuoteDetails - Calculating price for item:', item.name, {
+      item_type: item.item_type,
+      unit_price: item.unit_price,
+      service_types: item.service_types
+    });
+
     if (isProduct(item)) {
       // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
       const costPrice = item.unit_cost_price || 0;
-      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const purchaseVAT = costPrice * 0.16; // 16% purchase VAT (matching other components)
       const costWithPurchaseVAT = costPrice + purchaseVAT;
       
       const profitMargin = item.profit_margin_rate || 30;
@@ -331,18 +343,32 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       
       return baseTotal + cashback;
     } else {
-      // For services: base price + VAT + cashback
-      const basePrice = item.unit_price;
-      const vat = basePrice * (item.vat_rate / 100);
+      // For services: use base_price from service_types, or fallback to unit_price
+      const basePrice = item.service_types?.base_price || item.service_types?.cost_price || item.unit_price || 0;
+      
+      if (basePrice === 0) {
+        console.warn('Service has no price set:', item.name);
+        return 0;
+      }
+      
+      const vat = basePrice * ((item.vat_rate || 0) / 100);
       const baseTotal = basePrice + vat;
       
-      // Apply cashback if settings are available
+      // Apply cashback if settings are available and cashback is enabled for items
       let cashback = 0;
-      if (rewardSettings) {
+      if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
         cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
       }
       
-      return baseTotal + cashback;
+      const finalPrice = baseTotal + cashback;
+      console.log('QuoteDetails - Service price calculation result:', {
+        basePrice,
+        vat,
+        baseTotal,
+        cashback,
+        finalPrice
+      });
+      return finalPrice;
     }
   };
 
