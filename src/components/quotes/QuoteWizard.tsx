@@ -5,6 +5,7 @@ import { toast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { CategoryServiceSelection } from './CategoryServiceSelection';
 import { SimpleDiagnosticFlow } from './SimpleDiagnosticFlow';
+import { QuoteTotalsSummary } from './QuoteTotalsSummary';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -774,39 +775,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
               {/* Totales generales - solo si hay artículos */}
               {quoteItems.length > 0 && (
-                <div className="mt-4 p-4 bg-primary/10 rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal General:</span>
-                    <span>{formatCurrency(quoteItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-green-600">
-                    <span>Total IVAs:</span>
-                    <span>+{formatCurrency(quoteItems.reduce((sum, item) => {
-                      if (item.taxes && item.taxes.length > 0) {
-                        return sum + item.taxes.filter(tax => tax.tax_type === 'iva').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                      }
-                      return sum + item.vat_amount;
-                    }, 0))}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-red-600">
-                    <span>Total Retenciones:</span>
-                    <span>-{formatCurrency(quoteItems.reduce((sum, item) => {
-                      if (item.taxes && item.taxes.length > 0) {
-                        return sum + item.taxes.filter(tax => tax.tax_type === 'retencion').reduce((taxSum, tax) => taxSum + tax.tax_amount, 0);
-                      }
-                      return sum + item.withholding_amount;
-                    }, 0))}</span>
-                  </div>
-                  
-                  <Separator className="my-2" />
-                  
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-medium">Total Final:</span>
-                    <span className="text-xl font-bold text-primary">{formatCurrency(calculateTotal())}</span>
-                  </div>
-                </div>
+                <QuoteTotalsSummary selectedItems={quoteItems} clientId={selectedClient?.id} />
               )}
 
               {/* Mensaje cuando no hay artículos */}

@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Package, Search } from 'lucide-react';
+import { QuoteTotalsSummary } from './QuoteTotalsSummary';
 
 interface ServiceType {
   id: string;
@@ -725,12 +726,8 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
 
             <Separator className="my-4" />
             
-            <div className="flex justify-between items-center font-medium">
-              <span>Total:</span>
-              <span className="text-lg">
-                {formatCurrency(selectedItems.reduce((sum, item) => sum + item.total, 0))}
-              </span>
-            </div>
+            {/* Resumen de totales */}
+            <QuoteTotalsSummary selectedItems={selectedItems} />
           </CardContent>
         </Card>
       )}
