@@ -683,33 +683,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                     </p>
                   </div>
                 )}
-
-                {/* Convertir a orden */}
-                {quote.status === 'aceptada' && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button className="w-full" disabled={loading}>
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Convertir a Orden
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Convertir a orden de trabajo?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esto creará una nueva orden de trabajo basada en esta cotización. 
-                          El cliente debe existir en el sistema para poder proceder.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={convertToOrder}>
-                          Convertir a Orden
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
               </CardContent>
             </Card>
           )}
