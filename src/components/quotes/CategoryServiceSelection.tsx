@@ -64,9 +64,17 @@ interface CategoryServiceSelectionProps {
   selectedItems: QuoteItem[];
   onItemsChange: (items: QuoteItem[]) => void;
   simplifiedView?: boolean;
+  clientId?: string;
+  clientEmail?: string;
 }
 
-export function CategoryServiceSelection({ selectedItems, onItemsChange, simplifiedView = false }: CategoryServiceSelectionProps) {
+export function CategoryServiceSelection({ 
+  selectedItems, 
+  onItemsChange, 
+  simplifiedView = false,
+  clientId,
+  clientEmail
+}: CategoryServiceSelectionProps) {
   const { profile } = useAuth();
   const { settings: rewardSettings } = useRewardSettings();
   const [services, setServices] = useState<ServiceType[]>([]);
@@ -756,7 +764,11 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
             <Separator className="my-4" />
             
             {/* Resumen de totales */}
-            <QuoteTotalsSummary selectedItems={selectedItems} />
+            <QuoteTotalsSummary 
+              selectedItems={selectedItems} 
+              clientId={clientId}
+              clientEmail={clientEmail}
+            />
           </CardContent>
         </Card>
       )}

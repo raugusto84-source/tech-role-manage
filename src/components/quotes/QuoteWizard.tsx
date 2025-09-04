@@ -72,6 +72,16 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     marketing_channel: 'web' as const,
     sale_type: 'servicio' as const,
   });
+  
+  // Cashback state
+  const [cashbackApplied, setCashbackApplied] = useState(false);
+  const [cashbackAmount, setCashbackAmount] = useState(0);
+
+  // Handle cashback change callback
+  const handleCashbackChange = (applied: boolean, amount: number) => {
+    setCashbackApplied(applied);
+    setCashbackAmount(amount);
+  };
 
   // Cargar clientes
   useEffect(() => {
@@ -185,13 +195,15 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         service_description: quoteItems.length > 0 ? 
           `Cotización para ${quoteItems.map(item => item.name).join(', ')}` : 
           'Cotización personalizada',
-        estimated_amount: calculateTotal(),
+        estimated_amount: calculateTotal() - cashbackAmount, // Subtract cashback from total
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
         sale_type: quoteDetails.sale_type,
         status: initialStatus,
         created_by: (profile as any).user_id || undefined,
         assigned_to: (profile as any).user_id || undefined,
+        cashback_applied: cashbackApplied,
+        cashback_amount_used: cashbackAmount,
       };
 
       console.log('Quote data:', quoteData);
@@ -281,6 +293,50 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
               }
             }
           }
+        }
+      }
+
+      // Process cashback transaction if cashback was applied
+      if (cashbackApplied && cashbackAmount > 0 && selectedClient) {
+        try {
+          // Create reward transaction record
+          const { error: transactionError } = await supabase
+            .from('reward_transactions')
+            .insert({
+              client_id: selectedClient.id,
+              transaction_type: 'redeemed',
+              amount: -cashbackAmount, // Negative amount for redemption
+              description: `Cashback aplicado en cotización ${quoteResult?.id}`,
+              related_quote_id: quoteResult?.id
+            });
+
+          if (transactionError) {
+            console.error('Error creating cashback transaction:', transactionError);
+            toast({
+              title: "Advertencia",
+              description: "La cotización se creó pero hubo un error al procesar el cashback",
+              variant: "destructive",
+            });
+          } else {
+            // Update client total cashback
+            const { error: updateError } = await supabase
+              .from('client_rewards')
+              .update({ 
+                total_cashback: Math.max(0, (await supabase
+                  .from('client_rewards')
+                  .select('total_cashback')
+                  .eq('client_id', selectedClient.id)
+                  .single()
+                ).data?.total_cashback || 0) - cashbackAmount
+              })
+              .eq('client_id', selectedClient.id);
+
+            if (updateError) {
+              console.error('Error updating client cashback:', updateError);
+            }
+          }
+        } catch (error) {
+          console.error('Error processing cashback transaction:', error);
         }
       }
 
@@ -581,6 +637,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                   setQuoteItems(items);
                 }}
                 simplifiedView={true}
+                clientId={selectedClient?.id}
+                clientEmail={selectedClient?.email}
               />
             </div>
           )}
@@ -796,7 +854,12 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
               {/* Totales generales - solo si hay artículos */}
               {quoteItems.length > 0 && (
-                <QuoteTotalsSummary selectedItems={quoteItems} clientId={selectedClient?.id} />
+                <QuoteTotalsSummary 
+                  selectedItems={quoteItems} 
+                  clientId={selectedClient?.id} 
+                  clientEmail={selectedClient?.email}
+                  onCashbackChange={handleCashbackChange}
+                />
               )}
 
               {/* Mensaje cuando no hay artículos */}

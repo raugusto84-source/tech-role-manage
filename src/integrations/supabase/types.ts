@@ -2409,6 +2409,8 @@ export type Database = {
           assigned_technician: string | null
           assignment_reason: string | null
           average_service_time: number | null
+          cashback_amount_used: number | null
+          cashback_applied: boolean | null
           client_approval: boolean | null
           client_approval_notes: string | null
           client_approved_at: string | null
@@ -2443,6 +2445,8 @@ export type Database = {
           assigned_technician?: string | null
           assignment_reason?: string | null
           average_service_time?: number | null
+          cashback_amount_used?: number | null
+          cashback_applied?: boolean | null
           client_approval?: boolean | null
           client_approval_notes?: string | null
           client_approved_at?: string | null
@@ -2477,6 +2481,8 @@ export type Database = {
           assigned_technician?: string | null
           assignment_reason?: string | null
           average_service_time?: number | null
+          cashback_amount_used?: number | null
+          cashback_applied?: boolean | null
           client_approval?: boolean | null
           client_approval_notes?: string | null
           client_approved_at?: string | null
@@ -3444,6 +3450,8 @@ export type Database = {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
           assigned_to: string | null
+          cashback_amount_used: number | null
+          cashback_applied: boolean | null
           client_company: string | null
           client_email: string
           client_name: string
@@ -3470,6 +3478,8 @@ export type Database = {
         Insert: {
           account_type?: Database["public"]["Enums"]["account_type"]
           assigned_to?: string | null
+          cashback_amount_used?: number | null
+          cashback_applied?: boolean | null
           client_company?: string | null
           client_email: string
           client_name: string
@@ -3496,6 +3506,8 @@ export type Database = {
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
           assigned_to?: string | null
+          cashback_amount_used?: number | null
+          cashback_applied?: boolean | null
           client_company?: string | null
           client_email?: string
           client_name?: string
