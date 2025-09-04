@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -25,6 +26,7 @@ interface SimpleOrderApprovalProps {
 
 export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalComplete }: SimpleOrderApprovalProps) {
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const signatureRef = useRef<SignatureCanvas>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -56,12 +58,78 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
+  // Calcular precio correcto para un item individual
+  const calculateItemCorrectPrice = (item: any): number => {
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (item.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return finalWithCashback;
+    }
+  };
+
   const calculateTotals = () => {
-    const subtotal = orderItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
-    const vatTotal = orderItems.reduce((sum, item) => sum + (item.vat_amount || 0), 0);
-    const total = orderItems.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+    const total = orderItems.reduce((sum, item) => sum + calculateItemCorrectPrice(item), 0);
     
-    return { subtotal, vatTotal, total };
+    // Calcular subtotal y IVA basado en el total correcto
+    let subtotalSum = 0;
+    let vatSum = 0;
+    
+    orderItems.forEach(item => {
+      const quantity = item.quantity || 1;
+      const salesVatRate = item.vat_rate || 16;
+      const cashbackPercent = rewardSettings?.apply_cashback_to_items
+        ? (rewardSettings.general_cashback_percent || 0)
+        : 0;
+
+      if (item.item_type === 'servicio') {
+        const basePrice = (item.unit_base_price || 0) * quantity;
+        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        const vatAmount = (finalWithCashback - basePrice * (1 + cashbackPercent / 100));
+        
+        subtotalSum += finalWithCashback - vatAmount;
+        vatSum += vatAmount;
+      } else {
+        const purchaseVatRate = 16;
+        const baseCost = (item.unit_cost_price || 0) * quantity;
+        const profitMargin = item.profit_margin_rate || 20;
+        
+        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+        const vatAmount = (finalWithCashback - afterMargin * (1 + cashbackPercent / 100));
+        
+        subtotalSum += finalWithCashback - vatAmount;
+        vatSum += vatAmount;
+      }
+    });
+    
+    return { 
+      subtotal: subtotalSum, 
+      vatTotal: vatSum, 
+      total: total 
+    };
   };
 
   const { subtotal, vatTotal, total } = calculateTotals();
@@ -449,11 +517,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <p className="text-sm text-muted-foreground">{item.service_description}</p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      Cantidad: {item.quantity} | Precio unitario: ${(item.unit_base_price || 0).toLocaleString()}
+                      Cantidad: {item.quantity} | Precio unitario: ${(calculateItemCorrectPrice(item) / (item.quantity || 1)).toLocaleString()}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">${(item.total_amount || 0).toLocaleString()}</p>
+                    <p className="font-medium">${calculateItemCorrectPrice(item).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
