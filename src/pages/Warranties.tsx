@@ -70,6 +70,8 @@ export default function Warranties() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedClaim, setSelectedClaim] = useState<WarrantyClaim | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState('');
+  const [serialSearch, setSerialSearch] = useState('');
+  const [serialResults, setSerialResults] = useState<any[]>([]);
 
   useEffect(() => {
     loadWarrantyData();
@@ -79,43 +81,33 @@ export default function Warranties() {
     try {
       setLoading(true);
 
-      // Load warranty claims with related data
-      const { data: claimsData, error } = await supabase
-        .from('warranty_claims')
-        .select(`
-          *,
-          orders (
-            order_number,
-            clients (name)
-          ),
-          order_items (
-            service_name,
-            warranty_end_date
-          )
-        `)
+      // Load warranties summary data
+      const { data: warrantyData, error } = await supabase
+        .from('warranties_summary')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const processedClaims = claimsData.map((claim: any) => {
-        const warrantyEndDate = new Date(claim.order_items.warranty_end_date);
+      const processedClaims: WarrantyClaim[] = warrantyData.map((warranty: any) => {
+        const warrantyEndDate = new Date(warranty.warranty_end_date);
         const now = new Date();
         const daysRemaining = Math.ceil((warrantyEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
         return {
-          id: claim.id,
-          order_id: claim.order_id,
-          client_id: claim.client_id,
-          order_item_id: claim.order_item_id,
-          claim_reason: claim.claim_reason,
-          claim_status: claim.claim_status,
-          created_at: claim.created_at,
-          resolved_at: claim.resolved_at,
-          resolution_notes: claim.resolution_notes,
-          order_number: claim.orders.order_number,
-          client_name: claim.orders.clients.name,
-          service_name: claim.order_items.service_name,
-          warranty_end_date: claim.order_items.warranty_end_date,
+          id: warranty.id,
+          order_id: warranty.order_id,
+          client_id: warranty.order_id, // Using order_id as fallback
+          order_item_id: warranty.id,
+          claim_reason: 'Garantía registrada',
+          claim_status: (warranty.warranty_status === 'active' ? 'approved' : 'pending') as 'pending' | 'approved' | 'rejected',
+          created_at: warranty.created_at,
+          resolved_at: null,
+          resolution_notes: null,
+          order_number: `ORD-${warranty.order_id.slice(-8).toUpperCase()}`,
+          client_name: warranty.client_name,
+          service_name: warranty.service_name,
+          warranty_end_date: warranty.warranty_end_date,
           days_remaining: daysRemaining,
         };
       });
@@ -147,14 +139,54 @@ export default function Warranties() {
     }
   };
 
+  const searchBySerialNumber = async () => {
+    if (!serialSearch.trim()) {
+      setSerialResults([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select(`
+          id,
+          order_id,
+          service_name,
+          serial_number,
+          supplier_name,
+          warranty_start_date,
+          warranty_end_date,
+          orders!inner (
+            id,
+            order_number,
+            clients (
+              name
+            )
+          )
+        `)
+        .ilike('serial_number', `%${serialSearch}%`)
+        .not('serial_number', 'is', null);
+
+      if (error) throw error;
+
+      setSerialResults(data || []);
+    } catch (error) {
+      console.error('Error searching by serial number:', error);
+      toast({
+        title: "Error",
+        description: "Error al buscar por número de serie",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleClaimAction = async (claimId: string, action: 'approved' | 'rejected') => {
     try {
       const { error } = await supabase
-        .from('warranty_claims')
+        .from('warranties_summary')
         .update({
-          claim_status: action,
-          resolved_at: new Date().toISOString(),
-          resolution_notes: resolutionNotes || `Reclamación ${action === 'approved' ? 'aprobada' : 'rechazada'} por el administrador`,
+          warranty_status: action === 'approved' ? 'active' : 'expired',
+          updated_at: new Date().toISOString(),
         })
         .eq('id', claimId);
 
@@ -162,17 +194,17 @@ export default function Warranties() {
 
       toast({
         title: "Éxito",
-        description: `Reclamación ${action === 'approved' ? 'aprobada' : 'rechazada'} correctamente`,
+        description: `Garantía ${action === 'approved' ? 'activada' : 'desactivada'} correctamente`,
       });
 
       setSelectedClaim(null);
       setResolutionNotes('');
       loadWarrantyData();
     } catch (error) {
-      console.error('Error updating claim:', error);
+      console.error('Error updating warranty:', error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar la reclamación",
+        description: "No se pudo actualizar la garantía",
         variant: "destructive"
       });
     }
@@ -297,39 +329,117 @@ export default function Warranties() {
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Filters and Serial Search */}
         <Card className="mb-6">
           <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por orden, cliente o servicio..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+            <div className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por orden, cliente o servicio..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                
+                <div className="w-full md:w-48">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="pending">Pendiente</SelectItem>
+                      <SelectItem value="approved">Aprobada</SelectItem>
+                      <SelectItem value="rejected">Rechazada</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-              
-              <div className="w-full md:w-48">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="pending">Pendiente</SelectItem>
-                    <SelectItem value="approved">Aprobada</SelectItem>
-                    <SelectItem value="rejected">Rechazada</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              {/* Serial Number Search */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium mb-2">Búsqueda por Número de Serie</h3>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Ingrese número de serie..."
+                      value={serialSearch}
+                      onChange={(e) => setSerialSearch(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && searchBySerialNumber()}
+                    />
+                  </div>
+                  <Button onClick={searchBySerialNumber}>
+                    <Search className="h-4 w-4 mr-2" />
+                    Buscar
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {/* Serial Search Results */}
+        {serialResults.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Resultados de Búsqueda por Número de Serie</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número de Serie</TableHead>
+                    <TableHead>Artículo</TableHead>
+                    <TableHead>Proveedor</TableHead>
+                    <TableHead>Orden</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Garantía</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {serialResults.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-sm bg-muted/50">
+                        {item.serial_number}
+                      </TableCell>
+                      <TableCell>{item.service_name}</TableCell>
+                      <TableCell>{item.supplier_name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="link"
+                          className="p-0 h-auto font-medium text-primary"
+                          onClick={() => openOrder(item.order_id)}
+                        >
+                          {item.orders.order_number}
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </Button>
+                      </TableCell>
+                      <TableCell>{item.orders.clients?.name || 'N/A'}</TableCell>
+                      <TableCell>
+                        {item.warranty_end_date ? (
+                          <div className="text-sm">
+                            <div>Hasta: {new Date(item.warranty_end_date).toLocaleDateString()}</div>
+                            {getWarrantyStatusBadge(
+                              Math.ceil((new Date(item.warranty_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="outline">Sin garantía</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Claims Table */}
         <Card>
