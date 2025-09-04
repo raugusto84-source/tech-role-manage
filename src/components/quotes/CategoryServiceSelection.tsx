@@ -54,6 +54,10 @@ interface QuoteItem {
   total: number;
   is_custom: boolean;
   image_url?: string | null;
+  cost_price?: number;
+  base_price?: number;
+  profit_margin_rate?: number;
+  item_type?: string;
 }
 
 interface CategoryServiceSelectionProps {
@@ -144,7 +148,7 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
 
   // Function to determine if an item is a product
   const isProduct = (service: ServiceType): boolean => {
-    return service.item_type === 'producto' || (service.profit_margin_tiers && service.profit_margin_tiers.length > 0);
+    return service.item_type === 'articulo' || (service.profit_margin_tiers && service.profit_margin_tiers.length > 0);
   };
 
   // Función para calcular el precio correcto según el tipo de servicio
@@ -210,7 +214,11 @@ export function CategoryServiceSelection({ selectedItems, onItemsChange, simplif
       withholding_type: '',
       total: calculatedPrice,
       is_custom: false,
-      image_url: service.image_url
+      image_url: service.image_url,
+      cost_price: service.cost_price,
+      base_price: service.base_price,
+      profit_margin_rate: service.profit_margin_tiers?.[0]?.margin || 30,
+      item_type: service.item_type
     };
 
     onItemsChange([...selectedItems, newItem]);
