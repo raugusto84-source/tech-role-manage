@@ -299,18 +299,20 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
       if (item.item_type === 'servicio') {
         // Para servicios: precio base + IVA + cashback
-        const basePrice = item.unit_price * item.quantity;
+        const basePrice = (item.unit_price || 0) * (item.quantity || 1);
         const afterSalesVat = basePrice * (1 + salesVatRate / 100);
         const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
         return sum + finalWithCashback;
       } else {
-        // Para artículos: utilizar SIEMPRE cost_price como costo base
+        // Para artículos: usar cost_price si está disponible, sino usar unit_price
         const purchaseVatRate = 16;
-        const baseCost = (item.cost_price || 0) * item.quantity;
+        const baseCost = ((item.cost_price || item.unit_price || 0) * (item.quantity || 1));
         
-        const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
-          ? item.profit_margin_tiers[0].margin 
-          : 20;
+        // Si no hay profit_margin_tiers, usar margen por defecto de 20%
+        let marginPercent = 20;
+        if (item.profit_margin_tiers && Array.isArray(item.profit_margin_tiers) && item.profit_margin_tiers.length > 0) {
+          marginPercent = item.profit_margin_tiers[0].margin || 20;
+        }
         
         const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
         const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
