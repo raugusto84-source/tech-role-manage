@@ -638,9 +638,14 @@ export default function Finance() {
       const amount = Number(purchaseAmount);
       if (!purchaseSupplier || !purchaseConcept || !amount) throw new Error("Completa todos los campos obligatorios");
 
-      // Validar que si no tiene factura, solo se puede pagar con cuenta no fiscal
+      // Validar que si no tiene factura, solo se puede pagar desde cuenta no fiscal
       if (!purchaseHasInvoice && purchaseAccount === 'fiscal') {
         throw new Error("Sin factura solo se puede pagar desde cuenta no fiscal");
+      }
+
+      // Si es fiscal con factura, validar número de factura
+      if (purchaseHasInvoice && purchaseAccount === 'fiscal' && !purchaseInvoiceNumber.trim()) {
+        throw new Error("Debe ingresar un número de factura para compras fiscales");
       }
 
       // Calcular IVA si es cuenta fiscal
@@ -663,6 +668,8 @@ export default function Finance() {
         vat_rate: vatRate || null,
         vat_amount: vatAmount || null,
         taxable_amount: taxableAmount || null,
+        has_invoice: purchaseAccount === 'fiscal' ? true : purchaseHasInvoice,
+        invoice_number: purchaseAccount === 'fiscal' ? purchaseInvoiceNumber.trim() : (purchaseHasInvoice ? purchaseInvoiceNumber.trim() : null),
         status: "pagado"
       } as any).select().single();
       if (expenseError) throw expenseError;
