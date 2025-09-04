@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,9 @@ interface QuoteItem {
   is_custom: boolean;
   image_url?: string | null;
   taxes?: any[];
+  item_type?: string;
+  unit_cost_price?: number;
+  profit_margin_rate?: number;
 }
 
 interface ConvertQuoteResult {
@@ -70,6 +74,7 @@ interface QuoteDetailsProps {
  */
 export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProps) {
   const { profile } = useAuth();
+  const { settings: rewardSettings } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [newStatus, setNewStatus] = useState<'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion'>(quote.status);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
@@ -79,12 +84,12 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   useEffect(() => {
     const loadQuoteDetails = async () => {
       try {
-        // Load quote items with service type images
+        // Load quote items with service type images and pricing info
         const { data: items, error: itemsError } = await supabase
           .from('quote_items')
           .select(`
             *,
-            service_types!left(image_url)
+            service_types!left(image_url, item_type, cost_price, base_price)
           `)
           .eq('quote_id', quote.id)
           .order('created_at', { ascending: true });
@@ -92,10 +97,13 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         if (itemsError) {
           console.error('Error loading quote items:', itemsError);
         } else {
-          // Map the items to include image_url from service_types
+          // Map the items to include image_url and pricing info from service_types
           const mappedItems = (items || []).map(item => ({
             ...item,
-            image_url: item.service_types?.image_url || null
+            image_url: item.service_types?.image_url || null,
+            item_type: item.service_types?.item_type || 'servicio',
+            unit_cost_price: item.service_types?.cost_price || 0,
+            profit_margin_rate: 30 // Default margin for products
           }));
           setQuoteItems(mappedItems);
         }
@@ -296,13 +304,83 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
   const StatusIcon = getStatusIcon(quote.status);
 
-  // Calculate totals from quote items
+  // Function to determine if an item is a product
+  const isProduct = (item: QuoteItem): boolean => {
+    return item.item_type === 'producto' || (item.profit_margin_rate && item.profit_margin_rate > 0);
+  };
+
+  // Function to calculate the correct price for an item
+  const calculateItemCorrectPrice = (item: QuoteItem) => {
+    if (isProduct(item)) {
+      // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
+      const costPrice = item.unit_cost_price || 0;
+      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const costWithPurchaseVAT = costPrice + purchaseVAT;
+      
+      const profitMargin = item.profit_margin_rate || 30;
+      const priceWithMargin = costWithPurchaseVAT * (1 + profitMargin / 100);
+      
+      const salesVAT = priceWithMargin * (item.vat_rate / 100);
+      const baseTotal = priceWithMargin + salesVAT;
+      
+      // Apply cashback if settings are available and cashback is enabled for items
+      let cashback = 0;
+      if (rewardSettings?.apply_cashback_to_items) {
+        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
+      }
+      
+      return baseTotal + cashback;
+    } else {
+      // For services: base price + VAT + cashback
+      const basePrice = item.unit_price;
+      const vat = basePrice * (item.vat_rate / 100);
+      const baseTotal = basePrice + vat;
+      
+      // Apply cashback if settings are available
+      let cashback = 0;
+      if (rewardSettings) {
+        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
+      }
+      
+      return baseTotal + cashback;
+    }
+  };
+
+  // Calculate totals using correct pricing
   const calculateTotals = () => {
-    const subtotal = quoteItems.reduce((sum, item) => sum + item.subtotal, 0);
-    const totalVat = quoteItems.reduce((sum, item) => sum + item.vat_amount, 0);
-    const totalWithholdings = quoteItems.reduce((sum, item) => sum + item.withholding_amount, 0);
-    const total = quoteItems.reduce((sum, item) => sum + item.total, 0);
-    
+    let subtotal = 0;
+    let totalVat = 0;
+    let totalWithholdings = 0;
+    let total = 0;
+
+    quoteItems.forEach(item => {
+      const correctPrice = calculateItemCorrectPrice(item);
+      const itemSubtotal = correctPrice * item.quantity;
+      
+      if (isProduct(item)) {
+        // For products, VAT is included in the correct price
+        const costPrice = item.unit_cost_price || 0;
+        const purchaseVAT = costPrice * 0.19;
+        const costWithPurchaseVAT = costPrice + purchaseVAT;
+        const profitMargin = item.profit_margin_rate || 30;
+        const priceWithMargin = costWithPurchaseVAT * (1 + profitMargin / 100);
+        const salesVAT = priceWithMargin * (item.vat_rate / 100);
+        
+        subtotal += (priceWithMargin * item.quantity);
+        totalVat += (salesVAT * item.quantity);
+      } else {
+        // For services
+        const basePrice = item.unit_price * item.quantity;
+        const vat = basePrice * (item.vat_rate / 100);
+        
+        subtotal += basePrice;
+        totalVat += vat;
+      }
+      
+      totalWithholdings += item.withholding_amount * item.quantity;
+      total += itemSubtotal;
+    });
+
     return { subtotal, totalVat, totalWithholdings, total };
   };
 
@@ -415,9 +493,9 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                                 )}
                               </div>
                             </TableCell>
-                          <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
+                           <TableCell className="text-center">{item.quantity}</TableCell>
+                           <TableCell className="text-right">{formatCurrency(calculateItemCorrectPrice(item))}</TableCell>
+                           <TableCell className="text-right">{formatCurrency(calculateItemCorrectPrice(item) * item.quantity)}</TableCell>
                           <TableCell className="text-right">
                             <div className="space-y-1">
                               {item.taxes && item.taxes.length > 0 ? (
@@ -444,7 +522,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(item.total)}</TableCell>
+                          <TableCell className="text-right font-medium">{formatCurrency(calculateItemCorrectPrice(item) * item.quantity)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
