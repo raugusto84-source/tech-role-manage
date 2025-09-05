@@ -621,11 +621,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     try {
       console.log('Auto-assigning optimal fleet for service:', serviceTypeId);
       
-      // Solo ejecutar para administrador o vendedor
-      if (profile?.role !== 'administrador' && profile?.role !== 'vendedor') {
-        console.log('Fleet auto-assignment only for admin/sales users');
-        return;
-      }
+      // Ejecutar para todos los usuarios - la selección automática debe funcionar siempre
+      // Solo los administradores/vendedores pueden cambiar manualmente después
 
       // Obtener sugerencias de flotilla
       const { data: suggestions, error } = await supabase
@@ -640,11 +637,20 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       }
 
       if (!suggestions || suggestions.length === 0) {
-        console.log('No fleet suggestions available');
+        console.log('No fleet suggestions available for service');
+        
+        // Mostrar mensaje informativo solo para staff
+        if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+          toast({
+            title: "Sin flotillas disponibles",
+            description: "No hay flotillas configuradas para este tipo de servicio",
+            variant: "destructive"
+          });
+        }
         return;
       }
 
-      // Seleccionar la mejor flotilla
+      // Seleccionar la mejor flotilla (la primera en el ranking)
       const bestFleet = suggestions[0];
       console.log('Best fleet selected:', bestFleet);
       
@@ -655,12 +661,17 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       setSelectedFleetName(bestFleet.fleet_name);
       setFleetSuggestionReason(bestFleet.suggestion_reason);
       
-      // Ahora asignar el mejor técnico de esa flotilla
+      // Asignar el mejor técnico de esa flotilla
       await assignBestTechnicianFromFleet(bestFleet.fleet_group_id, serviceTypeId);
       
+      // Mostrar notificación de asignación automática
+      const message = profile?.role === 'cliente' 
+        ? `Se ha asignado la flotilla ${bestFleet.fleet_name} para tu servicio`
+        : `${bestFleet.fleet_name} - ${bestFleet.suggestion_reason}`;
+        
       toast({
         title: "Flotilla asignada automáticamente",
-        description: `${bestFleet.fleet_name} - ${bestFleet.suggestion_reason}`,
+        description: message,
       });
 
     } catch (error) {
@@ -670,10 +681,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const assignBestTechnicianFromFleet = async (fleetId: string, serviceTypeId: string) => {
     try {
-      // For now, just get the best technician overall since fleet_assignments doesn't exist yet
-      // This will be improved once the fleet assignments table is properly created
+      // Por ahora, usar el mejor técnico general disponible
+      // TODO: Implementar asignación específica por flotilla una vez que fleet_assignments esté configurada
       
-      // Get the best technician overall for now
       const { data: techSuggestions, error: techError } = await supabase
         .rpc('suggest_optimal_technician', {
           p_service_type_id: serviceTypeId,
@@ -685,17 +695,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      // Select the best technician
-      if (techSuggestions.length > 0) {
-        const bestTechnician = techSuggestions[0];
-        setFormData(prev => ({ 
-          ...prev, 
-          assigned_technician: bestTechnician.technician_id
-        }));
-        setFleetSuggestionReason(bestTechnician.suggestion_reason);
-        
-        console.log('Best technician from fleet assigned:', bestTechnician);
-      }
+      const bestTechnician = techSuggestions[0];
+      setFormData(prev => ({ 
+        ...prev, 
+        assigned_technician: bestTechnician.technician_id
+      }));
+      setFleetSuggestionReason(bestTechnician.suggestion_reason);
+      
+      console.log('Best technician assigned for fleet:', fleetId, bestTechnician);
 
     } catch (error) {
       console.error('Error assigning technician from fleet:', error);
