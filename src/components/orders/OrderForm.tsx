@@ -669,25 +669,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const assignBestTechnicianFromFleet = async (fleetId: string, serviceTypeId: string) => {
     try {
-      // Obtener técnicos de la flotilla
-      const { data: fleetTechnicians, error: fleetError } = await supabase
-        .from('fleet_assignments')
-        .select(`
-          technician_id,
-          profiles!inner(full_name)
-        `)
-        .eq('fleet_group_id', fleetId)
-        .eq('is_active', true);
-
-      if (fleetError || !fleetTechnicians?.length) {
-        console.log('No technicians found in fleet');
-        return;
-      }
-
-      // Usar la función existente de sugerencia de técnicos pero solo para los de la flotilla
-      const technicianIds = fleetTechnicians.map(ft => ft.technician_id);
+      // For now, just get the best technician overall since fleet_assignments doesn't exist yet
+      // This will be improved once the fleet assignments table is properly created
       
-      // Obtener el mejor técnico de la flotilla usando suggest_optimal_technician
+      // Get the best technician overall for now
       const { data: techSuggestions, error: techError } = await supabase
         .rpc('suggest_optimal_technician', {
           p_service_type_id: serviceTypeId,
@@ -699,17 +684,14 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      // Filtrar solo técnicos de la flotilla y seleccionar el mejor
-      const fleetTechSuggestions = techSuggestions.filter(ts => 
-        technicianIds.includes(ts.technician_id)
-      );
-
-      if (fleetTechSuggestions.length > 0) {
-        const bestTechnician = fleetTechSuggestions[0];
+      // Select the best technician
+      if (techSuggestions.length > 0) {
+        const bestTechnician = techSuggestions[0];
         setFormData(prev => ({ 
           ...prev, 
           assigned_technician: bestTechnician.technician_id
         }));
+        setFleetSuggestionReason(bestTechnician.suggestion_reason);
         
         console.log('Best technician from fleet assigned:', bestTechnician);
       }
@@ -757,7 +739,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             ...prev, 
             assigned_technician: bestTechnician.technician_id 
           }));
-          setSuggestionReason(bestTechnician.suggestion_reason);
+          setFleetSuggestionReason(bestTechnician.suggestion_reason);
           
           // Notificar sobre la asignación automática
           toast({
@@ -809,7 +791,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           ...prev, 
           assigned_technician: bestTechnician.technician_id 
         }));
-        setSuggestionReason(bestTechnician.suggestion_reason);
+        setFleetSuggestionReason(bestTechnician.suggestion_reason);
         
         // Notificar al cliente sobre la asignación
         toast({
@@ -831,7 +813,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const handleTechnicianSuggestionSelect = (technicianId: string, reason: string) => {
     setFormData(prev => ({ ...prev, assigned_technician: technicianId }));
-    setSuggestionReason(reason);
+    setFleetSuggestionReason(reason);
     
     // Encontrar el nombre del técnico para el toast
     const selectedTechnician = technicians.find(t => t.user_id === technicianId);
@@ -991,7 +973,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         estimated_cost: pricing.totalAmount,
         average_service_time: totalHours,
         assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
-        assignment_reason: suggestionReason || null,
+        assignment_reason: fleetSuggestionReason || null,
         created_by: user?.id,
         status: initialStatus,
         is_home_service: formData.is_home_service,
@@ -1341,20 +1323,25 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 />
               )}
 
-              {/* Sugerencias de Técnicos para Staff */}
-              {showTechnicianSuggestions && orderItems.length > 0 && (profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+              {/* Fleet Suggestions for Staff */}
+              {showFleetSuggestions && orderItems.length > 0 && (profile?.role === 'administrador' || profile?.role === 'vendedor') && (
                 <div className="mt-4">
-                  <TechnicianSuggestion
+                  <FleetSuggestion
                     serviceTypeId={orderItems[0].service_type_id}
                     deliveryDate={formData.delivery_date}
-                    onTechnicianSelect={handleTechnicianSuggestionSelect}
-                    selectedTechnicianId={formData.assigned_technician}
+                    onFleetSelect={(fleetId, fleetName, reason) => {
+                      setFormData(prev => ({ ...prev, assigned_fleet: fleetId }));
+                      setSelectedFleetName(fleetName);
+                      setFleetSuggestionReason(reason);
+                      setShowFleetSuggestions(false);
+                    }}
+                    selectedFleetId={formData.assigned_fleet}
                   />
                 </div>
               )}
 
               {/* Información del Técnico Asignado Automáticamente */}
-              {formData.assigned_technician && suggestionReason && (
+              {formData.assigned_technician && fleetSuggestionReason && (
                 <div className="mt-4 p-4 bg-success/10 border border-success/20 rounded-lg">
                   <div className="flex items-start gap-2">
                     <div className="h-5 w-5 rounded-full bg-success flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -1368,7 +1355,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                         {technicians.find(t => t.user_id === formData.assigned_technician)?.full_name}
                       </p>
                       <p className="text-xs text-success-foreground/70 mt-1">
-                        {suggestionReason}
+                        {fleetSuggestionReason}
                       </p>
                     </div>
                     {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
@@ -1376,7 +1363,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setShowTechnicianSuggestions(true)}
+                        onClick={() => setShowFleetSuggestions(true)}
                         className="text-success-foreground hover:bg-success/20"
                       >
                         Cambiar
@@ -1412,9 +1399,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     </div>
                     
                     {/* Mostrar razón de la asignación si está disponible */}
-                    {suggestionReason && (
+                    {fleetSuggestionReason && (
                       <div className="mt-3 text-sm text-blue-700 bg-blue-100 rounded p-2">
-                        <strong>¿Por qué este técnico?</strong> {suggestionReason}
+                        <strong>¿Por qué este técnico?</strong> {fleetSuggestionReason}
                       </div>
                     )}
                   </div>
