@@ -681,9 +681,30 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const assignBestTechnicianFromFleet = async (fleetId: string, serviceTypeId: string) => {
     try {
-      // Por ahora, usar el mejor técnico general disponible
-      // TODO: Implementar asignación específica por flotilla una vez que fleet_assignments esté configurada
-      
+      // Obtener técnicos asignados a la flotilla específica
+      const { data: fleetTechnicians, error: fleetError } = await supabase
+        .from('fleet_assignments')
+        .select(`
+          technician_id,
+          profiles!inner(user_id, full_name)
+        `)
+        .eq('fleet_group_id', fleetId)
+        .eq('is_active', true);
+
+      if (fleetError) {
+        console.log('Error getting fleet technicians, using fallback:', fleetError);
+        // Fallback: usar el mejor técnico general
+        await assignBestTechnicianFallback(serviceTypeId);
+        return;
+      }
+
+      if (!fleetTechnicians?.length) {
+        console.log('No technicians assigned to this fleet, using fallback');
+        await assignBestTechnicianFallback(serviceTypeId);
+        return;
+      }
+
+      // Obtener sugerencias de técnicos para este servicio específico
       const { data: techSuggestions, error: techError } = await supabase
         .rpc('suggest_optimal_technician', {
           p_service_type_id: serviceTypeId,
@@ -695,6 +716,48 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
+      // Filtrar solo técnicos de la flotilla seleccionada
+      const technicianIds = fleetTechnicians.map(ft => ft.technician_id);
+      const fleetTechSuggestions = techSuggestions.filter(ts => 
+        technicianIds.includes(ts.technician_id)
+      );
+
+      if (fleetTechSuggestions.length > 0) {
+        // Seleccionar el mejor técnico de la flotilla (ya viene ordenado por score)
+        const bestTechnician = fleetTechSuggestions[0];
+        setFormData(prev => ({ 
+          ...prev, 
+          assigned_technician: bestTechnician.technician_id
+        }));
+        setFleetSuggestionReason(bestTechnician.suggestion_reason);
+        
+        console.log('Best technician from specific fleet assigned:', bestTechnician);
+      } else {
+        // No hay técnicos capacitados para este servicio en esta flotilla
+        console.log('No qualified technicians in this fleet for this service, using fallback');
+        await assignBestTechnicianFallback(serviceTypeId);
+      }
+
+    } catch (error) {
+      console.error('Error assigning technician from fleet:', error);
+      await assignBestTechnicianFallback(serviceTypeId);
+    }
+  };
+
+  const assignBestTechnicianFallback = async (serviceTypeId: string) => {
+    try {
+      // Obtener el mejor técnico general disponible como fallback
+      const { data: techSuggestions, error: techError } = await supabase
+        .rpc('suggest_optimal_technician', {
+          p_service_type_id: serviceTypeId,
+          p_delivery_date: formData.delivery_date || null
+        });
+
+      if (techError || !techSuggestions?.length) {
+        console.log('No technician suggestions available in fallback');
+        return;
+      }
+
       const bestTechnician = techSuggestions[0];
       setFormData(prev => ({ 
         ...prev, 
@@ -702,10 +765,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       }));
       setFleetSuggestionReason(bestTechnician.suggestion_reason);
       
-      console.log('Best technician assigned for fleet:', fleetId, bestTechnician);
-
+      console.log('Fallback technician assigned:', bestTechnician);
     } catch (error) {
-      console.error('Error assigning technician from fleet:', error);
+      console.error('Error in technician fallback assignment:', error);
     }
   };
 

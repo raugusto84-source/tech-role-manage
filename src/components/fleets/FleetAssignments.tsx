@@ -1,199 +1,191 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
-import { Users, Truck, Plus, X, Wrench, Star, Calendar } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
+import { Users, Plus, Trash2, User } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
+interface FleetGroup {
+  id: string;
+  name: string;
+}
 
 interface Technician {
   user_id: string;
   full_name: string;
   email: string;
-  skills: Array<{
-    service_name: string;
-    skill_level: number;
-  }>;
 }
 
-interface Vehicle {
+interface FleetAssignment {
   id: string;
-  model: string;
-  license_plate: string;
-  year: number | null;
-  status: string;
-}
-
-interface Assignment {
-  id: string;
+  fleet_group_id: string;
+  technician_id: string;
+  is_active: boolean;
   assigned_at: string;
-  assigned_by: string;
+  notes?: string;
+  technician_name?: string;
+  fleet_name?: string;
 }
 
-interface FleetAssignmentsProps {
-  groupId: string;
-}
-
-export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
-  const [groupName, setGroupName] = useState('');
-  const [assignedTechnicians, setAssignedTechnicians] = useState<(Technician & Assignment)[]>([]);
-  const [assignedVehicles, setAssignedVehicles] = useState<(Vehicle & Assignment)[]>([]);
-  const [availableTechnicians, setAvailableTechnicians] = useState<Technician[]>([]);
-  const [availableVehicles, setAvailableVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isAddingTechnician, setIsAddingTechnician] = useState(false);
-  const [isAddingVehicle, setIsAddingVehicle] = useState(false);
+export function FleetAssignments() {
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [fleetGroups, setFleetGroups] = useState<FleetGroup[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [assignments, setAssignments] = useState<FleetAssignment[]>([]);
+  const [selectedFleet, setSelectedFleet] = useState('');
+  const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    if (groupId) {
-      loadAssignments();
+    if (profile?.role === 'administrador' || profile?.role === 'supervisor') {
+      loadData();
     }
-  }, [groupId]);
+  }, [profile]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadFleetGroups(),
+        loadTechnicians(),
+        loadAssignments()
+      ]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadFleetGroups = async () => {
+    const { data, error } = await supabase
+      .from('fleet_groups')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name');
+
+    if (error) {
+      console.error('Error loading fleet groups:', error);
+      return;
+    }
+
+    setFleetGroups(data || []);
+  };
+
+  const loadTechnicians = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, email')
+      .eq('role', 'tecnico')
+      .order('full_name');
+
+    if (error) {
+      console.error('Error loading technicians:', error);
+      return;
+    }
+
+    setTechnicians(data || []);
+  };
 
   const loadAssignments = async () => {
-    try {
-      setLoading(true);
+    const { data, error } = await supabase
+      .from('fleet_assignments')
+      .select(`
+        id,
+        fleet_group_id,
+        technician_id,
+        is_active,
+        assigned_at,
+        notes,
+        fleet_groups!inner(name),
+        profiles!inner(full_name)
+      `)
+      .eq('is_active', true)
+      .order('assigned_at', { ascending: false });
 
-      // Cargar información del grupo
-      const { data: groupData, error: groupError } = await supabase
-        .from('fleet_groups')
-        .select('name')
-        .eq('id', groupId)
-        .single();
-
-      if (groupError) throw groupError;
-      setGroupName(groupData.name);
-
-      // Cargar técnicos asignados con habilidades
-      const { data: assignedTechData, error: assignedTechError } = await supabase
-        .from('fleet_group_technicians')
-        .select(`
-          id,
-          assigned_at,
-          assigned_by,
-          technician_id
-        `)
-        .eq('fleet_group_id', groupId)
-        .eq('is_active', true);
-
-      console.log('assignedTechData:', assignedTechData);
-      console.log('assignedTechError:', assignedTechError);
-
-      const technicianIds = assignedTechData?.map(t => t.technician_id) || [];
-      
-      // Cargar información de perfiles y habilidades de técnicos asignados
-      const assignedWithSkills = await Promise.all(
-        (assignedTechData || []).map(async (assignment) => {
-          // Obtener perfil del técnico
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('user_id, full_name, email')
-            .eq('user_id', assignment.technician_id)
-            .single();
-
-          if (!profile) {
-            console.log('No profile found for technician:', assignment.technician_id);
-            return null;
-          }
-
-          // Obtener habilidades del técnico
-          const { data: skills } = await supabase
-            .from('technician_skills')
-            .select(`
-              skill_level,
-              service_types!inner(name)
-            `)
-            .eq('technician_id', assignment.technician_id);
-
-          return {
-            id: assignment.id,
-            assigned_at: assignment.assigned_at,
-            assigned_by: assignment.assigned_by,
-            user_id: profile.user_id,
-            full_name: profile.full_name,
-            email: profile.email,
-            skills: (skills || []).map(s => ({
-              service_name: (s.service_types as any).name,
-              skill_level: s.skill_level
-            }))
-          };
-        })
-      );
-
-      // Filtrar los nulos y actualizar estado
-      const validAssignedTechnicians = assignedWithSkills.filter(t => t !== null);
-
-      setAssignedTechnicians(validAssignedTechnicians);
-      console.log('validAssignedTechnicians:', validAssignedTechnicians);
-
-      // Cargar vehículos asignados
-      const { data: assignedVehData } = await supabase
-        .from('fleet_group_vehicles')
-        .select(`
-          id,
-          assigned_at,
-          assigned_by,
-          vehicles!inner(id, model, license_plate, year, status)
-        `)
-        .eq('fleet_group_id', groupId)
-        .eq('is_active', true);
-
-      const assignedVehiclesWithDetails = (assignedVehData || []).map(assignment => ({
-        id: assignment.id,
-        assigned_at: assignment.assigned_at,
-        assigned_by: assignment.assigned_by,
-        ...(assignment.vehicles as any)
-      }));
-
-      setAssignedVehicles(assignedVehiclesWithDetails);
-
-      // Cargar técnicos disponibles (no asignados a este grupo)
-      const { data: allTechnicians } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, email')
-        .eq('role', 'tecnico')
-        .not('user_id', 'in', technicianIds.length > 0 ? `(${technicianIds.join(',')})` : '(00000000-0000-0000-0000-000000000000)');
-
-      // Cargar habilidades de técnicos disponibles
-      const availableWithSkills = await Promise.all(
-        (allTechnicians || []).map(async (tech) => {
-          const { data: skills } = await supabase
-            .from('technician_skills')
-            .select(`
-              skill_level,
-              service_types!inner(name)
-            `)
-            .eq('technician_id', tech.user_id);
-
-          return {
-            ...tech,
-            skills: (skills || []).map(s => ({
-              service_name: (s.service_types as any).name,
-              skill_level: s.skill_level
-            }))
-          };
-        })
-      );
-
-      setAvailableTechnicians(availableWithSkills);
-
-      // Cargar vehículos disponibles
-      const vehicleIds = assignedVehiclesWithDetails.map(v => v.id);
-      const { data: allVehicles } = await supabase
-        .from('vehicles')
-        .select('id, model, license_plate, year, status')
-        .eq('status', 'activo')
-        .not('id', 'in', vehicleIds.length > 0 ? `(${vehicleIds.join(',')})` : '(00000000-0000-0000-0000-000000000000)');
-
-      setAvailableVehicles(allVehicles || []);
-
-    } catch (error) {
+    if (error) {
       console.error('Error loading assignments:', error);
+      return;
+    }
+
+    // Transform the data to flatten the joined fields
+    const transformedData = (data || []).map((item: any) => ({
+      id: item.id,
+      fleet_group_id: item.fleet_group_id,
+      technician_id: item.technician_id,
+      is_active: item.is_active,
+      assigned_at: item.assigned_at,
+      notes: item.notes,
+      fleet_name: item.fleet_groups?.name,
+      technician_name: item.profiles?.full_name
+    }));
+
+    setAssignments(transformedData);
+  };
+
+  const handleAddAssignment = async () => {
+    if (!selectedFleet || !selectedTechnician) {
+      toast({
+        title: "Campos requeridos",
+        description: "Por favor selecciona una flotilla y un técnico",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Check if assignment already exists
+      const { data: existing } = await supabase
+        .from('fleet_assignments')
+        .select('id')
+        .eq('fleet_group_id', selectedFleet)
+        .eq('technician_id', selectedTechnician)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (existing) {
+        toast({
+          title: "Asignación existente",
+          description: "Este técnico ya está asignado a esta flotilla",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('fleet_assignments')
+        .insert({
+          fleet_group_id: selectedFleet,
+          technician_id: selectedTechnician,
+          assigned_by: user?.id
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Asignación creada",
+        description: "El técnico ha sido asignado a la flotilla exitosamente"
+      });
+
+      // Reset form and reload data
+      setSelectedFleet('');
+      setSelectedTechnician('');
+      await loadAssignments();
+
+    } catch (error: any) {
+      console.error('Error creating assignment:', error);
       toast({
         title: "Error",
-        description: "No se pudieron cargar las asignaciones",
+        description: error.message || "No se pudo crear la asignación",
         variant: "destructive"
       });
     } finally {
@@ -201,363 +193,175 @@ export function FleetAssignments({ groupId }: FleetAssignmentsProps) {
     }
   };
 
-  const assignTechnician = async (technicianId: string) => {
-    try {
-      // Verificar si ya está asignado
-      const { data: existing } = await supabase
-        .from('fleet_group_technicians')
-        .select('id')
-        .eq('fleet_group_id', groupId)
-        .eq('technician_id', technicianId)
-        .eq('is_active', true);
+  const handleDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
 
-      if (existing && existing.length > 0) {
-        toast({
-          title: "Error",
-          description: "Este técnico ya está asignado al grupo",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('fleet_group_technicians')
-        .insert({
-          fleet_group_id: groupId,
-          technician_id: technicianId
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: "Técnico asignado correctamente"
-      });
-
-      setIsAddingTechnician(false);
-      loadAssignments();
-    } catch (error) {
-      console.error('Error assigning technician:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo asignar el técnico",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const assignVehicle = async (vehicleId: string) => {
-    try {
-      // Verificar si ya está asignado
-      const { data: existing } = await supabase
-        .from('fleet_group_vehicles')
-        .select('id')
-        .eq('fleet_group_id', groupId)
-        .eq('vehicle_id', vehicleId)
-        .eq('is_active', true);
-
-      if (existing && existing.length > 0) {
-        toast({
-          title: "Error",
-          description: "Este vehículo ya está asignado al grupo",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const { error } = await supabase
-        .from('fleet_group_vehicles')
-        .insert({
-          fleet_group_id: groupId,
-          vehicle_id: vehicleId
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: "Vehículo asignado correctamente"
-      });
-
-      setIsAddingVehicle(false);
-      loadAssignments();
-    } catch (error) {
-      console.error('Error assigning vehicle:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo asignar el vehículo",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const unassignTechnician = async (assignmentId: string) => {
+    setLoading(true);
     try {
       const { error } = await supabase
-        .from('fleet_group_technicians')
+        .from('fleet_assignments')
         .update({ is_active: false })
-        .eq('id', assignmentId);
+        .eq('id', assignmentToDelete);
 
       if (error) throw error;
 
       toast({
-        title: "Éxito",
-        description: "Técnico removido del grupo"
+        title: "Asignación eliminada",
+        description: "La asignación ha sido removida exitosamente"
       });
 
-      loadAssignments();
-    } catch (error) {
-      console.error('Error unassigning technician:', error);
+      await loadAssignments();
+      setDeleteDialogOpen(false);
+      setAssignmentToDelete(null);
+
+    } catch (error: any) {
+      console.error('Error deleting assignment:', error);
       toast({
         title: "Error",
-        description: "No se pudo remover el técnico",
+        description: error.message || "No se pudo eliminar la asignación",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const unassignVehicle = async (assignmentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('fleet_group_vehicles')
-        .update({ is_active: false })
-        .eq('id', assignmentId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: "Vehículo removido del grupo"
-      });
-
-      loadAssignments();
-    } catch (error) {
-      console.error('Error unassigning vehicle:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo remover el vehículo",
-        variant: "destructive"
-      });
-    }
-  };
-
-  if (loading) {
+  if (profile?.role !== 'administrador' && profile?.role !== 'supervisor') {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-center text-muted-foreground">
+            No tienes permisos para acceder a esta sección
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Técnicos Asignados */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Técnicos ({assignedTechnicians.length})
-              </div>
-              <Dialog open={isAddingTechnician} onOpenChange={setIsAddingTechnician}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Asignar Técnico</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {availableTechnicians.map((tech) => (
-                      <div key={tech.user_id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">{tech.full_name}</p>
-                          <p className="text-sm text-muted-foreground">{tech.email}</p>
-                          <div className="flex gap-1 mt-2">
-                            {tech.skills.slice(0, 3).map((skill, idx) => (
-                              <Badge key={idx} variant="outline" className="text-xs">
-                                {skill.service_name} (Nv.{skill.skill_level})
-                              </Badge>
-                            ))}
-                            {tech.skills.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{tech.skills.length - 3} más
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => assignTechnician(tech.user_id)}
-                        >
-                          Asignar
-                        </Button>
-                      </div>
-                    ))}
-                    {availableTechnicians.length === 0 && (
-                      <p className="text-center text-muted-foreground py-4">
-                        No hay técnicos disponibles
-                      </p>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {assignedTechnicians.map((tech) => (
-              <div key={tech.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Wrench className="h-4 w-4 text-primary" />
-                      <p className="font-medium text-lg">{tech.full_name}</p>
-                      <Badge variant="outline" className="text-xs">
-                        Asignado
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{tech.email}</p>
-                    
-                    {/* Habilidades */}
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">Habilidades técnicas:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {tech.skills.map((skill, idx) => (
-                          <Badge key={idx} variant="secondary" className="text-xs flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                            {skill.service_name} (Nivel {skill.skill_level})
-                          </Badge>
-                        ))}
-                        {tech.skills.length === 0 && (
-                          <span className="text-xs text-muted-foreground italic">Sin habilidades registradas</span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3 flex items-center justify-between">
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Asignado el {new Date(tech.assigned_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2 ml-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => unassignTechnician(tech.id)}
-                      className="text-destructive hover:text-destructive-foreground hover:bg-destructive"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      Desasignar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            {assignedTechnicians.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">
-                No hay técnicos asignados
-              </p>
-            )}
-          </CardContent>
-        </Card>
+      {/* Add Assignment Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Asignar Técnico a Flotilla
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Flotilla</Label>
+              <Select value={selectedFleet} onValueChange={setSelectedFleet}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar flotilla" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fleetGroups.map((fleet) => (
+                    <SelectItem key={fleet.id} value={fleet.id}>
+                      {fleet.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {/* Vehículos Asignados */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Truck className="h-5 w-5" />
-                Vehículos ({assignedVehicles.length})
-              </div>
-              <Dialog open={isAddingVehicle} onOpenChange={setIsAddingVehicle}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Asignar Vehículo</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {availableVehicles.map((vehicle) => (
-                      <div key={vehicle.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <p className="font-medium">{vehicle.model}</p>
-                          <p className="text-sm text-muted-foreground">
-                            Placa: {vehicle.license_plate}
-                            {vehicle.year && ` | Año: ${vehicle.year}`}
-                          </p>
-                          <Badge variant="secondary" className="mt-1">
-                            {vehicle.status}
-                          </Badge>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => assignVehicle(vehicle.id)}
-                        >
-                          Asignar
-                        </Button>
-                      </div>
-                    ))}
-                    {availableVehicles.length === 0 && (
-                      <p className="text-center text-muted-foreground py-4">
-                        No hay vehículos disponibles
+            <div className="space-y-2">
+              <Label>Técnico</Label>
+              <Select value={selectedTechnician} onValueChange={setSelectedTechnician}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar técnico" />
+                </SelectTrigger>
+                <SelectContent>
+                  {technicians.map((tech) => (
+                    <SelectItem key={tech.user_id} value={tech.user_id}>
+                      {tech.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Button 
+            onClick={handleAddAssignment} 
+            disabled={loading || !selectedFleet || !selectedTechnician}
+            className="w-full md:w-auto"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Asignar Técnico
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Current Assignments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Asignaciones Actuales
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <p className="text-center text-muted-foreground">Cargando asignaciones...</p>
+          ) : assignments.length === 0 ? (
+            <p className="text-center text-muted-foreground">No hay asignaciones creadas</p>
+          ) : (
+            <div className="space-y-4">
+              {assignments.map((assignment) => (
+                <div
+                  key={assignment.id}
+                  className="flex items-center justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{assignment.technician_name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Asignado a: <Badge variant="secondary">{assignment.fleet_name}</Badge>
                       </p>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {assignedVehicles.map((vehicle) => (
-              <div key={vehicle.id} className="p-3 border rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <Truck className="h-4 w-4 text-primary" />
-                      <p className="font-medium">{vehicle.model}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Fecha: {new Date(assignment.assigned_at).toLocaleDateString()}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Placa: {vehicle.license_plate}
-                      {vehicle.year && ` | Año: ${vehicle.year}`}
-                    </p>
-                    <Badge variant="secondary" className="mt-1">
-                      {vehicle.status}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Asignado: {new Date(vehicle.assigned_at).toLocaleDateString()}
-                    </p>
                   </div>
+
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => unassignVehicle(vehicle.id)}
+                    onClick={() => {
+                      setAssignmentToDelete(assignment.id);
+                      setDeleteDialogOpen(true);
+                    }}
                   >
-                    <X className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
-            ))}
-            
-            {assignedVehicles.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">
-                No hay vehículos asignados
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar asignación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará la asignación del técnico de la flotilla. 
+              Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAssignment}>
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

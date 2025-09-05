@@ -1401,6 +1401,78 @@ export type Database = {
         }
         Relationships: []
       }
+      fleet_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          fleet_group_id: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          fleet_group_id: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          fleet_group_id?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fleet_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "admin_employee_overview"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fleet_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fleet_assignments_fleet_group_id_fkey"
+            columns: ["fleet_group_id"]
+            isOneToOne: false
+            referencedRelation: "fleet_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fleet_assignments_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "admin_employee_overview"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "fleet_assignments_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       fleet_group_technicians: {
         Row: {
           assigned_at: string

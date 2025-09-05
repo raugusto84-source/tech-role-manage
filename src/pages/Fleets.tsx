@@ -116,7 +116,7 @@ export default function Fleets() {
                       </div>
                     </CardHeader>
                   </Card>
-                  <FleetAssignments groupId={selectedGroupId} />
+                  <FleetAssignments />
                 </div>
               ) : (
                 <Card>
