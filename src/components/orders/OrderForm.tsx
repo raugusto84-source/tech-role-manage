@@ -113,6 +113,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   // Estados para el sistema de sugerencias de flotillas
   const [showFleetSuggestions, setShowFleetSuggestions] = useState(false);
+  const [showTechnicianSuggestions, setShowTechnicianSuggestions] = useState(false);
   const [selectedFleetName, setSelectedFleetName] = useState('');
   const [fleetSuggestionReason, setFleetSuggestionReason] = useState('');
   
