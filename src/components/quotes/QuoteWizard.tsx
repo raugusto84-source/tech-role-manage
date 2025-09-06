@@ -456,6 +456,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     review: Check,
   };
 
+  return (
     <div className="space-y-4 px-4 py-6">
       {/* Header with back button */}
       <div className="flex items-center justify-between">

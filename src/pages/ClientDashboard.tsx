@@ -319,33 +319,48 @@ export default function ClientDashboard() {
         )}
 
         {/* Botones de acción principales */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <Button 
             onClick={() => handleNewRequest()}
-            className="h-24 flex-col gap-2 bg-primary hover:bg-primary/90"
-            size="lg"
+            className="h-20 flex-col gap-1 bg-primary hover:bg-primary/90"
+            size="sm"
           >
-            <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center">
-              <Plus className="h-4 w-4" />
+            <div className="h-6 w-6 bg-white/20 rounded-full flex items-center justify-center">
+              <Plus className="h-3 w-3" />
             </div>
             <div className="text-center">
-              <div className="font-semibold">Nuevo Servicio</div>
-              <div className="text-xs opacity-90">Reportar problema</div>
+              <div className="text-xs font-semibold">Servicio</div>
+              <div className="text-[10px] opacity-90">Rápido</div>
             </div>
           </Button>
           
           <Button 
-            onClick={() => handleNewRequest()}
+            onClick={() => window.location.href = '/orders?new=1'}
             variant="outline"
-            className="h-24 flex-col gap-2 border-2"
-            size="lg"
+            className="h-20 flex-col gap-1 border-2"
+            size="sm"
           >
-            <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
-              <FileText className="h-4 w-4 text-primary" />
+            <div className="h-6 w-6 bg-green-100 rounded-full flex items-center justify-center">
+              <Zap className="h-3 w-3 text-green-600" />
             </div>
             <div className="text-center">
-              <div className="font-semibold">Cotización</div>
-              <div className="text-xs text-muted-foreground">Solicitar precio</div>
+              <div className="text-xs font-semibold">Orden</div>
+              <div className="text-[10px] text-muted-foreground">Completa</div>
+            </div>
+          </Button>
+          
+          <Button 
+            onClick={() => window.location.href = '/quotes'}
+            variant="outline"
+            className="h-20 flex-col gap-1 border-2"
+            size="sm"
+          >
+            <div className="h-6 w-6 bg-primary/10 rounded-full flex items-center justify-center">
+              <FileText className="h-3 w-3 text-primary" />
+            </div>
+            <div className="text-center">
+              <div className="text-xs font-semibold">Cotización</div>
+              <div className="text-[10px] text-muted-foreground">Solicitar precio</div>
             </div>
           </Button>
         </div>
