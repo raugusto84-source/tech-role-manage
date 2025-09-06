@@ -457,17 +457,26 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-4 px-4 py-6">
+      {/* Mobile-first Header with back button */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Nueva Cotización</h1>
-          <p className="text-muted-foreground">Proceso guiado paso a paso</p>
-        </div>
-        <Button variant="outline" onClick={onCancel}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          className="flex items-center gap-2 text-muted-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver
+        </Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>
           <X className="h-4 w-4 mr-2" />
           Cancelar
         </Button>
+      </div>
+      <div>
+        <h1 className="text-2xl font-bold">Nueva Cotización</h1>
+        <p className="text-sm text-muted-foreground">Proceso guiado paso a paso</p>
       </div>
 
       {/* Progress indicators */}
