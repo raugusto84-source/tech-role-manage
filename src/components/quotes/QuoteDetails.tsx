@@ -520,20 +520,26 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     return item.unit_price || 0;
   };
 
-  // Calculate totals using correct pricing
+  // Calculate totals using correct pricing and reward settings
   const calculateTotals = () => {
     let total = 0;
 
     quoteItems.forEach(item => {
-      const itemTotal = (item.unit_price || 0) * item.quantity;
+      let itemTotal = (item.unit_price || 0) * item.quantity;
+      
+      // Apply cashback percentage if enabled in settings
+      if (rewardSettings?.apply_cashback_to_items) {
+        const cashbackPercent = rewardSettings.general_cashback_percent || 2;
+        const cashbackAmount = itemTotal * (cashbackPercent / 100);
+        itemTotal += cashbackAmount;
+      }
+      
       total += itemTotal;
     });
 
-    // For display purposes, we'll show the total as is
-    // since unit_price already includes all pricing calculations
     return { 
-      subtotal: total, // Show total as subtotal for simplicity
-      totalVat: 0,     // VAT is already included in unit_price
+      subtotal: total,
+      totalVat: 0,
       totalWithholdings: 0, 
       total 
     };

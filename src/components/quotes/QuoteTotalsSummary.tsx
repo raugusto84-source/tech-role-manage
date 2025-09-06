@@ -1,4 +1,5 @@
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -94,13 +95,22 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
     onCashbackChange?.(checked, cashbackAmount);
   };
 
-  // Calculate totals from selectedItems directly
+  // Use the pricing calculation hook
+  const { settings: rewardSettings } = useRewardSettings();
+  
   console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
   
   const totalFinal = selectedItems.reduce((sum, item) => {
     const unitPrice = item.unit_price || 0;
     const quantity = item.quantity || 1;
-    const itemTotal = unitPrice * quantity;
+    let itemTotal = unitPrice * quantity;
+    
+    // Apply cashback percentage if enabled in settings
+    if (rewardSettings?.apply_cashback_to_items) {
+      const cashbackPercent = rewardSettings.general_cashback_percent || 2;
+      const cashbackAmount = itemTotal * (cashbackPercent / 100);
+      itemTotal += cashbackAmount;
+    }
     
     console.log(`Item ${item.name} - Unit price: ${unitPrice}, Quantity: ${quantity}, Item total: ${itemTotal}`);
     return sum + itemTotal;
