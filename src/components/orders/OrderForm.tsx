@@ -125,6 +125,65 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   // Hook for pricing calculation with cashback adjustment
   const pricing = usePricingCalculation(orderItems, formData.client_id);
 
+  // Función para actualizar automáticamente la fecha de entrega
+  const updateDeliveryDate = async () => {
+    if (!formData.assigned_technician || orderItems.length === 0) return;
+
+    try {
+      const defaultSchedule = {
+        work_days: [1, 2, 3, 4, 5],
+        start_time: '08:00',
+        end_time: '16:00',
+        break_duration_minutes: 60,
+      };
+
+      const primarySchedule = technicianSchedules[formData.assigned_technician] || defaultSchedule;
+      const processedSupport = supportTechnicians.map(st => ({
+        id: st.technicianId,
+        schedule: technicianSchedules[st.technicianId] || defaultSchedule,
+        reductionPercentage: st.reductionPercentage,
+      }));
+
+      const currentWorkload = await getTechnicianCurrentWorkload(formData.assigned_technician);
+
+      const result = calculateAdvancedDeliveryDate({
+        orderItems: orderItems.map((item) => ({
+          id: item.id,
+          estimated_hours: (item as any).estimated_hours || 1,
+          shared_time: (item as any).shared_time || false,
+          service_type_id: (item as any).service_type_id,
+          quantity: (item as any).quantity || 1,
+        })),
+        primaryTechnicianSchedule: primarySchedule,
+        supportTechnicians: processedSupport,
+        creationDate: new Date(),
+        currentWorkload,
+      });
+
+      const calculatedDate = result.deliveryDate.toISOString().split('T')[0];
+      setFormData(prev => ({ ...prev, delivery_date: calculatedDate }));
+
+      console.log('Auto-calculated delivery date:', calculatedDate);
+    } catch (error) {
+      console.error('Error auto-calculating delivery date:', error);
+    }
+  };
+
+  // Effect para recalcular fecha cuando cambien técnicos de apoyo
+  useEffect(() => {
+    if (formData.assigned_technician && orderItems.length > 0) {
+      updateDeliveryDate();
+    }
+  }, [supportTechnicians.length]); // Solo cuando cambia la cantidad de técnicos de apoyo
+
+  // Effect para recalcular fecha cuando cambien los items de la orden
+  useEffect(() => {
+    if (formData.assigned_technician && orderItems.length > 0) {
+      const timeoutId = setTimeout(() => updateDeliveryDate(), 500);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [orderItems.length, formData.assigned_technician]); // Recalcular cuando cambien items o técnico
+
   useEffect(() => {
     loadServiceTypes();
     loadCurrentOrders();
@@ -664,6 +723,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       // Asignar el mejor técnico de esa flotilla
       await assignBestTechnicianFromFleet(bestFleet.fleet_group_id, serviceTypeId);
       
+      // Calcular y actualizar fecha de entrega automáticamente
+      setTimeout(() => updateDeliveryDate(), 500); // Pequeño delay para asegurar que el técnico se haya asignado
+      
       // Mostrar notificación de asignación automática
       const message = profile?.role === 'cliente' 
         ? `Se ha asignado la flotilla ${bestFleet.fleet_name} para tu servicio`
@@ -731,6 +793,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }));
         setFleetSuggestionReason(bestTechnician.suggestion_reason);
         
+        // Actualizar fecha de entrega automáticamente
+        setTimeout(() => updateDeliveryDate(), 300);
+        
         console.log('Best technician from specific fleet assigned:', bestTechnician);
       } else {
         // No hay técnicos capacitados para este servicio en esta flotilla
@@ -764,6 +829,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         assigned_technician: bestTechnician.technician_id
       }));
       setFleetSuggestionReason(bestTechnician.suggestion_reason);
+      
+      // Actualizar fecha de entrega automáticamente
+      setTimeout(() => updateDeliveryDate(), 300);
       
       console.log('Fallback technician assigned:', bestTechnician);
     } catch (error) {
@@ -810,6 +878,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             assigned_technician: bestTechnician.technician_id 
           }));
           setFleetSuggestionReason(bestTechnician.suggestion_reason);
+          
+          // Actualizar fecha de entrega automáticamente
+          setTimeout(() => updateDeliveryDate(), 300);
           
           // Notificar sobre la asignación automática
           toast({
@@ -863,6 +934,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }));
         setFleetSuggestionReason(bestTechnician.suggestion_reason);
         
+        // Actualizar fecha de entrega automáticamente
+        setTimeout(() => updateDeliveryDate(), 300);
+        
         // Notificar al cliente sobre la asignación
         toast({
           title: "Técnico asignado automáticamente",
@@ -884,6 +958,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const handleTechnicianSuggestionSelect = (technicianId: string, reason: string) => {
     setFormData(prev => ({ ...prev, assigned_technician: technicianId }));
     setFleetSuggestionReason(reason);
+    
+    // Actualizar fecha de entrega automáticamente
+    setTimeout(() => updateDeliveryDate(), 300);
     
     // Encontrar el nombre del técnico para el toast
     const selectedTechnician = technicians.find(t => t.user_id === technicianId);
@@ -1373,7 +1450,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               
               {/* Fecha de Entrega */}
               <div className="space-y-2">
-                <Label htmlFor="delivery_date">Fecha de Entrega Estimada *</Label>
+                <Label htmlFor="delivery_date">Fecha de Entrega Estimada (Auto-calculada)</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
