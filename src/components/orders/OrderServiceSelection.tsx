@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Package, Clock, Calendar } from 'lucide-react';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { ServiceCard } from './ServiceCard';
 
 interface ServiceType {
   id: string;
@@ -59,12 +60,17 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     try {
       setLoading(true);
       
-      // Load services from service_types - show all items regardless of category
-      const { data: servicesData } = await supabase
+      // Load services from service_types filtered by category
+      let query = supabase
         .from('service_types')
         .select('*')
-        .eq('is_active', true)
-        .order('category, name');
+        .eq('is_active', true);
+      
+      if (serviceCategory) {
+        query = query.eq('service_category', serviceCategory);
+      }
+      
+      const { data: servicesData } = await query.order('category, name');
 
       // Transform data to match interface
       const transformedServices = (servicesData || []).map((service: any) => ({
@@ -128,26 +134,23 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
   };
 
   const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
-    const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
+    const salesVatRate = service.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
 
     if (service.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
       const basePrice = (service.base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       return finalWithCashback;
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
-      const purchaseVatRate = 16; // IVA de compra fijo 16%
+      const purchaseVatRate = 16;
       const baseCost = (service.cost_price || 0) * quantity;
       
-      // Obtener margen real del producto, no usar valor fijo
       const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
         ? service.profit_margin_tiers[0].margin 
-        : 30; // 30% solo como fallback
+        : 30;
       
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
@@ -158,16 +161,13 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     }
   };
 
-  // Estado para almacenar precios calculados
   const [calculatedPrices, setCalculatedPrices] = useState<Record<string, number>>({});
 
-  // Función para obtener precio con cache
   const getDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
     const key = `${service.id}-${quantity}`;
     return calculatedPrices[key] || calculateDisplayPrice(service, quantity);
   };
 
-  // Calcular precios cuando cambian servicios o cantidades
   useEffect(() => {
     const calculateAllPrices = () => {
       const newPrices: Record<string, number> = {};
@@ -192,7 +192,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     if (hours < 24) {
       return `${hours} hora${hours !== 1 ? 's' : ''}`;
     } else {
-      const days = Math.ceil(hours / 8); // Asumiendo 8 horas laborables por día
+      const days = Math.ceil(hours / 8);
       return `${days} día${days !== 1 ? 's' : ''} laborables`;
     }
   };
@@ -213,16 +213,14 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     if (!estimatedHours) return '';
     
     const now = new Date();
-    const businessDays = Math.ceil(estimatedHours / 8); // 8 horas por día laboral
+    const businessDays = Math.ceil(estimatedHours / 8);
     
-    // Agregar días laborables (excluyendo fines de semana)
     let deliveryDate = new Date(now);
     let addedDays = 0;
     
     while (addedDays < businessDays) {
       deliveryDate.setDate(deliveryDate.getDate() + 1);
       
-      // Si no es fin de semana (0 = domingo, 6 = sábado)
       if (deliveryDate.getDay() !== 0 && deliveryDate.getDay() !== 6) {
         addedDays++;
       }
@@ -322,110 +320,73 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
         {servicesByCategory.map((category) => {
           if (category.services.length === 0) return null;
           
+          // Separate services and products for this category
+          const categoryServices = category.services.filter(service => service.item_type === 'servicio');
+          const categoryProducts = category.services.filter(service => service.item_type === 'articulo');
+          
           return (
             <div key={category.id}>
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">{category.icon}</span>
                 <div>
                   <h3 className="text-lg font-semibold">{category.name}</h3>
-                  <p className="text-sm text-muted-foreground">{category.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {categoryServices.length} servicios • {categoryProducts.length} productos
+                  </p>
                 </div>
               </div>
               
-              <div className="grid gap-3">
-                {category.services.map((service) => (
-                  <Card 
-                    key={service.id} 
-                    className={`cursor-pointer transition-all hover:shadow-md ${
-                      selectedServiceIds.includes(service.id)
-                        ? 'ring-1 ring-primary/50 border-primary/50' 
-                        : 'hover:border-primary/50'
-                    }`}
-                  >
-                     <CardContent className="p-4">
-                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className="font-medium">{service.name}</h4>
-                            <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'}>
-                              {service.item_type}
-                            </Badge>
-                            {selectedServiceIds.includes(service.id) && (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
-                                Agregado
-                              </Badge>
-                            )}
-                          </div>
-                          
-                          {service.description && (
-                            <p className="text-sm text-muted-foreground mb-3">
-                              {service.description}
-                            </p>
-                          )}
-                          
-                          <div className="flex flex-wrap gap-4 text-sm">
-                           <div className="flex items-center gap-1">
-                             <Package className="h-4 w-4 text-green-600" />
-                              <span className="font-medium text-green-600">
-                                {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
-                                <span className="text-xs text-muted-foreground ml-1">
-                                  (IVA {service.vat_rate}%)
-                                </span>
-                              </span>
-                             {(quantities[service.id] || 1) > 1 && (
-                               <span className="text-xs text-muted-foreground">
-                                 ({formatCurrency(getDisplayPrice(service, 1))} c/u)
-                               </span>
-                             )}
-                           </div>
-                            
-                            {service.estimated_hours && (
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4 text-blue-600" />
-                                <span className="text-blue-600">
-                                  {formatEstimatedTime(service.estimated_hours)}
-                                </span>
-                              </div>
-                            )}
-                            
-                            {service.estimated_hours && (
-                              <div className="flex items-center gap-1">
-                                <Calendar className="h-4 w-4 text-orange-600" />
-                                <span className="text-orange-600">
-                                  Entrega estimada: {new Date(calculateDeliveryDate(service.estimated_hours)).toLocaleDateString('es-CO')}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 mt-3 sm:mt-0 sm:ml-4">
-                           <div className="flex items-center gap-1">
-                             <Label htmlFor={`qty-${service.id}`} className="text-xs">Cant:</Label>
-                             <Input
-                               id={`qty-${service.id}`}
-                               type="number"
-                               min="1"
-                               value={quantities[service.id] || 1}
-                               onChange={(e) => updateQuantity(service.id, parseInt(e.target.value) || 1)}
-                               className="w-16 h-8"
-                             />
-                           </div>
-                           <Button
-                             type="button"
-                             variant="outline"
-                             size="sm"
-                             onClick={() => handleServiceAdd(service)}
-                             className="w-full sm:w-auto"
-                           >
-                             Agregar
-                           </Button>
-                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              {/* Show services if any and if filter allows */}
+              {categoryServices.length > 0 && (selectedItemType === 'all' || selectedItemType === 'servicio') && (
+                <div className="mb-6">
+                  <h4 className="text-md font-medium mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    Servicios de {category.name}
+                  </h4>
+                  <div className="grid gap-3">
+                    {categoryServices.map((service) => (
+                      <ServiceCard 
+                        key={service.id} 
+                        service={service} 
+                        selectedServiceIds={selectedServiceIds}
+                        quantities={quantities}
+                        updateQuantity={updateQuantity}
+                        handleServiceAdd={handleServiceAdd}
+                        getDisplayPrice={getDisplayPrice}
+                        formatCurrency={formatCurrency}
+                        formatEstimatedTime={formatEstimatedTime}
+                        calculateDeliveryDate={calculateDeliveryDate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Show products if any and if filter allows */}
+              {categoryProducts.length > 0 && (selectedItemType === 'all' || selectedItemType === 'articulo') && (
+                <div>
+                  <h4 className="text-md font-medium mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    Productos de {category.name}
+                  </h4>
+                  <div className="grid gap-3">
+                    {categoryProducts.map((service) => (
+                      <ServiceCard 
+                        key={service.id} 
+                        service={service} 
+                        selectedServiceIds={selectedServiceIds}
+                        quantities={quantities}
+                        updateQuantity={updateQuantity}
+                        handleServiceAdd={handleServiceAdd}
+                        getDisplayPrice={getDisplayPrice}
+                        formatCurrency={formatCurrency}
+                        formatEstimatedTime={formatEstimatedTime}
+                        calculateDeliveryDate={calculateDeliveryDate}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
@@ -443,110 +404,28 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
             
             <div className="grid gap-3">
               {uncategorizedServices.map((service) => (
-                <Card 
+                <ServiceCard 
                   key={service.id} 
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    selectedServiceIds.includes(service.id)
-                      ? 'ring-1 ring-primary/50 border-primary/50' 
-                      : 'hover:border-primary/50'
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-medium">{service.name}</h4>
-                          <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'}>
-                            {service.item_type}
-                          </Badge>
-                          {selectedServiceIds.includes(service.id) && (
-                            <Badge variant="outline" className="text-green-600 border-green-600">
-                              Agregado
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        {service.description && (
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {service.description}
-                          </p>
-                        )}
-                        
-                        <div className="flex flex-wrap gap-4 text-sm">
-                           <div className="flex items-center gap-1">
-                             <Package className="h-4 w-4 text-green-600" />
-                             <span className="font-medium text-green-600">
-                               Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
-                               <span className="text-xs text-muted-foreground ml-1">
-                                 (inc. IVA {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
-                               </span>
-                             </span>
-                             {(quantities[service.id] || 1) > 1 && (
-                               <span className="text-xs text-muted-foreground">
-                                 ({formatCurrency(getDisplayPrice(service, 1))} c/u)
-                               </span>
-                             )}
-                           </div>
-                          
-                          {service.estimated_hours && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-4 w-4 text-blue-600" />
-                              <span className="text-blue-600">
-                                {formatEstimatedTime(service.estimated_hours)}
-                              </span>
-                            </div>
-                          )}
-                          
-                          {service.estimated_hours && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4 text-orange-600" />
-                              <span className="text-orange-600">
-                                Entrega estimada: {new Date(calculateDeliveryDate(service.estimated_hours)).toLocaleDateString('es-CO')}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 ml-4">
-                        <div className="flex items-center gap-1">
-                          <Label htmlFor={`qty-uncategorized-${service.id}`} className="text-xs">Cant:</Label>
-                          <Input
-                            id={`qty-uncategorized-${service.id}`}
-                            type="number"
-                            min="1"
-                            value={quantities[service.id] || 1}
-                            onChange={(e) => updateQuantity(service.id, parseInt(e.target.value) || 1)}
-                            className="w-16 h-8"
-                          />
-                        </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleServiceAdd(service)}
-                        >
-                          Agregar
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  service={service} 
+                  selectedServiceIds={selectedServiceIds}
+                  quantities={quantities}
+                  updateQuantity={updateQuantity}
+                  handleServiceAdd={handleServiceAdd}
+                  getDisplayPrice={getDisplayPrice}
+                  formatCurrency={formatCurrency}
+                  formatEstimatedTime={formatEstimatedTime}
+                  calculateDeliveryDate={calculateDeliveryDate}
+                />
               ))}
             </div>
           </div>
         )}
       </div>
 
-      {filteredServices.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No se encontraron servicios</h3>
+      {filteredServices.length === 0 && !loading && (
+        <div className="text-center py-8">
           <p className="text-muted-foreground">
-            {searchTerm || selectedCategory 
-              ? 'Intenta cambiar los filtros de búsqueda' 
-              : 'No hay servicios disponibles en este momento'
-            }
+            No se encontraron servicios que coincidan con los filtros aplicados.
           </p>
         </div>
       )}
