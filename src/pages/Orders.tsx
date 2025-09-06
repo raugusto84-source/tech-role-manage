@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Calendar } from '@/components/ui/calendar';
 import { OrderForm } from '@/components/orders/OrderForm';
+import { OrderFormMinimal } from '@/components/orders/OrderFormMinimal';
 import { OrderCard } from '@/components/orders/OrderCard';
 import { OrderDetails } from '@/components/orders/OrderDetails';
 import { useToast } from '@/hooks/use-toast';
@@ -27,6 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 interface Order {
   id: string;
@@ -82,6 +84,7 @@ export default function Orders() {
   const [selectedDateSistemas, setSelectedDateSistemas] = useState<Date | undefined>();
   const [selectedDateSeguridad, setSelectedDateSeguridad] = useState<Date | undefined>();
   const [activeTab, setActiveTab] = useState('list');
+  const [showMinimalForm, setShowMinimalForm] = useState(false);
 
   const loadOrders = async () => {
     try {
@@ -483,10 +486,26 @@ export default function Orders() {
           </div>
           
           {canCreateOrder && (
-            <Button onClick={() => setShowForm(true)} className="mt-4 md:mt-0">
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva Orden
-            </Button>
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <Dialog open={showMinimalForm} onOpenChange={setShowMinimalForm}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Orden Rápida
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <OrderFormMinimal onClose={() => {
+                    setShowMinimalForm(false);
+                    loadOrders();
+                  }} />
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" onClick={() => setShowForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Orden Completa
+              </Button>
+            </div>
           )}
         </div>
 
