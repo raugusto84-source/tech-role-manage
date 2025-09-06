@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { useAuth } from '@/hooks/useAuth';
 import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X } from 'lucide-react';
 interface OrderItem {
   id: string;
@@ -66,12 +67,15 @@ export function OrderServicesList({
   const [editingSerialInfo, setEditingSerialInfo] = useState<Set<string>>(new Set());
   const [editableSerialFields, setEditableSerialFields] = useState<Set<string>>(new Set());
   const [finishingAll, setFinishingAll] = useState(false);
-  const {
-    toast
-  } = useToast();
-  const {
-    settings: rewardSettings
-  } = useRewardSettings();
+  const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
+  const { profile } = useAuth();
+  
+  // Check if user is a client - clients have restricted permissions
+  const isClient = profile?.role === 'cliente';
+  const canEditStatus = canEdit && !isClient;
+  const canEditSerialInfo = canEdit && !isClient;
+  const canFinishAll = canEdit && !isClient;
 
   // Calcular precio correcto para un item
   const calculateItemCorrectPrice = (item: OrderItem): number => {
@@ -97,7 +101,7 @@ export function OrderServicesList({
     }
   };
   const handleStatusChange = async (itemId: string, newStatus: string) => {
-    if (!canEdit) return;
+    if (!canEditStatus) return;
     setUpdatingItems(prev => new Set(prev).add(itemId));
     try {
       const {
@@ -127,6 +131,7 @@ export function OrderServicesList({
     }
   };
   const handleSerialInfoUpdate = async (itemId: string, serialNumber: string, supplierName: string) => {
+    if (!canEditSerialInfo) return;
     setEditingSerialInfo(prev => new Set(prev).add(itemId));
     try {
       const {
@@ -169,7 +174,7 @@ export function OrderServicesList({
     }).format(amount);
   };
   const handleFinishAll = async () => {
-    if (!orderId || !canEdit) return;
+    if (!orderId || !canFinishAll) return;
     setFinishingAll(true);
     try {
       // Mark all non-finished items as finished
@@ -271,7 +276,7 @@ export function OrderServicesList({
                       <div className="text-sm font-medium text-primary mb-1">
                         {formatCurrency(calculateItemCorrectPrice(item))}
                       </div>
-                      {canEdit && (
+                      {canEditStatus && (
                         <div className="w-20">
                           {showReadyButtons && item.status !== 'finalizada' ? (
                             <Button 
@@ -337,15 +342,15 @@ export function OrderServicesList({
                     </div>
                   </div>
 
-                  {/* Show serial number and supplier for articles */}
-                  {item.item_type === 'articulo' && (item.serial_number || item.supplier_name) && (
+                  {/* Show serial number and supplier for articles - Hide supplier from clients */}
+                  {item.item_type === 'articulo' && (item.serial_number || (item.supplier_name && !isClient)) && (
                     <div className="space-y-1 text-xs text-muted-foreground">
                       {item.serial_number && (
                         <div>
                           <span className="font-medium">Serie:</span> {item.serial_number}
                         </div>
                       )}
-                      {item.supplier_name && (
+                      {item.supplier_name && !isClient && (
                         <div>
                           <span className="font-medium">Proveedor:</span> {item.supplier_name}
                         </div>
@@ -353,14 +358,14 @@ export function OrderServicesList({
                     </div>
                   )}
 
-                  {/* Serial number and supplier fields for articles - Mobile First */}
-                  {item.item_type === 'articulo' && (
+                  {/* Serial number and supplier fields for articles - Mobile First - Hidden for clients */}
+                  {item.item_type === 'articulo' && canEditSerialInfo && (
                     <div className="border-t pt-3">
                       <div className="flex justify-between items-center mb-2">
                         <Label className="text-xs font-medium text-muted-foreground">
                           Información del Artículo
                         </Label>
-                        {canEdit && (
+                        {canEditSerialInfo && (
                           <div className="flex items-center gap-1">
                             {editableSerialFields.has(item.id) ? (
                               <Button 
@@ -512,9 +517,29 @@ export function OrderServicesList({
         </CardContent>
       </Card>
 
-      {/* Botón Terminar Todo */}
-      {canEdit && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && <div className="mt-4">
-          
-        </div>}
+      {/* Botón Terminar Todo - Hidden for clients */}
+      {canFinishAll && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && (
+        <div className="mt-4">
+          <Button 
+            onClick={handleFinishAll} 
+            disabled={finishingAll} 
+            variant="default" 
+            size="sm" 
+            className="w-full"
+          >
+            {finishingAll ? (
+              <>
+                <Save className="w-4 h-4 mr-2 animate-spin" />
+                Finalizando...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Terminar Todo
+              </>
+            )}
+          </Button>
+        </div>
+      )}
     </div>;
 }
