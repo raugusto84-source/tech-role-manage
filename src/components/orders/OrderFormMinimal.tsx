@@ -12,12 +12,10 @@ import { useOrderMinimal, type Client, type Problem, type Solution } from '@/hoo
 import { useNavigate } from 'react-router-dom';
 
 interface OrderFormMinimalProps {
-  onSuccess?: () => void;
-  onCancel?: () => void;
   onClose?: () => void;
 }
 
-export function OrderFormMinimal({ onSuccess, onCancel, onClose }: OrderFormMinimalProps) {
+export function OrderFormMinimal({ onClose }: OrderFormMinimalProps) {
   const navigate = useNavigate();
   const {
     step,
@@ -82,21 +80,9 @@ export function OrderFormMinimal({ onSuccess, onCancel, onClose }: OrderFormMini
 
   const handleCreateOrder = async () => {
     const order = await createOrder();
-    if (order) {
-      if (onSuccess) {
-        onSuccess();
-      } else if (onClose) {
-        onClose();
-        navigate('/orders');
-      }
-    }
-  };
-
-  const handleCancel = () => {
-    if (onCancel) {
-      onCancel();
-    } else if (onClose) {
+    if (order && onClose) {
       onClose();
+      navigate('/orders');
     }
   };
 

@@ -144,43 +144,39 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   return (
     <Card 
-      className={`hover:shadow-md transition-all cursor-pointer border-l-2 active:scale-[0.98] ${
+      className={`hover:shadow-sm transition-all cursor-pointer border-l-2 compact-card ${
         order.status === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
       }`}
       onClick={onClick}
     >
-      <CardHeader className="pb-2 pt-3 px-3">
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <CardTitle className="text-sm font-semibold text-foreground truncate">
-                {order.order_number}
-              </CardTitle>
-              {order.unread_messages_count != null && order.unread_messages_count > 0 && (
-                <div className="relative flex-shrink-0">
-                  <MessageCircle className="h-4 w-4 text-blue-600" />
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
-                  >
-                    {order.unread_messages_count}
-                  </Badge>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground font-medium truncate">
+      <CardHeader className="pb-0 pt-0.5 px-2">{/* Reducir aún más la altura vertical */}
+        <div className="flex justify-between items-start">
+          <div className="flex items-center gap-2 flex-1">
+            <CardTitle className="text-sm font-semibold text-foreground truncate">
+              {order.order_number}
+            </CardTitle>
+            <span className="text-xs text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground font-medium truncate flex-1">
               {order.clients?.name || "Cliente no especificado"}
-            </p>
+            </span>
+            {order.unread_messages_count != null && order.unread_messages_count > 0 && (
+              <div className="relative">
+                <MessageCircle className="h-3 w-3 text-blue-600" />
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
+                >
+                  {order.unread_messages_count}
+                </Badge>
+              </div>
+            )}
           </div>
-          
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge className={`${getStatusColor(order.status)} text-xs px-2 py-1`} variant="outline">
+          <div className="flex items-center gap-1">
+            <Badge className={`${getStatusColor(order.status)} text-xs px-1 py-0`}>
               {order.status === "pendiente_aprobacion" 
-                ? "PENDIENTE" 
-                : order.status === "pendiente_entrega"
-                ? "LISTO"
+                ? "PEND. APROB." 
                 : order.status.replace("_", " ").toUpperCase()}
             </Badge>
             {canDelete && (
@@ -188,90 +184,81 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-1 h-auto w-auto"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-0.5 h-auto"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             )}
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="px-3 pb-3 pt-0 space-y-3">
-        {/* Servicio y ubicación */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center flex-1 min-w-0 gap-2">
-            <Wrench className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="text-sm font-medium truncate">
+      <CardContent className="space-y-0 px-2 pb-0.5">{/* Eliminar casi todo el espacio vertical */}
+        {/* Primera fila: Servicio y ubicación */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center flex-1 min-w-0">
+            <Wrench className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
+            <span className="truncate">
               {order.service_types?.name || "Servicio no especificado"}
             </span>
           </div>
           {order.is_home_service && (
-            <div className="flex items-center gap-1 text-blue-600 ml-2 flex-shrink-0">
-              <Home className="h-4 w-4" />
-              <span className="text-xs font-medium">Domicilio</span>
+            <div className="flex items-center gap-1 text-blue-600 ml-2">
+              <Home className="h-3 w-3" />
+              <span className="text-xs font-medium">Dom</span>
             </div>
           )}
         </div>
         
-        {/* Fecha y cliente */}
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Calendar className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="text-sm text-muted-foreground">
+        {/* Segunda fila: Fecha, cliente, técnico y precio */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3 w-3 text-primary flex-shrink-0" />
+            <span className="text-xs">
               {order.estimated_delivery_date 
                 ? formatDate(order.estimated_delivery_date) 
                 : formatDate(order.delivery_date)}
             </span>
             {order.clients?.client_number && (
               <>
-                <span className="text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {order.clients.client_number}
-                </span>
+                <span>•</span>
+                <User className="h-3 w-3 text-primary flex-shrink-0" />
+                <span>{order.clients.client_number}</span>
+              </>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-3 w-3 text-primary" />
+            <span className="font-medium">${calculateCorrectTotal().toLocaleString()}</span>
+            {order.average_service_time && (
+              <>
+                <Clock className="h-3 w-3 text-primary ml-1" />
+                <span>{formatTime(order.average_service_time)}</span>
               </>
             )}
           </div>
         </div>
 
-        {/* Precio y tiempo */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-success flex-shrink-0" />
-            <span className="font-semibold text-success">
-              ${calculateCorrectTotal().toLocaleString('es-CO', {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              })}
-            </span>
-          </div>
-          
-          {order.average_service_time && (
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm">{formatTime(order.average_service_time)}</span>
+        {/* Tercera fila: Técnicos y descripción */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
+            <div className="flex items-center flex-1 min-w-0">
+              <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
+              <span className="truncate">
+                {order.technician_profile?.full_name}
+                {order.support_technicians && order.support_technicians.length > 0 && 
+                  ` +${order.support_technicians.length}`
+                }
+              </span>
             </div>
           )}
-        </div>
-
-        {/* Técnico asignado */}
-        {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
-          <div className="flex items-center gap-2 text-sm">
-            <User className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="text-muted-foreground truncate">
-              {order.technician_profile?.full_name}
-              {order.support_technicians && order.support_technicians.length > 0 && 
-                ` +${order.support_technicians.length}`
-              }
-            </span>
+          
+          <div className="flex-1 ml-2">
+            <p className="text-xs text-muted-foreground line-clamp-1 truncate">
+              {order.failure_description}
+            </p>
           </div>
-        )}
-        
-        {/* Descripción del problema */}
-        <div className="bg-muted/30 rounded-md p-2">
-          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-            {order.failure_description}
-          </p>
         </div>
       </CardContent>
     </Card>

@@ -45,7 +45,7 @@ interface Order {
   assignment_reason?: string;
   evidence_photos?: string[];
   created_at: string;
-  unread_messages_count?: number;
+  unread_messages_count?: number; // Nuevo campo para mensajes no leídos
   estimated_delivery_date?: string | null;
   service_types?: {
     name: string;
@@ -151,18 +151,21 @@ export default function Orders() {
 
           // Count unread messages for current user
           if (user?.id) {
+            // Counting unread messages
+            
             const { count, error } = await supabase
               .from('order_chat_messages')
               .select('*', { count: 'exact', head: true })
               .eq('order_id', order.id)
-              .neq('sender_id', user.id)
-              .is('read_at', null);
+              .neq('sender_id', user.id) // Messages not sent by current user
+              .is('read_at', null); // Messages not yet read
               
             if (error) {
               console.error('Error counting unread messages:', error);
               unreadCount = 0;
             } else {
               unreadCount = count || 0;
+              // Unread count updated
             }
           }
           
@@ -191,16 +194,18 @@ export default function Orders() {
   useEffect(() => {
     loadOrders();
     
-    // Real-time subscriptions
+    // Suscribirse a cambios en tiempo real en todas las órdenes
     const ordersChannel = supabase
       .channel('orders-changes')
       .on('postgres_changes', 
         { 
-          event: '*',
+          event: '*', // Escuchar INSERT, UPDATE, DELETE
           schema: 'public', 
           table: 'orders'
         },
         (payload) => {
+          // Realtime change recibido: recargar si aplica
+          // Solo recargar órdenes cuando haya cambios importantes
           if (payload.eventType === 'INSERT' || payload.eventType === 'DELETE' || 
               (payload.eventType === 'UPDATE' && payload.new?.status !== payload.old?.status)) {
             loadOrders();
@@ -209,16 +214,20 @@ export default function Orders() {
       )
       .subscribe();
 
+    // Suscripción más específica para mensajes de chat - solo actualizar contadores
     const chatChannel = supabase
       .channel('chat-messages-changes')
       .on('postgres_changes',
         {
-          event: '*',
+          event: '*', // Escuchar INSERT, UPDATE
           schema: 'public',
           table: 'order_chat_messages'
         },
         (payload) => {
+          console.log('Chat messages changed:', payload);
+          // Esperar un momento para que la base de datos se actualice completamente
           setTimeout(() => {
+            console.log('Triggering unread count update after chat change');
             updateUnreadCounts();
           }, 500);
         }
@@ -231,12 +240,17 @@ export default function Orders() {
     };
   }, [profile?.role, profile?.email, user?.id]);
 
+  // Función para actualizar solo los contadores de mensajes no leídos
   const updateUnreadCounts = async () => {
     if (!user?.id || orders.length === 0) return;
+    
+    // Updating unread counts silently
     
     try {
       const updatedOrders = await Promise.all(
         orders.map(async (order) => {
+          // Processing order unread count
+          
           const { count, error } = await supabase
             .from('order_chat_messages')
             .select('*', { count: 'exact', head: true })
@@ -250,6 +264,7 @@ export default function Orders() {
           }
           
           const newCount = count || 0;
+          // Unread count updated
           
           return {
             ...order,
@@ -259,17 +274,21 @@ export default function Orders() {
       );
       
       setOrders(updatedOrders);
+      // Unread counts updated successfully
     } catch (error) {
       console.error('Error updating unread counts:', error);
     }
   };
 
+  // Abrir formulario automáticamente si viene con ?new=1 (flujo rápido desde Panel Cliente)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('new') === '1') {
       const allowed = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
       if (allowed) setShowForm(true);
     }
+    // Solo en montaje
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredOrders = orders.filter(order => {
@@ -282,10 +301,32 @@ export default function Orders() {
     
     return matchesSearch && matchesStatus;
   }).sort((a, b) => {
+    // Usar estimated_delivery_date si está disponible, sino delivery_date
     const dateA = new Date(a.estimated_delivery_date || a.delivery_date);
     const dateB = new Date(b.estimated_delivery_date || b.delivery_date);
     return dateA.getTime() - dateB.getTime();
-  });
+  }); // Ordenar por fecha de entrega estimada
+
+  // Función para calcular tiempo restante
+  const getTimeRemaining = (deliveryDate: string) => {
+    const now = new Date();
+    const delivery = new Date(deliveryDate);
+    const diffMs = delivery.getTime() - now.getTime();
+    
+    if (diffMs < 0) return 'Vencido';
+    
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    
+    if (diffDays > 0) {
+      return `${diffDays}d ${diffHours}h`;
+    } else if (diffHours > 0) {
+      return `${diffHours}h`;
+    } else {
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${diffMinutes}m`;
+    }
+  };
 
   // Group orders by status
   const groupedOrders = {
@@ -331,6 +372,7 @@ export default function Orders() {
     return new Date(dateString).toLocaleDateString('es-ES');
   };
 
+  // Función para obtener órdenes por fecha y categoría
   const getOrdersForDate = (date: Date | undefined, category: 'sistemas' | 'seguridad') => {
     if (!date) return [];
     
@@ -344,6 +386,7 @@ export default function Orders() {
     });
   };
 
+  // Función para obtener fechas con órdenes para mostrar en el calendario
   const getDatesWithOrders = (category: 'sistemas' | 'seguridad') => {
     const dates = new Set<string>();
     
@@ -355,7 +398,7 @@ export default function Orders() {
       .forEach(order => {
         const deliveryDate = order.estimated_delivery_date || order.delivery_date;
         if (deliveryDate) {
-          dates.add(deliveryDate.split('T')[0]);
+          dates.add(deliveryDate.split('T')[0]); // Solo la fecha, sin hora
         }
       });
     
@@ -431,159 +474,252 @@ export default function Orders() {
 
   return (
     <AppLayout>
-      <div className="min-h-screen bg-background">
-        <div className="max-w-md mx-auto pb-20">
-          {/* Header móvil */}
-          <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border p-4 z-10">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex-1">
-                <h1 className="text-xl font-bold text-foreground truncate">Órdenes</h1>
-                <p className="text-sm text-muted-foreground">
-                  {profile?.role === 'cliente' ? 'Mis órdenes' : 
-                   profile?.role === 'tecnico' ? 'Asignadas' : 'Todas'}
-                </p>
-              </div>
-              
-              {canCreateOrder && (
-                <div className="flex gap-2">
-                  <Dialog open={showMinimalForm} onOpenChange={setShowMinimalForm}>
-                    <DialogTrigger asChild>
-                      <Button size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-[95vw] sm:max-w-md">
-                      <OrderFormMinimal
-                        onSuccess={() => {
-                          setShowMinimalForm(false);
-                          loadOrders();
-                        }}
-                        onCancel={() => setShowMinimalForm(false)}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                  
-                  <Button onClick={() => setShowForm(true)} variant="outline" size="sm">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Filtros móviles */}
-            <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar órdenes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 text-sm"
-                />
-              </div>
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Filtrar por estado" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pendiente_aprobacion">Pendientes</SelectItem>
-                  <SelectItem value="pendiente_actualizacion">Actualización</SelectItem>
-                  <SelectItem value="pendiente">Pendientes</SelectItem>
-                  <SelectItem value="en_camino">En Camino</SelectItem>
-                  <SelectItem value="en_proceso">En Proceso</SelectItem>
-                  <SelectItem value="pendiente_entrega">Para Entregar</SelectItem>
-                  <SelectItem value="finalizada">Finalizadas</SelectItem>
-                  <SelectItem value="cancelada">Canceladas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      <div className="max-w-7xl mx-auto">{/* Volver al ancho original */}
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
+            <p className="text-muted-foreground mt-1">
+              {profile?.role === 'cliente' ? 'Mis órdenes' : 
+               profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
+            </p>
           </div>
+          
+          {canCreateOrder && (
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <Dialog open={showMinimalForm} onOpenChange={setShowMinimalForm}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Orden Rápida
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <OrderFormMinimal onClose={() => {
+                    setShowMinimalForm(false);
+                    loadOrders();
+                  }} />
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" onClick={() => setShowForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Orden Completa
+              </Button>
+            </div>
+          )}
+        </div>
 
-          {/* Pestañas móviles */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 mb-4 mx-4">
-              <TabsTrigger value="list" className="text-xs">Lista</TabsTrigger>
-              <TabsTrigger value="calendar-sistemas" className="text-xs">Cal. Sis.</TabsTrigger>
-              <TabsTrigger value="calendar-seguridad" className="text-xs">Cal. Seg.</TabsTrigger>
-            </TabsList>
+        {/* Tabs for different views */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="list">Vista Lista</TabsTrigger>
+            <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="list" className="space-y-6">
+            {/* Filters */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por cliente, número de orden o descripción..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="w-full md:w-48">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
+                        <SelectItem value="pendiente_actualizacion">Pendiente de Actualización</SelectItem>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="en_camino">En Camino</SelectItem>
+                        <SelectItem value="en_proceso">En Proceso</SelectItem>
+                        <SelectItem value="pendiente_entrega">Pendiente de Entrega</SelectItem>
+                        <SelectItem value="finalizada">Finalizada</SelectItem>
+                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="px-4">
-              <TabsContent value="list" className="space-y-4 mt-0">
-                {Object.entries(groupedOrders)
-                  .filter(([_, orders]) => orders.length > 0)
-                  .map(([status, orders]) => (
-                    <div key={status} className="space-y-3">
-                      <div className="flex items-center justify-between px-1">
-                        <h2 className="text-sm font-semibold text-foreground">
-                          {getStatusTitle(status)}
-                        </h2>
-                        <Badge variant="secondary" className="text-xs">
-                          {orders.length}
+            {/* Orders Split by Category */}
+            {filteredOrders.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">
+                    {searchTerm || statusFilter !== "all" 
+                      ? "No se encontraron órdenes con los filtros aplicados"
+                      : "No hay órdenes registradas"}
+                  </p>
+                  {canCreateOrder && !searchTerm && statusFilter === "all" && (
+                    <Button onClick={() => setShowForm(true)} className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear Primera Orden
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Sistemas Column */}
+                <div className="space-y-2">
+                  <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                    <CardHeader>
+                      <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                        💻 SISTEMAS
+                        <Badge variant="secondary" className="ml-auto">
+                          {filteredOrders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "sistemas";
+                          }).length}
                         </Badge>
-                      </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
                       <div className="space-y-2">
-                        {orders.map((order) => (
-                          <OrderCard
-                            key={order.id}
-                            order={order}
-                            onClick={() => setSelectedOrder(order)}
-                            onDelete={canDeleteOrder ? setOrderToDelete : undefined}
-                            canDelete={canDeleteOrder}
-                            getStatusColor={getStatusColor}
-                          />
-                        ))}
+                        {Object.entries(groupedOrders).map(([status, orders]) => {
+                          const sistemasOrders = orders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "sistemas";
+                          });
+                          
+                          if (sistemasOrders.length === 0) return null;
+                          
+                          return (
+                            <Card key={status}>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                  <Badge variant="outline" className={getStatusColor(status)}>
+                                    {getStatusTitle(status)} ({sistemasOrders.length})
+                                  </Badge>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {sistemasOrders.map((order) => (
+                                  <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    onClick={() => setSelectedOrder(order)}
+                                    onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                                    canDelete={canDeleteOrder}
+                                    getStatusColor={getStatusColor}
+                                  />
+                                ))}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
-                
-                {filteredOrders.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="text-muted-foreground mb-4">
-                      <User className="h-12 w-12 mx-auto opacity-50" />
-                    </div>
-                    <h3 className="text-base font-medium text-foreground mb-2">No hay órdenes</h3>
-                    <p className="text-sm text-muted-foreground mb-4 px-6">
-                      {searchTerm || statusFilter !== 'all' 
-                        ? 'No se encontraron órdenes con los filtros aplicados.'
-                        : 'Aún no tienes órdenes de servicio.'}
-                    </p>
-                    {canCreateOrder && (
-                      <Button onClick={() => setShowForm(true)} size="sm">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Crear primera orden
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </TabsContent>
+                    </CardContent>
+                  </Card>
+                </div>
 
-              <TabsContent value="calendar-sistemas" className="space-y-4 mt-0">
-                <div className="space-y-4">
-                  <h3 className="text-base font-semibold px-1">Sistemas</h3>
-                  <div className="border rounded-lg">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDateSistemas}
-                      onSelect={setSelectedDateSistemas}
-                      modifiers={{
-                        hasOrders: getDatesWithOrders('sistemas')
-                      }}
-                      modifiersClassNames={{
-                        hasOrders: 'bg-primary text-primary-foreground'
-                      }}
-                      className="rounded-md border-0 w-full"
-                    />
-                  </div>
+                {/* Seguridad Column */}
+                <div className="space-y-2">
+                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                    <CardHeader>
+                      <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                        🛡️ SEGURIDAD
+                        <Badge variant="secondary" className="ml-auto">
+                          {filteredOrders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "seguridad";
+                          }).length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {Object.entries(groupedOrders).map(([status, orders]) => {
+                          const seguridadOrders = orders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "seguridad";
+                          });
+                          
+                          if (seguridadOrders.length === 0) return null;
+                          
+                          return (
+                            <Card key={status}>
+                              <CardHeader className="pb-3">
+                                <CardTitle className="flex items-center gap-2 text-lg">
+                                  <Badge variant="outline" className={getStatusColor(status)}>
+                                    {getStatusTitle(status)} ({seguridadOrders.length})
+                                  </Badge>
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-2">
+                                {seguridadOrders.map((order) => (
+                                  <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    onClick={() => setSelectedOrder(order)}
+                                    onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                                    canDelete={canDeleteOrder}
+                                    getStatusColor={getStatusColor}
+                                  />
+                                ))}
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="calendar" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Calendario Sistemas */}
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                  <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    💻 Calendario Sistemas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDateSistemas}
+                    onSelect={setSelectedDateSistemas}
+                    locale={es}
+                    className="rounded-md border pointer-events-auto"
+                    modifiers={{
+                      hasOrders: getDatesWithOrders("sistemas")
+                    }}
+                    modifiersStyles={{
+                      hasOrders: {
+                        backgroundColor: "hsl(217, 91%, 85%)",
+                        color: "hsl(217, 91%, 30%)",
+                        fontWeight: "bold"
+                      }
+                    }}
+                  />
                   
                   {selectedDateSistemas && (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium px-1">
-                        {formatDate(selectedDateSistemas.toISOString())}
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-sm mb-2">
+                        Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
                       </h4>
-                      <div className="space-y-2">
-                        {getOrdersForDate(selectedDateSistemas, 'sistemas').map((order) => (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
                           <OrderCard
                             key={order.id}
                             order={order}
@@ -593,42 +729,49 @@ export default function Orders() {
                             getStatusColor={getStatusColor}
                           />
                         ))}
-                        {getOrdersForDate(selectedDateSistemas, 'sistemas').length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No hay órdenes para esta fecha.
-                          </p>
+                        {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
+                          <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
                         )}
                       </div>
                     </div>
                   )}
-                </div>
-              </TabsContent>
+                </CardContent>
+              </Card>
 
-              <TabsContent value="calendar-seguridad" className="space-y-4 mt-0">
-                <div className="space-y-4">
-                  <h3 className="text-base font-semibold px-1">Seguridad</h3>
-                  <div className="border rounded-lg">
-                    <Calendar
-                      mode="single"
-                      selected={selectedDateSeguridad}
-                      onSelect={setSelectedDateSeguridad}
-                      modifiers={{
-                        hasOrders: getDatesWithOrders('seguridad')
-                      }}
-                      modifiersClassNames={{
-                        hasOrders: 'bg-primary text-primary-foreground'
-                      }}
-                      className="rounded-md border-0 w-full"
-                    />
-                  </div>
+              {/* Calendario Seguridad */}
+              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    🛡️ Calendario Seguridad
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDateSeguridad}
+                    onSelect={setSelectedDateSeguridad}
+                    locale={es}
+                    className="rounded-md border pointer-events-auto"
+                    modifiers={{
+                      hasOrders: getDatesWithOrders("seguridad")
+                    }}
+                    modifiersStyles={{
+                      hasOrders: {
+                        backgroundColor: "hsl(142, 76%, 85%)",
+                        color: "hsl(142, 76%, 30%)",
+                        fontWeight: "bold"
+                      }
+                    }}
+                  />
                   
                   {selectedDateSeguridad && (
-                    <div className="space-y-3">
-                      <h4 className="text-sm font-medium px-1">
-                        {formatDate(selectedDateSeguridad.toISOString())}
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-sm mb-2">
+                        Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
                       </h4>
-                      <div className="space-y-2">
-                        {getOrdersForDate(selectedDateSeguridad, 'seguridad').map((order) => (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
                           <OrderCard
                             key={order.id}
                             order={order}
@@ -638,39 +781,36 @@ export default function Orders() {
                             getStatusColor={getStatusColor}
                           />
                         ))}
-                        {getOrdersForDate(selectedDateSeguridad, 'seguridad').length === 0 && (
-                          <p className="text-sm text-muted-foreground text-center py-4">
-                            No hay órdenes para esta fecha.
-                          </p>
+                        {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
+                          <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
                         )}
                       </div>
                     </div>
                   )}
-                </div>
-              </TabsContent>
+                </CardContent>
+              </Card>
             </div>
-          </Tabs>
-
-          {/* Dialog de confirmación para eliminar */}
-          <AlertDialog open={!!orderToDelete} onOpenChange={() => setOrderToDelete(null)}>
-            <AlertDialogContent className="max-w-[95vw] sm:max-w-md">
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                <AlertDialogDescription className="text-sm">
-                  Esta acción no se puede deshacer. Se eliminará permanentemente la orden
-                  y todos los datos relacionados.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-                <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteOrder} className="w-full sm:w-auto">
-                  Eliminar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!orderToDelete} onOpenChange={() => setOrderToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar orden?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La orden será eliminada permanentemente del sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteOrder} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

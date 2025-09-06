@@ -303,7 +303,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="w-full max-w-md mx-auto">
+      <div className="max-w-md mx-auto">
         {/* Header Compacto */}
         <div className="sticky top-0 bg-background/95 backdrop-blur-sm border-b border-border p-4 z-10">
           <div className="flex items-center gap-3 mb-3">
@@ -336,7 +336,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         </div>
 
         {/* Contenido Principal */}
-        <div className="p-4 space-y-4 pb-20">
+        <div className="p-4 space-y-4">
           {/* Cliente y Resumen */}
           <Card>
             <CardContent className="p-4">
