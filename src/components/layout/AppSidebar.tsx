@@ -31,6 +31,8 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { Badge } from '@/components/ui/badge';
 
 /**
  * Sidebar de navegación principal
@@ -40,6 +42,7 @@ import { useAuth } from '@/hooks/useAuth';
 export function AppSidebar() {
   const { state } = useSidebar();
   const { profile } = useAuth();
+  const unreadCounts = useUnreadCounts();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = state === 'collapsed';
@@ -154,9 +157,39 @@ export function AppSidebar() {
                         !collapsed ? '' : 'mx-auto'
                       }`} />
                       {!collapsed && (
-                        <span className="font-medium transition-all duration-200">
+                        <span className="font-medium transition-all duration-200 flex items-center gap-2">
                           {item.title}
+                          {/* Show badges for unread counts */}
+                          {item.url === '/orders' && unreadCounts.orders > 0 && (
+                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                              {unreadCounts.orders > 99 ? '99+' : unreadCounts.orders}
+                            </Badge>
+                          )}
+                          {item.url === '/quotes' && unreadCounts.quotes > 0 && (
+                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                              {unreadCounts.quotes > 99 ? '99+' : unreadCounts.quotes}
+                            </Badge>
+                          )}
+                          {item.url === '/garantias' && unreadCounts.warranties > 0 && (
+                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                              {unreadCounts.warranties > 99 ? '99+' : unreadCounts.warranties}
+                            </Badge>
+                          )}
                         </span>
+                      )}
+                      {/* Show dots for collapsed state */}
+                      {collapsed && (
+                        <>
+                          {item.url === '/orders' && unreadCounts.orders > 0 && (
+                            <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
+                          )}
+                          {item.url === '/quotes' && unreadCounts.quotes > 0 && (
+                            <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
+                          )}
+                          {item.url === '/garantias' && unreadCounts.warranties > 0 && (
+                            <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
+                          )}
+                        </>
                       )}
                     </NavLink>
                   </SidebarMenuButton>
