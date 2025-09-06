@@ -425,17 +425,49 @@ export function QuoteWizard({
 
         {/* Step 3: Items Selection */}
         {currentStep === 'items' && <div className="space-y-3">
+            {/* Selected Items Display */}
+            {quoteItems.length > 0 && (
+              <Card>
+                <CardContent className="p-3">
+                  <div className="text-sm font-medium mb-3">Servicios y productos seleccionados ({quoteItems.length})</div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {quoteItems.map(item => (
+                      <div key={item.id} className="flex justify-between items-center p-2 bg-secondary/20 rounded-lg">
+                        <div className="flex-1">
+                          <div className="text-xs font-medium">{item.name}</div>
+                          <div className="text-xs text-muted-foreground">Cant: {item.quantity} | {formatCurrency(item.total)}</div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setQuoteItems(prev => prev.filter(i => i.id !== item.id))}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t pt-2 mt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Total:</span>
+                      <span className="text-sm font-bold">{formatCurrency(calculateTotal())}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Service Selection */}
+            {/* Service Selection - Always Visible */}
             <Card>
               <CardContent className="p-3">
-                {showServiceSelection ? <CategoryServiceSelection selectedItems={quoteItems} onItemsChange={items => {
-              setQuoteItems(items);
-              setShowServiceSelection(false);
-            }} simplifiedView={true} clientId={selectedClient?.id} clientEmail={selectedClient?.email} /> : <Button onClick={() => setShowServiceSelection(true)} className="w-full" variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    {quoteItems.length > 0 ? 'Modificar servicios' : 'Seleccionar servicios'}
-                  </Button>}
+                <CategoryServiceSelection 
+                  selectedItems={quoteItems} 
+                  onItemsChange={setQuoteItems}
+                  simplifiedView={true} 
+                  clientId={selectedClient?.id} 
+                  clientEmail={selectedClient?.email} 
+                />
               </CardContent>
             </Card>
           </div>}
