@@ -2652,6 +2652,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          assigned_fleet: string | null
           assigned_technician: string | null
           assignment_reason: string | null
           average_service_time: number | null
@@ -2689,6 +2690,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_fleet?: string | null
           assigned_technician?: string | null
           assignment_reason?: string | null
           average_service_time?: number | null
@@ -2726,6 +2728,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_fleet?: string | null
           assigned_technician?: string | null
           assignment_reason?: string | null
           average_service_time?: number | null
@@ -2763,6 +2766,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_assigned_fleet_fkey"
+            columns: ["assigned_fleet"]
+            isOneToOne: false
+            referencedRelation: "fleet_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_client_id_fkey"
             columns: ["client_id"]

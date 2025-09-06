@@ -1233,6 +1233,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           finalAssignedTechnician && finalAssignedTechnician !== 'unassigned'
             ? finalAssignedTechnician
             : null,
+        assigned_fleet: formData.assigned_fleet || null,  // Add fleet assignment to order
         assignment_reason: fleetSuggestionReason || null,
         created_by: user?.id,
         status: initialStatus,
