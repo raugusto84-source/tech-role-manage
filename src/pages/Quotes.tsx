@@ -72,7 +72,7 @@ export default function Quotes() {
       
       let query = supabase
         .from('quotes')
-        .select('*, profiles!quotes_created_by_fkey(full_name)');
+        .select('*');
 
       // Filtrar por cliente si el usuario es un cliente
       if (profile?.role === 'cliente') {
