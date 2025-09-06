@@ -633,6 +633,7 @@ export default function Orders() {
                                         order={order}
                                         onClick={() => setSelectedOrder(order)}
                                         onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                        getStatusColor={getStatusColor}
                                       />
                                     ))}
                                   </div>
@@ -683,6 +684,7 @@ export default function Orders() {
                                         order={order}
                                         onClick={() => setSelectedOrder(order)}
                                         onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                        getStatusColor={getStatusColor}
                                       />
                                     ))}
                                   </div>
@@ -738,6 +740,7 @@ export default function Orders() {
                                 order={order}
                                 onClick={() => setSelectedOrder(order)}
                                 onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                getStatusColor={getStatusColor}
                               />
                             ))}
                             {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
@@ -788,6 +791,7 @@ export default function Orders() {
                                 order={order}
                                 onClick={() => setSelectedOrder(order)}
                                 onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                getStatusColor={getStatusColor}
                               />
                             ))}
                             {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
