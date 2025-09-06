@@ -190,11 +190,11 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
 
   return (
     <>
-      {/* Modal principal de cambio de estado */}
+      {/* Modal principal de cambio de estado - Mobile-first */}
       {!showDeliverySignature && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
-          <Card className="w-full max-w-md mx-auto sm:w-auto min-w-[320px] animate-in slide-in-from-bottom-full sm:slide-in-from-bottom-0 duration-300">
-            <CardHeader className="pb-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+          <Card className="w-full max-w-md mx-0 rounded-t-2xl sm:rounded-lg max-h-[85vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-full duration-300">
+            <CardHeader className="pb-3 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Cambiar Estado</CardTitle>
                 <Button 
@@ -202,6 +202,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
                   size="sm" 
                   onClick={onClose}
                   disabled={loading}
+                  className="h-8 w-8 p-0"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -209,7 +210,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
               
               {/* Información de la orden */}
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground truncate">
                   {order.order_number} - {order.clients?.name}
                 </p>
                 <div className="flex items-center gap-2">
@@ -221,16 +222,16 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-3">
+            <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
               {availableTransitions.length === 0 ? (
-                <div className="text-center py-4">
+                <div className="text-center py-6">
                   <p className="text-muted-foreground text-sm">
                     No hay cambios de estado disponibles para esta orden.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground">
                     Selecciona el nuevo estado:
                   </p>
                   
@@ -244,7 +245,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
                         key={transition.value}
                         onClick={() => handleStatusChange(transition.value as 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada')}
                         disabled={loading}
-                        className={`w-full h-auto p-4 flex items-center justify-start gap-3 text-left ${transition.color} text-white relative overflow-hidden`}
+                        className={`w-full h-auto p-4 flex items-center justify-start gap-3 text-left ${transition.color} text-white relative overflow-hidden touch-manipulation`}
                         variant="default"
                       >
                         {/* Indicador de carga */}
@@ -255,9 +256,9 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
                         )}
                         
                         <Icon className="h-5 w-5 flex-shrink-0" />
-                        <div className="flex-1">
-                          <div className="font-semibold">{transition.label}</div>
-                          <div className="text-sm opacity-90">{transition.description}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm">{transition.label}</div>
+                          <div className="text-xs opacity-90 truncate">{transition.description}</div>
                         </div>
                         <ArrowRight className="h-4 w-4 flex-shrink-0 opacity-70" />
                       </Button>
@@ -265,17 +266,19 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
                   })}
                 </div>
               )}
-              
-              {/* Botón de cancelar */}
+            </CardContent>
+
+            {/* Botones fijos en la parte inferior */}
+            <div className="p-4 bg-background border-t flex-shrink-0">
               <Button 
                 variant="outline" 
-                className="w-full mt-4" 
+                className="w-full h-11" 
                 onClick={onClose}
                 disabled={loading}
               >
                 Cancelar
               </Button>
-            </CardContent>
+            </div>
           </Card>
         </div>
       )}

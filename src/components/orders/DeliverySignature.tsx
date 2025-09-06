@@ -179,12 +179,12 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
-      <Card className="w-full sm:w-full sm:max-w-lg mx-0 sm:mx-4 rounded-t-2xl sm:rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center">
+      <Card className="w-full max-w-lg mx-0 rounded-t-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <CardHeader className="pb-3 px-4 pt-4 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
               Confirmar Entrega
             </CardTitle>
             <Button 
@@ -199,10 +199,10 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
           </div>
           
           <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate">
               <span className="font-medium">Orden:</span> {order.order_number}
             </p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground truncate">
               <span className="font-medium">Cliente:</span> {order.clients?.name}
             </p>
           </div>
@@ -239,16 +239,16 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
               Firme en el recuadro para confirmar:
             </p>
 
-            <div className="border-2 border-dashed border-border rounded-lg p-2 bg-background">
+            <div className="border-2 border-dashed border-border rounded-lg p-2 bg-white">
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
-                  className: 'signature-canvas w-full h-32 sm:h-40 bg-white rounded border border-border touch-action-none'
+                  className: 'signature-canvas w-full h-40 bg-white rounded touch-action-none'
                 }}
                 backgroundColor="white"
                 penColor="black"
-                minWidth={1}
-                maxWidth={2}
+                minWidth={1.5}
+                maxWidth={3}
               />
             </div>
 

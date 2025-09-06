@@ -435,284 +435,337 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header with Authorization Type */}
-        <div className="flex items-center mb-6">
-          <Button variant="ghost" onClick={onBack} className="mr-4">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              {authorizationType === 'initial_approval' ? (
-                <FileCheck className="h-8 w-8 text-blue-600" />
-              ) : (
-                <FileEdit className="h-8 w-8 text-orange-600" />
-              )}
-              <h1 className="text-3xl font-bold text-foreground">
-                {authorizationType === 'initial_approval' ? 'Aprobación Inicial' : 'Aprobación de Modificación'}
-              </h1>
-            </div>
-            <p className="text-muted-foreground">{order.order_number}</p>
-            <div className="mt-2 flex items-center gap-2">
-              {authorizationType === 'initial_approval' ? (
-                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                  PRIMERA AUTORIZACIÓN
-                </span>
-              ) : (
-                <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm rounded-full">
-                  AUTORIZACIÓN DE CAMBIOS
-                </span>
-              )}
+    <div className="min-h-screen bg-background">
+      <div className="flex flex-col h-screen">
+        {/* Mobile-first Header */}
+        <div className="sticky top-0 bg-background border-b px-4 py-3 z-10">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={onBack} size="sm" className="p-2">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                {authorizationType === 'initial_approval' ? (
+                  <FileCheck className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                ) : (
+                  <FileEdit className="h-5 w-5 text-orange-600 flex-shrink-0" />
+                )}
+                <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">
+                  {authorizationType === 'initial_approval' ? 'Aprobación Inicial' : 'Aprobación de Modificación'}
+                </h1>
+              </div>
+              <p className="text-sm text-muted-foreground truncate">{order.order_number}</p>
+              <div className="mt-1">
+                {authorizationType === 'initial_approval' ? (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                    PRIMERA AUTORIZACIÓN
+                  </span>
+                ) : (
+                  <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                    AUTORIZACIÓN DE CAMBIOS
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Authorization Type Warning */}
-        {authorizationType === 'initial_approval' && (
-          <Card className="mb-6 border-blue-200 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center text-blue-800">
-                <FileCheck className="h-5 w-5 mr-2" />
-                Autorización Inicial de Orden
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-blue-700">
-                Esta es la <strong>primera autorización</strong> de esta orden. Al firmar, autoriza el inicio de los trabajos según los servicios y costos detallados.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 space-y-4">
+            {/* Authorization Type Warning */}
+            {authorizationType === 'initial_approval' && (
+              <Card className="border-blue-200 bg-blue-50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-blue-800 text-base">
+                    <FileCheck className="h-4 w-4 mr-2" />
+                    Autorización Inicial de Orden
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <p className="text-sm text-blue-700">
+                    Esta es la <strong>primera autorización</strong> de esta orden. Al firmar, autoriza el inicio de los trabajos según los servicios y costos detallados.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Información de modificación */}
-        {authorizationType === 'modification_approval' && modifications.length > 0 && (
-          <Card className="mb-6 border-orange-200 bg-orange-50">
-            <CardHeader>
-              <CardTitle className="flex items-center text-orange-800">
-                <AlertTriangle className="h-5 w-5 mr-2" />
-                Modificación Realizada - Requiere Autorización
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-orange-700">
-                <strong>Razón:</strong> {modifications[0].modification_reason || 'No especificada'}
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Servicios y Productos */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Servicios y Productos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {orderItems.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-2 border-b border-border">
-                  <div className="flex-1">
-                    <h4 className="font-medium">{item.service_name}</h4>
-                    {item.service_description && (
-                      <p className="text-sm text-muted-foreground">{item.service_description}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      Cantidad: {item.quantity} | Precio unitario: ${(calculateItemCorrectPrice(item) / (item.quantity || 1)).toLocaleString()}
+            {authorizationType === 'modification_approval' && modifications.length > 0 && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-orange-800 text-base">
+                    <FileEdit className="h-4 w-4 mr-2" />
+                    Aprobación de Modificaciones
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    <p className="text-sm text-orange-700">
+                      Se han realizado <strong>modificaciones</strong> a esta orden. Revise los cambios y proporcione su autorización.
                     </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">${calculateItemCorrectPrice(item).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Totales */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Resumen de Costos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>${subtotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>IVA:</span>
-                <span>${vatTotal.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-bold text-lg border-t pt-2">
-                <span>Total:</span>
-                <span>${total.toLocaleString()}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Hora Estimada de Entrega */}
-        {deliveryInfo && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Clock className="h-5 w-5 mr-2" />
-                Fecha Estimada de Entrega
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Fecha estimada:</span>
-                  <span className="font-medium">{deliveryInfo.date}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Hora aproximada:</span>
-                  <span className="font-medium">{deliveryInfo.time}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Tiempo estimado total:</span>
-                  <span className="font-medium">{formatHoursAndMinutes(deliveryInfo.totalHours)}</span>
-                </div>
-                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    *La fecha de entrega puede variar según la disponibilidad del técnico y la complejidad del trabajo.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {!showSignature ? (
-          <Card className={`${authorizationType === 'modification_approval' ? 'border-orange-200' : 'border-blue-200'}`}>
-            <CardContent className="text-center py-8">
-              {authorizationType === 'initial_approval' ? (
-                <FileCheck className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              ) : (
-                <FileEdit className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-              )}
-              <h3 className="text-xl font-semibold mb-2">
-                {authorizationType === 'initial_approval' ? 'Autorización Inicial' : 'Autorización de Modificación'}
-              </h3>
-              <p className="text-muted-foreground mb-6">
-                {authorizationType === 'initial_approval' 
-                  ? 'Al aprobar esta orden, autoriza el inicio de los trabajos según los servicios y costos detallados. Esta será su primera autorización para esta orden.'
-                  : 'Al aprobar esta modificación, confirma que está de acuerdo con los cambios realizados y el nuevo costo total. Esta es una autorización adicional a la inicial.'
-                }
-              </p>
-              <div className="flex gap-4 justify-center">
-                {authorizationType === 'modification_approval' && (
-                  <Button 
-                    onClick={handleReject}
-                    variant="destructive"
-                    disabled={loading}
-                    className="px-8 py-3 text-lg"
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                        Procesando...
-                      </>
-                    ) : (
-                      <>
-                        <AlertTriangle className="h-5 w-5 mr-2" />
-                        Rechazar Modificación
-                      </>
+                    {modifications[0] && (
+                      <div className="bg-white p-3 rounded-lg border">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-sm">Detalles de la Modificación:</h4>
+                        <div className="space-y-3 text-sm">
+                          {modifications[0].modification_reason && (
+                            <div>
+                              <span className="font-medium text-gray-700">Razón:</span>
+                              <p className="text-gray-600 mt-1">{modifications[0].modification_reason}</p>
+                            </div>
+                          )}
+                          {modifications[0].created_by_name && (
+                            <div>
+                              <span className="font-medium text-gray-700">Modificado por:</span>
+                              <p className="text-gray-600 mt-1">{modifications[0].created_by_name}</p>
+                            </div>
+                          )}
+                          {modifications[0].previous_total && modifications[0].new_total && (
+                            <div>
+                              <span className="font-medium text-gray-700">Cambio de costo:</span>
+                              <div className="space-y-1 mt-1">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Anterior:</span>
+                                  <span className="text-red-600">${Number(modifications[0].previous_total).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Nuevo:</span>
+                                  <span className="text-green-600">${Number(modifications[0].new_total).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between border-t pt-1">
+                                  <span className="font-medium text-gray-700">Diferencia:</span>
+                                  <span className={`font-semibold ${Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? 'text-red-600' : 'text-green-600'}`}>
+                                    {Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? '+' : ''}${(Number(modifications[0].new_total) - Number(modifications[0].previous_total)).toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     )}
-                  </Button>
-                )}
-                <Button 
-                  onClick={() => setShowSignature(true)}
-                  className={`px-8 py-3 text-lg ${authorizationType === 'modification_approval' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                >
-                  <PenTool className="h-5 w-5 mr-2" />
-                  {authorizationType === 'initial_approval' ? 'Autorizar Orden' : 'Autorizar Cambios'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className={`${authorizationType === 'modification_approval' ? 'border-orange-200' : 'border-blue-200'}`}>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <PenTool className="h-5 w-5 mr-2" />
-                {authorizationType === 'initial_approval' ? 'Firma de Autorización Inicial' : 'Firma de Autorización de Modificación'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className={`p-3 rounded-lg ${authorizationType === 'modification_approval' ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50 border border-blue-200'}`}>
-                <p className={`text-sm font-medium ${authorizationType === 'modification_approval' ? 'text-orange-800' : 'text-blue-800'}`}>
-                  {authorizationType === 'initial_approval' 
-                    ? '📄 PRIMERA AUTORIZACIÓN: Su firma autorizará el inicio de los trabajos según lo acordado.'
-                    : '📝 NUEVA AUTORIZACIÓN: Su firma autorizará los cambios realizados a la orden original.'
-                  }
-                </p>
-              </div>
-              
-              <div className="border border-border rounded-lg p-4 bg-muted/10">
-                <SignatureCanvas
-                  ref={signatureRef}
-                  canvasProps={{
-                    width: 600,
-                    height: 200,
-                    className: 'signature-canvas w-full h-48 bg-white rounded border border-border'
-                  }}
-                  backgroundColor="white"
-                />
-                <div className="flex justify-between items-center mt-2">
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Order Details - Mobile First */}
+            <div className="space-y-4">
+              {/* Services/Products */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-base">
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                    {orderItems.filter(item => item.item_type === 'servicio').length > 0 && 
+                     orderItems.filter(item => item.item_type === 'articulo').length > 0 
+                      ? 'Servicios y Productos' 
+                      : orderItems.filter(item => item.item_type === 'servicio').length > 0 
+                        ? 'Servicios' 
+                        : 'Productos'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-3">
+                    {orderItems.map((item, index) => (
+                      <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <h4 className="font-medium text-foreground text-sm">{item.service_name}</h4>
+                              {item.service_description && (
+                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.service_description}</p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="font-bold text-foreground">
+                                ${calculateItemCorrectPrice(item).toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Cant: {item.quantity || 1}</span>
+                              <span className={`px-2 py-0.5 rounded text-xs ${
+                                item.item_type === 'servicio' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {item.item_type === 'servicio' ? 'Servicio' : 'Producto'}
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">Total c/IVA</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cost Summary */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-base">
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
+                    Resumen de Costos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-medium">${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">IVA (16%):</span>
+                      <span className="font-medium">${vatTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-foreground">Total:</span>
+                        <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    
+                    {rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0 && (
+                      <div className="bg-green-50 p-2 rounded-lg mt-3">
+                        <p className="text-xs text-green-800">
+                          ✨ <strong>¡Cashback incluido!</strong> Los precios ya incluyen {rewardSettings.general_cashback_percent}% de cashback.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Estimated Delivery */}
+              {deliveryInfo && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center text-base">
+                      <Clock className="h-4 w-4 mr-2 text-blue-600" />
+                      Tiempo Estimado de Entrega
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs text-blue-600 font-medium">Fecha Estimada</p>
+                        <p className="text-sm text-blue-900 font-bold capitalize mt-1">{deliveryInfo.date}</p>
+                      </div>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs text-blue-600 font-medium">Hora Estimada</p>
+                        <p className="text-sm text-blue-900 font-bold mt-1">{deliveryInfo.time}</p>
+                      </div>
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <p className="text-xs text-blue-600 font-medium">Tiempo Total</p>
+                        <p className="text-sm text-blue-900 font-bold mt-1">{formatHoursAndMinutes(deliveryInfo.totalHours)}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Fixed Signature Section */}
+          <div className="sticky bottom-0 bg-background border-t p-4 -mx-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center text-base">
+                  <PenTool className="h-4 w-4 mr-2 text-primary" />
+                  Firma de {authorizationType === 'initial_approval' ? 'Autorización' : 'Aprobación de Cambios'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Firme en el área de arriba para 
-                    {authorizationType === 'initial_approval' ? ' autorizar la orden' : ' aprobar la modificación'}
+                    {authorizationType === 'initial_approval' 
+                      ? 'Para autorizar esta orden, proporcione su firma:'
+                      : 'Para aprobar las modificaciones, proporcione su firma:'
+                    }
                   </p>
+
+                  <div className="border-2 border-dashed border-border rounded-lg p-2 bg-white">
+                    <SignatureCanvas
+                      ref={signatureRef}
+                      canvasProps={{
+                        className: 'signature-canvas w-full h-32 bg-white rounded touch-action-none'
+                      }}
+                      backgroundColor="white"
+                      penColor="black"
+                      minWidth={1}
+                      maxWidth={2}
+                    />
+                  </div>
+
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={clearSignature}
+                    disabled={loading}
+                    size="sm"
+                    className="w-full"
                   >
-                    Limpiar
+                    Limpiar Firma
                   </Button>
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-2 pt-2">
+                    {isOrderUpdate && (
+                      <Button
+                        onClick={handleReject}
+                        disabled={loading}
+                        variant="destructive"
+                        className="h-11"
+                      >
+                        {loading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Procesando...
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            Rechazar Modificación
+                          </div>
+                        )}
+                      </Button>
+                    )}
+                    
+                    <Button
+                      onClick={handleApproval}
+                      disabled={loading}
+                      className="h-11 bg-green-600 hover:bg-green-700"
+                    >
+                      {loading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Procesando...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4" />
+                          {authorizationType === 'initial_approval' ? 'Autorizar Orden' : 'Aprobar Modificaciones'}
+                        </div>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onBack}
+                      disabled={loading}
+                      className="h-11"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Cancelar
+                    </Button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex gap-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowSignature(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleApproval}
-                  disabled={loading}
-                  className={`flex-1 ${authorizationType === 'modification_approval' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-blue-600 hover:bg-blue-700'}`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Procesando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-4 w-4 mr-2" />
-                      {authorizationType === 'initial_approval' ? 'Confirmar Autorización' : 'Confirmar Modificación'}
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <div className={`text-center text-sm p-3 rounded-lg ${authorizationType === 'modification_approval' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'}`}>
-                {authorizationType === 'initial_approval' 
-                  ? '🔒 Al firmar, confirma que autoriza la orden con los servicios y costos mostrados. Esta será su autorización inicial.'
-                  : '🔄 Al firmar, confirma que aprueba la modificación con los cambios y costos actualizados. Esta es una autorización adicional.'
-                }
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
