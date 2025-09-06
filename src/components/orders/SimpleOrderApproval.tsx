@@ -665,11 +665,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                 </Card>
               )}
             </div>
-          </div>
 
-          {/* Fixed Signature Section */}
-          <div className="sticky bottom-0 bg-background border-t p-4 -mx-4">
-            <Card>
+            {/* Signature Section - At the end of content */}
+            <Card className="mt-6">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center text-base">
                   <PenTool className="h-4 w-4 mr-2 text-primary" />
