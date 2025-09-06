@@ -372,6 +372,12 @@ export function QuoteWizard({
                     unitPrice = (srv.cost_price || 0) * (1 + profitMargin / 100);
                   }
                   
+                  // Apply cashback if enabled in settings
+                  if (rewardSettings?.apply_cashback_to_items) {
+                    const cashbackPercent = rewardSettings.general_cashback_percent || 2;
+                    unitPrice = unitPrice * (1 + cashbackPercent / 100);
+                  }
+                  
                   subtotal = unitPrice * 1; // quantity = 1
                   const vatAmount = subtotal * (srv.vat_rate || 16) / 100;
                   const total = subtotal + vatAmount;
