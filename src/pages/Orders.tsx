@@ -577,32 +577,38 @@ export default function Orders() {
                   <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
                     🛡️ SEGURIDAD
                     <Badge variant="secondary" className="ml-auto">
-                      {filteredOrders.filter(order => {
-                        const serviceName = order.service_types?.name || order.service_type || '';
-                        return serviceName.toLowerCase().includes('seguridad') || 
-                               serviceName.toLowerCase().includes('camara') || 
-                               serviceName.toLowerCase().includes('cámara') || 
-                               serviceName.toLowerCase().includes('alarma') || 
-                               serviceName.toLowerCase().includes('videovigilancia') ||
-                               serviceName.toLowerCase().includes('control de acceso') ||
-                               serviceName.toLowerCase().includes('cerca');
-                      }).length}
+                       {filteredOrders.filter(order => {
+                         const serviceName = order.service_types?.name || order.service_type || '';
+                         return serviceName.toLowerCase().includes('seguridad') || 
+                                serviceName.toLowerCase().includes('camara') || 
+                                serviceName.toLowerCase().includes('cámara') || 
+                                serviceName.toLowerCase().includes('alarma') || 
+                                serviceName.toLowerCase().includes('videovigilancia') ||
+                                serviceName.toLowerCase().includes('control de acceso') ||
+                                serviceName.toLowerCase().includes('cerca') ||
+                                serviceName.toLowerCase().includes('operador') ||
+                                serviceName.toLowerCase().includes('fraccionamiento') ||
+                                serviceName.toLowerCase().includes('detector');
+                       }).length}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
                     {Object.entries(groupedOrders).map(([status, orders]) => {
-                      const seguridadOrders = orders.filter(order => {
-                        const serviceName = order.service_types?.name || order.service_type || '';
-                        return serviceName.toLowerCase().includes('seguridad') || 
-                               serviceName.toLowerCase().includes('camara') || 
-                               serviceName.toLowerCase().includes('cámara') || 
-                               serviceName.toLowerCase().includes('alarma') || 
-                               serviceName.toLowerCase().includes('videovigilancia') ||
-                               serviceName.toLowerCase().includes('control de acceso') ||
-                               serviceName.toLowerCase().includes('cerca');
-                      });
+                       const seguridadOrders = orders.filter(order => {
+                         const serviceName = order.service_types?.name || order.service_type || '';
+                         return serviceName.toLowerCase().includes('seguridad') || 
+                                serviceName.toLowerCase().includes('camara') || 
+                                serviceName.toLowerCase().includes('cámara') || 
+                                serviceName.toLowerCase().includes('alarma') || 
+                                serviceName.toLowerCase().includes('videovigilancia') ||
+                                serviceName.toLowerCase().includes('control de acceso') ||
+                                serviceName.toLowerCase().includes('cerca') ||
+                                serviceName.toLowerCase().includes('operador') ||
+                                serviceName.toLowerCase().includes('fraccionamiento') ||
+                                serviceName.toLowerCase().includes('detector');
+                       });
                       
                       if (seguridadOrders.length === 0) return null;
                       
