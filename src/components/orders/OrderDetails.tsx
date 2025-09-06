@@ -284,8 +284,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const isClient = profile?.role === 'cliente';
   const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor') && 
                          ['pendiente', 'en_proceso'].includes(orderStatus);
-  const canSignDelivery = (isClient && orderStatus === 'pendiente_entrega') || 
-                       (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
+  
+  // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
+  const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
+  const canSignDelivery = ((isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted) || 
+                          (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus)));
 
   // Si es cliente y la orden está pendiente de aprobación/actualización sin autorización
   if (isClient && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') && !hasAuthorization) {
@@ -631,8 +634,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       {(() => {
         const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
         const canFinishOrder = !isClient && allItemsCompleted && ['en_proceso', 'pendiente'].includes(orderStatus);
-        const canSignDelivery = (isClient && orderStatus === 'pendiente_entrega') || 
-                               (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
+        const canSignDelivery = ((isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted) || 
+                                (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus)));
         
         if (canFinishOrder || canSignDelivery) {
           return (
