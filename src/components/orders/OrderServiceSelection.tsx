@@ -38,9 +38,10 @@ interface OrderServiceSelectionProps {
   onServiceAdd: (service: ServiceType, quantity?: number) => void;
   selectedServiceIds: string[];
   filterByType?: string;
+  serviceCategory?: 'sistemas' | 'seguridad';
 }
 
-export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filterByType }: OrderServiceSelectionProps) {
+export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filterByType, serviceCategory }: OrderServiceSelectionProps) {
   const { settings: rewardSettings } = useRewardSettings();
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
@@ -51,18 +52,23 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [serviceCategory]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       
-      // Load services from service_types
-      const { data: servicesData } = await supabase
+      // Load services from service_types with category filter
+      let query = supabase
         .from('service_types')
         .select('*')
-        .eq('is_active', true)
-        .order('category, name');
+        .eq('is_active', true);
+      
+      if (serviceCategory) {
+        query = query.eq('service_category', serviceCategory);
+      }
+      
+      const { data: servicesData } = await query.order('category, name');
 
       // Transform data to match interface
       const transformedServices = (servicesData || []).map((service: any) => ({
@@ -248,41 +254,43 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
 
   return (
     <div className="space-y-6">
-      {/* Search and filter controls */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <Label htmlFor="search">Buscar servicios</Label>
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="search"
-              placeholder="Buscar por nombre o descripción..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+      {/* Search control */}
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar servicios..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
         
-        <div className="w-full sm:w-64">
-          <Label htmlFor="category">Filtrar por categoría</Label>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todas las categorías" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border z-50">
-              <SelectItem value="all">Todas las categorías</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.name}>
-                  <span className="flex items-center gap-2">
-                    <span>{category.icon}</span>
-                    {category.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {categories.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant={selectedCategory === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedCategory('all')}
+            >
+              Todos
+            </Button>
+            {categories.map((category) => (
+              <Button
+                key={category.id}
+                type="button"
+                variant={selectedCategory === category.name ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedCategory(category.name)}
+                className="flex items-center gap-1"
+              >
+                <span>{category.icon}</span>
+                {category.name}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Services by category */}
@@ -310,8 +318,8 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
                         : 'hover:border-primary/50'
                     }`}
                   >
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
+                     <CardContent className="p-4">
+                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h4 className="font-medium">{service.name}</h4>
@@ -334,12 +342,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
                           <div className="flex flex-wrap gap-4 text-sm">
                            <div className="flex items-center gap-1">
                              <Package className="h-4 w-4 text-green-600" />
-                             <span className="font-medium text-green-600">
-                               Total: {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
-                               <span className="text-xs text-muted-foreground ml-1">
-                                 (inc. IVA {service.vat_rate}%{rewardSettings?.apply_cashback_to_items ? ` + Cashback ${rewardSettings.general_cashback_percent}%` : ''})
-                               </span>
-                             </span>
+                              <span className="font-medium text-green-600">
+                                {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  (IVA {service.vat_rate}%)
+                                </span>
+                              </span>
                              {(quantities[service.id] || 1) > 1 && (
                                <span className="text-xs text-muted-foreground">
                                  ({formatCurrency(getDisplayPrice(service, 1))} c/u)
@@ -367,27 +375,28 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2 ml-4">
-                          <div className="flex items-center gap-1">
-                            <Label htmlFor={`qty-${service.id}`} className="text-xs">Cant:</Label>
-                            <Input
-                              id={`qty-${service.id}`}
-                              type="number"
-                              min="1"
-                              value={quantities[service.id] || 1}
-                              onChange={(e) => updateQuantity(service.id, parseInt(e.target.value) || 1)}
-                              className="w-16 h-8"
-                            />
-                          </div>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleServiceAdd(service)}
-                          >
-                            Agregar
-                          </Button>
-                        </div>
+                         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 mt-3 sm:mt-0 sm:ml-4">
+                           <div className="flex items-center gap-1">
+                             <Label htmlFor={`qty-${service.id}`} className="text-xs">Cant:</Label>
+                             <Input
+                               id={`qty-${service.id}`}
+                               type="number"
+                               min="1"
+                               value={quantities[service.id] || 1}
+                               onChange={(e) => updateQuantity(service.id, parseInt(e.target.value) || 1)}
+                               className="w-16 h-8"
+                             />
+                           </div>
+                           <Button
+                             type="button"
+                             variant="outline"
+                             size="sm"
+                             onClick={() => handleServiceAdd(service)}
+                             className="w-full sm:w-auto"
+                           >
+                             Agregar
+                           </Button>
+                         </div>
                       </div>
                     </CardContent>
                   </Card>

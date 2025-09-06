@@ -1507,28 +1507,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                        {serviceTypes.length} servicios disponibles
                      </span>
                    </div>
-                    <ProductServiceSeparator
-                      onServiceAdd={(service, quantity = 1) => handleServiceAdd(service, quantity)}
-                      selectedServiceIds={orderItems.map(item => item.service_type_id)}
-                      selectedServices={orderItems.map(item => ({
-                        service: {
-                          id: item.service_type_id,
-                          name: item.name,
-                          description: item.description,
-                          cost_price: item.cost_price,
-                          base_price: item.unit_price || 0,
-                          vat_rate: item.vat_rate,
-                          item_type: item.item_type,
-                          category: '',
-                          estimated_hours: item.estimated_hours,
-                          profit_margin_tiers: item.profit_margin_tiers
-                        },
-                        quantity: item.quantity
-                      }))}
-                      onRemoveService={(serviceId: string) => {
-                        setOrderItems(prev => prev.filter(item => item.service_type_id !== serviceId));
-                      }}
-                   />
+                      <OrderServiceSelection
+                        onServiceAdd={(service, quantity = 1) => handleServiceAdd(service, quantity)}
+                        selectedServiceIds={orderItems.map(item => item.service_type_id)}
+                        serviceCategory={formData.service_category}
+                    />
                  </div>
                )}
 
