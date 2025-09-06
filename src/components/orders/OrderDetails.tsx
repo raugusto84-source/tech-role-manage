@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,6 +60,7 @@ interface OrderDetailsProps {
 export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { settings: rewardSettings } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
@@ -735,7 +737,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           onClose={() => setShowDeliverySignature(false)}
           onComplete={() => {
             setShowDeliverySignature(false);
-            onUpdate();
+            // If client, redirect to orders list, otherwise just update
+            if (isClient) {
+              navigate('/orders');
+            } else {
+              onUpdate();
+            }
           }}
         />
       )}
