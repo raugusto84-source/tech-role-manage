@@ -23,6 +23,46 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const unreadCount = useGlobalUnreadCount();
 
+  // Para clientes, usar layout minimalista sin sidebar
+  if (profile?.role === 'cliente') {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="p-3 md:p-4">
+          {children}
+        </main>
+        
+        {/* Chat Panel for clients */}
+        <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="outline"
+              size="icon"
+              className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
+            >
+              <div className="relative">
+                <MessageSquare className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-5 min-w-5 text-xs p-0 flex items-center justify-center"
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Badge>
+                )}
+              </div>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-[95vw] max-w-[1200px] p-0">
+            <div className="h-full p-2">
+              <ImprovedGeneralChat />
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+    );
+  }
+
+  // Layout normal con sidebar para otros roles
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">

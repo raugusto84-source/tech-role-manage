@@ -3,25 +3,37 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Gift, FileText, ClipboardList, Signature, CheckCircle, Clock, AlertCircle, Star, Copy, MessageCircle } from "lucide-react";
+import { 
+  Plus, 
+  FileText, 
+  ClipboardList, 
+  Signature, 
+  CheckCircle, 
+  Clock, 
+  AlertCircle, 
+  Star, 
+  Gift,
+  ArrowRight,
+  Zap,
+  TrendingUp,
+  CalendarDays
+} from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
-import { ClientOfficeChat } from "@/components/chat/ClientOfficeChat";
+import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 
-// Tipos locales para órdenes y cotizaciones
+// Tipos locales
 interface Order {
   id: string;
   order_number: string;
-  status: "pendiente" | "en_proceso" | "finalizada" | "cancelada" | "en_camino" | "pendiente_aprobacion" | "pendiente_entrega" | string;
+  status: string;
   created_at: string;
   delivery_date?: string;
   failure_description?: string;
   assigned_technician?: string;
-  assignment_reason?: string;
   clients?: {
     name: string;
     email?: string;
@@ -30,32 +42,23 @@ interface Order {
     full_name: string;
   } | null;
 }
+
 interface Quote {
   id: string;
   quote_number: string;
-  status: "solicitud" | "enviada" | "aceptada" | "rechazada" | "seguimiento" | string;
-  request_date?: string;
+  status: string;
   created_at: string;
   service_description?: string;
 }
 
-/**
- * Panel Unificado de Cliente
- * Todo en una sola página: órdenes, cotizaciones y recompensas
- */
 export default function ClientDashboard() {
-  const {
-    profile
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { profile } = useAuth();
+  const { toast } = useToast();
 
-  // Estado UI
+  // Estado
   const [loading, setLoading] = useState(true);
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -66,69 +69,63 @@ export default function ClientDashboard() {
     isNewClient: true
   });
 
-  // SEO básico por SPA
+  // SEO y metadatos
   useEffect(() => {
-    document.title = "Panel de Cliente | Syslag";
+    document.title = "Mi Panel | Syslag";
     const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute("content", "Panel de cliente Syslag: crea órdenes o cotizaciones y sigue tu estado en tiempo real.");else {
+    if (meta) {
+      meta.setAttribute("content", "Panel principal de cliente Syslag - Gestiona tus servicios y solicitudes");
+    } else {
       const m = document.createElement("meta");
       m.name = "description";
-      m.content = "Panel de cliente Syslag: crea órdenes o cotizaciones y sigue tu estado en tiempo real.";
+      m.content = "Panel principal de cliente Syslag - Gestiona tus servicios y solicitudes";
       document.head.appendChild(m);
     }
-    const canonical = document.querySelector('link[rel="canonical"]') || document.createElement("link");
-    canonical.setAttribute("rel", "canonical");
-    canonical.setAttribute("href", window.location.href);
-    if (!canonical.parentElement) document.head.appendChild(canonical);
   }, []);
 
-  // Cargar cotizaciones del cliente
+  // Funciones de carga de datos
   const loadQuotes = async () => {
-    if (!profile?.user_id) return;
-    const {
-      data,
-      error
-    } = await supabase.from("quotes").select("*").eq("client_email", profile.email).order("created_at", {
-      ascending: false
-    });
+    if (!profile?.email) return;
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*")
+      .eq("client_email", profile.email)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    
     if (error) {
       console.error("Error loading quotes:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar cotizaciones",
-        variant: "destructive"
-      });
     } else {
-      setQuotes(data as any || []);
+      setQuotes(data || []);
     }
   };
 
-  // Cargar recompensas del cliente
   const loadRewards = async () => {
-    if (!profile?.user_id || !profile?.email) return;
+    if (!profile?.email) return;
     try {
-      // Buscar cliente por email del perfil
-      const {
-        data: client
-      } = await supabase.from('clients').select('id').eq('email', profile.email).single();
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile.email)
+        .single();
+      
       if (!client) {
-        setRewards({
-          totalCashback: 0,
-          referralCode: "",
-          isNewClient: true
-        });
+        setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
         return;
       }
 
-      // Obtener datos reales de recompensas
-      const {
-        data: rewardsData
-      } = await supabase.from('client_rewards').select('*').eq('client_id', client.id).single();
+      const { data: rewardsData } = await supabase
+        .from('client_rewards')
+        .select('*')
+        .eq('client_id', client.id)
+        .single();
 
-      // Obtener código de referido si existe
-      const {
-        data: referralData
-      } = await supabase.from('client_referrals').select('referral_code').eq('referrer_client_id', client.id).single();
+      const { data: referralData } = await supabase
+        .from('client_referrals')
+        .select('referral_code')
+        .eq('referrer_client_id', client.id)
+        .single();
+
       setRewards({
         totalCashback: rewardsData?.total_cashback || 0,
         referralCode: referralData?.referral_code || "",
@@ -136,68 +133,50 @@ export default function ClientDashboard() {
       });
     } catch (error) {
       console.error('Error loading rewards:', error);
-      setRewards({
-        totalCashback: 0,
-        referralCode: "",
-        isNewClient: true
-      });
+      setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
     }
   };
 
-  // Cargar órdenes del cliente usando user_id
   const loadOrders = async () => {
     if (!profile?.user_id) return;
 
-    // Buscar cliente por user_id
-    const {
-      data: client,
-      error: clientErr
-    } = await supabase.from("clients").select("id").eq("user_id", profile.user_id).maybeSingle();
-    if (clientErr) {
-      console.error("Error loading client:", clientErr);
-      toast({
-        title: "Error",
-        description: "No se pudo identificar tu cliente",
-        variant: "destructive"
-      });
-      return;
-    }
-    if (!client) {
+    const { data: client, error: clientErr } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+    
+    if (clientErr || !client) {
       setOrders([]);
       return;
     }
-    const {
-      data: ordersData,
-      error
-    } = await supabase.from("orders").select("*").eq("client_id", client.id).order("created_at", {
-      ascending: false
-    });
+
+    const { data: ordersData, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    
     if (error) {
       console.error("Error loading orders:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar órdenes",
-        variant: "destructive"
-      });
       return;
     }
 
-    // Get technician profiles separately for assigned orders
-    const ordersWithTechnicianNames = await Promise.all((ordersData || []).map(async (order: any) => {
-      if (order.assigned_technician) {
-        const {
-          data: techProfile
-        } = await supabase.from('profiles').select('full_name').eq('user_id', order.assigned_technician).maybeSingle();
-        return {
-          ...order,
-          technician_profile: techProfile
-        };
-      }
-      return {
-        ...order,
-        technician_profile: null
-      };
-    }));
+    const ordersWithTechnicianNames = await Promise.all(
+      (ordersData || []).map(async (order: any) => {
+        if (order.assigned_technician) {
+          const { data: techProfile } = await supabase
+            .from('profiles')
+            .select('full_name')
+            .eq('user_id', order.assigned_technician)
+            .maybeSingle();
+          return { ...order, technician_profile: techProfile };
+        }
+        return { ...order, technician_profile: null };
+      })
+    );
+    
     setOrders(ordersWithTechnicianNames);
   };
 
@@ -209,345 +188,315 @@ export default function ClientDashboard() {
       await Promise.all([loadOrders(), loadQuotes(), loadRewards()]);
       if (mounted) setLoading(false);
     })();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [profile?.user_id]);
 
-  // Suscripción en tiempo real SOLO para órdenes del cliente
+  // Suscripción en tiempo real
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
     (async () => {
       if (!profile?.user_id) return;
-      const {
-        data: client
-      } = await supabase.from("clients").select("id").eq("user_id", profile.user_id).maybeSingle();
+      const { data: client } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("user_id", profile.user_id)
+        .maybeSingle();
+      
       if (!client) return;
 
-      // Canal realtime, escucha INSERT/UPDATE en orders del cliente
-      channel = supabase.channel("orders-realtime-client").on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "orders",
-        filter: `client_id=eq.${client.id}`
-      }, _payload => {
-        loadOrders();
-      }).on("postgres_changes", {
-        event: "UPDATE",
-        schema: "public",
-        table: "orders",
-        filter: `client_id=eq.${client.id}`
-      }, _payload => {
-        loadOrders();
-      }).subscribe();
+      channel = supabase
+        .channel("client-orders-realtime")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `client_id=eq.${client.id}`
+        }, () => loadOrders())
+        .subscribe();
     })();
+
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
   }, [profile?.user_id]);
 
-  // Utilidades UI con colores semánticos
+  // Utilidades
   const statusBadge = (status: string) => {
     const statusMap = {
-      pendiente: {
-        label: "Pendiente",
-        className: "bg-yellow-100 text-yellow-800 border-yellow-300"
-      },
-      en_proceso: {
-        label: "En Proceso",
-        className: "bg-blue-100 text-blue-800 border-blue-300"
-      },
-      en_camino: {
-        label: "En Camino",
-        className: "bg-purple-100 text-purple-800 border-purple-300"
-      },
-      pendiente_entrega: {
-        label: "Listo para firmar",
-        className: "bg-green-100 text-green-800 border-green-300"
-      },
-      finalizada: {
-        label: "Finalizada",
-        className: "bg-gray-100 text-gray-800 border-gray-300"
-      },
-      cancelada: {
-        label: "Cancelada",
-        className: "bg-red-100 text-red-800 border-red-300"
-      },
-      solicitud: {
-        label: "Solicitada",
-        className: "bg-yellow-100 text-yellow-800 border-yellow-300"
-      },
-      enviada: {
-        label: "Enviada",
-        className: "bg-blue-100 text-blue-800 border-blue-300"
-      },
-      aceptada: {
-        label: "Aceptada",
-        className: "bg-green-100 text-green-800 border-green-300"
-      },
-      rechazada: {
-        label: "Rechazada",
-        className: "bg-red-100 text-red-800 border-red-300"
-      }
+      pendiente: { label: "Pendiente", className: "bg-yellow-100 text-yellow-800" },
+      en_proceso: { label: "En Proceso", className: "bg-blue-100 text-blue-800" },
+      en_camino: { label: "En Camino", className: "bg-purple-100 text-purple-800" },
+      pendiente_entrega: { label: "Listo", className: "bg-green-100 text-green-800" },
+      finalizada: { label: "Completada", className: "bg-gray-100 text-gray-800" },
+      cancelada: { label: "Cancelada", className: "bg-red-100 text-red-800" },
+      solicitud: { label: "Solicitada", className: "bg-yellow-100 text-yellow-800" },
+      enviada: { label: "Enviada", className: "bg-blue-100 text-blue-800" },
+      aceptada: { label: "Aceptada", className: "bg-green-100 text-green-800" },
+      rechazada: { label: "Rechazada", className: "bg-red-100 text-red-800" }
     };
+    
     const statusInfo = statusMap[status as keyof typeof statusMap] || {
       label: status,
-      className: "bg-gray-100 text-gray-800 border-gray-300"
+      className: "bg-gray-100 text-gray-800"
     };
+    
     return <Badge className={statusInfo.className}>{statusInfo.label}</Badge>;
   };
 
-  // Filtrar datos según búsqueda
-  const filteredOrders = useMemo(() => orders.filter(o => o.order_number.toLowerCase().includes(searchTerm.toLowerCase()) || (o.failure_description || "").toLowerCase().includes(searchTerm.toLowerCase())), [orders, searchTerm]);
-  const filteredQuotes = useMemo(() => quotes.filter(q => q.quote_number.toLowerCase().includes(searchTerm.toLowerCase()) || (q.service_description || "").toLowerCase().includes(searchTerm.toLowerCase())), [quotes, searchTerm]);
+  // Métricas calculadas
   const metrics = useMemo(() => ({
-    totalOrders: orders.length,
-    pending: orders.filter(o => o.status === "pendiente" || o.status === "en_proceso" || o.status === "en_camino").length,
-    readyToSign: orders.filter(o => o.status === "pendiente_entrega").length,
-    completed: orders.filter(o => o.status === "finalizada").length,
-    quotesCount: quotes.length,
-    quotesAccepted: quotes.filter(q => q.status === "aceptada").length
+    pendingOrders: orders.filter(o => 
+      ['pendiente', 'en_proceso', 'en_camino'].includes(o.status)
+    ).length,
+    readyToSign: orders.filter(o => o.status === 'pendiente_entrega').length,
+    completedOrders: orders.filter(o => o.status === 'finalizada').length,
+    activeQuotes: quotes.filter(q => 
+      ['solicitud', 'enviada'].includes(q.status)
+    ).length,
   }), [orders, quotes]);
 
-  // Función para crear nueva solicitud
-  const handleNewRequest = (type: 'order' | 'quote') => {
-    if (type === 'order') {
-      window.location.href = '/orders?new=1';
-    } else {
-      window.location.href = '/quotes?new=1';
-    }
+  // Funciones de navegación
+  const handleNewRequest = () => {
+    setShowNewRequestDialog(true);
   };
+
+  const handleViewAll = (type: 'orders' | 'quotes') => {
+    window.location.href = `/${type}`;
+  };
+
   if (loading) {
-    return <AppLayout>
+    return (
+      <AppLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-            <p className="text-muted-foreground">Cargando tu información...</p>
+            <p className="text-muted-foreground">Cargando tu panel...</p>
           </div>
         </div>
-      </AppLayout>;
+      </AppLayout>
+    );
   }
-  return <AppLayout>
-      <div className="space-y-6">
-        {/* Header con saludo personalizado */}
-        <div className="bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg p-6 border border-primary/20">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary mb-2">
-            ¡Hola, {profile?.full_name || 'Cliente'}! 👋
+
+  return (
+    <AppLayout>
+      <div className="max-w-md mx-auto space-y-4">
+        {/* Header con saludo */}
+        <div className="text-center space-y-2 py-4">
+          <Avatar className="h-16 w-16 mx-auto">
+            <AvatarImage src="" />
+            <AvatarFallback className="text-xl bg-primary/10 text-primary">
+              {profile?.full_name?.charAt(0) || 'C'}
+            </AvatarFallback>
+          </Avatar>
+          <h1 className="text-xl font-bold">
+            ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
           </h1>
-          <p className="text-muted-foreground">
-            Gestiona tus servicios, cotizaciones y recompensas todo en un solo lugar
+          <p className="text-sm text-muted-foreground">
+            ¿Qué podemos hacer por ti hoy?
           </p>
         </div>
 
+        {/* Alertas importantes */}
+        {metrics.readyToSign > 0 && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Signature className="h-4 w-4 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-orange-800">
+                    {metrics.readyToSign} servicio{metrics.readyToSign > 1 ? 's' : ''} listo{metrics.readyToSign > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xs text-orange-600">Toca para firmar entrega</p>
+                </div>
+                <Button size="sm" variant="outline" className="border-orange-200 text-orange-600">
+                  Firmar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Botones de acción principales */}
-        <div className="grid grid-cols-2 gap-4">
-          <Button onClick={() => handleNewRequest('order')} className="h-20 flex-col justify-center bg-gradient-to-r from-primary to-primary hover:shadow-xl transition-all duration-300" size="lg">
-            <Plus className="h-6 w-6 mb-2" />
-            <span className="font-semibold">Nueva Orden</span>
-            <span className="text-xs opacity-90">Reportar problema</span>
+        <div className="grid grid-cols-2 gap-3">
+          <Button 
+            onClick={() => handleNewRequest()}
+            className="h-24 flex-col gap-2 bg-primary hover:bg-primary/90"
+            size="lg"
+          >
+            <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center">
+              <Plus className="h-4 w-4" />
+            </div>
+            <div className="text-center">
+              <div className="font-semibold">Nuevo Servicio</div>
+              <div className="text-xs opacity-90">Reportar problema</div>
+            </div>
           </Button>
-          <Button onClick={() => handleNewRequest('quote')} variant="outline" className="h-20 flex-col justify-center border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all duration-300" size="lg">
-            <FileText className="h-6 w-6 mb-2 text-primary" />
-            <span className="font-semibold text-primary">Nueva Cotización</span>
-            <span className="text-xs text-muted-foreground">Solicitar precio</span>
+          
+          <Button 
+            onClick={() => handleNewRequest()}
+            variant="outline"
+            className="h-24 flex-col gap-2 border-2"
+            size="lg"
+          >
+            <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
+              <FileText className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-center">
+              <div className="font-semibold">Cotización</div>
+              <div className="text-xs text-muted-foreground">Solicitar precio</div>
+            </div>
           </Button>
         </div>
 
-        {/* Tabs principales */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 h-12 bg-muted/50">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Gift className="h-4 w-4" />
-              <span className="hidden sm:inline">Resumen</span>
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" />
-              <span className="hidden sm:inline">Órdenes</span>
-            </TabsTrigger>
-            <TabsTrigger value="quotes" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">Cotizaciones</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              <span className="hidden sm:inline">Chat</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Métricas rápidas */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+            <CardContent className="p-4 text-center">
+              <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600" />
+              <p className="text-xl font-bold text-blue-700">{metrics.pendingOrders}</p>
+              <p className="text-xs text-blue-600">En proceso</p>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-gradient-to-br from-green-50 to-green-100">
+            <CardContent className="p-4 text-center">
+              <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-600" />
+              <p className="text-xl font-bold text-green-700">{metrics.completedOrders}</p>
+              <p className="text-xs text-green-600">Completadas</p>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Buscador */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar órdenes o cotizaciones..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-10" />
-          </div>
-
-          {/* Contenido de tabs */}
-          <TabsContent value="overview" className="space-y-6">
-            {/* Métricas principales */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                <CardContent className="p-4 text-center">
-                  <Clock className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                  <p className="text-2xl font-bold text-blue-700">{metrics.pending}</p>
-                  <p className="text-sm text-blue-600">En Proceso</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                <CardContent className="p-4 text-center">
-                  <CheckCircle className="h-8 w-8 mx-auto mb-2 text-green-600" />
-                  <p className="text-2xl font-bold text-green-700">{metrics.completed}</p>
-                  <p className="text-sm text-green-600">Completadas</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                <CardContent className="p-4 text-center">
-                  <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                  <p className="text-2xl font-bold text-purple-700">{metrics.quotesCount}</p>
-                  <p className="text-sm text-purple-600">Cotizaciones</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                <CardContent className="p-4 text-center">
-                  <Star className="h-8 w-8 mx-auto mb-2 text-orange-600" />
-                  <p className="text-2xl font-bold text-orange-700">${rewards.totalCashback}</p>
-                  <p className="text-sm text-orange-600">Cashback</p>
-                </CardContent>
-              </Card>
+        {/* Cashback */}
+        <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <Gift className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-yellow-800">Tu Cashback</p>
+                  <p className="text-xl font-bold text-yellow-700">${rewards.totalCashback}</p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="border-yellow-300 text-yellow-700">
+                <Star className="h-3 w-3 mr-1" />
+                Ver más
+              </Button>
             </div>
+          </CardContent>
+        </Card>
 
-            {/* Alerta de órdenes para firmar */}
-            {metrics.readyToSign > 0 && <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <AlertCircle className="h-8 w-8 text-yellow-600 animate-pulse" />
+        {/* Actividad reciente */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Actividad Reciente</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-0">
+            {[...orders.slice(0, 2), ...quotes.slice(0, 2)]
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .slice(0, 3)
+              .map((item: any) => (
+                <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    {'order_number' in item ? (
+                      <ClipboardList className="h-4 w-4 text-primary" />
+                    ) : (
+                      <FileText className="h-4 w-4 text-green-600" />
+                    )}
                     <div>
-                      <h3 className="font-bold text-yellow-800">
-                        ¡{metrics.readyToSign} orden(es) lista(s) para firmar!
-                      </h3>
-                      <p className="text-yellow-700">
-                        Tienes servicios completados esperando tu confirmación
+                      <p className="text-sm font-medium">
+                        {'order_number' in item ? item.order_number : item.quote_number}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
-                    <Button onClick={() => setActiveTab("orders")} className="ml-auto bg-yellow-600 hover:bg-yellow-700 text-white">
-                      Ver Órdenes
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>}
+                  {statusBadge(item.status)}
+                </div>
+              ))
+            }
+            
+            {orders.length === 0 && quotes.length === 0 && (
+              <div className="text-center py-6">
+                <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">No hay actividad reciente</p>
+                <p className="text-xs text-muted-foreground">¡Crea tu primer servicio!</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-            {/* Actividad reciente */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Actividad Reciente</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {[...orders.slice(0, 3), ...quotes.slice(0, 2)].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5).map((item: any) => <div key={item.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        {'order_number' in item ? <ClipboardList className="h-5 w-5 text-primary" /> : <FileText className="h-5 w-5 text-green-600" />}
-                        <div>
-                          <p className="font-medium">
-                            {'order_number' in item ? item.order_number : item.quote_number}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(item.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      {statusBadge(item.status)}
-                    </div>)}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="orders" className="space-y-4">
-            <div className="space-y-4">
-              {filteredOrders.length === 0 ? <Card>
-                  <CardContent className="p-12 text-center">
-                    <ClipboardList className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-                    <h3 className="text-xl font-semibold mb-2">No hay órdenes</h3>
-                    <p className="text-muted-foreground mb-4">Aún no tienes órdenes de servicio</p>
-                    <Button onClick={() => handleNewRequest('order')} className="bg-primary hover:bg-primary-hover">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Crear Primera Orden
-                    </Button>
-                  </CardContent>
-                </Card> : filteredOrders.map(order => <Card key={order.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold">{order.order_number}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(order.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        {statusBadge(order.status)}
-                      </div>
-                      <p className="text-muted-foreground mb-4">
-                        {order.failure_description || "Sin descripción"}
-                      </p>
-                      {order.status === 'pendiente_entrega' && <Button onClick={() => setOrderToSign(order)} className="w-full bg-primary hover:bg-primary-hover">
-                          <Signature className="h-4 w-4 mr-2" />
-                          Firmar Entrega
-                        </Button>}
-                      {order.technician_profile && <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm font-medium text-blue-800">
-                            Técnico: {order.technician_profile.full_name}
-                          </p>
-                        </div>}
-                    </CardContent>
-                  </Card>)}
+        {/* Enlaces rápidos */}
+        <div className="grid grid-cols-2 gap-3">
+          <Button 
+            variant="ghost" 
+            className="h-12 justify-between"
+            onClick={() => handleViewAll('orders')}
+          >
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              <span>Mis Órdenes</span>
             </div>
-          </TabsContent>
-
-          <TabsContent value="quotes" className="space-y-4">
-            <div className="space-y-4">
-              {filteredQuotes.length === 0 ? <Card>
-                  <CardContent className="p-12 text-center">
-                    <FileText className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
-                    <h3 className="text-xl font-semibold mb-2">No hay cotizaciones</h3>
-                    <p className="text-muted-foreground mb-4">Aún no tienes cotizaciones solicitadas</p>
-                    <Button onClick={() => handleNewRequest('quote')} variant="outline" className="border-primary text-primary hover:bg-primary/5">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Solicitar Cotización
-                    </Button>
-                  </CardContent>
-                </Card> : filteredQuotes.map(quote => <Card key={quote.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="text-lg font-semibold">{quote.quote_number}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(quote.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        {statusBadge(quote.status)}
-                      </div>
-                      <p className="text-muted-foreground">
-                        {quote.service_description || "Sin descripción"}
-                      </p>
-                    </CardContent>
-                  </Card>)}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            className="h-12 justify-between"
+            onClick={() => handleViewAll('quotes')}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span>Cotizaciones</span>
             </div>
-          </TabsContent>
+            <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
 
-
-          <TabsContent value="chat" className="space-y-4">
-            <ClientOfficeChat />
-          </TabsContent>
-        </Tabs>
-
-        {/* Diálogo de firma */}
-        {orderToSign && <DeliverySignature order={{
-        id: orderToSign.id,
-        order_number: orderToSign.order_number,
-        clients: orderToSign.clients
-      }} onComplete={() => {
-        setOrderToSign(null);
-        loadOrders();
-        toast({
-          title: "¡Entrega firmada!",
-          description: "La orden ha sido marcada como completada"
-        });
-      }} onClose={() => setOrderToSign(null)} />}
+        {/* Pie de página con versión */}
+        <div className="text-center py-4">
+          <p className="text-xs text-muted-foreground">
+            Syslag App • Versión 2.0
+          </p>
+        </div>
       </div>
-    </AppLayout>;
+
+      {/* Diálogos */}
+      {orderToSign && (
+        <DeliverySignature 
+          order={{
+            id: orderToSign.id,
+            order_number: orderToSign.order_number,
+            clients: orderToSign.clients
+          }} 
+          onComplete={() => {
+            setOrderToSign(null);
+            loadOrders();
+            toast({
+              title: "¡Entrega firmada!",
+              description: "El servicio ha sido marcado como completado"
+            });
+          }} 
+          onClose={() => setOrderToSign(null)} 
+        />
+      )}
+      
+      {showNewRequestDialog && (
+        <NewRequestDialog
+          open={showNewRequestDialog}
+          onOpenChange={(open) => {
+            setShowNewRequestDialog(open);
+          }}
+        />
+      )}
+    </AppLayout>
+  );
 }
