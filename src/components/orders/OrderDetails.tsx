@@ -492,6 +492,61 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             </CardContent>
           </Card>
 
+          {/* Botón Terminar Todo */}
+          {['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && orderItems.some(item => item.status !== 'finalizada') && (
+            <Card>
+              <CardContent className="p-4">
+                <Button
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      // Mark all non-finished items as finished
+                      const { error: itemsError } = await supabase
+                        .from('order_items')
+                        .update({ status: 'finalizada' })
+                        .eq('order_id', order.id)
+                        .neq('status', 'finalizada');
+
+                      if (itemsError) throw itemsError;
+
+                      // Update order status to pendiente_entrega
+                      const { error: orderError } = await supabase
+                        .from('orders')
+                        .update({ status: 'pendiente_entrega' })
+                        .eq('id', order.id);
+
+                      if (orderError) throw orderError;
+
+                      toast({
+                        title: 'Orden terminada',
+                        description: 'Todos los servicios han sido completados y la orden está lista para entrega.',
+                      });
+
+                      // Navigate back to all orders
+                      onBack();
+                    } catch (error) {
+                      console.error('Error finishing all items:', error);
+                      toast({
+                        title: 'Error',
+                        description: 'No se pudo finalizar todos los servicios.',
+                        variant: 'destructive',
+                      });
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className="w-full"
+                  disabled={loading}
+                  variant="default"
+                  size="lg"
+                >
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Terminar Todo
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Garantías */}
           {orderItems.length > 0 && orderStatus === 'finalizada' && (
             <Card>

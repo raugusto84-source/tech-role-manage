@@ -534,12 +534,12 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate, showReady
 
       {/* Botón Terminar Todo */}
       {canEdit && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && (
-        <div className="fixed bottom-4 left-4 right-4 z-50">
+        <div className="mt-4">
           <Button
             onClick={handleFinishAll}
             disabled={finishingAll}
             size="lg"
-            className="w-full max-w-md mx-auto block"
+            className="w-full"
           >
             <CheckCircle className="w-5 h-5 mr-2" />
             {finishingAll ? 'Finalizando...' : 'Terminar Todo'}
