@@ -382,73 +382,235 @@ export default function Sales() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {servicesLoading ? <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {Array.from({
-                  length: 6
-                }).map((_, i) => <Card key={i} className="animate-pulse">
-                        <CardHeader>
-                          <div className="h-5 w-40 bg-muted rounded" />
-                          <div className="h-4 w-28 bg-muted rounded mt-2" />
-                        </CardHeader>
-                        <CardContent>
-                          <div className="h-8 w-24 bg-muted rounded" />
-                        </CardContent>
-                      </Card>)}
-                  </div> : displayedServices.length === 0 ? <Card>
+                {servicesLoading ? (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card className="animate-pulse">
+                      <CardHeader>
+                        <div className="h-6 w-32 bg-muted rounded" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 gap-3">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <Card key={i} className="animate-pulse">
+                              <CardHeader>
+                                <div className="h-5 w-40 bg-muted rounded" />
+                                <div className="h-4 w-28 bg-muted rounded mt-2" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-8 w-24 bg-muted rounded" />
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card className="animate-pulse">
+                      <CardHeader>
+                        <div className="h-6 w-32 bg-muted rounded" />
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 gap-3">
+                          {Array.from({ length: 3 }).map((_, i) => (
+                            <Card key={i} className="animate-pulse">
+                              <CardHeader>
+                                <div className="h-5 w-40 bg-muted rounded" />
+                                <div className="h-4 w-28 bg-muted rounded mt-2" />
+                              </CardHeader>
+                              <CardContent>
+                                <div className="h-8 w-24 bg-muted rounded" />
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ) : displayedServices.length === 0 ? (
+                  <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Sin ítems</CardTitle>
                       <CardDescription>
                         {activeMainCategory ? 'No hay servicios que coincidan con la selección.' : 'No hay artículos registrados.'}
                       </CardDescription>
                     </CardHeader>
-                  </Card> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {displayedServices.map(svc => <Card key={svc.id} className="hover:shadow-md transition-shadow">
-                        <CardHeader>
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <CardTitle className="text-lg">{svc.name}</CardTitle>
-                              <div className="flex items-center gap-2 mt-1">
-                                {typeof svc.vat_rate === 'number' && <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>}
-                                {svc.item_type && <Badge variant="outline">{svc.item_type}</Badge>}
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {svc.description && <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>}
-                          <div className="flex items-center justify-between">
-                            <div className="text-xl font-bold">
-                              {formatCurrency(getDisplayPrice(svc))}
-                              {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="outline" size="sm">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
-                                      Eliminar
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>)}
-                  </div>}
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Sistemas Column */}
+                    <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                      <CardHeader>
+                        <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                          💻 SISTEMAS
+                          <Badge variant="secondary" className="ml-auto">
+                            {displayedServices.filter(svc => {
+                              const name = svc.name.toLowerCase();
+                              const category = (svc.category || '').toLowerCase();
+                              return name.includes('sistema') || 
+                                     name.includes('software') || 
+                                     name.includes('formateo') || 
+                                     name.includes('instalaci') ||
+                                     name.includes('computadora') ||
+                                     name.includes('pc') ||
+                                     category.includes('computadora');
+                            }).length}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 gap-3">
+                          {displayedServices.filter(svc => {
+                            const name = svc.name.toLowerCase();
+                            const category = (svc.category || '').toLowerCase();
+                            return name.includes('sistema') || 
+                                   name.includes('software') || 
+                                   name.includes('formateo') || 
+                                   name.includes('instalaci') ||
+                                   name.includes('computadora') ||
+                                   name.includes('pc') ||
+                                   category.includes('computadora');
+                          }).map(svc => (
+                            <Card key={svc.id} className="hover:shadow-md transition-shadow">
+                              <CardHeader>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <CardTitle className="text-lg">{svc.name}</CardTitle>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {typeof svc.vat_rate === 'number' && <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>}
+                                      {svc.item_type && <Badge variant="outline">{svc.item_type}</Badge>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {svc.description && <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>}
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xl font-bold">
+                                    {formatCurrency(getDisplayPrice(svc))}
+                                    {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Seguridad Column */}
+                    <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                      <CardHeader>
+                        <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                          🛡️ SEGURIDAD
+                          <Badge variant="secondary" className="ml-auto">
+                            {displayedServices.filter(svc => {
+                              const name = svc.name.toLowerCase();
+                              const category = (svc.category || '').toLowerCase();
+                              return name.includes('seguridad') || 
+                                     name.includes('camara') || 
+                                     name.includes('cámara') || 
+                                     name.includes('alarma') || 
+                                     name.includes('videovigilancia') ||
+                                     name.includes('control de acceso') ||
+                                     name.includes('cerca') ||
+                                     category.includes('seguridad') ||
+                                     category.includes('camara') ||
+                                     category.includes('cerca');
+                            }).length}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 gap-3">
+                          {displayedServices.filter(svc => {
+                            const name = svc.name.toLowerCase();
+                            const category = (svc.category || '').toLowerCase();
+                            return name.includes('seguridad') || 
+                                   name.includes('camara') || 
+                                   name.includes('cámara') || 
+                                   name.includes('alarma') || 
+                                   name.includes('videovigilancia') ||
+                                   name.includes('control de acceso') ||
+                                   name.includes('cerca') ||
+                                   category.includes('seguridad') ||
+                                   category.includes('camara') ||
+                                   category.includes('cerca');
+                          }).map(svc => (
+                            <Card key={svc.id} className="hover:shadow-md transition-shadow">
+                              <CardHeader>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div>
+                                    <CardTitle className="text-lg">{svc.name}</CardTitle>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      {typeof svc.vat_rate === 'number' && <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>}
+                                      {svc.item_type && <Badge variant="outline">{svc.item_type}</Badge>}
+                                    </div>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="space-y-3">
+                                {svc.description && <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>}
+                                <div className="flex items-center justify-between">
+                                  <div className="text-xl font-bold">
+                                    {formatCurrency(getDisplayPrice(svc))}
+                                    {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

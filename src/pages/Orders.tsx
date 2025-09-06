@@ -488,7 +488,7 @@ export default function Orders() {
           </CardContent>
         </Card>
 
-        {/* Orders Grouped by Status */}
+        {/* Orders Split by Category */}
         {filteredOrders.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center">
@@ -506,34 +506,136 @@ export default function Orders() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedOrders).map(([status, orders]) => 
-              orders.length > 0 && (
-                <Card key={status}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Badge variant="outline" className={getStatusColor(status)}>
-                        {getStatusTitle(status)} ({orders.length})
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {orders.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        onClick={() => setSelectedOrder(order)}
-                        onDelete={canDeleteOrder ? setOrderToDelete : undefined}
-                        canDelete={canDeleteOrder}
-                        getStatusColor={getStatusColor}
-                      />
-                    ))}
-                  </CardContent>
-                </Card>
-              )
-            )}
-          </div>
-        )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Sistemas Column */}
+            <div className="space-y-4">
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                  <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                    💻 SISTEMAS
+                    <Badge variant="secondary" className="ml-auto">
+                      {filteredOrders.filter(order => {
+                        const serviceName = order.service_types?.name || order.service_type || '';
+                        return serviceName.toLowerCase().includes('sistema') || 
+                               serviceName.toLowerCase().includes('software') || 
+                               serviceName.toLowerCase().includes('formateo') || 
+                               serviceName.toLowerCase().includes('instalaci') ||
+                               serviceName.toLowerCase().includes('computadora') ||
+                               serviceName.toLowerCase().includes('pc');
+                      }).length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {Object.entries(groupedOrders).map(([status, orders]) => {
+                      const sistemasOrders = orders.filter(order => {
+                        const serviceName = order.service_types?.name || order.service_type || '';
+                        return serviceName.toLowerCase().includes('sistema') || 
+                               serviceName.toLowerCase().includes('software') || 
+                               serviceName.toLowerCase().includes('formateo') || 
+                               serviceName.toLowerCase().includes('instalaci') ||
+                               serviceName.toLowerCase().includes('computadora') ||
+                               serviceName.toLowerCase().includes('pc');
+                      });
+                      
+                      if (sistemasOrders.length === 0) return null;
+                      
+                      return (
+                        <Card key={status}>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                              <Badge variant="outline" className={getStatusColor(status)}>
+                                {getStatusTitle(status)} ({sistemasOrders.length})
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {sistemasOrders.map((order) => (
+                              <OrderCard
+                                key={order.id}
+                                order={order}
+                                onClick={() => setSelectedOrder(order)}
+                                onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                                canDelete={canDeleteOrder}
+                                getStatusColor={getStatusColor}
+                              />
+                            ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Seguridad Column */}
+            <div className="space-y-4">
+              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                    🛡️ SEGURIDAD
+                    <Badge variant="secondary" className="ml-auto">
+                      {filteredOrders.filter(order => {
+                        const serviceName = order.service_types?.name || order.service_type || '';
+                        return serviceName.toLowerCase().includes('seguridad') || 
+                               serviceName.toLowerCase().includes('camara') || 
+                               serviceName.toLowerCase().includes('cámara') || 
+                               serviceName.toLowerCase().includes('alarma') || 
+                               serviceName.toLowerCase().includes('videovigilancia') ||
+                               serviceName.toLowerCase().includes('control de acceso') ||
+                               serviceName.toLowerCase().includes('cerca');
+                      }).length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {Object.entries(groupedOrders).map(([status, orders]) => {
+                      const seguridadOrders = orders.filter(order => {
+                        const serviceName = order.service_types?.name || order.service_type || '';
+                        return serviceName.toLowerCase().includes('seguridad') || 
+                               serviceName.toLowerCase().includes('camara') || 
+                               serviceName.toLowerCase().includes('cámara') || 
+                               serviceName.toLowerCase().includes('alarma') || 
+                               serviceName.toLowerCase().includes('videovigilancia') ||
+                               serviceName.toLowerCase().includes('control de acceso') ||
+                               serviceName.toLowerCase().includes('cerca');
+                      });
+                      
+                      if (seguridadOrders.length === 0) return null;
+                      
+                      return (
+                        <Card key={status}>
+                          <CardHeader className="pb-3">
+                            <CardTitle className="flex items-center gap-2 text-lg">
+                              <Badge variant="outline" className={getStatusColor(status)}>
+                                {getStatusTitle(status)} ({seguridadOrders.length})
+                              </Badge>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-2">
+                            {seguridadOrders.map((order) => (
+                              <OrderCard
+                                key={order.id}
+                                order={order}
+                                onClick={() => setSelectedOrder(order)}
+                                onDelete={canDeleteOrder ? setOrderToDelete : undefined}
+                                canDelete={canDeleteOrder}
+                                getStatusColor={getStatusColor}
+                              />
+                            ))}
+                          </CardContent>
+                         </Card>
+                       );
+                     })}
+                   </div>
+                 </CardContent>
+               </Card>
+             </div>
+           </div>
+         )}
       </div>
 
       {/* Delete Confirmation Dialog */}
