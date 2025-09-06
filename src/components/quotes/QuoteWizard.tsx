@@ -45,7 +45,7 @@ interface QuoteWizardProps {
   onCancel: () => void;
 }
 
-type WizardStep = 'client' | 'diagnostic' | 'items' | 'review';
+type WizardStep = 'client' | 'diagnostic' | 'items';
 
 export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const { profile } = useAuth();
@@ -149,7 +149,8 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         break;
       }
       case 'items': {
-        setCurrentStep('review');
+        // Direct creation instead of review step
+        createQuote();
         break;
       }
     }
@@ -162,9 +163,6 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         break;
       case 'items':
         setCurrentStep('diagnostic');
-        break;
-      case 'review':
-        setCurrentStep('items');
         break;
     }
   };
@@ -312,14 +310,12 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     client: 'Cliente',
     diagnostic: 'Diagnóstico',
     items: 'Servicios',
-    review: 'Revisar',
   };
 
   const stepIcons = {
     client: User,
     diagnostic: CheckSquare,
     items: Package,
-    review: Check,
   };
 
   return (
@@ -346,8 +342,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
             const isCompleted = 
               (step === 'client' && selectedClient) ||
               (step === 'diagnostic' && !['client'].includes(currentStep)) ||
-              (step === 'items' && !['client', 'diagnostic'].includes(currentStep)) ||
-              (step === 'review' && currentStep === 'review');
+              (step === 'items' && !['client', 'diagnostic'].includes(currentStep));
 
             return (
               <div
@@ -500,34 +495,6 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           </div>
         )}
 
-        {/* Step 4: Review */}
-        {currentStep === 'review' && (
-          <div className="space-y-3">
-            <Card>
-              <CardContent className="p-4">
-                <QuoteTotalsSummary
-                  selectedItems={quoteItems}
-                  clientId={selectedClient?.id}
-                  clientEmail={selectedClient?.email}
-                  onCashbackChange={handleCashbackChange}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Notes */}
-            <Card>
-              <CardContent className="p-3 space-y-2">
-                <Label className="text-sm">Notas adicionales (opcional)</Label>
-                <textarea
-                  placeholder="Notas o comentarios sobre la cotización..."
-                  value={quoteDetails.notes}
-                  onChange={(e) => setQuoteDetails(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full p-2 border rounded-lg text-sm min-h-[60px] resize-none"
-                />
-              </CardContent>
-            </Card>
-          </div>
-        )}
       </div>
 
       {/* Bottom Navigation */}
@@ -547,9 +514,9 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
             {Object.keys(stepTitles).indexOf(currentStep) + 1} de {Object.keys(stepTitles).length}
           </div>
 
-          {currentStep === 'review' ? (
+          {currentStep === 'items' ? (
             <Button onClick={createQuote} disabled={loading} size="sm">
-              {loading ? 'Creando...' : 'Crear'}
+              {loading ? 'Creando...' : 'Crear Cotización'}
             </Button>
           ) : (
             <Button onClick={nextStep} size="sm">

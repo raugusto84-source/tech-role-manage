@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Package, Search } from 'lucide-react';
+import { Plus, Package, Search, Shield, Monitor, X } from 'lucide-react';
 import { QuoteTotalsSummary } from './QuoteTotalsSummary';
 
 interface ServiceType {
@@ -81,6 +81,7 @@ export function CategoryServiceSelection({
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   
   // Custom item form
   const [customItem, setCustomItem] = useState({
@@ -309,469 +310,242 @@ export function CategoryServiceSelection({
     !service.category_name || service.category_name === 'Sin categoría'
   );
 
+  // Group categories into main categories
+  const securityCategories = ['Alarmas', 'Cámaras', 'Cercas Eléctricas', 'Control de Acceso'];
+  const systemsCategories = ['Computadoras', 'Fraccionamientos'];
+
+  const getMainCategoryIcon = (mainCategory: string) => {
+    switch (mainCategory) {
+      case 'Seguridad':
+        return Shield;
+      case 'Sistemas':
+        return Monitor;
+      default:
+        return Package;
+    }
+  };
+
+  const getFilteredServices = (mainCategory: string, itemType: string) => {
+    const categoryNames = mainCategory === 'Seguridad' ? securityCategories : systemsCategories;
+    return filteredServices.filter(service => 
+      categoryNames.includes(service.category_name || '') && 
+      service.item_type === itemType
+    );
+  };
+
+  const renderCategoryButton = (mainCategory: string, itemType: string) => {
+    const IconComponent = getMainCategoryIcon(mainCategory);
+    const count = getFilteredServices(mainCategory, itemType).length;
+    
+    return (
+      <Button
+        variant="outline"
+        className="h-20 flex flex-col gap-2 hover:bg-primary/10"
+        onClick={() => setSelectedMainCategory(`${mainCategory}-${itemType}`)}
+      >
+        <IconComponent className="h-6 w-6" />
+        <span className="text-xs font-medium">{mainCategory}</span>
+        <span className="text-xs text-muted-foreground">
+          {count} {itemType === 'servicio' ? 'servicios' : 'productos'}
+        </span>
+      </Button>
+    );
+  };
+
+  const renderMainCategoryView = () => {
+    if (!selectedMainCategory) {
+      return (
+        <div className="space-y-6">
+          {/* Services Categories */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Servicios</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {renderCategoryButton('Seguridad', 'servicio')}
+              {renderCategoryButton('Sistemas', 'servicio')}
+            </div>
+          </div>
+          
+          {/* Products Categories */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Productos</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {renderCategoryButton('Seguridad', 'articulo')}
+              {renderCategoryButton('Sistemas', 'articulo')}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const [mainCategory, itemType] = selectedMainCategory.split('-');
+    const services = getFilteredServices(mainCategory, itemType);
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost" 
+            size="sm"
+            onClick={() => setSelectedMainCategory(null)}
+          >
+            ← Volver
+          </Button>
+          <h3 className="text-lg font-medium">
+            {mainCategory} - {itemType === 'servicio' ? 'Servicios' : 'Productos'}
+          </h3>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {/* Services/Products Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {services.map(service => (
+            <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardContent className="p-4">
+                <div className="space-y-2">
+                  {service.image_url && (
+                    <div className="w-full h-24 mb-2">
+                      <img 
+                        src={service.image_url} 
+                        alt={service.name}
+                        className="w-full h-full object-cover rounded-md border"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-medium text-sm">{service.name}</h4>
+                    <Badge variant="default" className="text-xs">
+                      {itemType === 'servicio' ? 'Servicio' : 'Producto'}
+                    </Badge>
+                  </div>
+                  {service.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {service.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">
+                      {formatCurrency(calculateServicePrice(service))}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => addService(service)}
+                      className="h-7 px-2"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {services.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No se encontraron {itemType === 'servicio' ? 'servicios' : 'productos'} en esta categoría
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 gap-1 p-1">
-          <TabsTrigger value="services" className="text-xs md:text-sm">
-            <span className="md:hidden">Serv.</span>
-            <span className="hidden md:inline">Servicios</span>
-          </TabsTrigger>
-          <TabsTrigger value="products" className="text-xs md:text-sm">
-            <span className="md:hidden">Prod.</span>
-            <span className="hidden md:inline">Productos</span>
+      <Tabs defaultValue="selection" className="w-full">
+        <TabsList className="grid w-full grid-cols-1 gap-1 p-1">
+          <TabsTrigger value="selection" className="text-xs md:text-sm">
+            <span className="md:hidden">Selección</span>
+            <span className="hidden md:inline">Seleccionar Servicios y Productos</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Custom Item Section */}
-        {!simplifiedView && (
-          <TabsContent value="custom" className="space-y-4">
+        <TabsContent value="selection" className="space-y-4">
+          {renderMainCategoryView()}
+        </TabsContent>
+
+        {/* Selected Items Display */}
+        {selectedItems.length > 0 && (
+          <div className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="h-5 w-5" />
-                  Agregar Artículo Personalizado
+                <CardTitle className="flex items-center justify-between">
+                  <span>Servicios y Productos Seleccionados</span>
+                  <Badge variant="outline">{selectedItems.length}</Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="custom-name">Nombre</Label>
-                  <Input
-                    id="custom-name"
-                    value={customItem.name}
-                    onChange={(e) => setCustomItem({...customItem, name: e.target.value})}
-                    placeholder="Nombre del artículo..."
-                  />
+              <CardContent>
+                <div className="space-y-3">
+                  {selectedItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{item.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Cantidad: {item.quantity} | {formatCurrency(item.total)}
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => removeItem(item.id)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-
-                <div>
-                  <Label htmlFor="custom-description">Descripción</Label>
-                  <Textarea
-                    id="custom-description"
-                    value={customItem.description}
-                    onChange={(e) => setCustomItem({...customItem, description: e.target.value})}
-                    placeholder="Descripción del artículo..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="custom-quantity">Cantidad</Label>
-                    <Input
-                      id="custom-quantity"
-                      type="number"
-                      min="1"
-                      value={customItem.quantity}
-                      onChange={(e) => setCustomItem({...customItem, quantity: parseInt(e.target.value) || 1})}
-                    />
+                
+                <Separator className="my-4" />
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
                   </div>
-
-                  <div>
-                    <Label htmlFor="custom-price">Precio Unitario</Label>
-                    <Input
-                      id="custom-price"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={customItem.unit_price}
-                      onChange={(e) => setCustomItem({...customItem, unit_price: parseFloat(e.target.value) || 0})}
-                    />
+                  <div className="flex justify-between text-sm">
+                    <span>IVA:</span>
+                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.vat_amount, 0))}</span>
+                  </div>
+                  <div className="flex justify-between font-medium">
+                    <span>Total:</span>
+                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.total, 0))}</span>
                   </div>
                 </div>
-
-                <Button 
-                  onClick={addCustomItem}
-                  disabled={!customItem.name || customItem.unit_price <= 0}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Agregar Artículo Personalizado
-                </Button>
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
         )}
 
-        {/* Services */}
-        <TabsContent value="services" className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search">Buscar servicios</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Buscar por nombre o descripción..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+        {/* Totals Summary - Solo mostrar si no es vista simplificada y hay items */}
+        {!simplifiedView && selectedItems.length > 0 && clientId && (
+          <div className="mt-6">
+            <Card>
+              <CardContent className="p-4">
+                <QuoteTotalsSummary
+                  selectedItems={selectedItems}
+                  clientId={clientId}
+                  clientEmail={clientEmail}
+                  onCashbackChange={() => {}}
                 />
-              </div>
-            </div>
-            {!simplifiedView && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  window.open('/ventas?tab=form', '_blank');
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Servicio
-              </Button>
-            )}
+              </CardContent>
+            </Card>
           </div>
-
-          <div className="space-y-6">
-            {servicesByCategory.map(category => (
-              category.services.filter(s => s.item_type === 'servicio').length > 0 && (
-                <Card key={`${category.id}-servicios`}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      {category.icon && <span className="text-xl">{category.icon}</span>}
-                      {category.name} - Servicios
-                    </CardTitle>
-                    {category.description && (
-                      <p className="text-sm text-muted-foreground">{category.description}</p>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {category.services.filter(service => service.item_type === 'servicio').map(service => (
-                         <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                           <CardContent className="p-4">
-                             <div className="space-y-2">
-                               {/* Imagen del servicio si existe */}
-                               {(service as any).image_url && (
-                                 <div className="w-full h-24 mb-2">
-                                   <img 
-                                     src={(service as any).image_url} 
-                                     alt={service.name}
-                                     className="w-full h-full object-cover rounded-md border"
-                                     onError={(e) => {
-                                       const target = e.target as HTMLImageElement;
-                                       target.style.display = 'none';
-                                     }}
-                                   />
-                                 </div>
-                               )}
-                               <div className="flex items-start justify-between">
-                                 <h4 className="font-medium text-sm">{service.name}</h4>
-                                 <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
-                                   Servicio
-                                 </Badge>
-                               </div>
-                               {service.description && (
-                                 <p className="text-xs text-muted-foreground line-clamp-2">
-                                   {service.description}
-                                 </p>
-                               )}
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-sm">
-                                    {formatCurrency(calculateServicePrice(service))}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => addService(service)}
-                                    className="h-7 px-2"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                             </div>
-                           </CardContent>
-                         </Card>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            ))}
-
-            {uncategorizedServices.filter(s => s.item_type === 'servicio').length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    📋 Sin Categoría - Servicios
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {uncategorizedServices.filter(service => service.item_type === 'servicio').map(service => (
-                       <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                         <CardContent className="p-4">
-                           <div className="space-y-2">
-                             {/* Imagen del servicio si existe */}
-                             {(service as any).image_url && (
-                               <div className="w-full h-24 mb-2">
-                                 <img 
-                                   src={(service as any).image_url} 
-                                   alt={service.name}
-                                   className="w-full h-full object-cover rounded-md border"
-                                   onError={(e) => {
-                                     const target = e.target as HTMLImageElement;
-                                     target.style.display = 'none';
-                                   }}
-                                 />
-                               </div>
-                             )}
-                             <div className="flex items-start justify-between">
-                               <h4 className="font-medium text-sm">{service.name}</h4>
-                               <Badge variant="default" className="text-xs bg-blue-100 text-blue-800">
-                                 Servicio
-                               </Badge>
-                             </div>
-                             {service.description && (
-                               <p className="text-xs text-muted-foreground line-clamp-2">
-                                 {service.description}
-                               </p>
-                             )}
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">
-                                  {formatCurrency(calculateServicePrice(service))}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  onClick={() => addService(service)}
-                                  className="h-7 px-2"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </div>
-                           </div>
-                         </CardContent>
-                       </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Products */}
-        <TabsContent value="products" className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Label htmlFor="search-products">Buscar productos</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search-products"
-                  placeholder="Buscar por nombre o descripción..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            {!simplifiedView && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  window.open('/ventas?tab=form', '_blank');
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Crear Producto
-              </Button>
-            )}
-          </div>
-
-          <div className="space-y-6">
-            {servicesByCategory.map(category => (
-              category.services.filter(s => s.item_type === 'articulo').length > 0 && (
-                <Card key={`${category.id}-productos`}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      {category.icon && <span className="text-xl">{category.icon}</span>}
-                      {category.name} - Productos
-                    </CardTitle>
-                    {category.description && (
-                      <p className="text-sm text-muted-foreground">{category.description}</p>
-                    )}
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {category.services.filter(service => service.item_type === 'articulo').map(service => (
-                         <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                           <CardContent className="p-4">
-                             <div className="space-y-2">
-                               {/* Imagen del producto si existe */}
-                               {(service as any).image_url && (
-                                 <div className="w-full h-24 mb-2">
-                                   <img 
-                                     src={(service as any).image_url} 
-                                     alt={service.name}
-                                     className="w-full h-full object-cover rounded-md border"
-                                     onError={(e) => {
-                                       const target = e.target as HTMLImageElement;
-                                       target.style.display = 'none';
-                                     }}
-                                   />
-                                 </div>
-                               )}
-                               <div className="flex items-start justify-between">
-                                 <h4 className="font-medium text-sm">{service.name}</h4>
-                                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                   Producto
-                                 </Badge>
-                               </div>
-                               {service.description && (
-                                 <p className="text-xs text-muted-foreground line-clamp-2">
-                                   {service.description}
-                                 </p>
-                               )}
-                                <div className="flex items-center justify-between">
-                                  <span className="font-medium text-sm">
-                                    {formatCurrency(calculateServicePrice(service))}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    onClick={() => addService(service)}
-                                    className="h-7 px-2"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                             </div>
-                           </CardContent>
-                         </Card>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            ))}
-
-            {uncategorizedServices.filter(s => s.item_type === 'articulo').length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    📋 Sin Categoría - Productos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {uncategorizedServices.filter(service => service.item_type === 'articulo').map(service => (
-                       <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                         <CardContent className="p-4">
-                           <div className="space-y-2">
-                             {/* Imagen del producto si existe */}
-                             {(service as any).image_url && (
-                               <div className="w-full h-24 mb-2">
-                                 <img 
-                                   src={(service as any).image_url} 
-                                   alt={service.name}
-                                   className="w-full h-full object-cover rounded-md border"
-                                   onError={(e) => {
-                                     const target = e.target as HTMLImageElement;
-                                     target.style.display = 'none';
-                                   }}
-                                 />
-                               </div>
-                             )}
-                             <div className="flex items-start justify-between">
-                               <h4 className="font-medium text-sm">{service.name}</h4>
-                               <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                 Producto
-                               </Badge>
-                             </div>
-                             {service.description && (
-                               <p className="text-xs text-muted-foreground line-clamp-2">
-                                 {service.description}
-                               </p>
-                             )}
-                             <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">
-                                  {formatCurrency(calculateServicePrice(service))}
-                                </span>
-                               <Button
-                                 size="sm"
-                                 onClick={() => addService(service)}
-                                 className="h-7 px-2"
-                               >
-                                 <Plus className="h-3 w-3" />
-                               </Button>
-                             </div>
-                           </div>
-                         </CardContent>
-                       </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
+        )}
       </Tabs>
-
-      {/* Selected Items */}
-      {selectedItems.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Artículos Seleccionados ({selectedItems.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {selectedItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center gap-3 flex-1">
-                    {/* Mostrar imagen del artículo si existe */}
-                    {item.image_url && (
-                      <div className="w-16 h-16 flex-shrink-0">
-                        <img 
-                          src={item.image_url} 
-                          alt={item.name}
-                          className="w-full h-full object-cover rounded-md border"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                    )}
-                    
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{item.name}</h4>
-                        {item.is_custom && (
-                          <Badge variant="secondary" className="text-xs">Personalizado</Badge>
-                        )}
-                      </div>
-                       <p className="text-sm text-muted-foreground">
-                         {item.quantity} × {formatCurrency(item.unit_price)} = {formatCurrency(item.total)}
-                       </p>
-                    </div>
-                  </div>
-                   <div className="flex items-center gap-2">
-                     <Button
-                       variant="ghost"
-                       size="sm"
-                       onClick={() => removeItem(item.id)}
-                       className="text-destructive hover:text-destructive"
-                     >
-                       <span className="sr-only">Eliminar</span>
-                       ×
-                     </Button>
-                   </div>
-                </div>
-              ))}
-            </div>
-
-            <Separator className="my-4" />
-            
-            {/* Resumen de totales */}
-            <QuoteTotalsSummary 
-              selectedItems={selectedItems} 
-              clientId={clientId}
-              clientEmail={clientEmail}
-            />
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
