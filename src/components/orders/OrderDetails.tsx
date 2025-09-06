@@ -492,8 +492,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             </CardContent>
           </Card>
 
-          {/* Botón Terminar Todo */}
-          {['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && orderItems.some(item => item.status !== 'finalizada') && (
+          {/* Botón Terminar Todo - Hidden for clients */}
+          {!isClient && ['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && orderItems.some(item => item.status !== 'finalizada') && (
             <Card>
               <CardContent className="p-4">
                 <Button
@@ -630,7 +630,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       {/* Botones de Finalizar y Firmar al final */}
       {(() => {
         const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
-        const canFinishOrder = allItemsCompleted && ['en_proceso', 'pendiente'].includes(orderStatus);
+        const canFinishOrder = !isClient && allItemsCompleted && ['en_proceso', 'pendiente'].includes(orderStatus);
         const canSignDelivery = (isClient && orderStatus === 'pendiente_entrega') || 
                                (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
         
