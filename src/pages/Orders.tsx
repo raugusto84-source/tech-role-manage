@@ -33,8 +33,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 /**
  * Página principal del módulo de órdenes
  * Permite crear, visualizar, editar y gestionar órdenes de servicio
- * Vista móvil minimalist para clientes
- * Incluye filtros por estado y búsqueda
+ * Interfaz completa para todos los usuarios incluyendo clientes
  */
 
 interface Order {
@@ -92,9 +91,6 @@ export default function Orders() {
   const [selectedDateSeguridad, setSelectedDateSeguridad] = useState<Date | undefined>();
   const [activeTab, setActiveTab] = useState('list');
   const [showMinimalForm, setShowMinimalForm] = useState(false);
-
-  // Mobile-first: Check if client role
-  const isClientRole = profile?.role === 'cliente';
 
   const loadOrders = async () => {
     try {
@@ -326,487 +322,348 @@ export default function Orders() {
     );
   }
 
-  // Order details view with back button for mobile
+  // Order details view
   if (selectedOrder) {
     return (
       <AppLayout>
-        <div className={isClientRole ? 'px-4 py-6' : ''}>
-          {isClientRole && (
-            <div className="mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedOrder(null)}
-                className="flex items-center gap-2 text-muted-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver
-              </Button>
-            </div>
-          )}
-          <OrderDetails
-            order={selectedOrder}
-            onBack={() => setSelectedOrder(null)}
-            onUpdate={loadOrders}
-          />
-        </div>
+        <OrderDetails
+          order={selectedOrder}
+          onBack={() => setSelectedOrder(null)}
+          onUpdate={loadOrders}
+        />
       </AppLayout>
     );
   }
 
-  // Full order form with back button for mobile
+  // Full order form
   if (showForm) {
     return (
       <AppLayout>
-        <div className={isClientRole ? 'px-4 py-6' : ''}>
-          {isClientRole && (
-            <div className="mb-6">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowForm(false)}
-                className="flex items-center gap-2 text-muted-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver
-              </Button>
-            </div>
-          )}
-          <OrderForm
-            onSuccess={() => {
-              setShowForm(false);
-              loadOrders();
-            }}
-            onCancel={() => setShowForm(false)}
-          />
-        </div>
+        <OrderForm
+          onSuccess={() => {
+            setShowForm(false);
+            loadOrders();
+          }}
+          onCancel={() => setShowForm(false)}
+        />
       </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <div className={`${isClientRole ? 'px-4 py-6 space-y-4' : 'max-w-7xl mx-auto'}`}>
-        {/* Mobile-first header for clients */}
-        {isClientRole ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.history.back()}
-                className="flex items-center gap-2 text-muted-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver
-              </Button>
-              {canCreateOrder && (
-                <Button 
-                  onClick={() => setShowMinimalForm(true)}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Nueva
-                </Button>
-              )}
-            </div>
-            <h1 className="text-2xl font-bold">Mis Órdenes</h1>
-            
-            {/* Simple search for mobile */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar órdenes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Mobile orders list */}
-            {filteredOrders.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-                  <ClipboardList className="h-6 w-6 text-muted-foreground" />
-                </div>
-                <h3 className="text-base font-medium mb-2">No hay órdenes</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {searchTerm ? 'No se encontraron órdenes' : 'Aún no tienes órdenes registradas'}
-                </p>
-                {canCreateOrder && (
-                  <Button onClick={() => setShowMinimalForm(true)} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Crear Orden
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filteredOrders.map((order) => (
-                  <div key={order.id} className="bg-card rounded-lg border p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-sm">{order.order_number}</h3>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{order.failure_description}</p>
-                        {order.technician_profile && (
-                          <p className="text-xs text-muted-foreground">
-                            Técnico: {order.technician_profile.full_name}
-                          </p>
-                        )}
-                        {order.unread_messages_count && order.unread_messages_count > 0 && (
-                          <Badge variant="destructive" className="text-xs mt-1">
-                            {order.unread_messages_count} mensajes sin leer
-                          </Badge>
-                        )}
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                        {getStatusTitle(order.status)}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setSelectedOrder(order)}
-                      >
-                        Ver detalles
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Quick order modal for mobile */}
-            <Dialog open={showMinimalForm} onOpenChange={setShowMinimalForm}>
-              <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                <OrderFormMinimal onClose={() => {
-                  setShowMinimalForm(false);
-                  loadOrders();
-                }} />
-              </DialogContent>
-            </Dialog>
-          </div>
-        ) : (
-          // Desktop admin interface
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-              <div>
-                <h1 className="text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
-                <p className="text-muted-foreground mt-1">
-                  {profile?.role === 'cliente' ? 'Mis órdenes' : 
-                   profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
-                </p>
-              </div>
-              
-              {canCreateOrder && (
-                <div className="flex gap-2 mt-4 md:mt-0">
-                  <Dialog open={showMinimalForm} onOpenChange={setShowMinimalForm}>
-                    <DialogTrigger asChild>
-                      <Button>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Orden Rápida
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
-                      <OrderFormMinimal onClose={() => {
-                        setShowMinimalForm(false);
-                        loadOrders();
-                      }} />
-                    </DialogContent>
-                  </Dialog>
-                  <Button variant="outline" onClick={() => setShowForm(true)}>
+            <h1 className="text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
+            <p className="text-muted-foreground mt-1">
+              {profile?.role === 'cliente' ? 'Mis órdenes' : 
+               profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
+            </p>
+          </div>
+          
+          {canCreateOrder && (
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <Dialog open={showMinimalForm} onOpenChange={setShowMinimalForm}>
+                <DialogTrigger asChild>
+                  <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Orden Completa
+                    Orden Rápida
                   </Button>
-                </div>
-              )}
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <OrderFormMinimal onClose={() => {
+                    setShowMinimalForm(false);
+                    loadOrders();
+                  }} />
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" onClick={() => setShowForm(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Orden Completa
+              </Button>
             </div>
+          )}
+        </div>
 
-            {/* Desktop tabs and interface */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="list">Vista Lista</TabsTrigger>
-                <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="list" className="space-y-6">
-                {/* Filters */}
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Buscar por cliente, número de orden o descripción..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="w-full md:w-48">
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                          <SelectTrigger>
-                            <Filter className="h-4 w-4 mr-2" />
-                            <SelectValue placeholder="Estado" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos los estados</SelectItem>
-                            <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
-                            <SelectItem value="pendiente_actualizacion">Pendiente de Actualización</SelectItem>
-                            <SelectItem value="pendiente">Pendiente</SelectItem>
-                            <SelectItem value="en_camino">En Camino</SelectItem>
-                            <SelectItem value="en_proceso">En Proceso</SelectItem>
-                            <SelectItem value="pendiente_entrega">Pendiente de Entrega</SelectItem>
-                            <SelectItem value="finalizada">Finalizada</SelectItem>
-                            <SelectItem value="cancelada">Cancelada</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Orders Split by Category */}
-                {filteredOrders.length === 0 ? (
-                  <Card>
-                    <CardContent className="p-8 text-center">
-                      <p className="text-muted-foreground">
-                        {searchTerm || statusFilter !== "all" 
-                          ? "No se encontraron órdenes con los filtros aplicados"
-                          : "No hay órdenes registradas"}
-                      </p>
-                      {canCreateOrder && !searchTerm && statusFilter === "all" && (
-                        <Button onClick={() => setShowForm(true)} className="mt-4">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Crear Primera Orden
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Sistemas Column */}
-                    <div className="space-y-2">
-                      <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                        <CardHeader>
-                          <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                            💻 SISTEMAS
-                            <Badge variant="secondary" className="ml-auto">
-                              {filteredOrders.filter(order => {
-                                const serviceCategory = order.service_types?.service_category || "sistemas";
-                                return serviceCategory === "sistemas";
-                              }).length}
-                            </Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {Object.entries(groupedOrders).map(([status, orders]) => {
-                              const sistemasOrders = orders.filter(order => {
-                                const serviceCategory = order.service_types?.service_category || "sistemas";
-                                return serviceCategory === "sistemas";
-                              });
-                              
-                              if (sistemasOrders.length === 0) return null;
-                              
-                              return (
-                                <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
-                                    <Badge variant="outline" className="text-xs">
-                                      {sistemasOrders.length}
-                                    </Badge>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {sistemasOrders.map((order) => (
-                                      <OrderCard
-                                        key={order.id}
-                                        order={order}
-                                        onClick={() => setSelectedOrder(order)}
-                                        onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                        getStatusColor={getStatusColor}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Seguridad Column */}
-                    <div className="space-y-2">
-                      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                        <CardHeader>
-                          <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                            🛡️ SEGURIDAD
-                            <Badge variant="secondary" className="ml-auto">
-                              {filteredOrders.filter(order => {
-                                const serviceCategory = order.service_types?.service_category || "sistemas";
-                                return serviceCategory === "seguridad";
-                              }).length}
-                            </Badge>
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2">
-                            {Object.entries(groupedOrders).map(([status, orders]) => {
-                              const seguridadOrders = orders.filter(order => {
-                                const serviceCategory = order.service_types?.service_category || "sistemas";
-                                return serviceCategory === "seguridad";
-                              });
-                              
-                              if (seguridadOrders.length === 0) return null;
-                              
-                              return (
-                                <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
-                                    <Badge variant="outline" className="text-xs">
-                                      {seguridadOrders.length}
-                                    </Badge>
-                                  </div>
-                                  <div className="space-y-1">
-                                    {seguridadOrders.map((order) => (
-                                      <OrderCard
-                                        key={order.id}
-                                        order={order}
-                                        onClick={() => setSelectedOrder(order)}
-                                        onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                        getStatusColor={getStatusColor}
-                                      />
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
+        {/* Tabs for different views */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="list">Vista Lista</TabsTrigger>
+            <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="list" className="space-y-6">
+            {/* Filters */}
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por cliente, número de orden o descripción..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
                     </div>
                   </div>
-                )}
-              </TabsContent>
+                  
+                  <div className="w-full md:w-48">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <Filter className="h-4 w-4 mr-2" />
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
+                        <SelectItem value="pendiente_actualizacion">Pendiente de Actualización</SelectItem>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="en_camino">En Camino</SelectItem>
+                        <SelectItem value="en_proceso">En Proceso</SelectItem>
+                        <SelectItem value="pendiente_entrega">Pendiente de Entrega</SelectItem>
+                        <SelectItem value="finalizada">Finalizada</SelectItem>
+                        <SelectItem value="cancelada">Cancelada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              <TabsContent value="calendar" className="space-y-6">
-                <div className="grid lg:grid-cols-2 gap-6">
-                  {/* Calendario Sistemas */}
+            {/* Orders Split by Category */}
+            {filteredOrders.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-muted-foreground">
+                    {searchTerm || statusFilter !== "all" 
+                      ? "No se encontraron órdenes con los filtros aplicados"
+                      : "No hay órdenes registradas"}
+                  </p>
+                  {canCreateOrder && !searchTerm && statusFilter === "all" && (
+                    <Button onClick={() => setShowForm(true)} className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Crear Primera Orden
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Sistemas Column */}
+                <div className="space-y-2">
                   <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                     <CardHeader>
                       <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5" />
-                        💻 Calendario Sistemas
+                        💻 SISTEMAS
+                        <Badge variant="secondary" className="ml-auto">
+                          {filteredOrders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "sistemas";
+                          }).length}
+                        </Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <Calendar
-                        mode="single"
-                        selected={selectedDateSistemas}
-                        onSelect={setSelectedDateSistemas}
-                        locale={es}
-                        className="rounded-md border pointer-events-auto"
-                        modifiers={{
-                          hasOrders: getDatesWithOrders("sistemas")
-                        }}
-                        modifiersStyles={{
-                          hasOrders: {
-                            backgroundColor: "hsl(217, 91%, 85%)",
-                            color: "hsl(217, 91%, 30%)",
-                            fontWeight: "bold"
-                          }
-                        }}
-                      />
-                      
-                      {selectedDateSistemas && (
-                        <div className="mt-4">
-                          <h4 className="font-semibold text-sm mb-2">
-                            Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
-                          </h4>
-                          <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
-                              <OrderCard
-                                key={order.id}
-                                order={order}
-                                onClick={() => setSelectedOrder(order)}
-                                onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                getStatusColor={getStatusColor}
-                              />
-                            ))}
-                            {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
-                              <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Calendario Seguridad */}
-                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                    <CardHeader>
-                      <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5" />
-                        🛡️ Calendario Seguridad
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Calendar
-                        mode="single"
-                        selected={selectedDateSeguridad}
-                        onSelect={setSelectedDateSeguridad}
-                        locale={es}
-                        className="rounded-md border pointer-events-auto"
-                        modifiers={{
-                          hasOrders: getDatesWithOrders("seguridad")
-                        }}
-                        modifiersStyles={{
-                          hasOrders: {
-                            backgroundColor: "hsl(142, 76%, 85%)",
-                            color: "hsl(142, 76%, 30%)",
-                            fontWeight: "bold"
-                          }
-                        }}
-                      />
-                      
-                      {selectedDateSeguridad && (
-                        <div className="mt-4">
-                          <h4 className="font-semibold text-sm mb-2">
-                            Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
-                          </h4>
-                          <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
-                              <OrderCard
-                                key={order.id}
-                                order={order}
-                                onClick={() => setSelectedOrder(order)}
-                                onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                getStatusColor={getStatusColor}
-                              />
-                            ))}
-                            {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
-                              <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                      <div className="space-y-2">
+                        {Object.entries(groupedOrders).map(([status, orders]) => {
+                          const sistemasOrders = orders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "sistemas";
+                          });
+                          
+                          if (sistemasOrders.length === 0) return null;
+                          
+                          return (
+                            <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
+                                <Badge variant="outline" className="text-xs">
+                                  {sistemasOrders.length}
+                                </Badge>
+                              </div>
+                              <div className="space-y-1">
+                                {sistemasOrders.map((order) => (
+                                  <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    onClick={() => setSelectedOrder(order)}
+                                    onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                    getStatusColor={getStatusColor}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
+
+                {/* Seguridad Column */}
+                <div className="space-y-2">
+                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                    <CardHeader>
+                      <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                        🛡️ SEGURIDAD
+                        <Badge variant="secondary" className="ml-auto">
+                          {filteredOrders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "seguridad";
+                          }).length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {Object.entries(groupedOrders).map(([status, orders]) => {
+                          const seguridadOrders = orders.filter(order => {
+                            const serviceCategory = order.service_types?.service_category || "sistemas";
+                            return serviceCategory === "seguridad";
+                          });
+                          
+                          if (seguridadOrders.length === 0) return null;
+                          
+                          return (
+                            <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
+                                <Badge variant="outline" className="text-xs">
+                                  {seguridadOrders.length}
+                                </Badge>
+                              </div>
+                              <div className="space-y-1">
+                                {seguridadOrders.map((order) => (
+                                  <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    onClick={() => setSelectedOrder(order)}
+                                    onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                    getStatusColor={getStatusColor}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Calendario Sistemas */}
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                  <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    💻 Calendario Sistemas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDateSistemas}
+                    onSelect={setSelectedDateSistemas}
+                    locale={es}
+                    className="rounded-md border pointer-events-auto"
+                    modifiers={{
+                      hasOrders: getDatesWithOrders("sistemas")
+                    }}
+                    modifiersStyles={{
+                      hasOrders: {
+                        backgroundColor: "hsl(217, 91%, 85%)",
+                        color: "hsl(217, 91%, 30%)",
+                        fontWeight: "bold"
+                      }
+                    }}
+                  />
+                  
+                  {selectedDateSistemas && (
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-sm mb-2">
+                        Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
+                      </h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
+                          <OrderCard
+                            key={order.id}
+                            order={order}
+                            onClick={() => setSelectedOrder(order)}
+                            onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                            getStatusColor={getStatusColor}
+                          />
+                        ))}
+                        {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
+                          <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Calendario Seguridad */}
+              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                    <CalendarIcon className="h-5 w-5" />
+                    🛡️ Calendario Seguridad
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Calendar
+                    mode="single"
+                    selected={selectedDateSeguridad}
+                    onSelect={setSelectedDateSeguridad}
+                    locale={es}
+                    className="rounded-md border pointer-events-auto"
+                    modifiers={{
+                      hasOrders: getDatesWithOrders("seguridad")
+                    }}
+                    modifiersStyles={{
+                      hasOrders: {
+                        backgroundColor: "hsl(142, 76%, 85%)",
+                        color: "hsl(142, 76%, 30%)",
+                        fontWeight: "bold"
+                      }
+                    }}
+                  />
+                  
+                  {selectedDateSeguridad && (
+                    <div className="mt-4">
+                      <h4 className="font-semibold text-sm mb-2">
+                        Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
+                      </h4>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
+                          <OrderCard
+                            key={order.id}
+                            order={order}
+                            onClick={() => setSelectedOrder(order)}
+                            onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                            getStatusColor={getStatusColor}
+                          />
+                        ))}
+                        {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
+                          <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Delete Confirmation Dialog */}

@@ -9,7 +9,7 @@ import { QuoteDetails } from '@/components/quotes/QuoteDetails';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Search } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Quote {
@@ -30,7 +30,7 @@ interface Quote {
 /**
  * Página principal del módulo de cotizaciones
  * Permite crear, visualizar, editar y convertir cotizaciones a órdenes
- * Incluye filtros por estado y búsqueda
+ * Interfaz completa para todos los usuarios incluyendo clientes
  */
 export default function Quotes() {
   const { profile } = useAuth();
@@ -41,9 +41,6 @@ export default function Quotes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null);
-
-  // Mobile-first: Skip nueva solicitud and go directly to wizard
-  const isClientRole = profile?.role === 'cliente';
 
   // Cargar cotizaciones
   const loadQuotes = async () => {
@@ -120,8 +117,6 @@ export default function Quotes() {
       const canCreate = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
       if (canCreate) setShowWizard(true);
     }
-    // Solo en montaje
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Filtrar cotizaciones solo por búsqueda (sin filtro de estado)
@@ -273,41 +268,16 @@ export default function Quotes() {
     );
   }
 
-return (
+  return (
     <AppLayout>
-      <div className={`space-y-4 ${isClientRole ? 'px-4 py-6' : 'space-y-6'}`}>
-        {/* Mobile-first Header for clients */}
-        {isClientRole ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.history.back()}
-                className="flex items-center gap-2 text-muted-foreground"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Volver
-              </Button>
-              {canCreateQuotes && (
-                <Button 
-                  onClick={() => setShowWizard(true)}
-                  size="sm"
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Nueva
-                </Button>
-              )}
-            </div>
-            <h1 className="text-2xl font-bold">Mis Cotizaciones</h1>
-          </div>
-        ) : (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="space-y-6">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold">Cotizaciones</h1>
               <p className="text-muted-foreground">
-                Gestiona las cotizaciones del sistema
+                {profile?.role === 'cliente' ? 'Mis cotizaciones' : 'Gestiona las cotizaciones del sistema'}
               </p>
             </div>
             {canCreateQuotes && (
@@ -320,117 +290,83 @@ return (
               </Button>
             )}
           </div>
-        )}
 
-        {/* Search filter - simplified for mobile */}
-        <div className={`flex gap-4 ${isClientRole ? 'px-0' : ''}`}>
-          <div className={`flex-1 ${isClientRole ? 'max-w-full' : 'max-w-sm'}`}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar cotizaciones..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile-first quotes view */}
-        {filteredQuotes.length === 0 ? (
-          <div className={`text-center ${isClientRole ? 'py-8' : 'py-12'}`}>
-            <div className={`mx-auto ${isClientRole ? 'w-16 h-16' : 'w-24 h-24'} bg-muted rounded-full flex items-center justify-center mb-4`}>
-              <Plus className={`${isClientRole ? 'h-6 w-6' : 'h-8 w-8'} text-muted-foreground`} />
-            </div>
-            <h3 className={`${isClientRole ? 'text-base' : 'text-lg'} font-medium mb-2`}>No hay cotizaciones</h3>
-            <p className={`text-muted-foreground mb-4 ${isClientRole ? 'text-sm' : ''}`}>
-              {searchTerm 
-                ? 'No se encontraron cotizaciones con los filtros aplicados'
-                : 'Aún no tienes cotizaciones registradas'}
-            </p>
-            {canCreateQuotes && (
-              <Button onClick={() => setShowWizard(true)} size={isClientRole ? "sm" : "default"}>
-                <Plus className="h-4 w-4 mr-2" />
-                {isClientRole ? 'Crear Cotización' : 'Crear Primera Cotización'}
-              </Button>
-            )}
-          </div>
-        ) : isClientRole ? (
-          // Simplified mobile view for clients
-          <div className="space-y-3">
-            {filteredQuotes.map((quote) => (
-              <div key={quote.id} className="bg-card rounded-lg border p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-sm">{quote.quote_number}</h3>
-                    <p className="text-xs text-muted-foreground">{quote.service_description}</p>
-                  </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusInfo(quote.status).color}`}>
-                    {getStatusInfo(quote.status).label}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">
-                    {new Intl.NumberFormat('es-CO', {
-                      style: 'currency',
-                      currency: 'COP',
-                      minimumFractionDigits: 0,
-                    }).format(quote.estimated_amount)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedQuote(quote)}
-                  >
-                    Ver detalles
-                  </Button>
-                </div>
+          {/* Search filter */}
+          <div className="flex gap-4">
+            <div className="flex-1 max-w-sm">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Buscar cotizaciones..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
-            ))}
+            </div>
           </div>
-        ) : (
-          // Desktop admin view
-          <div className="space-y-8">
-            {Object.entries(quotesByStatus).map(([status, statusQuotes]) => {
-              const statusInfo = getStatusInfo(status);
-              
-              if (statusQuotes.length === 0) return null;
-              
-              return (
-                <div key={status} className={`rounded-lg border p-6 ${statusInfo.bgColor}`}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{statusInfo.icon}</span>
-                      <div>
-                        <h2 className="text-xl font-semibold">{statusInfo.label}</h2>
-                        <p className="text-sm text-muted-foreground">
-                          {statusQuotes.length} {statusQuotes.length === 1 ? 'cotización' : 'cotizaciones'}
-                        </p>
+
+          {/* Full quotes view for all users */}
+          {filteredQuotes.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
+                <Plus className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No hay cotizaciones</h3>
+              <p className="text-muted-foreground mb-4">
+                {searchTerm 
+                  ? 'No se encontraron cotizaciones con los filtros aplicados'
+                  : 'Aún no tienes cotizaciones registradas'}
+              </p>
+              {canCreateQuotes && (
+                <Button onClick={() => setShowWizard(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Crear Primera Cotización
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {Object.entries(quotesByStatus).map(([status, statusQuotes]) => {
+                const statusInfo = getStatusInfo(status);
+                
+                if (statusQuotes.length === 0) return null;
+                
+                return (
+                  <div key={status} className={`rounded-lg border p-6 ${statusInfo.bgColor}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{statusInfo.icon}</span>
+                        <div>
+                          <h2 className="text-xl font-semibold">{statusInfo.label}</h2>
+                          <p className="text-sm text-muted-foreground">
+                            {statusQuotes.length} {statusQuotes.length === 1 ? 'cotización' : 'cotizaciones'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full border text-sm font-medium ${statusInfo.color}`}>
+                        {statusQuotes.length}
                       </div>
                     </div>
-                    <div className={`px-3 py-1 rounded-full border text-sm font-medium ${statusInfo.color}`}>
-                      {statusQuotes.length}
+                    
+                    <div className="grid gap-4">
+                      {statusQuotes.map((quote) => (
+                        <QuoteCard
+                          key={quote.id}
+                          quote={quote}
+                          getStatusColor={() => statusInfo.color}
+                          onViewDetails={() => setSelectedQuote(quote)}
+                          onDelete={() => setDeleteQuoteId(quote.id)}
+                          canManage={canCreateQuotes}
+                        />
+                      ))}
                     </div>
                   </div>
-                  
-                  <div className="grid gap-4">
-                    {statusQuotes.map((quote) => (
-                      <QuoteCard
-                        key={quote.id}
-                        quote={quote}
-                        getStatusColor={() => statusInfo.color}
-                        onViewDetails={() => setSelectedQuote(quote)}
-                        onDelete={() => setDeleteQuoteId(quote.id)}
-                        canManage={canCreateQuotes}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Dialog de confirmación de eliminación */}
