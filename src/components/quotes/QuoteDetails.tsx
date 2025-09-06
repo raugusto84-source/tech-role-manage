@@ -522,26 +522,42 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   // Calculate totals using correct pricing and reward settings
   const calculateTotals = () => {
+    let subtotal = 0;
+    let totalVat = 0;
+    let totalWithholdings = 0;
     let total = 0;
 
     quoteItems.forEach(item => {
-      let itemTotal = (item.unit_price || 0) * item.quantity;
+      const unitPrice = item.unit_price || 0;
+      const quantity = item.quantity || 1;
+      const vatRate = item.vat_rate || 0;
       
-      // Apply cashback percentage if enabled in settings
-      if (rewardSettings?.apply_cashback_to_items) {
-        const cashbackPercent = rewardSettings.general_cashback_percent || 2;
-        const cashbackAmount = itemTotal * (cashbackPercent / 100);
-        itemTotal += cashbackAmount;
+      // If there's VAT rate, extract the base price from unit_price that includes VAT
+      let basePricePerUnit = unitPrice;
+      let vatPerUnit = 0;
+      
+      if (vatRate > 0) {
+        // unit_price includes VAT, so extract base price
+        basePricePerUnit = unitPrice / (1 + vatRate / 100);
+        vatPerUnit = unitPrice - basePricePerUnit;
       }
       
+      const itemSubtotal = basePricePerUnit * quantity;
+      const itemVat = vatPerUnit * quantity;
+      const itemWithholding = (item.withholding_amount || 0) * quantity;
+      const itemTotal = unitPrice * quantity;
+      
+      subtotal += itemSubtotal;
+      totalVat += itemVat;
+      totalWithholdings += itemWithholding;
       total += itemTotal;
     });
 
     return { 
-      subtotal: total,
-      totalVat: 0,
-      totalWithholdings: 0, 
-      total 
+      subtotal: subtotal,
+      totalVat: totalVat,
+      totalWithholdings: totalWithholdings, 
+      total: total
     };
   };
 

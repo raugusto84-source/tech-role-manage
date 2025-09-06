@@ -95,35 +95,58 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
     onCashbackChange?.(checked, cashbackAmount);
   };
 
-  // Use the pricing calculation hook
-  const { settings: rewardSettings } = useRewardSettings();
-  
+  // Calculate totals from selectedItems with proper VAT breakdown
   console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
   
-  const totalFinal = selectedItems.reduce((sum, item) => {
+  const subtotalBeforeVat = selectedItems.reduce((sum, item) => {
     const unitPrice = item.unit_price || 0;
     const quantity = item.quantity || 1;
-    let itemTotal = unitPrice * quantity;
+    const vatRate = item.vat_rate || 0;
     
-    // Apply cashback percentage if enabled in settings
-    if (rewardSettings?.apply_cashback_to_items) {
-      const cashbackPercent = rewardSettings.general_cashback_percent || 2;
-      const cashbackAmount = itemTotal * (cashbackPercent / 100);
-      itemTotal += cashbackAmount;
+    // Extract base price from unit_price that includes VAT
+    let basePricePerUnit = unitPrice;
+    if (vatRate > 0) {
+      basePricePerUnit = unitPrice / (1 + vatRate / 100);
     }
     
-    console.log(`Item ${item.name} - Unit price: ${unitPrice}, Quantity: ${quantity}, Item total: ${itemTotal}`);
-    return sum + itemTotal;
+    const itemSubtotal = basePricePerUnit * quantity;
+    console.log(`Item ${item.name} - Unit price: ${unitPrice}, Base price: ${basePricePerUnit}, Subtotal: ${itemSubtotal}`);
+    return sum + itemSubtotal;
   }, 0);
+
+  const totalVAT = selectedItems.reduce((sum, item) => {
+    const unitPrice = item.unit_price || 0;
+    const quantity = item.quantity || 1;
+    const vatRate = item.vat_rate || 0;
+    
+    let vatPerUnit = 0;
+    if (vatRate > 0) {
+      const basePricePerUnit = unitPrice / (1 + vatRate / 100);
+      vatPerUnit = unitPrice - basePricePerUnit;
+    }
+    
+    const itemVat = vatPerUnit * quantity;
+    console.log(`Item ${item.name} - VAT per unit: ${vatPerUnit}, Item VAT: ${itemVat}`);
+    return sum + itemVat;
+  }, 0);
+
+  const totalFinal = subtotalBeforeVat + totalVAT;
   const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
   const finalTotal = totalFinal - cashbackAmount;
 
   return (
     <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
       <div className="flex justify-between items-center">
-        <span>Total antes de descuentos:</span>
-        <span>{formatCurrency(totalFinal)}</span>
+        <span>Subtotal:</span>
+        <span>{formatCurrency(subtotalBeforeVat)}</span>
       </div>
+      
+      {totalVAT > 0 && (
+        <div className="flex justify-between items-center">
+          <span>IVA Total:</span>
+          <span>{formatCurrency(totalVAT)}</span>
+        </div>
+      )}
       
       {/* Cashback Section */}
       {(clientEmail || clientId) && (
