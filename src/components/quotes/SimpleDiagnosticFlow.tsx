@@ -253,13 +253,27 @@ export function SimpleDiagnosticFlow({
     setSelectedSolution(selectedSolution);
 
     // Load recommended services
+    let loadedServices: ServiceType[] = [];
     if (selectedSolution.recommended_services.length > 0) {
       const {
         data: services
       } = await supabase.from('service_types').select('id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type').in('id', selectedSolution.recommended_services).eq('is_active', true);
-      setRecommendedServices(services || []);
+      loadedServices = services || [];
+      setRecommendedServices(loadedServices);
     }
     setIsCompleted(true);
+    
+    // Automatically call onDiagnosisComplete to add services to quote
+    if (onDiagnosisComplete) {
+      onDiagnosisComplete({
+        flow_id: selectedFlow.id,
+        problem_title: selectedFlow.problem_title,
+        answers: finalAnswers,
+        recommended_solution: selectedSolution,
+        recommended_services: loadedServices
+      });
+    }
+    
     toast({
       title: 'Diagnóstico completado',
       description: `Solución encontrada: ${selectedSolution.title}`
