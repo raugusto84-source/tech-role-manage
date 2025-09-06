@@ -350,23 +350,62 @@ export function QuoteWizard({
             setDiagnosticSolution(result);
             // Auto-add recommended services if any
             if (result.recommended_services?.length > 0) {
-              const newItems = result.recommended_services.map((service: any) => ({
-                id: crypto.randomUUID(),
-                service_type_id: service.id,
-                name: service.name,
-                description: service.description || '',
-                quantity: 1,
-                unit_price: service.base_price || service.cost_price || 0,
-                subtotal: service.base_price || service.cost_price || 0,
-                vat_rate: service.vat_rate || 16,
-                vat_amount: (service.base_price || service.cost_price || 0) * (service.vat_rate || 16) / 100,
-                withholding_rate: 0,
-                withholding_amount: 0,
-                withholding_type: '',
-                total: (service.base_price || service.cost_price || 0) + (service.base_price || service.cost_price || 0) * (service.vat_rate || 16) / 100,
-                is_custom: false
-              }));
+              const newItems = result.recommended_services.map((service: any) => {
+                // Helper functions for price calculation
+                const isProduct = (srv: any) => {
+                  const hasTiers = Array.isArray(srv.profit_margin_tiers) && srv.profit_margin_tiers.length > 0;
+                  return hasTiers || srv.item_type === 'articulo';
+                };
+
+                const marginFromTiers = (srv: any): number => srv.profit_margin_tiers?.[0]?.margin ?? 30;
+
+                const calculatePrices = (srv: any) => {
+                  let unitPrice = 0;
+                  let subtotal = 0;
+                  
+                  if (!isProduct(srv)) {
+                    // Service: use base_price
+                    unitPrice = srv.base_price || 0;
+                  } else {
+                    // Product: calculate with profit margin
+                    const profitMargin = marginFromTiers(srv);
+                    unitPrice = (srv.cost_price || 0) * (1 + profitMargin / 100);
+                  }
+                  
+                  subtotal = unitPrice * 1; // quantity = 1
+                  const vatAmount = subtotal * (srv.vat_rate || 16) / 100;
+                  const total = subtotal + vatAmount;
+                  
+                  return { unitPrice, subtotal, vatAmount, total };
+                };
+
+                const { unitPrice, subtotal, vatAmount, total } = calculatePrices(service);
+                
+                return {
+                  id: crypto.randomUUID(),
+                  service_type_id: service.id,
+                  name: service.name,
+                  description: service.description || '',
+                  quantity: 1,
+                  unit_price: unitPrice,
+                  subtotal: subtotal,
+                  vat_rate: service.vat_rate || 16,
+                  vat_amount: vatAmount,
+                  withholding_rate: 0,
+                  withholding_amount: 0,
+                  withholding_type: '',
+                  total: total,
+                  is_custom: false
+                };
+              });
+              
               setQuoteItems(prev => [...prev, ...newItems]);
+              
+              // Show toast confirmation
+              toast({
+                title: "Servicios agregados",
+                description: `${newItems.length} servicio(s) recomendado(s) agregado(s) automáticamente`,
+              });
             }
           }} />
             </CardContent>
