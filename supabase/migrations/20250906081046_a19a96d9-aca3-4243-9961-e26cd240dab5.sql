@@ -1,0 +1,2 @@
+-- Add service_category column to service_types table for Sistemas/Seguridad categorization
+ALTER TABLE public.service_types ADD COLUMN service_category text NOT NULL DEFAULT 'sistemas' CHECK (service_category IN ('sistemas', 'seguridad'));

@@ -50,6 +50,7 @@ let SUBCATEGORY_MAP: Record<MainCategory, string[]> = {
 const serviceSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   description: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
+  service_category: z.enum(['sistemas', 'seguridad'], { required_error: 'Selecciona la categoría del servicio' }),
   main_category: z.string().min(1, 'Selecciona una categoría'),
   subcategory: z.string().min(1, 'Selecciona o escribe una subcategoría'),
   kind: z.enum(['servicio', 'articulo'], { required_error: 'Selecciona el tipo' }), // ← reemplaza al antiguo item_type
@@ -94,6 +95,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
     defaultValues: {
       name: '',
       description: '',
+      service_category: 'sistemas',
       main_category: '',
       subcategory: '',
       kind: 'servicio',
@@ -155,6 +157,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       form.reset({
         name: data.name,
         description: data.description || '',
+        service_category: ((data as any).service_category as 'sistemas' | 'seguridad') || 'sistemas',
         main_category: (data.category as string) || 'Computadoras',
         subcategory: (data.subcategory as string) || '', // Leer desde nueva columna
         kind: resolvedKind,
@@ -299,6 +302,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       const serviceData: any = {
         name: values.name,
         description: values.description,
+        service_category: values.service_category, // ← Nueva categoría Sistemas/Seguridad
         category: values.main_category,       // ← Categoría principal
         item_type: values.kind,               // ← Usar 'servicio' o 'articulo'
         subcategory: values.subcategory,      // ← Guardar subcategoría en su propia columna
@@ -497,6 +501,32 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                         {form.watch('kind') === 'servicio'
                           ? 'Precio fijo establecido manualmente'
                           : 'Costo base + margen de ganancia'}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Categoría del Servicio (Sistemas/Seguridad) */}
+                <FormField
+                  control={form.control}
+                  name="service_category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoría del Servicio *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona categoría" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="sistemas">💻 Sistemas</SelectItem>
+                          <SelectItem value="seguridad">🔒 Seguridad</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Define si es un servicio de Sistemas o Seguridad para asignación de flotillas
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

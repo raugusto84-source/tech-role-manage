@@ -4509,6 +4509,7 @@ export type Database = {
           min_quantity: number | null
           name: string
           profit_margin_tiers: Json | null
+          service_category: string
           shared_time: boolean
           stock_quantity: number | null
           subcategory: string | null
@@ -4534,6 +4535,7 @@ export type Database = {
           min_quantity?: number | null
           name: string
           profit_margin_tiers?: Json | null
+          service_category?: string
           shared_time?: boolean
           stock_quantity?: number | null
           subcategory?: string | null
@@ -4559,6 +4561,7 @@ export type Database = {
           min_quantity?: number | null
           name?: string
           profit_margin_tiers?: Json | null
+          service_category?: string
           shared_time?: boolean
           stock_quantity?: number | null
           subcategory?: string | null
