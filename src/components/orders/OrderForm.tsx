@@ -1018,14 +1018,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-      if (!formData.delivery_date) {
-        toast({
-          title: "Error",
-          description: "Debe seleccionar una fecha de entrega",
-          variant: "destructive"
-        });
-        return;
-      }
 
       // Calcular totales de todos los items
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0) - appliedCashback;
@@ -1034,21 +1026,64 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       // All orders start as pending authorization
       const initialStatus = 'pendiente_aprobacion';
 
+      // Calcular automáticamente fecha estimada de entrega según carga actual
+      const defaultSchedule = {
+        work_days: [1, 2, 3, 4, 5],
+        start_time: '08:00',
+        end_time: '16:00',
+        break_duration_minutes: 60,
+      };
+
+      let computedDeliveryDate = formData.delivery_date;
+      try {
+        if (formData.assigned_technician && orderItems.length > 0) {
+          const primarySchedule = technicianSchedules[formData.assigned_technician] || defaultSchedule;
+          const processedSupport = supportTechnicians.map(st => ({
+            id: st.technicianId,
+            schedule: technicianSchedules[st.technicianId] || defaultSchedule,
+            reductionPercentage: st.reductionPercentage,
+          }));
+
+          const currentWorkload = await getTechnicianCurrentWorkload(formData.assigned_technician);
+
+          const result = calculateAdvancedDeliveryDate({
+            orderItems: orderItems.map((item) => ({
+              id: item.id,
+              estimated_hours: (item as any).estimated_hours || 0,
+              shared_time: (item as any).shared_time || false,
+              service_type_id: (item as any).service_type_id,
+              quantity: (item as any).quantity || 1,
+            })),
+            primaryTechnicianSchedule: primarySchedule,
+            supportTechnicians: processedSupport,
+            creationDate: new Date(),
+            currentWorkload,
+          });
+
+          computedDeliveryDate = result.deliveryDate.toISOString().split('T')[0];
+        }
+      } catch (e) {
+        console.warn('Auto delivery date calc failed, using fallback:', e);
+      }
+
       // Crear la orden principal - explicitly set correct status
       const orderData = {
         client_id: formData.client_id,
         service_type: orderItems[0].service_type_id,
         failure_description: formData.failure_description,
-        delivery_date: formData.delivery_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        delivery_date: computedDeliveryDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         estimated_cost: pricing.totalAmount,
         average_service_time: totalHours,
-        assigned_technician: formData.assigned_technician && formData.assigned_technician !== 'unassigned' ? formData.assigned_technician : null,
+        assigned_technician:
+          formData.assigned_technician && formData.assigned_technician !== 'unassigned'
+            ? formData.assigned_technician
+            : null,
         assignment_reason: fleetSuggestionReason || null,
         created_by: user?.id,
         status: initialStatus,
         is_home_service: formData.is_home_service,
         service_location: formData.service_location,
-        travel_time_hours: formData.is_home_service ? 1 : 0
+        travel_time_hours: formData.is_home_service ? 1 : 0,
       };
 
       console.log('Creating order with data:', orderData);
