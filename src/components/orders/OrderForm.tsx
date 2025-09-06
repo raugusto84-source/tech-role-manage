@@ -127,7 +127,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   // Función para actualizar automáticamente la fecha de entrega
   const updateDeliveryDate = async () => {
-    if (!formData.assigned_technician || orderItems.length === 0) return;
+    if (orderItems.length === 0) return;
 
     try {
       const defaultSchedule = {
@@ -137,14 +137,28 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         break_duration_minutes: 60,
       };
 
-      const primarySchedule = technicianSchedules[formData.assigned_technician] || defaultSchedule;
-      const processedSupport = supportTechnicians.map(st => ({
-        id: st.technicianId,
-        schedule: technicianSchedules[st.technicianId] || defaultSchedule,
-        reductionPercentage: st.reductionPercentage,
-      }));
+      const hasTechnician = !!formData.assigned_technician && formData.assigned_technician !== 'unassigned';
+      const primarySchedule = hasTechnician
+        ? (technicianSchedules[formData.assigned_technician] || defaultSchedule)
+        : defaultSchedule;
 
-      const currentWorkload = await getTechnicianCurrentWorkload(formData.assigned_technician);
+      const processedSupport = hasTechnician
+        ? supportTechnicians.map(st => ({
+            id: st.technicianId,
+            schedule: technicianSchedules[st.technicianId] || defaultSchedule,
+            reductionPercentage: st.reductionPercentage,
+          }))
+        : [];
+
+      let currentWorkload = 0;
+      if (hasTechnician) {
+        try {
+          currentWorkload = await getTechnicianCurrentWorkload(formData.assigned_technician);
+        } catch (e) {
+          console.warn('Could not fetch technician workload, using 0');
+          currentWorkload = 0;
+        }
+      }
 
       const result = calculateAdvancedDeliveryDate({
         orderItems: orderItems.map((item) => ({
@@ -171,18 +185,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   // Effect para recalcular fecha cuando cambien técnicos de apoyo
   useEffect(() => {
-    if (formData.assigned_technician && orderItems.length > 0) {
+    if (orderItems.length > 0) {
       updateDeliveryDate();
     }
-  }, [supportTechnicians.length]); // Solo cuando cambia la cantidad de técnicos de apoyo
+  }, [supportTechnicians.length]); // Recalcular cuando cambie la cantidad de técnicos de apoyo
 
-  // Effect para recalcular fecha cuando cambien los items de la orden
+  // Effect para recalcular fecha cuando cambien los items de la orden o el técnico
   useEffect(() => {
-    if (formData.assigned_technician && orderItems.length > 0) {
-      const timeoutId = setTimeout(() => updateDeliveryDate(), 500);
+    if (orderItems.length > 0) {
+      const timeoutId = setTimeout(() => updateDeliveryDate(), 400);
       return () => clearTimeout(timeoutId);
     }
-  }, [orderItems.length, formData.assigned_technician]); // Recalcular cuando cambien items o técnico
+  }, [orderItems, formData.assigned_technician, supportTechnicians.length]);
 
   useEffect(() => {
     loadServiceTypes();
