@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowRight, ArrowLeft, CheckCircle, Package, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 interface Category {
   id: string;
   name: string;
@@ -66,14 +67,24 @@ const isProduct = (service: ServiceType) => {
   return hasTiers || service.item_type === 'articulo';
 };
 const marginFromTiers = (service: ServiceType): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
-const getDisplayPrice = (service: ServiceType): number => {
+const getDisplayPrice = (service: ServiceType, rewardSettings?: any): number => {
+  let basePrice = 0;
+  
   if (!isProduct(service)) {
-    return (service.base_price || 0) * (1 + (service.vat_rate || 0) / 100);
+    basePrice = service.base_price || 0;
   } else {
     const profitMargin = marginFromTiers(service);
-    const priceWithMargin = (service.cost_price || 0) * (1 + profitMargin / 100);
-    return priceWithMargin * (1 + (service.vat_rate || 0) / 100);
+    basePrice = (service.cost_price || 0) * (1 + profitMargin / 100);
   }
+  
+  // Apply cashback if enabled in settings
+  if (rewardSettings?.apply_cashback_to_items) {
+    const cashbackPercent = rewardSettings.general_cashback_percent || 2;
+    basePrice = basePrice * (1 + cashbackPercent / 100);
+  }
+  
+  // Add VAT
+  return basePrice * (1 + (service.vat_rate || 0) / 100);
 };
 const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -98,6 +109,7 @@ export function SimpleDiagnosticFlow({
   const {
     toast
   } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [categories, setCategories] = useState<Category[]>([]);
   const [flows, setFlows] = useState<DiagnosticFlow[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -421,7 +433,7 @@ export function SimpleDiagnosticFlow({
                         </div>
                         <div className="text-right ml-4">
                           <div className="font-bold text-lg">
-                            {formatCurrency(getDisplayPrice(service))}
+                            {formatCurrency(getDisplayPrice(service, rewardSettings))}
                             {service.unit && <span className="text-sm text-muted-foreground ml-1">
                                 /{service.unit}
                               </span>}
