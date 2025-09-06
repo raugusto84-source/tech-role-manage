@@ -128,18 +128,56 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         if (itemsError) {
           console.error('Error loading quote items:', itemsError);
         } else {
-          // Map the items to include image_url and pricing info from service_types
-          const mappedItems = (items || []).map(item => ({
-            ...item,
-            image_url: item.service_types?.image_url || null,
-            item_type: item.service_types?.item_type || 'servicio',
-            unit_cost_price: item.service_types?.cost_price || 0,
-            base_price: item.service_types?.base_price || 0,
-            service_vat_rate: item.service_types?.vat_rate || item.vat_rate,
-            profit_margin_rate: 30 // Default margin for products
-          }));
-          console.log('Mapped quote items:', mappedItems);
-          setQuoteItems(mappedItems);
+          console.log('Raw quote items from database:', items);
+          
+          // If no items found with JOIN, try a simpler query
+          if (!items || items.length === 0) {
+            console.log('No items found with LEFT JOIN, trying simple query...');
+            const { data: simpleItems, error: simpleError } = await supabase
+              .from('quote_items')
+              .select('*')
+              .eq('quote_id', quote.id)
+              .order('created_at', { ascending: true });
+            
+            if (simpleError) {
+              console.error('Error with simple query:', simpleError);
+            } else {
+              console.log('Simple query result:', simpleItems);
+              // Use simple items if found
+              if (simpleItems && simpleItems.length > 0) {
+                const mappedSimpleItems = simpleItems.map(item => {
+                  console.log('Mapping simple item:', item);
+                  return {
+                    ...item,
+                    image_url: null,
+                    item_type: 'servicio',
+                    unit_cost_price: 0,
+                    base_price: 0,
+                    service_vat_rate: item.vat_rate,
+                    profit_margin_rate: 0
+                  };
+                });
+                console.log('Mapped simple items:', mappedSimpleItems);
+                setQuoteItems(mappedSimpleItems);
+              }
+            }
+          } else {
+            // Map the items to include image_url and pricing info from service_types
+            const mappedItems = (items || []).map(item => {
+              console.log('Mapping item:', item);
+              return {
+                ...item,
+                image_url: item.service_types?.image_url || null,
+                item_type: item.service_types?.item_type || 'servicio',
+                unit_cost_price: item.service_types?.cost_price || 0,
+                base_price: item.service_types?.base_price || 0,
+                service_vat_rate: item.service_types?.vat_rate || item.vat_rate,
+                profit_margin_rate: 30 // Default margin for products
+              };
+            });
+            console.log('Mapped quote items:', mappedItems);
+            setQuoteItems(mappedItems);
+          }
         }
 
         // Load salesperson information
