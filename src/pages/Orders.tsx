@@ -44,6 +44,7 @@ interface Order {
   service_types?: {
     name: string;
     description?: string;
+    service_category?: string;
   } | null;
   clients?: {
     name: string;
@@ -82,7 +83,7 @@ export default function Orders() {
         .from('orders')
         .select(`
           *,
-          service_types:service_type(name, description),
+          service_types:service_type(name, description, service_category),
           clients:client_id(name, client_number, email, phone, address)
         `)
         .order('created_at', { ascending: false });
@@ -514,15 +515,10 @@ export default function Orders() {
                   <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
                     💻 SISTEMAS
                     <Badge variant="secondary" className="ml-auto">
-                      {filteredOrders.filter(order => {
-                        const serviceName = order.service_types?.name || order.service_type || '';
-                        return serviceName.toLowerCase().includes('sistema') || 
-                               serviceName.toLowerCase().includes('software') || 
-                               serviceName.toLowerCase().includes('formateo') || 
-                               serviceName.toLowerCase().includes('instalaci') ||
-                               serviceName.toLowerCase().includes('computadora') ||
-                               serviceName.toLowerCase().includes('pc');
-                      }).length}
+                    {filteredOrders.filter(order => {
+                      const serviceCategory = order.service_types?.service_category || 'sistemas';
+                      return serviceCategory === 'sistemas';
+                    }).length}
                     </Badge>
                   </CardTitle>
                 </CardHeader>
@@ -530,13 +526,8 @@ export default function Orders() {
                   <div className="space-y-6">
                     {Object.entries(groupedOrders).map(([status, orders]) => {
                       const sistemasOrders = orders.filter(order => {
-                        const serviceName = order.service_types?.name || order.service_type || '';
-                        return serviceName.toLowerCase().includes('sistema') || 
-                               serviceName.toLowerCase().includes('software') || 
-                               serviceName.toLowerCase().includes('formateo') || 
-                               serviceName.toLowerCase().includes('instalaci') ||
-                               serviceName.toLowerCase().includes('computadora') ||
-                               serviceName.toLowerCase().includes('pc');
+                        const serviceCategory = order.service_types?.service_category || 'sistemas';
+                        return serviceCategory === 'sistemas';
                       });
                       
                       if (sistemasOrders.length === 0) return null;
@@ -578,17 +569,8 @@ export default function Orders() {
                     🛡️ SEGURIDAD
                     <Badge variant="secondary" className="ml-auto">
                        {filteredOrders.filter(order => {
-                         const serviceName = order.service_types?.name || order.service_type || '';
-                         return serviceName.toLowerCase().includes('seguridad') || 
-                                serviceName.toLowerCase().includes('camara') || 
-                                serviceName.toLowerCase().includes('cámara') || 
-                                serviceName.toLowerCase().includes('alarma') || 
-                                serviceName.toLowerCase().includes('videovigilancia') ||
-                                serviceName.toLowerCase().includes('control de acceso') ||
-                                serviceName.toLowerCase().includes('cerca') ||
-                                serviceName.toLowerCase().includes('operador') ||
-                                serviceName.toLowerCase().includes('fraccionamiento') ||
-                                serviceName.toLowerCase().includes('detector');
+                         const serviceCategory = order.service_types?.service_category || 'sistemas';
+                         return serviceCategory === 'seguridad';
                        }).length}
                     </Badge>
                   </CardTitle>
@@ -597,17 +579,8 @@ export default function Orders() {
                   <div className="space-y-6">
                     {Object.entries(groupedOrders).map(([status, orders]) => {
                        const seguridadOrders = orders.filter(order => {
-                         const serviceName = order.service_types?.name || order.service_type || '';
-                         return serviceName.toLowerCase().includes('seguridad') || 
-                                serviceName.toLowerCase().includes('camara') || 
-                                serviceName.toLowerCase().includes('cámara') || 
-                                serviceName.toLowerCase().includes('alarma') || 
-                                serviceName.toLowerCase().includes('videovigilancia') ||
-                                serviceName.toLowerCase().includes('control de acceso') ||
-                                serviceName.toLowerCase().includes('cerca') ||
-                                serviceName.toLowerCase().includes('operador') ||
-                                serviceName.toLowerCase().includes('fraccionamiento') ||
-                                serviceName.toLowerCase().includes('detector');
+                         const serviceCategory = order.service_types?.service_category || 'sistemas';
+                         return serviceCategory === 'seguridad';
                        });
                       
                       if (seguridadOrders.length === 0) return null;
