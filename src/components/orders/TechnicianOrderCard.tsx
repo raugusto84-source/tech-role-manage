@@ -50,7 +50,7 @@ interface TechnicianOrderCardProps {
   showAcceptButton?: boolean;
   onMarkAsPending?: () => void;
   onMarkAsCompleted?: () => void;
-  showQuickActions?: boolean;
+  
 }
 
 export function TechnicianOrderCard({ 
@@ -59,8 +59,7 @@ export function TechnicianOrderCard({
   onAccept, 
   showAcceptButton = false,
   onMarkAsPending,
-  onMarkAsCompleted,
-  showQuickActions = false
+  onMarkAsCompleted
 }: TechnicianOrderCardProps) {
   /**
    * Formatea fecha para visualización compacta
@@ -227,27 +226,6 @@ export function TechnicianOrderCard({
               </Button>
             )}
 
-            {showQuickActions && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleMarkAsPendingClick}
-                  className="gap-1 h-8 px-3 border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Pendiente
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleMarkAsCompletedClick}
-                  className="bg-green-600 hover:bg-green-700 text-white gap-1 h-8 px-3"
-                >
-                  <CheckCheck className="h-3 w-3" />
-                  Terminar
-                </Button>
-              </>
-            )}
           </div>
         </div>
       </CardContent>

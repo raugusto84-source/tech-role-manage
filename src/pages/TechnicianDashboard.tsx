@@ -599,7 +599,6 @@ export default function TechnicianDashboard() {
                     onClick={() => handleOrderSelect(order)}
                     onMarkAsPending={() => handleUpdateOrderStatus(order.id, 'pendiente')}
                     onMarkAsCompleted={() => handleUpdateOrderStatus(order.id, 'finalizada')}
-                    showQuickActions={true}
                   />
                 ))}
               </div>

@@ -278,34 +278,6 @@ export function PriceCalculator() {
     return quantity >= service.min_quantity && quantity <= service.max_quantity;
   };
 
-  /**
-   * Genera una cotización rápida (funcionalidad futura)
-   */
-  const generateQuickQuote = () => {
-    if (!calculation || !selectedServiceId) return;
-
-    const service = getSelectedService();
-    if (!service) return;
-
-    const quoteData = {
-      service: service.name,
-      quantity: quantity,
-      unit: service.unit,
-      unit_price: calculation.unit_price,
-      total_price: calculation.final_price,
-      margin_percentage: calculation.margin_percentage,
-      vat_rate: service.vat_rate,
-      generated_at: new Date().toISOString(),
-    };
-
-    // Aquí se podría integrar con un sistema de cotizaciones
-    console.log('Quick quote generated:', quoteData);
-    
-    toast({
-      title: "Cotización generada",
-      description: "Los datos están listos para generar una cotización formal.",
-    });
-  };
 
   useEffect(() => {
     loadServices();
@@ -418,13 +390,6 @@ export function PriceCalculator() {
                 </div>
               </div>
 
-              <Button 
-                onClick={generateQuickQuote} 
-                className="w-full mt-4"
-                variant="outline"
-              >
-                Generar Cotización Rápida
-              </Button>
             </CardContent>
           </Card>
 
