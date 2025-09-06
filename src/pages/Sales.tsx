@@ -41,7 +41,7 @@ const getCategoryIcon = (categoryName: string): string => {
 const SERVICES_TABLE = 'service_types' as const;
 
 // Campos a leer (incluye subcategory e item_type para compatibilidad)
-const SERVICE_SELECT = 'id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type, subcategory';
+const SERVICE_SELECT = 'id, name, description, base_price, cost_price, profit_margin_tiers, unit, vat_rate, category, item_type, subcategory, service_category';
 type Service = {
   id: string;
   name: string;
@@ -54,6 +54,7 @@ type Service = {
   category?: string | null;
   item_type?: string | null; // tipo ('servicio' | 'articulo') o legado
   subcategory?: string | null; // nueva subcategoría
+  service_category?: string | null; // nueva categorización Sistemas/Seguridad
 };
 
 // Funciones auxiliares para calcular precios
@@ -441,34 +442,42 @@ export default function Sales() {
                       <CardHeader>
                         <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
                           💻 SISTEMAS
-                          <Badge variant="secondary" className="ml-auto">
-                            {displayedServices.filter(svc => {
-                              const name = svc.name.toLowerCase();
-                              const category = (svc.category || '').toLowerCase();
-                              return name.includes('sistema') || 
-                                     name.includes('software') || 
-                                     name.includes('formateo') || 
-                                     name.includes('instalaci') ||
-                                     name.includes('computadora') ||
-                                     name.includes('pc') ||
-                                     category.includes('computadora');
-                            }).length}
-                          </Badge>
+                           <Badge variant="secondary" className="ml-auto">
+                             {displayedServices.filter(svc => {
+                               // Usar service_category si existe, sino usar lógica de nombres/categorías
+                               if (svc.service_category) {
+                                 return svc.service_category === 'sistemas';
+                               }
+                               const name = svc.name.toLowerCase();
+                               const category = (svc.category || '').toLowerCase();
+                               return name.includes('sistema') || 
+                                      name.includes('software') || 
+                                      name.includes('formateo') || 
+                                      name.includes('instalaci') ||
+                                      name.includes('computadora') ||
+                                      name.includes('pc') ||
+                                      category.includes('computadora');
+                             }).length}
+                           </Badge>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-1 gap-3">
-                          {displayedServices.filter(svc => {
-                            const name = svc.name.toLowerCase();
-                            const category = (svc.category || '').toLowerCase();
-                            return name.includes('sistema') || 
-                                   name.includes('software') || 
-                                   name.includes('formateo') || 
-                                   name.includes('instalaci') ||
-                                   name.includes('computadora') ||
-                                   name.includes('pc') ||
-                                   category.includes('computadora');
-                          }).map(svc => (
+                           {displayedServices.filter(svc => {
+                             // Usar service_category si existe, sino usar lógica de nombres/categorías
+                             if (svc.service_category) {
+                               return svc.service_category === 'sistemas';
+                             }
+                             const name = svc.name.toLowerCase();
+                             const category = (svc.category || '').toLowerCase();
+                             return name.includes('sistema') || 
+                                    name.includes('software') || 
+                                    name.includes('formateo') || 
+                                    name.includes('instalaci') ||
+                                    name.includes('computadora') ||
+                                    name.includes('pc') ||
+                                    category.includes('computadora');
+                           }).map(svc => (
                             <Card key={svc.id} className="hover:shadow-md transition-shadow">
                               <CardHeader>
                                 <div className="flex items-start justify-between gap-2">
@@ -525,40 +534,54 @@ export default function Sales() {
                       <CardHeader>
                         <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
                           🛡️ SEGURIDAD
-                          <Badge variant="secondary" className="ml-auto">
-                            {displayedServices.filter(svc => {
-                              const name = svc.name.toLowerCase();
-                              const category = (svc.category || '').toLowerCase();
-                              return name.includes('seguridad') || 
-                                     name.includes('camara') || 
-                                     name.includes('cámara') || 
-                                     name.includes('alarma') || 
-                                     name.includes('videovigilancia') ||
-                                     name.includes('control de acceso') ||
-                                     name.includes('cerca') ||
-                                     category.includes('seguridad') ||
-                                     category.includes('camara') ||
-                                     category.includes('cerca');
-                            }).length}
-                          </Badge>
+                           <Badge variant="secondary" className="ml-auto">
+                             {displayedServices.filter(svc => {
+                               // Usar service_category si existe, sino usar lógica de nombres/categorías
+                               if (svc.service_category) {
+                                 return svc.service_category === 'seguridad';
+                               }
+                               const name = svc.name.toLowerCase();
+                               const category = (svc.category || '').toLowerCase();
+                               return name.includes('seguridad') || 
+                                      name.includes('camara') || 
+                                      name.includes('cámara') || 
+                                      name.includes('alarma') || 
+                                      name.includes('videovigilancia') ||
+                                      name.includes('control de acceso') ||
+                                      name.includes('cerca') ||
+                                      name.includes('operador') ||
+                                      category.includes('seguridad') ||
+                                      category.includes('camara') ||
+                                      category.includes('cerca') ||
+                                      category.includes('fraccionamiento') ||
+                                      category.includes('control de acceso');
+                             }).length}
+                           </Badge>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="grid grid-cols-1 gap-3">
-                          {displayedServices.filter(svc => {
-                            const name = svc.name.toLowerCase();
-                            const category = (svc.category || '').toLowerCase();
-                            return name.includes('seguridad') || 
-                                   name.includes('camara') || 
-                                   name.includes('cámara') || 
-                                   name.includes('alarma') || 
-                                   name.includes('videovigilancia') ||
-                                   name.includes('control de acceso') ||
-                                   name.includes('cerca') ||
-                                   category.includes('seguridad') ||
-                                   category.includes('camara') ||
-                                   category.includes('cerca');
-                          }).map(svc => (
+                           {displayedServices.filter(svc => {
+                             // Usar service_category si existe, sino usar lógica de nombres/categorías
+                             if (svc.service_category) {
+                               return svc.service_category === 'seguridad';
+                             }
+                             const name = svc.name.toLowerCase();
+                             const category = (svc.category || '').toLowerCase();
+                             return name.includes('seguridad') || 
+                                    name.includes('camara') || 
+                                    name.includes('cámara') || 
+                                    name.includes('alarma') || 
+                                    name.includes('videovigilancia') ||
+                                    name.includes('control de acceso') ||
+                                    name.includes('cerca') ||
+                                    name.includes('operador') ||
+                                    category.includes('seguridad') ||
+                                    category.includes('camara') ||
+                                    category.includes('cerca') ||
+                                    category.includes('fraccionamiento') ||
+                                    category.includes('control de acceso');
+                           }).map(svc => (
                             <Card key={svc.id} className="hover:shadow-md transition-shadow">
                               <CardHeader>
                                 <div className="flex items-start justify-between gap-2">
