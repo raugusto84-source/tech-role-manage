@@ -451,49 +451,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     canEdit={canModifyOrder || ['en_proceso', 'pendiente'].includes(orderStatus)}
                     onItemUpdate={loadOrderItems}
                     showReadyButtons={['en_proceso', 'pendiente'].includes(orderStatus)}
+                    orderId={order.id}
+                    onBack={onBack}
                   />
                   
-                  {/* Botón Terminar Todo */}
-                  {['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-border">
-                      <Button
-                        onClick={async () => {
-                          setLoading(true);
-                          try {
-                            const { error } = await supabase
-                              .from('order_items')
-                              .update({ status: 'finalizada' })
-                              .eq('order_id', order.id)
-                              .neq('status', 'finalizada');
-
-                            if (error) throw error;
-
-                            toast({
-                              title: 'Servicios completados',
-                              description: 'Todos los servicios han sido marcados como finalizados.',
-                            });
-
-                            loadOrderItems();
-                          } catch (error) {
-                            console.error('Error completing all services:', error);
-                            toast({
-                              title: 'Error',
-                              description: 'No se pudieron completar todos los servicios.',
-                              variant: 'destructive',
-                            });
-                          } finally {
-                            setLoading(false);
-                          }
-                        }}
-                        className="w-full"
-                        disabled={loading}
-                        variant="default"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Terminar Todo
-                      </Button>
-                    </div>
-                  )}
                 </div>
               )}
               

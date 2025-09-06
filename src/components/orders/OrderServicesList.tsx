@@ -31,6 +31,8 @@ interface OrderServicesListProps {
   canEdit: boolean;
   onItemUpdate?: () => void;
   showReadyButtons?: boolean;
+  orderId?: string;
+  onBack?: () => void;
 }
 
 const statusConfig = {
@@ -56,10 +58,11 @@ const statusConfig = {
   }
 };
 
-export function OrderServicesList({ orderItems, canEdit, onItemUpdate, showReadyButtons = false }: OrderServicesListProps) {
+export function OrderServicesList({ orderItems, canEdit, onItemUpdate, showReadyButtons = false, orderId, onBack }: OrderServicesListProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [editingSerialInfo, setEditingSerialInfo] = useState<Set<string>>(new Set());
   const [editableSerialFields, setEditableSerialFields] = useState<Set<string>>(new Set());
+  const [finishingAll, setFinishingAll] = useState(false);
   const { toast } = useToast();
   const { settings: rewardSettings } = useRewardSettings();
 
@@ -177,6 +180,50 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate, showReady
       currency: 'COP',
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const handleFinishAll = async () => {
+    if (!orderId || !canEdit) return;
+
+    setFinishingAll(true);
+
+    try {
+      // Mark all non-finished items as finished
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .update({ status: 'finalizada' })
+        .eq('order_id', orderId)
+        .neq('status', 'finalizada');
+
+      if (itemsError) throw itemsError;
+
+      // Update order status to pendiente_entrega
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({ status: 'pendiente_entrega' })
+        .eq('id', orderId);
+
+      if (orderError) throw orderError;
+
+      toast({
+        title: 'Orden terminada',
+        description: 'Todos los servicios han sido completados y la orden está lista para entrega.',
+      });
+
+      // Navigate back to all orders
+      if (onBack) {
+        onBack();
+      }
+    } catch (error) {
+      console.error('Error finishing all items:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo finalizar todos los servicios.',
+        variant: 'destructive',
+      });
+    } finally {
+      setFinishingAll(false);
+    }
   };
 
   const progress = getProgressPercentage();
@@ -484,6 +531,21 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate, showReady
           </div>
         </CardContent>
       </Card>
+
+      {/* Botón Terminar Todo */}
+      {canEdit && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && (
+        <div className="fixed bottom-4 left-4 right-4 z-50">
+          <Button
+            onClick={handleFinishAll}
+            disabled={finishingAll}
+            size="lg"
+            className="w-full max-w-md mx-auto block"
+          >
+            <CheckCircle className="w-5 h-5 mr-2" />
+            {finishingAll ? 'Finalizando...' : 'Terminar Todo'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
