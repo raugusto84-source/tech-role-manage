@@ -522,36 +522,21 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   // Calculate totals using correct pricing
   const calculateTotals = () => {
-    let subtotal = 0;
-    let totalVat = 0;
-    let totalWithholdings = 0;
     let total = 0;
 
     quoteItems.forEach(item => {
-      const correctPrice = calculateItemCorrectPrice(item);
-      const itemTotal = correctPrice * item.quantity;
-      
-      // Calculate base price (without VAT) from unit_price that includes VAT
-      let basePriceWithoutVat;
-      let vatAmount = 0;
-      
-      if (item.vat_rate > 0) {
-        // If there's VAT rate, assume unit_price includes VAT and extract base price
-        basePriceWithoutVat = (correctPrice * item.quantity) / (1 + item.vat_rate / 100);
-        vatAmount = itemTotal - basePriceWithoutVat;
-      } else {
-        // If no VAT, the unit price is the base price
-        basePriceWithoutVat = itemTotal;
-        vatAmount = 0;
-      }
-      
-      subtotal += basePriceWithoutVat;
-      totalVat += vatAmount;
-      totalWithholdings += item.withholding_amount * item.quantity;
+      const itemTotal = (item.unit_price || 0) * item.quantity;
       total += itemTotal;
     });
 
-    return { subtotal, totalVat, totalWithholdings, total };
+    // For display purposes, we'll show the total as is
+    // since unit_price already includes all pricing calculations
+    return { 
+      subtotal: total, // Show total as subtotal for simplicity
+      totalVat: 0,     // VAT is already included in unit_price
+      totalWithholdings: 0, 
+      total 
+    };
   };
 
   const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();

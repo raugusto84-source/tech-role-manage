@@ -97,45 +97,14 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   // Calculate totals from selectedItems directly
   console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
   
-  const subtotalGeneral = selectedItems.reduce((sum, item) => {
+  const totalFinal = selectedItems.reduce((sum, item) => {
     const unitPrice = item.unit_price || 0;
     const quantity = item.quantity || 1;
-    const vatRate = item.vat_rate || 0;
+    const itemTotal = unitPrice * quantity;
     
-    // Calculate base price (without VAT)
-    let basePriceWithoutVat;
-    
-    if (vatRate > 0) {
-      // If there's VAT rate, assume unit_price includes VAT and extract base price
-      basePriceWithoutVat = (unitPrice * quantity) / (1 + vatRate / 100);
-    } else {
-      // If no VAT, the unit price is the base price
-      basePriceWithoutVat = unitPrice * quantity;
-    }
-    
-    console.log(`Item ${item.name} - Unit price: ${unitPrice}, VAT rate: ${vatRate}%, Base without VAT: ${basePriceWithoutVat}`);
-    return sum + basePriceWithoutVat;
+    console.log(`Item ${item.name} - Unit price: ${unitPrice}, Quantity: ${quantity}, Item total: ${itemTotal}`);
+    return sum + itemTotal;
   }, 0);
-
-  const totalVAT = selectedItems.reduce((sum, item) => {
-    const unitPrice = item.unit_price || 0;
-    const quantity = item.quantity || 1;
-    const vatRate = item.vat_rate || 0;
-    
-    let vatAmount = 0;
-    
-    if (vatRate > 0) {
-      // Calculate VAT from the unit price
-      const totalPrice = unitPrice * quantity;
-      const basePriceWithoutVat = totalPrice / (1 + vatRate / 100);
-      vatAmount = totalPrice - basePriceWithoutVat;
-    }
-    
-    console.log(`Item ${item.name} - VAT amount: ${vatAmount}`);
-    return sum + vatAmount;
-  }, 0);
-
-  const totalFinal = subtotalGeneral + totalVAT;
   const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
   const finalTotal = totalFinal - cashbackAmount;
 
