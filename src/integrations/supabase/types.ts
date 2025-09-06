@@ -4508,6 +4508,7 @@ export type Database = {
           image_url: string | null
           is_active: boolean
           item_type: string | null
+          main_category_id: string | null
           max_quantity: number | null
           min_quantity: number | null
           name: string
@@ -4534,6 +4535,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           item_type?: string | null
+          main_category_id?: string | null
           max_quantity?: number | null
           min_quantity?: number | null
           name: string
@@ -4560,6 +4562,7 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           item_type?: string | null
+          main_category_id?: string | null
           max_quantity?: number | null
           min_quantity?: number | null
           name?: string
@@ -4574,7 +4577,15 @@ export type Database = {
           warranty_conditions?: string | null
           warranty_duration_days?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "service_types_main_category_id_fkey"
+            columns: ["main_category_id"]
+            isOneToOne: false
+            referencedRelation: "main_service_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppliers: {
         Row: {
