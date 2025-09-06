@@ -1112,16 +1112,51 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       };
 
       let computedDeliveryDate = formData.delivery_date;
+      let finalAssignedTechnician = formData.assigned_technician;
+      
       try {
-        if (formData.assigned_technician && orderItems.length > 0) {
-          const primarySchedule = technicianSchedules[formData.assigned_technician] || defaultSchedule;
+        // Si no hay técnico asignado, intentar asignar uno automáticamente
+        if (!finalAssignedTechnician || finalAssignedTechnician === 'unassigned') {
+          console.log('No technician assigned, attempting auto-assignment...');
+          
+          // Intentar asignación automática basada en el primer servicio
+          if (orderItems.length > 0 && technicians.length > 0) {
+            const firstServiceId = orderItems[0].service_type_id;
+            
+            // Usar la lógica existente para encontrar el mejor técnico
+            try {
+              await autoAssignOptimalFleet(firstServiceId, orderItems);
+              finalAssignedTechnician = formData.assigned_technician;
+              console.log('Auto-assigned technician via fleet logic:', finalAssignedTechnician);
+            } catch (fleetError) {
+              console.log('Fleet assignment failed, trying manual assignment...');
+              
+              // Fallback: usar el primer técnico disponible con menor carga
+              const workloadEntries = Object.entries(technicianWorkloads).sort(([,a], [,b]) => 
+                (a as any).total_hours - (b as any).total_hours
+              );
+              if (workloadEntries.length > 0) {
+                finalAssignedTechnician = workloadEntries[0][0];
+                console.log('Assigned technician with lowest workload:', finalAssignedTechnician);
+              } else if (technicians.length > 0) {
+                finalAssignedTechnician = technicians[0].user_id;
+                console.log('Assigned first available technician:', finalAssignedTechnician);
+              }
+            }
+          }
+        }
+
+        // Calcular fecha de entrega si tenemos técnico y items
+        if (finalAssignedTechnician && orderItems.length > 0) {
+          const primarySchedule = technicianSchedules[finalAssignedTechnician] || defaultSchedule;
           const processedSupport = supportTechnicians.map(st => ({
             id: st.technicianId,
             schedule: technicianSchedules[st.technicianId] || defaultSchedule,
             reductionPercentage: st.reductionPercentage,
           }));
 
-          const currentWorkload = await getTechnicianCurrentWorkload(formData.assigned_technician);
+          const currentWorkload = await getTechnicianCurrentWorkload(finalAssignedTechnician);
+          console.log(`Calculating delivery date for technician ${finalAssignedTechnician} with ${totalHours}h total and ${currentWorkload}h current workload`);
 
           const result = calculateAdvancedDeliveryDate({
             orderItems: orderItems.map((item) => ({
@@ -1138,9 +1173,35 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           });
 
           computedDeliveryDate = result.deliveryDate.toISOString().split('T')[0];
+          console.log('Computed delivery date:', computedDeliveryDate);
+        } else {
+          // Fallback: calcular fecha basada solo en las horas estimadas (sin considerar carga actual)
+          console.log('No technician available, using fallback calculation...');
+          const result = calculateAdvancedDeliveryDate({
+            orderItems: orderItems.map((item) => ({
+              id: item.id,
+              estimated_hours: (item as any).estimated_hours || 0,
+              shared_time: (item as any).shared_time || false,
+              service_type_id: (item as any).service_type_id,
+              quantity: (item as any).quantity || 1,
+            })),
+            primaryTechnicianSchedule: defaultSchedule,
+            supportTechnicians: [],
+            creationDate: new Date(),
+            currentWorkload: 0,
+          });
+          
+          computedDeliveryDate = result.deliveryDate.toISOString().split('T')[0];
+          console.log('Fallback delivery date calculated:', computedDeliveryDate);
         }
       } catch (e) {
-        console.warn('Auto delivery date calc failed, using fallback:', e);
+        console.warn('Auto delivery date calc failed, using basic fallback:', e);
+        // Fallback básico: agregar días basados en las horas estimadas
+        const daysToAdd = Math.ceil(totalHours / 8); // Asumir 8 horas por día
+        const fallbackDate = new Date();
+        fallbackDate.setDate(fallbackDate.getDate() + daysToAdd);
+        computedDeliveryDate = fallbackDate.toISOString().split('T')[0];
+        console.log('Basic fallback delivery date:', computedDeliveryDate);
       }
 
       // Crear la orden principal - explicitly set correct status
@@ -1152,8 +1213,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         estimated_cost: pricing.totalAmount,
         average_service_time: totalHours,
         assigned_technician:
-          formData.assigned_technician && formData.assigned_technician !== 'unassigned'
-            ? formData.assigned_technician
+          finalAssignedTechnician && finalAssignedTechnician !== 'unassigned'
+            ? finalAssignedTechnician
             : null,
         assignment_reason: fleetSuggestionReason || null,
         created_by: user?.id,
