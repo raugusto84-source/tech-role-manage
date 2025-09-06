@@ -151,18 +151,22 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       }`}
       onClick={onClick}
     >
-      <CardHeader className="pb-1 pt-1 px-2">{/* Reducir altura vertical */}
+      <CardHeader className="pb-0 pt-0.5 px-2">{/* Reducir aún más la altura vertical */}
         <div className="flex justify-between items-start">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-sm font-semibold text-foreground truncate">{/* Reducir tamaño de fuente */}
+          <div className="flex items-center gap-2 flex-1">
+            <CardTitle className="text-sm font-semibold text-foreground truncate">
               {order.order_number}
             </CardTitle>
+            <span className="text-xs text-muted-foreground">•</span>
+            <span className="text-xs text-muted-foreground font-medium truncate flex-1">
+              {order.clients?.name || "Cliente no especificado"}
+            </span>
             {order.unread_messages_count != null && order.unread_messages_count > 0 && (
               <div className="relative">
-                <MessageCircle className="h-4 w-4 text-blue-600" />
+                <MessageCircle className="h-3 w-3 text-blue-600" />
                 <Badge 
                   variant="destructive" 
-                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
+                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
                 >
                   {order.unread_messages_count}
                 </Badge>
@@ -170,92 +174,92 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             )}
           </div>
           <div className="flex items-center gap-1">
-            <Badge className={`${getStatusColor(order.status)} text-xs`}>
-              {order.status === 'pendiente_aprobacion' 
-                ? 'PENDIENTE APROBACIÓN' 
-                : order.status.replace('_', ' ').toUpperCase()}
+            <Badge className={`${getStatusColor(order.status)} text-xs px-1 py-0`}>
+              {order.status === "pendiente_aprobacion" 
+                ? "PEND. APROB." 
+                : order.status.replace("_", " ").toUpperCase()}
             </Badge>
             {canDelete && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleDelete}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-1 h-auto"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-0.5 h-auto"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3 w-3" />
               </Button>
             )}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground font-medium truncate">{/* Quitar margen superior */}
-          {order.clients?.name || 'Cliente no especificado'}
-        </p>
       </CardHeader>
       
-      <CardContent className="space-y-0.5 px-2 pb-1">{/* Reducir espacio vertical y padding */}
+      <CardContent className="space-y-0 px-2 pb-0.5">{/* Eliminar casi todo el espacio vertical */}
+        {/* Primera fila: Servicio y ubicación */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center">
-            <Wrench className="h-3 w-3 mr-2 text-primary flex-shrink-0" />
+          <div className="flex items-center flex-1 min-w-0">
+            <Wrench className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
             <span className="truncate">
-              {order.service_types?.name || 'Servicio no especificado'}
+              {order.service_types?.name || "Servicio no especificado"}
             </span>
           </div>
           {order.is_home_service && (
-            <div className="flex items-center gap-1 text-blue-600">
+            <div className="flex items-center gap-1 text-blue-600 ml-2">
               <Home className="h-3 w-3" />
-              <span className="text-xs font-medium">Domicilio</span>
+              <span className="text-xs font-medium">Dom</span>
             </div>
           )}
         </div>
         
-        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">{/* Reducir gap vertical */}
-          <div className="flex items-center">
-            <Calendar className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
-            <span className="truncate">
+        {/* Segunda fila: Fecha, cliente, técnico y precio */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3 w-3 text-primary flex-shrink-0" />
+            <span className="text-xs">
               {order.estimated_delivery_date 
                 ? formatDate(order.estimated_delivery_date) 
                 : formatDate(order.delivery_date)}
             </span>
+            {order.clients?.client_number && (
+              <>
+                <span>•</span>
+                <User className="h-3 w-3 text-primary flex-shrink-0" />
+                <span>{order.clients.client_number}</span>
+              </>
+            )}
           </div>
           
-          {order.clients?.client_number && (
-            <div className="flex items-center">
-              <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
-              <span className="truncate">{order.clients.client_number}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-3 w-3 text-primary" />
+            <span className="font-medium">${calculateCorrectTotal().toLocaleString()}</span>
+            {order.average_service_time && (
+              <>
+                <Clock className="h-3 w-3 text-primary ml-1" />
+                <span>{formatTime(order.average_service_time)}</span>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Técnicos - versión compacta */}
-        {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
-          <div className="flex items-center text-xs text-muted-foreground">
-            <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
-            <span className="truncate">
-              {order.technician_profile?.full_name}
-              {order.support_technicians && order.support_technicians.length > 0 && 
-                ` +${order.support_technicians.length} apoyo`
-              }
-            </span>
-          </div>
-        )}
-        
-        <div className="flex justify-between items-center text-xs">
-          <div className="flex items-center text-muted-foreground">
-            <DollarSign className="h-3 w-3 mr-1 text-primary" />
-            <span>${calculateCorrectTotal().toLocaleString()}</span>
-          </div>
-          
-          {order.average_service_time && (
-            <div className="flex items-center text-muted-foreground">
-              <Clock className="h-3 w-3 mr-1 text-primary" />
-              <span>{formatTime(order.average_service_time)}</span>
+        {/* Tercera fila: Técnicos y descripción */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
+            <div className="flex items-center flex-1 min-w-0">
+              <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
+              <span className="truncate">
+                {order.technician_profile?.full_name}
+                {order.support_technicians && order.support_technicians.length > 0 && 
+                  ` +${order.support_technicians.length}`
+                }
+              </span>
             </div>
           )}
+          
+          <div className="flex-1 ml-2">
+            <p className="text-xs text-muted-foreground line-clamp-1 truncate">
+              {order.failure_description}
+            </p>
+          </div>
         </div>
-        
-        <p className="text-xs text-muted-foreground line-clamp-1">{/* Reducir a 1 línea para menos altura */}
-          {order.failure_description}
-        </p>
       </CardContent>
     </Card>
   );
