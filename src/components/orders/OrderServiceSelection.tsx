@@ -59,17 +59,12 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     try {
       setLoading(true);
       
-      // Load services from service_types with category filter
-      let query = supabase
+      // Load services from service_types - show all items regardless of category
+      const { data: servicesData } = await supabase
         .from('service_types')
         .select('*')
-        .eq('is_active', true);
-      
-      if (serviceCategory) {
-        query = query.eq('service_category', serviceCategory);
-      }
-      
-      const { data: servicesData } = await query.order('category, name');
+        .eq('is_active', true)
+        .order('category, name');
 
       // Transform data to match interface
       const transformedServices = (servicesData || []).map((service: any) => ({

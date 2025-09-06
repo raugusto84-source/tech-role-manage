@@ -1462,24 +1462,32 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               </div>
 
               {/* Selección de Categoría de Servicio - Obligatorio */}
-              <div className="space-y-2">
-                <Label htmlFor="service_category">Categoría de Servicio *</Label>
-                <Select 
-                  value={formData.service_category} 
-                  onValueChange={(value: 'sistemas' | 'seguridad') => {
-                    setFormData(prev => ({ ...prev, service_category: value }));
-                    setOrderItems([]); // Limpiar items cuando cambie categoría
-                  }} 
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="sistemas">Sistemas</SelectItem>
-                    <SelectItem value="seguridad">Seguridad</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <Label>Categoría de Servicio *</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button
+                    type="button"
+                    variant={formData.service_category === 'sistemas' ? 'default' : 'outline'}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, service_category: 'sistemas' }));
+                      setOrderItems([]);
+                    }}
+                    className="h-12 text-sm"
+                  >
+                    Sistemas
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.service_category === 'seguridad' ? 'default' : 'outline'}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, service_category: 'seguridad' }));
+                      setOrderItems([]);
+                    }}
+                    className="h-12 text-sm"
+                  >
+                    Seguridad
+                  </Button>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Selecciona la categoría para filtrar los servicios disponibles
                 </p>
