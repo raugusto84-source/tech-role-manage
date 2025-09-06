@@ -570,6 +570,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       {isClient && orderStatus === 'finalizada' && !surveyCompleted && showSurvey && (
         <SatisfactionSurvey
           orderId={order.id}
+          onComplete={() => {
+            setSurveyCompleted(true);
+            setShowSurvey(false);
+            checkSurveyStatus();
+          }}
+          onCancel={() => setShowSurvey(false)}
         />
       )}
 
@@ -593,6 +599,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         <DeliverySignature
           order={order}
           onClose={() => setShowDeliverySignature(false)}
+          onComplete={() => {
+            setShowDeliverySignature(false);
+            onUpdate();
+          }}
         />
       )}
     </div>
