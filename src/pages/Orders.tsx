@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -78,7 +78,7 @@ interface Order {
 }
 
 export default function Orders() {
-  const { user, profile } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,6 +310,28 @@ export default function Orders() {
 
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
   const canDeleteOrder = profile?.role === 'administrador';
+  
+  // Función para obtener la ruta del dashboard según el rol
+  const getDashboardRoute = () => {
+    if (!profile) return '/dashboard';
+    
+    const roleDashboards = {
+      'cliente': '/client',
+      'tecnico': '/technician',
+      'vendedor': '/dashboard',
+      'supervisor': '/dashboard',
+      'administrador': '/dashboard',
+      'visor_tecnico': '/technician-viewer'
+    };
+    
+    return roleDashboards[profile.role] || '/dashboard';
+  };
+
+  // Función para manejar el logout
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/auth';
+  };
 
   if (loading) {
     return (
@@ -355,22 +377,44 @@ export default function Orders() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
-            <p className="text-muted-foreground mt-1">
-              {profile?.role === 'cliente' ? 'Mis órdenes' : 
-               profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
+              <p className="text-muted-foreground mt-1">
+                {profile?.role === 'cliente' ? 'Mis órdenes' : 
+                 profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
+              </p>
+            </div>
           </div>
           
-          {canCreateOrder && (
-            <div className="flex gap-2 mt-4 md:mt-0">
-              <Button variant="outline" onClick={() => setShowForm(true)}>
+          <div className="flex gap-2 mt-4 md:mt-0">
+            {/* Botón volver al dashboard */}
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.href = getDashboardRoute()}
+              className="gap-2"
+            >
+              <Home className="h-4 w-4" />
+              Dashboard
+            </Button>
+            
+            {/* Botón cerrar sesión */}
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+            
+            {canCreateOrder && (
+              <Button variant="default" onClick={() => setShowForm(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Orden Completa
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Tabs for different views */}
