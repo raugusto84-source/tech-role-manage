@@ -22,26 +22,23 @@ export function useUnreadCounts() {
     }
 
     try {
-      // Count pending orders (new or pending approval)
+      // Count orders pending acceptance or update (pendiente_aprobacion status)
       const { count: ordersCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['pendiente', 'pendiente_aprobacion']);
+        .eq('status', 'pendiente_aprobacion');
 
-      // Count pending quotes (new requests)
+      // Count quotes pending approval (pendiente_aprobacion status)
       const { count: quotesCount } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'solicitud');
+        .eq('status', 'pendiente_aprobacion');
 
-      // Count active warranties that might need attention
+      // Count warranty claims that are pending resolution
       const { count: warrantiesCount } = await supabase
-        .from('order_items')
+        .from('warranty_claims')
         .select('*', { count: 'exact', head: true })
-        .not('warranty_start_date', 'is', null)
-        .not('warranty_end_date', 'is', null)
-        .gte('warranty_end_date', new Date().toISOString().split('T')[0])
-        .lte('warranty_end_date', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+        .in('status', ['pendiente', 'en_proceso']);
 
       setCounts({
         orders: ordersCount || 0,
@@ -84,7 +81,7 @@ export function useUnreadCounts() {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'order_items'
+        table: 'warranty_claims'
       }, () => {
         fetchCounts();
       })
