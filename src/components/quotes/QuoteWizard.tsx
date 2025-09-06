@@ -380,10 +380,10 @@ export function QuoteWizard({
                   const vatAmount = basePrice * (srv.vat_rate || 16) / 100;
                   const baseTotal = basePrice + vatAmount;
                   
-                  // Add 2% cashback for services (matching CategoryServiceSelection logic)
+                  // Add cashback for services (matching CategoryServiceSelection logic)
                   let cashback = 0;
-                  if (!isProduct(srv)) {
-                    cashback = basePrice * 0.02; // 2% cashback on base price (not including VAT)
+                  if (!isProduct(srv) && rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
+                    cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
                   }
                   
                   const finalPrice = baseTotal + cashback;
