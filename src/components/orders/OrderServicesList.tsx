@@ -517,8 +517,8 @@ export function OrderServicesList({
         </CardContent>
       </Card>
 
-      {/* Botón Terminar Todo - Hidden for clients */}
-      {canFinishAll && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && (
+      {/* Botón Terminar Todo - Only for staff, hidden for clients */}
+      {!isClient && canEdit && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && (
         <div className="mt-4">
           <Button 
             onClick={handleFinishAll} 
