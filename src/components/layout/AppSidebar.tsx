@@ -175,6 +175,11 @@ export function AppSidebar() {
                               {unreadCounts.warranties > 99 ? '99+' : unreadCounts.warranties}
                             </Badge>
                           )}
+                          {item.url === '/finanzas' && unreadCounts.collections > 0 && (
+                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                              {unreadCounts.collections > 99 ? '99+' : unreadCounts.collections}
+                            </Badge>
+                          )}
                         </span>
                       )}
                       {/* Show dots for collapsed state */}
@@ -187,6 +192,9 @@ export function AppSidebar() {
                             <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
                           )}
                           {item.url === '/garantias' && unreadCounts.warranties > 0 && (
+                            <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
+                          )}
+                          {item.url === '/finanzas' && unreadCounts.collections > 0 && (
                             <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
                           )}
                         </>

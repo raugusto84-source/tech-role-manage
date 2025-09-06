@@ -6,14 +6,16 @@ interface UnreadCounts {
   orders: number;
   quotes: number;
   warranties: number;
+  collections: number;
 }
 
 export function useUnreadCounts() {
   const { profile } = useAuth();
-  const [counts, setCounts] = useState<UnreadCounts>({
-    orders: 0,
-    quotes: 0,
-    warranties: 0
+  const [counts, setCounts] = useState<UnreadCounts>({ 
+    orders: 0, 
+    quotes: 0, 
+    warranties: 0,
+    collections: 0
   });
 
   const fetchCounts = async () => {
@@ -40,10 +42,17 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
+      // Count pending collections
+      const { count: collectionsCount } = await supabase
+        .from('pending_collections')
+        .select('*', { count: 'exact', head: true })
+        .gt('remaining_balance', 0);
+
       setCounts({
         orders: ordersCount || 0,
         quotes: quotesCount || 0,
-        warranties: warrantiesCount || 0
+        warranties: warrantiesCount || 0,
+        collections: collectionsCount || 0
       });
     } catch (error) {
       console.error('Error fetching unread counts:', error);
@@ -87,10 +96,22 @@ export function useUnreadCounts() {
       })
       .subscribe();
 
+    const collectionsChannel = supabase
+      .channel('collections-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'order_payments'
+      }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(ordersChannel);
       supabase.removeChannel(quotesChannel);
       supabase.removeChannel(warrantiesChannel);
+      supabase.removeChannel(collectionsChannel);
     };
   }, [profile]);
 
