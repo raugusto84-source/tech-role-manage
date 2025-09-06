@@ -431,7 +431,7 @@ export default function Orders() {
 
   return (
     <AppLayout>
-      <div className="max-w-3xl mx-auto">{/* Reducido de max-w-7xl a max-w-3xl */}
+      <div className="max-w-7xl mx-auto">{/* Volver al ancho original */}
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
@@ -507,7 +507,7 @@ export default function Orders() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-3">{/* Cambiado de lg:grid-cols-2 a solo 1 columna y reducido gap */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{/* Volver a 2 columnas pero reducir gap vertical */}
             {/* Sistemas Column */}
             <div className="space-y-2">{/* Reducido spacing */}
               <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">

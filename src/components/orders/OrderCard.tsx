@@ -144,17 +144,17 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   return (
     <Card 
-      className={`hover:shadow-sm transition-all cursor-pointer border-l-2 compact-card max-w-sm mx-auto ${
+      className={`hover:shadow-sm transition-all cursor-pointer border-l-2 compact-card ${
         order.status === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
       }`}
       onClick={onClick}
     >
-      <CardHeader className="pb-1 pt-2 px-2">{/* Reducido padding */}
+      <CardHeader className="pb-1 pt-1 px-2">{/* Reducir altura vertical */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-base font-semibold text-foreground truncate">
+            <CardTitle className="text-sm font-semibold text-foreground truncate">{/* Reducir tamaño de fuente */}
               {order.order_number}
             </CardTitle>
             {order.unread_messages_count != null && order.unread_messages_count > 0 && (
@@ -187,12 +187,12 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             )}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground font-medium truncate mt-1">
+        <p className="text-xs text-muted-foreground font-medium truncate">{/* Quitar margen superior */}
           {order.clients?.name || 'Cliente no especificado'}
         </p>
       </CardHeader>
       
-      <CardContent className="space-y-1 px-2 pb-2">{/* Reducido padding y spacing */}
+      <CardContent className="space-y-0.5 px-2 pb-1">{/* Reducir espacio vertical y padding */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center">
             <Wrench className="h-3 w-3 mr-2 text-primary flex-shrink-0" />
@@ -208,7 +208,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           )}
         </div>
         
-        <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+        <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground">{/* Reducir gap vertical */}
           <div className="flex items-center">
             <Calendar className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
             <span className="truncate">
@@ -253,7 +253,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           )}
         </div>
         
-        <p className="text-xs text-muted-foreground line-clamp-2">
+        <p className="text-xs text-muted-foreground line-clamp-1">{/* Reducir a 1 línea para menos altura */}
           {order.failure_description}
         </p>
       </CardContent>

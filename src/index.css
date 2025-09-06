@@ -242,15 +242,15 @@ All colors MUST be HSL.
 
 /* Mobile-optimized cards */
 .compact-card {
-  @apply shadow-sm border border-border/50 max-w-xs mx-auto;
+  @apply shadow-sm border border-border/50;
 }
 
 .compact-card .card-header {
-  @apply py-1 px-2;
+  @apply py-0.5 px-2;
 }
 
 .compact-card .card-content {
-  @apply py-1 px-2;
+  @apply py-0.5 px-2;
 }
 
 .compact-card .card-footer {
