@@ -743,15 +743,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       // Calcular y actualizar fecha de entrega automáticamente
       setTimeout(() => updateDeliveryDate(), 500); // Pequeño delay para asegurar que el técnico se haya asignado
       
-      // Mostrar notificación de asignación automática
-      const message = profile?.role === 'cliente' 
-        ? `Se ha asignado la flotilla ${bestFleet.fleet_name} para tu servicio`
-        : `${bestFleet.fleet_name} - ${bestFleet.suggestion_reason}`;
-        
-      toast({
-        title: "Flotilla asignada automáticamente",
-        description: message,
-      });
+      // No mostrar notificación - asignación silenciosa
 
     } catch (error) {
       console.error('Error in fleet auto-assignment:', error);
