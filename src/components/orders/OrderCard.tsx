@@ -144,14 +144,14 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   return (
     <Card 
-      className={`hover:shadow-md transition-all cursor-pointer border-l-4 compact-card ${
+      className={`hover:shadow-sm transition-all cursor-pointer border-l-2 compact-card max-w-sm mx-auto ${
         order.status === 'pendiente_aprobacion' 
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
       }`}
       onClick={onClick}
     >
-      <CardHeader className="pb-2 pt-3 px-3">
+      <CardHeader className="pb-1 pt-2 px-2">{/* Reducido padding */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
             <CardTitle className="text-base font-semibold text-foreground truncate">
@@ -192,7 +192,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         </p>
       </CardHeader>
       
-      <CardContent className="space-y-2 px-3 pb-3">
+      <CardContent className="space-y-1 px-2 pb-2">{/* Reducido padding y spacing */}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center">
             <Wrench className="h-3 w-3 mr-2 text-primary flex-shrink-0" />

@@ -431,7 +431,7 @@ export default function Orders() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-3xl mx-auto">{/* Reducido de max-w-7xl a max-w-3xl */}
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
@@ -507,9 +507,9 @@ export default function Orders() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-3">{/* Cambiado de lg:grid-cols-2 a solo 1 columna y reducido gap */}
             {/* Sistemas Column */}
-            <div className="space-y-4">
+            <div className="space-y-2">{/* Reducido spacing */}
               <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
                 <CardHeader>
                   <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
@@ -523,7 +523,7 @@ export default function Orders() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
+                  <div className="space-y-2">{/* Reducido spacing entre secciones */}
                     {Object.entries(groupedOrders).map(([status, orders]) => {
                       const sistemasOrders = orders.filter(order => {
                         const serviceCategory = order.service_types?.service_category || 'sistemas';
@@ -562,7 +562,7 @@ export default function Orders() {
             </div>
 
             {/* Seguridad Column */}
-            <div className="space-y-4">
+            <div className="space-y-2">{/* Reducido spacing */}
               <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
                 <CardHeader>
                   <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
@@ -576,7 +576,7 @@ export default function Orders() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-6">
+                  <div className="space-y-2">{/* Reducido spacing entre secciones */}
                     {Object.entries(groupedOrders).map(([status, orders]) => {
                        const seguridadOrders = orders.filter(order => {
                          const serviceCategory = order.service_types?.service_category || 'sistemas';
