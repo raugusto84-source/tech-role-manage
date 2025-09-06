@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,6 +15,7 @@ interface FleetGroup {
   id: string;
   name: string;
   description: string | null;
+  category: string;
   is_active: boolean;
   created_at: string;
   technician_count?: number;
@@ -30,7 +32,8 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
   const [editingGroup, setEditingGroup] = useState<FleetGroup | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: ''
+    description: '',
+    category: 'sistemas'
   });
   const [loading, setLoading] = useState(true);
 
@@ -107,7 +110,8 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
           .from('fleet_groups')
           .update({
             name: formData.name,
-            description: formData.description || null
+            description: formData.description || null,
+            category: formData.category
           })
           .eq('id', editingGroup.id);
 
@@ -123,7 +127,8 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
           .from('fleet_groups')
           .insert({
             name: formData.name,
-            description: formData.description || null
+            description: formData.description || null,
+            category: formData.category
           });
 
         if (error) throw error;
@@ -177,7 +182,7 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', description: '' });
+    setFormData({ name: '', description: '', category: 'sistemas' });
     setEditingGroup(null);
   };
 
@@ -185,7 +190,8 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
     setEditingGroup(group);
     setFormData({
       name: group.name,
-      description: group.description || ''
+      description: group.description || '',
+      category: group.category || 'sistemas'
     });
     setIsDialogOpen(true);
   };
@@ -226,6 +232,23 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
                   placeholder="Ej: Flotilla Norte, Equipo Urgencias, etc."
                 />
               </div>
+              
+              <div>
+                <Label htmlFor="category">Categoría</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sistemas">Sistemas</SelectItem>
+                    <SelectItem value="seguridad">Seguridad</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
               <div>
                 <Label htmlFor="description">Descripción</Label>
                 <Textarea
@@ -286,7 +309,13 @@ export function FleetGroupManager({ onGroupSelect }: FleetGroupManagerProps) {
                   </p>
                 )}
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  <Badge 
+                    variant={group.category === 'sistemas' ? 'default' : 'secondary'} 
+                    className="text-xs"
+                  >
+                    {group.category === 'sistemas' ? 'Sistemas' : 'Seguridad'}
+                  </Badge>
                   <Badge variant="secondary" className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
                     {group.technician_count || 0} técnicos

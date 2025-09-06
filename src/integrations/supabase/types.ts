@@ -1552,6 +1552,7 @@ export type Database = {
       }
       fleet_groups: {
         Row: {
+          category: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -1561,6 +1562,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -1570,6 +1572,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null

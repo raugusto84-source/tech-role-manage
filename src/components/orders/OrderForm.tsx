@@ -1316,27 +1316,26 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 onItemsChange={setOrderItems}
               />
 
-              {/* Asignación de Técnico Principal */}
-              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="assigned_technician">Técnico Principal</Label>
-                    <Select value={formData.assigned_technician} onValueChange={(value) => setFormData(prev => ({ ...prev, assigned_technician: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar técnico" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-background border z-50">
-                        {technicians.map((technician) => (
-                          <SelectItem key={technician.user_id} value={technician.user_id}>
-                            {technician.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Técnico asignado automáticamente */}
+              {formData.assigned_technician && (
+                <div className="space-y-2">
+                  <Label>Técnico Asignado Automáticamente</Label>
+                  <div className="p-3 bg-muted rounded-md">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="font-medium">
+                        {technicians.find(t => t.user_id === formData.assigned_technician)?.full_name || 'Técnico seleccionado'}
+                      </span>
+                    </div>
+                    {fleetSuggestionReason && (
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {fleetSuggestionReason}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
-
+              
               {/* Fecha de Entrega */}
               <div className="space-y-2">
                 <Label htmlFor="delivery_date">Fecha de Entrega Estimada *</Label>
