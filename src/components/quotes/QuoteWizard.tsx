@@ -425,30 +425,6 @@ export function QuoteWizard({
 
         {/* Step 3: Items Selection */}
         {currentStep === 'items' && <div className="space-y-3">
-            {/* Selected Items Summary */}
-            {quoteItems.length > 0 && <Card>
-                <CardContent className="p-3">
-                  <div className="text-sm font-medium mb-2">Servicios seleccionados ({quoteItems.length})</div>
-                  <div className="space-y-2">
-                    {quoteItems.slice(0, 3).map(item => <div key={item.id} className="flex justify-between items-center">
-                        <div>
-                          <div className="text-xs font-medium">{item.name}</div>
-                          <div className="text-xs text-muted-foreground">Cant: {item.quantity}</div>
-                        </div>
-                        <div className="text-xs font-medium">{formatCurrency(item.total)}</div>
-                      </div>)}
-                    {quoteItems.length > 3 && <div className="text-xs text-muted-foreground">
-                        +{quoteItems.length - 3} más...
-                      </div>}
-                  </div>
-                  <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Total:</span>
-                      <span className="text-sm font-bold">{formatCurrency(calculateTotal())}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>}
 
             {/* Service Selection */}
             <Card>
