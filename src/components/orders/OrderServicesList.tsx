@@ -30,6 +30,7 @@ interface OrderServicesListProps {
   orderItems: OrderItem[];
   canEdit: boolean;
   onItemUpdate?: () => void;
+  showReadyButtons?: boolean;
 }
 
 const statusConfig = {
@@ -55,7 +56,7 @@ const statusConfig = {
   }
 };
 
-export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderServicesListProps) {
+export function OrderServicesList({ orderItems, canEdit, onItemUpdate, showReadyButtons = false }: OrderServicesListProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [editingSerialInfo, setEditingSerialInfo] = useState<Set<string>>(new Set());
   const [editableSerialFields, setEditableSerialFields] = useState<Set<string>>(new Set());
@@ -275,35 +276,48 @@ export function OrderServicesList({ orderItems, canEdit, onItemUpdate }: OrderSe
 
                     {canEdit && (
                       <div className="ml-4 w-40">
-                        <Select
-                          value={item.status}
-                          onValueChange={(value) => handleStatusChange(item.id, value)}
-                          disabled={isUpdating}
-                        >
-                          <SelectTrigger className="bg-background border z-50">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-background border z-50">
-                            <SelectItem value="pendiente">
-                              <div className="flex items-center">
-                                <Clock className="w-4 h-4 mr-2" />
-                                Pendiente
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="en_proceso">
-                              <div className="flex items-center">
-                                <Play className="w-4 h-4 mr-2" />
-                                En Proceso
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="finalizada">
-                              <div className="flex items-center">
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Finalizada
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {showReadyButtons && item.status !== 'finalizada' ? (
+                          <Button
+                            onClick={() => handleStatusChange(item.id, 'finalizada')}
+                            disabled={isUpdating}
+                            variant="default"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Listo
+                          </Button>
+                        ) : (
+                          <Select
+                            value={item.status}
+                            onValueChange={(value) => handleStatusChange(item.id, value)}
+                            disabled={isUpdating}
+                          >
+                            <SelectTrigger className="bg-background border z-50">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border z-50">
+                              <SelectItem value="pendiente">
+                                <div className="flex items-center">
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Pendiente
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="en_proceso">
+                                <div className="flex items-center">
+                                  <Play className="w-4 h-4 mr-2" />
+                                  En Proceso
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="finalizada">
+                                <div className="flex items-center">
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Finalizada
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     )}
                   </div>

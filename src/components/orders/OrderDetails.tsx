@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -324,6 +324,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             <Badge className={getStatusColor(orderStatus)} variant="outline">
               {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE' 
                : orderStatus === 'pendiente_entrega' ? 'LISTO'
+               : orderStatus === 'pendiente_aprobacion' ? 'PENDIENTE APROBACIÓN'
+               : ['en_proceso', 'pendiente'].includes(orderStatus) ? 'EN PROCESO'
                : orderStatus.replace('_', ' ').toUpperCase()}
             </Badge>
             
@@ -446,9 +448,52 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 <div className="mt-3">
                   <OrderServicesList 
                     orderItems={orderItems} 
-                    canEdit={false}
+                    canEdit={canModifyOrder || ['en_proceso', 'pendiente'].includes(orderStatus)}
                     onItemUpdate={loadOrderItems}
+                    showReadyButtons={['en_proceso', 'pendiente'].includes(orderStatus)}
                   />
+                  
+                  {/* Botón Terminar Todo */}
+                  {['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-border">
+                      <Button
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            const { error } = await supabase
+                              .from('order_items')
+                              .update({ status: 'finalizada' })
+                              .eq('order_id', order.id)
+                              .neq('status', 'finalizada');
+
+                            if (error) throw error;
+
+                            toast({
+                              title: 'Servicios completados',
+                              description: 'Todos los servicios han sido marcados como finalizados.',
+                            });
+
+                            loadOrderItems();
+                          } catch (error) {
+                            console.error('Error completing all services:', error);
+                            toast({
+                              title: 'Error',
+                              description: 'No se pudieron completar todos los servicios.',
+                              variant: 'destructive',
+                            });
+                          } finally {
+                            setLoading(false);
+                          }
+                        }}
+                        className="w-full"
+                        disabled={loading}
+                        variant="default"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Terminar Todo
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -565,6 +610,76 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           )}
         </div>
       </div>
+
+      {/* Botones de Finalizar y Firmar al final */}
+      {(() => {
+        const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
+        const canFinishOrder = allItemsCompleted && ['en_proceso', 'pendiente'].includes(orderStatus);
+        const canSignDelivery = (isClient && orderStatus === 'pendiente_entrega') || 
+                               (profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
+        
+        if (canFinishOrder || canSignDelivery) {
+          return (
+            <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-20">
+              <div className="max-w-md mx-auto space-y-3">
+                {canFinishOrder && (
+                  <Button
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const { error } = await supabase
+                          .from('orders')
+                          .update({ status: 'pendiente_entrega' })
+                          .eq('id', order.id);
+
+                        if (error) throw error;
+
+                        toast({
+                          title: 'Orden finalizada',
+                          description: 'La orden ha sido marcada como lista para entrega.',
+                        });
+
+                        setOrderStatus('pendiente_entrega');
+                        onUpdate();
+                      } catch (error) {
+                        console.error('Error finishing order:', error);
+                        toast({
+                          title: 'Error',
+                          description: 'No se pudo finalizar la orden.',
+                          variant: 'destructive',
+                        });
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="w-full"
+                    disabled={loading}
+                    variant="default"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Finalizar Orden
+                  </Button>
+                )}
+                
+                {canSignDelivery && (
+                  <Button
+                    onClick={() => setShowDeliverySignature(true)}
+                    className="w-full"
+                    variant="default"
+                  >
+                    <Signature className="h-4 w-4 mr-2" />
+                    Firmar Entrega
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
+      {/* Espacio para botones fijos */}
+      <div className="h-20"></div>
 
       {/* Encuesta de Satisfacción */}
       {isClient && orderStatus === 'finalizada' && !surveyCompleted && showSurvey && (
