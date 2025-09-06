@@ -48,6 +48,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedItemType, setSelectedItemType] = useState<string>('all');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -118,7 +119,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
       (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
-    const matchesType = !filterByType || service.item_type === filterByType;
+    const matchesType = selectedItemType === 'all' || service.item_type === selectedItemType;
     
     return matchesSearch && matchesCategory && matchesType;
   });
@@ -254,7 +255,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
 
   return (
     <div className="space-y-6">
-      {/* Search control */}
+      {/* Search and filter controls */}
       <div className="space-y-3">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -266,6 +267,34 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
           />
         </div>
         
+        {/* Item type filter buttons */}
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={selectedItemType === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedItemType('all')}
+          >
+            Todos
+          </Button>
+          <Button
+            type="button"
+            variant={selectedItemType === 'servicio' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedItemType('servicio')}
+          >
+            Servicios
+          </Button>
+          <Button
+            type="button"
+            variant={selectedItemType === 'articulo' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedItemType('articulo')}
+          >
+            Productos
+          </Button>
+        </div>
+        
         {categories.length > 1 && (
           <div className="flex flex-wrap gap-2">
             <Button
@@ -274,7 +303,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
               size="sm"
               onClick={() => setSelectedCategory('all')}
             >
-              Todos
+              Todas las categorías
             </Button>
             {categories.map((category) => (
               <Button
