@@ -179,12 +179,12 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
-        <CardHeader className="pb-4">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center">
+      <Card className="w-full sm:w-full sm:max-w-lg mx-0 sm:mx-4 rounded-t-2xl sm:rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+        <CardHeader className="pb-3 px-4 pt-4 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
               Confirmar Entrega
             </CardTitle>
             <Button 
@@ -192,94 +192,90 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
               size="sm" 
               onClick={onClose}
               disabled={loading}
+              className="h-8 w-8 p-0"
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
           
-          <div className="space-y-2">
+          <div className="space-y-1">
             <p className="text-sm text-muted-foreground">
-              Orden: {order.order_number}
+              <span className="font-medium">Orden:</span> {order.order_number}
             </p>
             <p className="text-sm text-muted-foreground">
-              Cliente: {order.clients?.name}
+              <span className="font-medium">Cliente:</span> {order.clients?.name}
             </p>
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
+        <CardContent className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
           {/* Información de entrega */}
-          <Card className="border-green-200 bg-green-50">
-            <CardContent className="pt-4">
+          <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+            <CardContent className="pt-3 pb-3">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-                <h3 className="font-semibold text-green-800">Confirmación de Entrega</h3>
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <h3 className="text-sm font-semibold text-green-800 dark:text-green-200">Confirmación de Entrega</h3>
               </div>
-              <p className="text-sm text-green-700">
+              <p className="text-xs text-green-700 dark:text-green-300 mb-2">
                 Al firmar confirma que:
               </p>
-              <ul className="text-sm text-green-700 mt-2 ml-4 space-y-1">
-                <li>• Ha recibido los servicios/productos solicitados</li>
-                <li>• Los trabajos fueron realizados satisfactoriamente</li>
-                <li>• No tiene pendientes adicionales con esta orden</li>
-                <li>• Acepta que la orden sea marcada como finalizada</li>
+              <ul className="text-xs text-green-700 dark:text-green-300 space-y-0.5 ml-2">
+                <li>• Ha recibido los servicios/productos</li>
+                <li>• Los trabajos fueron satisfactorios</li>
+                <li>• No tiene pendientes adicionales</li>
+                <li>• Acepta finalizar la orden</li>
               </ul>
             </CardContent>
           </Card>
 
           {/* Canvas de firma */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <PenTool className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold">Firma de Entrega</h3>
+              <PenTool className="h-4 w-4 text-primary" />
+              <h3 className="text-base font-semibold">Firma de Entrega</h3>
             </div>
             
             <p className="text-sm text-muted-foreground">
-              Por favor, firme en el recuadro para confirmar la entrega:
+              Firme en el recuadro para confirmar:
             </p>
 
-            <div className="border-2 border-dashed border-border rounded-lg p-4 bg-background">
+            <div className="border-2 border-dashed border-border rounded-lg p-2 bg-background">
               <SignatureCanvas
                 ref={signatureRef}
                 canvasProps={{
-                  className: 'signature-canvas w-full h-48 bg-white rounded border border-border'
+                  className: 'signature-canvas w-full h-32 sm:h-40 bg-white rounded border border-border touch-action-none'
                 }}
                 backgroundColor="white"
                 penColor="black"
                 minWidth={1}
-                maxWidth={3}
+                maxWidth={2}
               />
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={clearSignature}
-                disabled={loading}
-              >
-                Limpiar Firma
-              </Button>
-            </div>
-          </div>
-
-          {/* Botones de acción */}
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={clearSignature}
               disabled={loading}
-              className="sm:order-1"
+              size="sm"
+              className="w-full sm:w-auto"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Cancelar
+              Limpiar Firma
             </Button>
-            
+          </div>
+
+          <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+            🔒 Al confirmar, se registrará la firma digitalmente
+          </div>
+        </CardContent>
+
+        {/* Botones de acción fijos en la parte inferior */}
+        <div className="p-4 bg-background border-t flex-shrink-0">
+          <div className="flex flex-col gap-2">
             <Button
               onClick={handleConfirmDelivery}
               disabled={loading}
-              className="bg-green-600 hover:bg-green-700 text-white sm:order-2 flex-1"
+              className="bg-green-600 hover:bg-green-700 text-white w-full h-12"
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -293,12 +289,19 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
                 </div>
               )}
             </Button>
+            
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+              className="w-full"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
           </div>
-
-          <div className="text-xs text-muted-foreground text-center pt-2">
-            🔒 Al confirmar, se registrará la firma digitalmente y la orden será finalizada.
-          </div>
-        </CardContent>
+        </div>
       </Card>
     </div>
   );
