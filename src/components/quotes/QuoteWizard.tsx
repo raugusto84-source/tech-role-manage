@@ -360,29 +360,29 @@ export function QuoteWizard({
                 const marginFromTiers = (srv: any): number => srv.profit_margin_tiers?.[0]?.margin ?? 30;
 
                 const calculatePrices = (srv: any) => {
-                  let unitPrice = 0;
-                  let subtotal = 0;
+                  let basePrice = 0;
                   
                   if (!isProduct(srv)) {
-                    // Service: use base_price
-                    unitPrice = srv.base_price || 0;
+                    // Service: use base_price and add 2% cashback
+                    basePrice = srv.base_price || 0;
+                    const cashbackAmount = basePrice * 0.02; // 2% cashback
+                    basePrice = basePrice + cashbackAmount;
                   } else {
                     // Product: calculate with profit margin
                     const profitMargin = marginFromTiers(srv);
-                    unitPrice = (srv.cost_price || 0) * (1 + profitMargin / 100);
+                    const costPrice = srv.cost_price || 0;
+                    if (costPrice > 0) {
+                      basePrice = costPrice * (1 + profitMargin / 100);
+                    } else {
+                      basePrice = srv.base_price || 0;
+                    }
                   }
                   
-                  // Apply cashback if enabled in settings
-                  if (rewardSettings?.apply_cashback_to_items) {
-                    const cashbackPercent = rewardSettings.general_cashback_percent || 2;
-                    unitPrice = unitPrice * (1 + cashbackPercent / 100);
-                  }
-                  
-                  subtotal = unitPrice * 1; // quantity = 1
+                  const subtotal = basePrice;
                   const vatAmount = subtotal * (srv.vat_rate || 16) / 100;
                   const total = subtotal + vatAmount;
                   
-                  return { unitPrice, subtotal, vatAmount, total };
+                  return { unitPrice: basePrice, subtotal, vatAmount, total };
                 };
 
                 const { unitPrice, subtotal, vatAmount, total } = calculatePrices(service);
