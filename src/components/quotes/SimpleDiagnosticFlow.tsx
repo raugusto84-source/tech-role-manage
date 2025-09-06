@@ -424,21 +424,7 @@ export function SimpleDiagnosticFlow({
           </Card>}
 
         {/* Action Buttons */}
-        <Card>
-          <CardHeader>
-            <CardTitle>4. Confirma tu Selección</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
-              <Button onClick={handleRestart} variant="outline" className="flex-1">
-                Hacer Nuevo Diagnóstico
-              </Button>
-              <Button onClick={handleConfirmSolution} className="flex-1">
-                Confirmar y Solicitar Cotización
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        
       </div>;
   }
 

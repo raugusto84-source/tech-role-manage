@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus } from 'lucide-react';
-
 interface Client {
   id: string;
   name: string;
@@ -20,7 +19,6 @@ interface Client {
   phone?: string;
   address: string;
 }
-
 interface QuoteItem {
   id: string;
   service_type_id?: string;
@@ -39,21 +37,25 @@ interface QuoteItem {
   image_url?: string | null;
   taxes?: any[];
 }
-
 interface QuoteWizardProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-
 type WizardStep = 'client' | 'diagnostic' | 'items';
-
-export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
-  const { profile } = useAuth();
-  const { settings: rewardSettings } = useRewardSettings();
+export function QuoteWizard({
+  onSuccess,
+  onCancel
+}: QuoteWizardProps) {
+  const {
+    profile
+  } = useAuth();
+  const {
+    settings: rewardSettings
+  } = useRewardSettings();
   const [currentStep, setCurrentStep] = useState<WizardStep>('client');
   const [loading, setLoading] = useState(false);
   const [showServiceSelection, setShowServiceSelection] = useState(false);
-  
+
   // Estado del formulario
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
@@ -64,9 +66,9 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   const [quoteDetails, setQuoteDetails] = useState({
     notes: '',
     marketing_channel: 'web' as const,
-    sale_type: 'servicio' as const,
+    sale_type: 'servicio' as const
   });
-  
+
   // Cashback state
   const [cashbackApplied, setCashbackApplied] = useState(false);
   const [cashbackAmount, setCashbackAmount] = useState(0);
@@ -86,11 +88,10 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   useEffect(() => {
     const pickClient = async () => {
       if (profile?.role !== 'cliente' || !profile.email) return;
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('email', profile.email)
-        .maybeSingle();
+      const {
+        data,
+        error
+      } = await supabase.from('clients').select('*').eq('email', profile.email).maybeSingle();
       if (!error && data) {
         setSelectedClient(data as any);
         setCurrentStep('diagnostic');
@@ -98,19 +99,16 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
     };
     pickClient();
   }, [profile?.role, profile?.email]);
-
   const loadClients = async () => {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
-
+      const {
+        data,
+        error
+      } = await supabase.from('clients').select('*').order('name');
       if (error) {
         console.error('Error loading clients:', error);
         return;
       }
-
       setClients(data || []);
       setFilteredClients(data || []);
     } catch (error) {
@@ -120,10 +118,7 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
 
   // Filtrar clientes por búsqueda
   useEffect(() => {
-    const filtered = clients.filter(client =>
-      (client.name?.toLowerCase() || '').includes(clientSearchTerm.toLowerCase()) ||
-      (client.email?.toLowerCase() || '').includes(clientSearchTerm.toLowerCase())
-    );
+    const filtered = clients.filter(client => (client.name?.toLowerCase() || '').includes(clientSearchTerm.toLowerCase()) || (client.email?.toLowerCase() || '').includes(clientSearchTerm.toLowerCase()));
     setFilteredClients(filtered);
   }, [clients, clientSearchTerm]);
 
@@ -135,27 +130,33 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   // Navegar entre pasos
   const nextStep = async () => {
     switch (currentStep) {
-      case 'client': {
-        if (!selectedClient) {
-          toast({ title: 'Error', description: 'Por favor selecciona un cliente', variant: 'destructive' });
-          return;
+      case 'client':
+        {
+          if (!selectedClient) {
+            toast({
+              title: 'Error',
+              description: 'Por favor selecciona un cliente',
+              variant: 'destructive'
+            });
+            return;
+          }
+          setCurrentStep('diagnostic');
+          break;
         }
-        setCurrentStep('diagnostic');
-        break;
-      }
-      case 'diagnostic': {
-        setCurrentStep('items');
-        setShowServiceSelection(true);
-        break;
-      }
-      case 'items': {
-        // Direct creation instead of review step
-        createQuote();
-        break;
-      }
+      case 'diagnostic':
+        {
+          setCurrentStep('items');
+          setShowServiceSelection(true);
+          break;
+        }
+      case 'items':
+        {
+          // Direct creation instead of review step
+          createQuote();
+          break;
+        }
     }
   };
-
   const prevStep = () => {
     switch (currentStep) {
       case 'diagnostic':
@@ -170,19 +171,14 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
   // Crear cotización
   const createQuote = async () => {
     if (!selectedClient || !profile) return;
-
     try {
       setLoading(true);
-
       const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'solicitud';
-      
       const quoteData = {
         client_name: selectedClient.name,
         client_email: selectedClient.email,
         client_phone: selectedClient.phone,
-        service_description: quoteItems.length > 0 ? 
-          `Cotización para ${quoteItems.map(item => item.name).join(', ')}` : 
-          'Cotización personalizada',
+        service_description: quoteItems.length > 0 ? `Cotización para ${quoteItems.map(item => item.name).join(', ')}` : 'Cotización personalizada',
         estimated_amount: calculateTotal() - cashbackAmount,
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
@@ -191,21 +187,18 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
         created_by: (profile as any).user_id || undefined,
         assigned_to: (profile as any).user_id || undefined,
         cashback_applied: cashbackApplied,
-        cashback_amount_used: cashbackAmount,
+        cashback_amount_used: cashbackAmount
       };
-
-      const { data: quoteResult, error: quoteError } = await supabase
-        .from('quotes')
-        .insert(quoteData as any)
-        .select('id')
-        .single();
-
+      const {
+        data: quoteResult,
+        error: quoteError
+      } = await supabase.from('quotes').insert(quoteData as any).select('id').single();
       if (quoteError) {
         console.error('Quote creation error:', quoteError);
         toast({
           title: "Error",
           description: `Error al crear la cotización: ${quoteError.message}`,
-          variant: "destructive",
+          variant: "destructive"
         });
         return;
       }
@@ -228,18 +221,16 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
           total: item.total,
           is_custom: item.is_custom
         }));
-
-        const { data: savedItems, error: itemsError } = await supabase
-          .from('quote_items')
-          .insert(itemsData)
-          .select('id');
-
+        const {
+          data: savedItems,
+          error: itemsError
+        } = await supabase.from('quote_items').insert(itemsData).select('id');
         if (itemsError) {
           console.error('Error creating quote items:', itemsError);
           toast({
             title: "Advertencia",
             description: "La cotización se creó pero hubo un error al guardar los artículos",
-            variant: "destructive",
+            variant: "destructive"
           });
         }
       }
@@ -247,79 +238,62 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
       // Process cashback transaction if cashback was applied
       if (cashbackApplied && cashbackAmount > 0 && selectedClient) {
         try {
-          const { error: transactionError } = await supabase
-            .from('reward_transactions')
-            .insert({
-              client_id: selectedClient.id,
-              transaction_type: 'redeemed',
-              amount: -cashbackAmount,
-              description: `Cashback aplicado en cotización ${quoteResult?.id}`,
-              related_quote_id: quoteResult?.id
-            });
-
+          const {
+            error: transactionError
+          } = await supabase.from('reward_transactions').insert({
+            client_id: selectedClient.id,
+            transaction_type: 'redeemed',
+            amount: -cashbackAmount,
+            description: `Cashback aplicado en cotización ${quoteResult?.id}`,
+            related_quote_id: quoteResult?.id
+          });
           if (!transactionError) {
             // Update client total cashback
-            const { error: updateError } = await supabase
-              .from('client_rewards')
-              .update({ 
-                total_cashback: Math.max(0, (await supabase
-                  .from('client_rewards')
-                  .select('total_cashback')
-                  .eq('client_id', selectedClient.id)
-                  .single()
-                ).data?.total_cashback || 0) - cashbackAmount
-              })
-              .eq('client_id', selectedClient.id);
+            const {
+              error: updateError
+            } = await supabase.from('client_rewards').update({
+              total_cashback: Math.max(0, (await supabase.from('client_rewards').select('total_cashback').eq('client_id', selectedClient.id).single()).data?.total_cashback || 0) - cashbackAmount
+            }).eq('client_id', selectedClient.id);
           }
         } catch (error) {
           console.error('Error processing cashback transaction:', error);
         }
       }
-
-      const successMessage = profile?.role === 'cliente' 
-        ? "Cotización enviada y pendiente de aprobación"
-        : "Cotización creada exitosamente";
-        
+      const successMessage = profile?.role === 'cliente' ? "Cotización enviada y pendiente de aprobación" : "Cotización creada exitosamente";
       toast({
         title: "Éxito",
-        description: successMessage,
+        description: successMessage
       });
-
       onSuccess();
     } catch (error) {
       console.error('Error creating quote:', error);
       toast({
         title: "Error inesperado",
         description: "No se pudo crear la cotización",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 0,
+      minimumFractionDigits: 0
     }).format(amount);
   };
-
   const stepTitles = {
     client: 'Cliente',
     diagnostic: 'Diagnóstico',
-    items: 'Servicios',
+    items: 'Servicios'
   };
-
   const stepIcons = {
     client: User,
     diagnostic: CheckSquare,
-    items: Package,
+    items: Package
   };
-
-  return (
-    <div className="min-h-screen bg-background p-3">
+  return <div className="min-h-screen bg-background p-3">
       {/* Compact Header */}
       <div className="flex items-center justify-between mb-4">
         <Button variant="ghost" size="sm" onClick={onCancel} className="p-2">
@@ -338,123 +312,83 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
       <div className="flex justify-center mb-4">
         <div className="flex space-x-1">
           {Object.keys(stepTitles).map((step, index) => {
-            const isActive = currentStep === step;
-            const isCompleted = 
-              (step === 'client' && selectedClient) ||
-              (step === 'diagnostic' && !['client'].includes(currentStep)) ||
-              (step === 'items' && !['client', 'diagnostic'].includes(currentStep));
-
-            return (
-              <div
-                key={step}
-                className={`h-2 w-12 rounded-full ${
-                  isActive ? 'bg-primary' : isCompleted ? 'bg-green-500' : 'bg-muted'
-                }`}
-              />
-            );
-          })}
+          const isActive = currentStep === step;
+          const isCompleted = step === 'client' && selectedClient || step === 'diagnostic' && !['client'].includes(currentStep) || step === 'items' && !['client', 'diagnostic'].includes(currentStep);
+          return <div key={step} className={`h-2 w-12 rounded-full ${isActive ? 'bg-primary' : isCompleted ? 'bg-green-500' : 'bg-muted'}`} />;
+        })}
         </div>
       </div>
 
       {/* Step Content */}
       <div className="space-y-4">
         {/* Step 1: Client Selection */}
-        {currentStep === 'client' && (
-          <Card>
+        {currentStep === 'client' && <Card>
             <CardContent className="p-4 space-y-3">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar cliente..."
-                  value={clientSearchTerm}
-                  onChange={(e) => setClientSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+                <Input placeholder="Buscar cliente..." value={clientSearchTerm} onChange={e => setClientSearchTerm(e.target.value)} className="pl-10" />
               </div>
               
               <div className="max-h-60 overflow-y-auto space-y-2">
-                {filteredClients.map((client) => (
-                  <div
-                    key={client.id}
-                    onClick={() => setSelectedClient(client)}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedClient?.id === client.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-muted hover:border-muted-foreground/20'
-                    }`}
-                  >
+                {filteredClients.map(client => <div key={client.id} onClick={() => setSelectedClient(client)} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedClient?.id === client.id ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/20'}`}>
                     <div className="font-medium text-sm">{client.name}</div>
                     <div className="text-xs text-muted-foreground">{client.email}</div>
-                  </div>
-                ))}
+                  </div>)}
               </div>
 
-              {selectedClient && (
-                <div className="p-3 bg-green-50 rounded-lg border-green-200 border">
+              {selectedClient && <div className="p-3 bg-green-50 rounded-lg border-green-200 border">
                   <div className="text-sm font-medium text-green-800">Cliente seleccionado</div>
                   <div className="text-xs text-green-600">{selectedClient.name}</div>
-                </div>
-              )}
+                </div>}
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
         {/* Step 2: Diagnostic */}
-        {currentStep === 'diagnostic' && (
-          <Card>
+        {currentStep === 'diagnostic' && <Card>
             <CardContent className="p-4">
-              <SimpleDiagnosticFlow
-                onDiagnosisComplete={(result) => {
-                  setDiagnosticSolution(result);
-                  // Auto-add recommended services if any
-                  if (result.recommended_services?.length > 0) {
-                    const newItems = result.recommended_services.map((service: any) => ({
-                      id: crypto.randomUUID(),
-                      service_type_id: service.id,
-                      name: service.name,
-                      description: service.description || '',
-                      quantity: 1,
-                      unit_price: service.base_price || service.cost_price || 0,
-                      subtotal: service.base_price || service.cost_price || 0,
-                      vat_rate: service.vat_rate || 16,
-                      vat_amount: ((service.base_price || service.cost_price || 0) * (service.vat_rate || 16)) / 100,
-                      withholding_rate: 0,
-                      withholding_amount: 0,
-                      withholding_type: '',
-                      total: (service.base_price || service.cost_price || 0) + (((service.base_price || service.cost_price || 0) * (service.vat_rate || 16)) / 100),
-                      is_custom: false
-                    }));
-                    setQuoteItems(prev => [...prev, ...newItems]);
-                  }
-                }}
-              />
+              <SimpleDiagnosticFlow onDiagnosisComplete={result => {
+            setDiagnosticSolution(result);
+            // Auto-add recommended services if any
+            if (result.recommended_services?.length > 0) {
+              const newItems = result.recommended_services.map((service: any) => ({
+                id: crypto.randomUUID(),
+                service_type_id: service.id,
+                name: service.name,
+                description: service.description || '',
+                quantity: 1,
+                unit_price: service.base_price || service.cost_price || 0,
+                subtotal: service.base_price || service.cost_price || 0,
+                vat_rate: service.vat_rate || 16,
+                vat_amount: (service.base_price || service.cost_price || 0) * (service.vat_rate || 16) / 100,
+                withholding_rate: 0,
+                withholding_amount: 0,
+                withholding_type: '',
+                total: (service.base_price || service.cost_price || 0) + (service.base_price || service.cost_price || 0) * (service.vat_rate || 16) / 100,
+                is_custom: false
+              }));
+              setQuoteItems(prev => [...prev, ...newItems]);
+            }
+          }} />
             </CardContent>
-          </Card>
-        )}
+          </Card>}
 
         {/* Step 3: Items Selection */}
-        {currentStep === 'items' && (
-          <div className="space-y-3">
+        {currentStep === 'items' && <div className="space-y-3">
             {/* Selected Items Summary */}
-            {quoteItems.length > 0 && (
-              <Card>
+            {quoteItems.length > 0 && <Card>
                 <CardContent className="p-3">
                   <div className="text-sm font-medium mb-2">Servicios seleccionados ({quoteItems.length})</div>
                   <div className="space-y-2">
-                    {quoteItems.slice(0, 3).map((item) => (
-                      <div key={item.id} className="flex justify-between items-center">
+                    {quoteItems.slice(0, 3).map(item => <div key={item.id} className="flex justify-between items-center">
                         <div>
                           <div className="text-xs font-medium">{item.name}</div>
                           <div className="text-xs text-muted-foreground">Cant: {item.quantity}</div>
                         </div>
                         <div className="text-xs font-medium">{formatCurrency(item.total)}</div>
-                      </div>
-                    ))}
-                    {quoteItems.length > 3 && (
-                      <div className="text-xs text-muted-foreground">
+                      </div>)}
+                    {quoteItems.length > 3 && <div className="text-xs text-muted-foreground">
                         +{quoteItems.length - 3} más...
-                      </div>
-                    )}
+                      </div>}
                   </div>
                   <div className="border-t pt-2 mt-2">
                     <div className="flex justify-between items-center">
@@ -463,49 +397,28 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
             {/* Service Selection */}
             <Card>
               <CardContent className="p-3">
-                {showServiceSelection ? (
-                  <CategoryServiceSelection
-                    selectedItems={quoteItems}
-                    onItemsChange={(items) => {
-                      setQuoteItems(items);
-                      setShowServiceSelection(false);
-                    }}
-                    simplifiedView={true}
-                    clientId={selectedClient?.id}
-                    clientEmail={selectedClient?.email}
-                  />
-                ) : (
-                  <Button
-                    onClick={() => setShowServiceSelection(true)}
-                    className="w-full"
-                    variant="outline"
-                  >
+                {showServiceSelection ? <CategoryServiceSelection selectedItems={quoteItems} onItemsChange={items => {
+              setQuoteItems(items);
+              setShowServiceSelection(false);
+            }} simplifiedView={true} clientId={selectedClient?.id} clientEmail={selectedClient?.email} /> : <Button onClick={() => setShowServiceSelection(true)} className="w-full" variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
                     {quoteItems.length > 0 ? 'Modificar servicios' : 'Seleccionar servicios'}
-                  </Button>
-                )}
+                  </Button>}
               </CardContent>
             </Card>
-          </div>
-        )}
+          </div>}
 
       </div>
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3">
         <div className="flex justify-between items-center max-w-md mx-auto">
-          <Button
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 'client'}
-            size="sm"
-          >
+          <Button variant="outline" onClick={prevStep} disabled={currentStep === 'client'} size="sm">
             <ArrowLeft className="h-4 w-4 mr-1" />
             Atrás
           </Button>
@@ -514,21 +427,16 @@ export function QuoteWizard({ onSuccess, onCancel }: QuoteWizardProps) {
             {Object.keys(stepTitles).indexOf(currentStep) + 1} de {Object.keys(stepTitles).length}
           </div>
 
-          {currentStep === 'items' ? (
-            <Button onClick={createQuote} disabled={loading} size="sm">
+          {currentStep === 'items' ? <Button onClick={createQuote} disabled={loading} size="sm">
               {loading ? 'Creando...' : 'Crear Cotización'}
-            </Button>
-          ) : (
-            <Button onClick={nextStep} size="sm">
+            </Button> : <Button onClick={nextStep} size="sm">
               Siguiente
               <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          )}
+            </Button>}
         </div>
       </div>
 
       {/* Bottom spacing for fixed navigation */}
-      <div className="h-20" />
-    </div>
-  );
+      
+    </div>;
 }
