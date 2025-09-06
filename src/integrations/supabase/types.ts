@@ -2681,6 +2681,7 @@ export type Database = {
           policy_id: string | null
           policy_name: string | null
           requested_date: string | null
+          service_category: string | null
           service_location: Json | null
           service_type: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -2717,6 +2718,7 @@ export type Database = {
           policy_id?: string | null
           policy_name?: string | null
           requested_date?: string | null
+          service_category?: string | null
           service_location?: Json | null
           service_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -2753,6 +2755,7 @@ export type Database = {
           policy_id?: string | null
           policy_name?: string | null
           requested_date?: string | null
+          service_category?: string | null
           service_location?: Json | null
           service_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]

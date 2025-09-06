@@ -72,6 +72,7 @@ interface OrderFormData {
   assigned_technician: string;
   estimated_cost: string;
   is_home_service: boolean;
+  service_category: 'sistemas' | 'seguridad';
   service_location: {
     latitude?: number;
     longitude?: number;
@@ -106,6 +107,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     assigned_technician: '',
     estimated_cost: '',
     is_home_service: false,
+    service_category: 'sistemas',
     service_location: null
   });
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -211,7 +213,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       loadTechnicians();
       loadClientCashback();
     }
-  }, [profile?.role, profile?.email]);
+  }, [profile?.role, profile?.email, formData.service_category]); // Recargar cuando cambie la categoría
 
   const loadServiceTypes = async () => {
     try {
@@ -219,6 +221,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         .from('service_types')
         .select('*')
         .eq('is_active', true)
+        .eq('service_category', formData.service_category) // Filtrar por categoría seleccionada
         .order('name');
 
       if (error) throw error;
@@ -1233,6 +1236,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         assignment_reason: fleetSuggestionReason || null,
         created_by: user?.id,
         status: initialStatus,
+        service_category: formData.service_category,
         is_home_service: formData.is_home_service,
         service_location: formData.service_location,
         travel_time_hours: formData.is_home_service ? 1 : 0,
@@ -1457,6 +1461,30 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 )}
               </div>
 
+              {/* Selección de Categoría de Servicio - Obligatorio */}
+              <div className="space-y-2">
+                <Label htmlFor="service_category">Categoría de Servicio *</Label>
+                <Select 
+                  value={formData.service_category} 
+                  onValueChange={(value: 'sistemas' | 'seguridad') => {
+                    setFormData(prev => ({ ...prev, service_category: value }));
+                    setOrderItems([]); // Limpiar items cuando cambie categoría
+                  }} 
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona una categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sistemas">Sistemas</SelectItem>
+                    <SelectItem value="seguridad">Seguridad</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Selecciona la categoría para filtrar los servicios disponibles
+                </p>
+              </div>
+
               {/* Descripción del Problema - Arriba */}
               <div className="space-y-2">
                 <Label htmlFor="failure_description">Descripción del Problema *</Label>
@@ -1470,32 +1498,39 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 />
               </div>
 
-               {/* Selección de Servicios y Productos Separados */}
-               <div className="space-y-4">
-                 <Label>Servicios y Productos *</Label>
-                 <ProductServiceSeparator
-                   onServiceAdd={handleServiceAdd}
-                   selectedServiceIds={orderItems.map(item => item.service_type_id)}
-                    selectedServices={orderItems.map(item => ({
-                      service: {
-                        id: item.service_type_id,
-                        name: item.name,
-                        description: item.description,
-                        cost_price: item.cost_price, // Usar el cost_price del item
-                        base_price: item.unit_price || 0,
-                        vat_rate: item.vat_rate,
-                        item_type: item.item_type,
-                        category: '',
-                        estimated_hours: item.estimated_hours,
-                        profit_margin_tiers: item.profit_margin_tiers // Usar los profit_margin_tiers del item
-                      },
-                      quantity: item.quantity
-                    }))}
-                   onRemoveService={(serviceId: string) => {
-                     setOrderItems(prev => prev.filter(item => item.service_type_id !== serviceId));
-                   }}
-                 />
-               </div>
+               {/* Selección de servicios - Solo mostrar si se seleccionó categoría */}
+               {formData.service_category && (
+                 <div className="space-y-4">
+                   <div className="flex items-center justify-between">
+                     <Label>Servicios de {formData.service_category.charAt(0).toUpperCase() + formData.service_category.slice(1)} *</Label>
+                     <span className="text-sm text-muted-foreground">
+                       {serviceTypes.length} servicios disponibles
+                     </span>
+                   </div>
+                    <ProductServiceSeparator
+                      onServiceAdd={(service, quantity = 1) => handleServiceAdd(service, quantity)}
+                      selectedServiceIds={orderItems.map(item => item.service_type_id)}
+                      selectedServices={orderItems.map(item => ({
+                        service: {
+                          id: item.service_type_id,
+                          name: item.name,
+                          description: item.description,
+                          cost_price: item.cost_price,
+                          base_price: item.unit_price || 0,
+                          vat_rate: item.vat_rate,
+                          item_type: item.item_type,
+                          category: '',
+                          estimated_hours: item.estimated_hours,
+                          profit_margin_tiers: item.profit_margin_tiers
+                        },
+                        quantity: item.quantity
+                      }))}
+                      onRemoveService={(serviceId: string) => {
+                        setOrderItems(prev => prev.filter(item => item.service_type_id !== serviceId));
+                      }}
+                   />
+                 </div>
+               )}
 
               {/* Lista de artículos seleccionados */}
               <OrderItemsList 
