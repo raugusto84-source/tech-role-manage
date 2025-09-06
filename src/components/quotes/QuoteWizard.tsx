@@ -363,10 +363,8 @@ export function QuoteWizard({
                   let basePrice = 0;
                   
                   if (!isProduct(srv)) {
-                    // Service: use base_price and add 2% cashback
+                    // Service: use base_price
                     basePrice = srv.base_price || 0;
-                    const cashbackAmount = basePrice * 0.02; // 2% cashback
-                    basePrice = basePrice + cashbackAmount;
                   } else {
                     // Product: calculate with profit margin
                     const profitMargin = marginFromTiers(srv);
@@ -378,11 +376,19 @@ export function QuoteWizard({
                     }
                   }
                   
-                  const subtotal = basePrice;
-                  const vatAmount = subtotal * (srv.vat_rate || 16) / 100;
-                  const total = subtotal + vatAmount;
+                  // Calculate VAT on base price
+                  const vatAmount = basePrice * (srv.vat_rate || 16) / 100;
+                  const baseTotal = basePrice + vatAmount;
                   
-                  return { unitPrice: basePrice, subtotal, vatAmount, total };
+                  // Add 2% cashback for services (matching CategoryServiceSelection logic)
+                  let cashback = 0;
+                  if (!isProduct(srv)) {
+                    cashback = basePrice * 0.02; // 2% cashback on base price (not including VAT)
+                  }
+                  
+                  const finalPrice = baseTotal + cashback;
+                  
+                  return { unitPrice: finalPrice, subtotal: basePrice, vatAmount, total: finalPrice };
                 };
 
                 const { unitPrice, subtotal, vatAmount, total } = calculatePrices(service);
