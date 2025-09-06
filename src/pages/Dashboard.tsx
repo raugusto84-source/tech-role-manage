@@ -6,7 +6,7 @@ import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { PasswordChangeForm } from '@/components/auth/PasswordChangeForm';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 
 /**
  * Dashboard principal personalizado por rol
@@ -14,7 +14,13 @@ import { Settings } from 'lucide-react';
  * Incluye control de horarios para empleados
  */
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
+
+  // Función para manejar el logout
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/auth';
+  };
 
   // Determinar si el usuario debe ver el control de horarios (todos excepto clientes)
   const showTimeTracking = profile && profile.role !== 'cliente';
@@ -97,6 +103,22 @@ export default function Dashboard() {
     return (
       <AppLayout>
         <div className="space-y-6">
+          {/* Header con botón de cerrar sesión */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Panel de Administración</h1>
+              <p className="text-muted-foreground mt-1">Gestión completa del sistema</p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar Sesión
+            </Button>
+          </div>
+          
           {/* Time clock personal para administradores también */}
           <PersonalTimeClockPanel />
           <AdminDashboard />
@@ -108,13 +130,23 @@ export default function Dashboard() {
   return (
     <AppLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            {roleInfo.title}
-          </h1>
-          <p className="text-muted-foreground mt-2">
-            {roleInfo.description}
-          </p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">
+              {roleInfo.title}
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              {roleInfo.description}
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            className="gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+            Cerrar Sesión
+          </Button>
         </div>
 
         {/* Solo el widget personal de control de horarios */}
