@@ -122,7 +122,7 @@ export default function ClientDashboard() {
       .from('quotes')
       .select('*')
       .eq('client_email', profile.email)
-      .in('status', ['solicitud', 'enviada', 'pendiente_aprobacion'])
+      .eq('status', 'enviada') // Solo cotizaciones enviadas al cliente
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -379,7 +379,7 @@ export default function ClientDashboard() {
     activeQuotes: quotes.filter(q => 
       ['solicitud', 'enviada'].includes(q.status)
     ).length,
-    quotesToApprove: pendingApprovalQuotes.length,
+    quotesToApprove: pendingApprovalQuotes.length, // Solo cotizaciones "enviadas" por ventas
   }), [orders, quotes, pendingApprovalOrders, pendingUpdateOrders, readyForSignatureOrders, pendingApprovalQuotes]);
 
   // Funciones de navegación
