@@ -190,6 +190,43 @@ export default function Orders() {
     }
   }, [profile]);
 
+  // Suscripción en tiempo real para actualizar órdenes automáticamente
+  useEffect(() => {
+    if (!profile) return;
+
+    const ordersChannel = supabase
+      .channel('orders-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders'
+      }, (payload) => {
+        console.log('Order realtime update:', payload);
+        // Recargar órdenes cuando hay cambios
+        loadOrders();
+      })
+      .subscribe();
+
+    // También escuchar cambios en order_items por si cambian estados
+    const orderItemsChannel = supabase
+      .channel('order-items-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'order_items'
+      }, (payload) => {
+        console.log('Order items realtime update:', payload);
+        // Recargar órdenes cuando hay cambios en items
+        loadOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(orderItemsChannel);
+    };
+  }, [profile]);
+
   // Auto-open form if coming from client dashboard (skip nueva solicitud)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
