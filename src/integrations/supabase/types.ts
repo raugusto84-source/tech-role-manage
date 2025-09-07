@@ -5888,6 +5888,11 @@ export type Database = {
       }
       pending_collections: {
         Row: {
+          base_subtotal_without_vat: number | null
+          base_total_vat_amount: number | null
+          base_total_with_vat: number | null
+          cashback_enabled: boolean | null
+          cashback_percent: number | null
           client_email: string | null
           client_id: string | null
           client_name: string | null
