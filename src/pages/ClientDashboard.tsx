@@ -122,7 +122,7 @@ export default function ClientDashboard() {
       .from('quotes')
       .select('*')
       .eq('client_email', profile.email)
-      .eq('status', 'enviada') // Solo cotizaciones enviadas al cliente
+      .in('status', ['solicitud', 'enviada', 'pendiente_aprobacion']) // Todas las cotizaciones nuevas
       .order('created_at', { ascending: false });
     
     if (error) {
