@@ -5888,7 +5888,6 @@ export type Database = {
       }
       pending_collections: {
         Row: {
-          cashback_amount: number | null
           client_email: string | null
           client_id: string | null
           client_name: string | null
@@ -5897,9 +5896,6 @@ export type Database = {
           estimated_cost: number | null
           id: string | null
           order_number: string | null
-          original_subtotal: number | null
-          original_total: number | null
-          original_vat: number | null
           remaining_balance: number | null
           subtotal_without_vat: number | null
           total_paid: number | null
