@@ -117,16 +117,18 @@ export default function ClientDashboard() {
 
   const loadPendingApprovalQuotes = async () => {
     if (!profile?.email) return;
+    console.log('Loading pending quotes for client:', profile.email);
     const { data, error } = await supabase
       .from('quotes')
       .select('*')
       .eq('client_email', profile.email)
-      .in('status', ['enviada', 'pendiente_aprobacion'])
+      .in('status', ['solicitud', 'enviada', 'pendiente_aprobacion'])
       .order('created_at', { ascending: false });
     
     if (error) {
       console.error('Error loading pending approval quotes:', error);
     } else {
+      console.log('Pending approval quotes loaded:', data);
       setPendingApprovalQuotes(data || []);
     }
   };
@@ -170,6 +172,7 @@ export default function ClientDashboard() {
 
   const loadOrders = async () => {
     if (!profile?.user_id) return;
+    console.log('Loading orders for user:', profile.user_id, 'email:', profile.email);
 
     const { data: client, error: clientErr } = await supabase
       .from("clients")
@@ -177,11 +180,63 @@ export default function ClientDashboard() {
       .eq("user_id", profile.user_id)
       .maybeSingle();
     
+    console.log('Client found:', client, 'error:', clientErr);
+    
     if (clientErr || !client) {
-      setOrders([]);
-      setPendingApprovalOrders([]);
-      setPendingUpdateOrders([]);
-      setReadyForSignatureOrders([]);
+      // Try to find client by email as fallback
+      const { data: clientByEmail, error: emailErr } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("email", profile.email)
+        .maybeSingle();
+      
+      console.log('Client by email:', clientByEmail, 'error:', emailErr);
+      
+      if (emailErr || !clientByEmail) {
+        console.log('No client found for user, clearing orders');
+        setOrders([]);
+        setPendingApprovalOrders([]);
+        setPendingUpdateOrders([]);
+        setReadyForSignatureOrders([]);
+        return;
+      }
+      
+      // Use client found by email
+      const { data: ordersData, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("client_id", clientByEmail.id)
+        .order("created_at", { ascending: false });
+      
+      console.log('Orders loaded by email client:', ordersData, 'error:', error);
+      
+      if (error) {
+        console.error("Error loading orders:", error);
+        return;
+      }
+
+      const ordersWithTechnicianNames = await Promise.all(
+        (ordersData || []).map(async (order: any) => {
+          if (order.assigned_technician) {
+            const { data: techProfile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('user_id', order.assigned_technician)
+              .maybeSingle();
+            return { ...order, technician_profile: techProfile };
+          }
+          return { ...order, technician_profile: null };
+        })
+      );
+      
+      setOrders(ordersWithTechnicianNames.slice(0, 5));
+      
+      // Filtrar órdenes por categorías específicas
+      setPendingApprovalOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_aprobacion'));
+      // Pendientes de actualización: utilizar estado dedicado
+      setPendingUpdateOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_actualizacion'));
+      // Listos para firma de entrega
+      setReadyForSignatureOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_entrega'));
       return;
     }
 
@@ -191,6 +246,8 @@ export default function ClientDashboard() {
       .select("*")
       .eq("client_id", client.id)
       .order("created_at", { ascending: false });
+    
+    console.log('Orders loaded by user_id client:', ordersData, 'error:', error);
     
     if (error) {
       console.error("Error loading orders:", error);
