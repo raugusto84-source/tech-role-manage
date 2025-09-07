@@ -5898,6 +5898,8 @@ export type Database = {
           id: string | null
           order_number: string | null
           original_subtotal: number | null
+          original_total: number | null
+          original_vat: number | null
           remaining_balance: number | null
           subtotal_without_vat: number | null
           total_paid: number | null
