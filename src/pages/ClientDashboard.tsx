@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ClientCashbackHistory } from "@/components/rewards/ClientCashbackHistory";
 import { 
   Plus, 
   FileText, 
@@ -59,6 +60,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
+  const [showCashbackHistory, setShowCashbackHistory] = useState(false);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -606,7 +608,12 @@ export default function ClientDashboard() {
                   <p className="text-xl font-bold text-yellow-700">${rewards.totalCashback}</p>
                 </div>
               </div>
-              <Button size="sm" variant="outline" className="border-yellow-300 text-yellow-700">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="border-yellow-300 text-yellow-700"
+                onClick={() => setShowCashbackHistory(true)}
+              >
                 <Star className="h-3 w-3 mr-1" />
                 Ver más
               </Button>
@@ -857,6 +864,12 @@ export default function ClientDashboard() {
           }}
         />
       )}
+
+      {/* Cashback History Modal */}
+      <ClientCashbackHistory 
+        open={showCashbackHistory} 
+        onOpenChange={setShowCashbackHistory} 
+      />
     </AppLayout>
   );
 }
