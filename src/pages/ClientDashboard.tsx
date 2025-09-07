@@ -75,15 +75,26 @@ export default function ClientDashboard() {
 
   // SEO y metadatos
   useEffect(() => {
-    document.title = "Mi Panel | Syslag";
+    document.title = 'Mi Panel de Cliente | Syslag';
     const meta = document.querySelector('meta[name="description"]');
+    const description = 'Panel de cliente Syslag: órdenes pendientes, firmas y cotizaciones por aprobar';
     if (meta) {
-      meta.setAttribute("content", "Panel principal de cliente Syslag - Gestiona tus servicios y solicitudes");
+      meta.setAttribute('content', description);
     } else {
-      const m = document.createElement("meta");
-      m.name = "description";
-      m.content = "Panel principal de cliente Syslag - Gestiona tus servicios y solicitudes";
+      const m = document.createElement('meta');
+      m.name = 'description';
+      m.content = description;
       document.head.appendChild(m);
+    }
+    // Canonical
+    const existingCanonical = document.querySelector('link[rel="canonical"]');
+    const canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    canonical.setAttribute('href', `${window.location.origin}/dashboard`);
+    if (existingCanonical) {
+      existingCanonical.replaceWith(canonical);
+    } else {
+      document.head.appendChild(canonical);
     }
   }, []);
 
@@ -107,14 +118,14 @@ export default function ClientDashboard() {
   const loadPendingApprovalQuotes = async () => {
     if (!profile?.email) return;
     const { data, error } = await supabase
-      .from("quotes")
-      .select("*")
-      .eq("client_email", profile.email)
-      .eq("status", "enviada")
-      .order("created_at", { ascending: false });
+      .from('quotes')
+      .select('*')
+      .eq('client_email', profile.email)
+      .in('status', ['enviada', 'pendiente_aprobacion'])
+      .order('created_at', { ascending: false });
     
     if (error) {
-      console.error("Error loading pending approval quotes:", error);
+      console.error('Error loading pending approval quotes:', error);
     } else {
       setPendingApprovalQuotes(data || []);
     }
@@ -204,10 +215,9 @@ export default function ClientDashboard() {
     
     // Filtrar órdenes por categorías específicas
     setPendingApprovalOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_aprobacion'));
-    setPendingUpdateOrders(ordersWithTechnicianNames.filter(o => 
-      ['pendiente', 'en_proceso', 'en_camino'].includes(o.status) && 
-      o.updated_at && new Date(o.updated_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Últimos 7 días
-    ));
+    // Pendientes de actualización: utilizar estado dedicado
+    setPendingUpdateOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_actualizacion'));
+    // Listos para firma de entrega
     setReadyForSignatureOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_entrega'));
   };
 
@@ -255,6 +265,27 @@ export default function ClientDashboard() {
       if (channel) supabase.removeChannel(channel);
     };
   }, [profile?.user_id]);
+
+  // Suscripción en tiempo real para cotizaciones del cliente
+  useEffect(() => {
+    if (!profile?.email) return;
+    const quotesChannel = supabase
+      .channel('client-quotes-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'quotes',
+        filter: `client_email=eq.${profile.email}`
+      }, () => {
+        loadQuotes();
+        loadPendingApprovalQuotes();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(quotesChannel);
+    };
+  }, [profile?.email]);
 
   // Utilidades
   const statusBadge = (status: string) => {
@@ -527,16 +558,18 @@ export default function ClientDashboard() {
         </Card>
 
         {/* Secciones específicas de elementos pendientes */}
-        {pendingApprovalOrders.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base text-red-700 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                Órdenes Esperando Autorización ({pendingApprovalOrders.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {pendingApprovalOrders.slice(0, 3).map((order) => (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-red-700 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Órdenes Esperando Autorización ({pendingApprovalOrders.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            {pendingApprovalOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tienes órdenes pendientes de autorización.</p>
+            ) : (
+              pendingApprovalOrders.slice(0, 3).map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-red-50">
                   <div className="flex items-center gap-3">
                     <ClipboardList className="h-4 w-4 text-red-600" />
@@ -555,21 +588,23 @@ export default function ClientDashboard() {
                     Autorizar
                   </Button>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+              ))
+            )}
+          </CardContent>
+        </Card>
 
-        {pendingApprovalQuotes.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base text-blue-700 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Cotizaciones para Aprobar ({pendingApprovalQuotes.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {pendingApprovalQuotes.slice(0, 3).map((quote) => (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-blue-700 flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Cotizaciones para Aprobar ({pendingApprovalQuotes.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            {pendingApprovalQuotes.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No tienes cotizaciones por aprobar.</p>
+            ) : (
+              pendingApprovalQuotes.slice(0, 3).map((quote) => (
                 <div key={quote.id} className="flex items-center justify-between p-3 rounded-lg border bg-blue-50">
                   <div className="flex items-center gap-3">
                     <FileText className="h-4 w-4 text-blue-600" />
@@ -580,25 +615,27 @@ export default function ClientDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Aprobar
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleApproveQuote(quote.id)}>
+                    Revisar
                   </Button>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+              ))
+            )}
+          </CardContent>
+        </Card>
 
-        {readyForSignatureOrders.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base text-orange-700 flex items-center gap-2">
-                <Signature className="h-4 w-4" />
-                Listos para Firma de Entrega ({readyForSignatureOrders.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {readyForSignatureOrders.slice(0, 3).map((order) => (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-orange-700 flex items-center gap-2">
+              <Signature className="h-4 w-4" />
+              Listos para Firma de Entrega ({readyForSignatureOrders.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            {readyForSignatureOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay servicios listos para firma.</p>
+            ) : (
+              readyForSignatureOrders.slice(0, 3).map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-orange-50">
                   <div className="flex items-center gap-3">
                     <Signature className="h-4 w-4 text-orange-600" />
@@ -617,21 +654,23 @@ export default function ClientDashboard() {
                     Firmar
                   </Button>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+              ))
+            )}
+          </CardContent>
+        </Card>
 
-        {pendingUpdateOrders.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base text-purple-700 flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                Órdenes con Actualizaciones ({pendingUpdateOrders.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 pt-0">
-              {pendingUpdateOrders.slice(0, 3).map((order) => (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-purple-700 flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Órdenes con Actualizaciones ({pendingUpdateOrders.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-0">
+            {pendingUpdateOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No hay actualizaciones recientes.</p>
+            ) : (
+              pendingUpdateOrders.slice(0, 3).map((order) => (
                 <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-purple-50">
                   <div className="flex items-center gap-3">
                     <Zap className="h-4 w-4 text-purple-600" />
@@ -645,14 +684,14 @@ export default function ClientDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Button size="sm" variant="outline" className="border-purple-200 text-purple-600">
+                  <Button size="sm" variant="outline" className="border-purple-200 text-purple-600" onClick={() => handleViewOrderDetails(order.id)}>
                     Ver detalles
                   </Button>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+              ))
+            )}
+          </CardContent>
+        </Card>
 
         {/* Actividad reciente */}
         <Card>

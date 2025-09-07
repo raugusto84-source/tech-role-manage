@@ -10,6 +10,13 @@ export function ClientAwareClientsPage() {
   const { profile } = useAuth();
   
   if (profile?.role === 'cliente') {
+    // SEO: asegurar ruta canónica y título cuando se muestra el dashboard de cliente
+    document.title = 'Mi Panel de Cliente | Syslag';
+    const existingCanonical = document.querySelector('link[rel="canonical"]');
+    const canonical = document.createElement('link');
+    canonical.setAttribute('rel', 'canonical');
+    canonical.setAttribute('href', `${window.location.origin}/dashboard`);
+    if (existingCanonical) existingCanonical.replaceWith(canonical); else document.head.appendChild(canonical);
     return <ClientDashboard />;
   }
   
