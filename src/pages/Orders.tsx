@@ -95,6 +95,8 @@ export default function Orders() {
   const loadOrders = async () => {
     try {
       setLoading(true);
+      console.log('Loading orders for user:', user?.id, 'profile role:', profile?.role, 'email:', profile?.email);
+      
       let query = supabase
         .from('orders')
         .select(`
@@ -124,6 +126,9 @@ export default function Orders() {
       }
 
       const { data, error } = await query;
+      
+      console.log('Orders query result:', { data, error, count: data?.length });
+      console.log('Raw orders data:', data);
 
       if (error) {
         console.error('Error loading orders:', error);
@@ -163,7 +168,9 @@ export default function Orders() {
           };
         })
       );
-
+      
+      console.log('Orders after processing:', ordersWithTechnician);
+      console.log('Orders filtered:', ordersWithTechnician.filter(o => o.order_number === '0001' || o.order_number === '0002'));
       setOrders(ordersWithTechnician);
     } catch (error) {
       console.error('Unexpected error loading orders:', error);
