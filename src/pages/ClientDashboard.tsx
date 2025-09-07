@@ -63,6 +63,10 @@ export default function ClientDashboard() {
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [pendingApprovalOrders, setPendingApprovalOrders] = useState<Order[]>([]);
+  const [pendingUpdateOrders, setPendingUpdateOrders] = useState<Order[]>([]);
+  const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
+  const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
   const [rewards, setRewards] = useState({
     totalCashback: 0,
     referralCode: "",
@@ -97,6 +101,22 @@ export default function ClientDashboard() {
       console.error("Error loading quotes:", error);
     } else {
       setQuotes(data || []);
+    }
+  };
+
+  const loadPendingApprovalQuotes = async () => {
+    if (!profile?.email) return;
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*")
+      .eq("client_email", profile.email)
+      .eq("status", "enviada")
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("Error loading pending approval quotes:", error);
+    } else {
+      setPendingApprovalQuotes(data || []);
     }
   };
 
@@ -148,15 +168,18 @@ export default function ClientDashboard() {
     
     if (clientErr || !client) {
       setOrders([]);
+      setPendingApprovalOrders([]);
+      setPendingUpdateOrders([]);
+      setReadyForSignatureOrders([]);
       return;
     }
 
+    // Cargar todas las órdenes del cliente
     const { data: ordersData, error } = await supabase
       .from("orders")
       .select("*")
       .eq("client_id", client.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .order("created_at", { ascending: false });
     
     if (error) {
       console.error("Error loading orders:", error);
@@ -177,7 +200,15 @@ export default function ClientDashboard() {
       })
     );
     
-    setOrders(ordersWithTechnicianNames);
+    setOrders(ordersWithTechnicianNames.slice(0, 5));
+    
+    // Filtrar órdenes por categorías específicas
+    setPendingApprovalOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_aprobacion'));
+    setPendingUpdateOrders(ordersWithTechnicianNames.filter(o => 
+      ['pendiente', 'en_proceso', 'en_camino'].includes(o.status) && 
+      o.updated_at && new Date(o.updated_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // Últimos 7 días
+    ));
+    setReadyForSignatureOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_entrega'));
   };
 
   // Carga inicial
@@ -185,7 +216,12 @@ export default function ClientDashboard() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      await Promise.all([loadOrders(), loadQuotes(), loadRewards()]);
+      await Promise.all([
+        loadOrders(), 
+        loadQuotes(), 
+        loadPendingApprovalQuotes(),
+        loadRewards()
+      ]);
       if (mounted) setLoading(false);
     })();
     return () => { mounted = false; };
@@ -248,12 +284,15 @@ export default function ClientDashboard() {
     pendingOrders: orders.filter(o => 
       ['pendiente', 'en_proceso', 'en_camino'].includes(o.status)
     ).length,
-    readyToSign: orders.filter(o => o.status === 'pendiente_entrega').length,
+    readyToSign: readyForSignatureOrders.length,
+    pendingApproval: pendingApprovalOrders.length,
+    pendingUpdates: pendingUpdateOrders.length,
     completedOrders: orders.filter(o => o.status === 'finalizada').length,
     activeQuotes: quotes.filter(q => 
       ['solicitud', 'enviada'].includes(q.status)
     ).length,
-  }), [orders, quotes]);
+    quotesToApprove: pendingApprovalQuotes.length,
+  }), [orders, quotes, pendingApprovalOrders, pendingUpdateOrders, readyForSignatureOrders, pendingApprovalQuotes]);
 
   // Funciones de navegación
   const handleNewRequest = () => {
@@ -262,6 +301,20 @@ export default function ClientDashboard() {
 
   const handleViewAll = (type: 'orders' | 'quotes') => {
     window.location.href = `/${type}`;
+  };
+
+  const handleApproveOrder = (orderId: string) => {
+    // Navegar a los detalles de la orden para aprobar
+    window.location.href = `/orders?id=${orderId}`;
+  };
+
+  const handleApproveQuote = (quoteId: string) => {
+    // Navegar a los detalles de la cotización para aprobar
+    window.location.href = `/quotes?id=${quoteId}`;
+  };
+
+  const handleViewOrderDetails = (orderId: string) => {
+    window.location.href = `/orders?id=${orderId}`;
   };
 
   if (loading) {
@@ -297,6 +350,58 @@ export default function ClientDashboard() {
         </div>
 
         {/* Alertas importantes */}
+        {metrics.pendingApproval > 0 && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-red-800">
+                    {metrics.pendingApproval} orden{metrics.pendingApproval > 1 ? 'es' : ''} esperando autorización
+                  </p>
+                  <p className="text-xs text-red-600">Requiere tu aprobación para continuar</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="border-red-200 text-red-600"
+                  onClick={() => pendingApprovalOrders.length > 0 && handleApproveOrder(pendingApprovalOrders[0].id)}
+                >
+                  Autorizar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {metrics.quotesToApprove > 0 && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-blue-800">
+                    {metrics.quotesToApprove} cotización{metrics.quotesToApprove > 1 ? 'es' : ''} para aprobar
+                  </p>
+                  <p className="text-xs text-blue-600">Revisá y confirmá tu cotización</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="border-blue-200 text-blue-600"
+                  onClick={() => pendingApprovalQuotes.length > 0 && handleApproveQuote(pendingApprovalQuotes[0].id)}
+                >
+                  Revisar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {metrics.readyToSign > 0 && (
           <Card className="border-orange-200 bg-orange-50">
             <CardContent className="p-4">
@@ -310,8 +415,39 @@ export default function ClientDashboard() {
                   </p>
                   <p className="text-xs text-orange-600">Toca para firmar entrega</p>
                 </div>
-                <Button size="sm" variant="outline" className="border-orange-200 text-orange-600">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="border-orange-200 text-orange-600"
+                  onClick={() => readyForSignatureOrders.length > 0 && setOrderToSign(readyForSignatureOrders[0])}
+                >
                   Firmar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {metrics.pendingUpdates > 0 && (
+          <Card className="border-purple-200 bg-purple-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
+                  <Zap className="h-4 w-4 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-purple-800">
+                    {metrics.pendingUpdates} orden{metrics.pendingUpdates > 1 ? 'es' : ''} con actualizaciones
+                  </p>
+                  <p className="text-xs text-purple-600">Revisa el progreso de tus servicios</p>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="border-purple-200 text-purple-600"
+                  onClick={() => pendingUpdateOrders.length > 0 && handleViewOrderDetails(pendingUpdateOrders[0].id)}
+                >
+                  Ver
                 </Button>
               </div>
             </CardContent>
@@ -389,6 +525,134 @@ export default function ClientDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Secciones específicas de elementos pendientes */}
+        {pendingApprovalOrders.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-red-700 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Órdenes Esperando Autorización ({pendingApprovalOrders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingApprovalOrders.slice(0, 3).map((order) => (
+                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-red-50">
+                  <div className="flex items-center gap-3">
+                    <ClipboardList className="h-4 w-4 text-red-600" />
+                    <div>
+                      <p className="text-sm font-medium">{order.order_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => handleApproveOrder(order.id)}
+                  >
+                    Autorizar
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {pendingApprovalQuotes.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-blue-700 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Cotizaciones para Aprobar ({pendingApprovalQuotes.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingApprovalQuotes.slice(0, 3).map((quote) => (
+                <div key={quote.id} className="flex items-center justify-between p-3 rounded-lg border bg-blue-50">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium">{quote.quote_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(quote.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                    Aprobar
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {readyForSignatureOrders.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-orange-700 flex items-center gap-2">
+                <Signature className="h-4 w-4" />
+                Listos para Firma de Entrega ({readyForSignatureOrders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {readyForSignatureOrders.slice(0, 3).map((order) => (
+                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-orange-50">
+                  <div className="flex items-center gap-3">
+                    <Signature className="h-4 w-4 text-orange-600" />
+                    <div>
+                      <p className="text-sm font-medium">{order.order_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'Sin fecha'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="bg-orange-600 hover:bg-orange-700 text-white"
+                    onClick={() => setOrderToSign(order)}
+                  >
+                    Firmar
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {pendingUpdateOrders.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-purple-700 flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Órdenes con Actualizaciones ({pendingUpdateOrders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingUpdateOrders.slice(0, 3).map((order) => (
+                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-purple-50">
+                  <div className="flex items-center gap-3">
+                    <Zap className="h-4 w-4 text-purple-600" />
+                    <div>
+                      <p className="text-sm font-medium">{order.order_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {order.technician_profile?.full_name || 'Técnico asignado'}
+                      </p>
+                      <p className="text-xs text-purple-600">
+                        Estado: {statusBadge(order.status)}
+                      </p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-purple-200 text-purple-600">
+                    Ver detalles
+                  </Button>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Actividad reciente */}
         <Card>
