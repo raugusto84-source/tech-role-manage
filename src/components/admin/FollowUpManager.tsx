@@ -57,12 +57,17 @@ export function FollowUpManager() {
   const triggerEvents = [
     { value: "quote_received", label: "Cotización Recibida" },
     { value: "quote_sent", label: "Cotización Enviada" },
+    { value: "quote_pending", label: "Cotización Pendiente" },
     { value: "order_created", label: "Orden Creada" },
     { value: "order_assigned", label: "Orden Asignada" },
     { value: "order_in_progress", label: "Orden en Progreso" },
     { value: "order_completed", label: "Orden Completada" },
     { value: "payment_pending", label: "Pago Pendiente" },
-    { value: "client_inactive", label: "Cliente Inactivo" }
+    { value: "payment_due_soon", label: "Pago Próximo a Vencer" },
+    { value: "payment_overdue", label: "Pago Vencido" },
+    { value: "client_inactive", label: "Cliente Inactivo" },
+    { value: "policy_renewal", label: "Renovación de Póliza" },
+    { value: "warranty_expiring", label: "Garantía por Vencer" }
   ];
 
   const notificationChannels = [
