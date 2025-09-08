@@ -136,9 +136,9 @@ export function ClientRewardsCard() {
               </div>
               <div>
                 <span className="font-bold text-warning-foreground text-sm">¡Bienvenido!</span>
-                <p className="text-xs text-warning-foreground/80">
-                  <strong>10% cashback</strong> en servicios en tu primera compra.
-                </p>
+                 <p className="text-xs text-warning-foreground/80">
+                   <strong>2% cashback</strong> en servicios desde tu primera compra.
+                 </p>
               </div>
             </div>
           </div>
@@ -188,11 +188,10 @@ export function ClientRewardsCard() {
             <div className="w-8 h-8 bg-info/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
               <Gift className="h-4 w-4 text-info" />
             </div>
-            <div className="text-xs text-info-foreground space-y-1">
-              <p>• Gana <strong>10% de cashback</strong> en servicios en tu primera compra</p>
-              <p>• Luego <strong>2% de cashback</strong> en todas las compras</p>
-              <p>• El cashback expira después de <strong>1 año</strong></p>
-            </div>
+             <div className="text-xs text-info-foreground space-y-1">
+               <p>• Gana <strong>2% de cashback</strong> en todas tus compras desde el primer servicio</p>
+               <p>• El cashback expira después de <strong>1 año</strong></p>
+             </div>
           </div>
         </div>
       </CardContent>

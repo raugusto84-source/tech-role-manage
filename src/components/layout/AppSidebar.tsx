@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   MessageSquare,
   ClipboardCheck,
-  Truck
+  Truck,
+  Bell
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -69,6 +70,7 @@ export function AppSidebar() {
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
+          { title: 'Seguimiento', url: '/seguimiento', icon: Bell },
           { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
           { title: 'Reportes', url: '/reports', icon: FileText },
           { title: 'Configuración', url: '/settings', icon: Settings },
@@ -95,6 +97,7 @@ export function AppSidebar() {
           { title: 'Cotizaciones', url: '/quotes', icon: FileText },
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
           { title: 'Finanzas', url: '/finanzas', icon: Banknote },
+          { title: 'Seguimiento', url: '/seguimiento', icon: Bell },
           { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
         ];
       case 'tecnico':

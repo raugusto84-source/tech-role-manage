@@ -25,7 +25,7 @@ export function RewardSettingsManager() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    new_client_cashback_percent: 5.0,
+    new_client_cashback_percent: 2.0,
     general_cashback_percent: 2.0,
     apply_cashback_to_items: false
   });

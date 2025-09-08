@@ -25,6 +25,7 @@ import InsurancePolicies from "./pages/InsurancePolicies";
 import Rewards from "./pages/Rewards";
 import Warranties from "./pages/Warranties";
 import Fleets from "./pages/Fleets";
+import FollowUpPage from "./pages/FollowUp";
 
 const queryClient = new QueryClient();
 
@@ -158,17 +159,25 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route 
-              path="/flotillas" 
-              element={
-                <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
-                  <Fleets />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/" element={<Auth />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+             <Route 
+               path="/flotillas" 
+               element={
+                 <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
+                   <Fleets />
+                 </ProtectedRoute>
+               }
+             />
+             <Route 
+               path="/seguimiento" 
+               element={
+                 <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
+                   <FollowUpPage />
+                 </ProtectedRoute>
+               }
+             />
+             <Route path="/" element={<Auth />} />
+             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
