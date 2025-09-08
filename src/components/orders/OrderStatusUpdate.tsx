@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { X, ArrowRight, CheckCircle2, Truck, Wrench } from 'lucide-react';
 import { DeliverySignature } from './DeliverySignature';
+import { triggerOrderFollowUp } from '@/utils/followUp';
 
 interface OrderStatusUpdateProps {
   order: {
@@ -145,6 +146,18 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
         title: "Estado Actualizado",
         description: `Orden cambiada a: ${statusLabels[newStatus as keyof typeof statusLabels]}`,
       });
+
+      // Disparar seguimiento según el nuevo estado
+      const eventMap: Record<string, string> = {
+        en_camino: 'order_assigned',
+        en_proceso: 'order_in_progress',
+        finalizada: 'order_completed',
+        pendiente: 'order_created'
+      };
+      const followUpEvent = eventMap[newStatus] || null;
+      if (followUpEvent) {
+        await triggerOrderFollowUp(order, followUpEvent);
+      }
 
       // Cerrar modal y actualizar vista
       onUpdate();

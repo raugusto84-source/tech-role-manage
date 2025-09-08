@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PenTool, CheckCircle2, ArrowLeft, X } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
+import { triggerOrderFollowUp } from '@/utils/followUp';
 
 interface DeliverySignatureProps {
   order: {
@@ -88,6 +89,9 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
       }
       console.log('✅ Orden actualizada exitosamente');
 
+      // Disparar seguimiento para orden completada
+      await triggerOrderFollowUp(order, 'order_completed');
+
       // Obtener detalles de la orden para generar cobranza
       console.log('🔍 Obteniendo detalles de la orden para cobranza...');
       const { data: orderDetails, error: orderDetailsError } = await supabase
@@ -154,6 +158,19 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
           // No fallar la operación por este error, solo registrar
         } else {
           console.log('✅ Registro de cobranza creado exitosamente');
+          // Disparar seguimiento de finanzas: pago pendiente
+          await supabase.functions.invoke('process-follow-ups', {
+            body: {
+              trigger_event: 'payment_pending',
+              related_id: order.id,
+              related_type: 'income',
+              target_email: null,
+              additional_data: {
+                client_name: orderDetails.clients?.name || 'Cliente',
+                amount: totalAmount
+              }
+            }
+          });
         }
       }
 
