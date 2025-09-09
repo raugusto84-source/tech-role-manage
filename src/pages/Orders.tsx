@@ -419,76 +419,92 @@ export default function Orders() {
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
-              <p className="text-muted-foreground mt-1">
-                {profile?.role === 'cliente' ? 'Mis órdenes' : 
-                 profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
-              </p>
-            </div>
+        {/* Header - Mobile First */}
+        <div className="mb-4 sm:mb-6">
+          <div className="mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Órdenes de Servicio</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
+              {profile?.role === 'cliente' ? 'Mis órdenes' : 
+               profile?.role === 'tecnico' ? 'Órdenes asignadas' : 'Todas las órdenes'}
+            </p>
           </div>
           
-          <div className="flex gap-2 mt-4 md:mt-0">
-            {/* Botón volver al dashboard */}
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.href = getDashboardRoute()}
-              className="gap-2"
-            >
-              <Home className="h-4 w-4" />
-              Dashboard
-            </Button>
-            
-            {/* Botón cerrar sesión */}
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar Sesión
-            </Button>
+          {/* Mobile-first action buttons */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2 flex-1">
+              {/* Botón volver al dashboard */}
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = getDashboardRoute()}
+                className="gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                size="sm"
+              >
+                <Home className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Dashboard</span>
+                <span className="xs:hidden">Panel</span>
+              </Button>
+              
+              {/* Botón cerrar sesión */}
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                className="gap-1 sm:gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground text-xs sm:text-sm"
+                size="sm"
+              >
+                <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Cerrar Sesión</span>
+                <span className="xs:hidden">Salir</span>
+              </Button>
+            </div>
             
             {canCreateOrder && (
-              <Button variant="default" onClick={() => setShowForm(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Orden Completa
+              <Button 
+                variant="default" 
+                onClick={() => setShowForm(true)}
+                className="text-xs sm:text-sm"
+                size="sm"
+              >
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Nueva Orden
               </Button>
             )}
           </div>
         </div>
 
-        {/* Tabs for different views */}
+        {/* Mobile-first Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="list">Vista Lista</TabsTrigger>
-            <TabsTrigger value="calendar">Vista Calendario</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="list" className="text-xs sm:text-sm">
+              <ClipboardList className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              Lista
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs sm:text-sm">
+              <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              Calendario
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="list" className="space-y-6">
-            {/* Filters */}
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex flex-col md:flex-row gap-4">
+            {/* Mobile-first Filters */}
+            <Card className="mb-4">
+              <CardContent className="p-3 sm:p-4">
+                <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-4">
                   <div className="flex-1">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                       <Input
-                        placeholder="Buscar por cliente, número de orden o descripción..."
+                        placeholder="Buscar por cliente, número..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
+                        className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
                       />
                     </div>
                   </div>
                   
-                  <div className="w-full md:w-48">
+                  <div className="w-full sm:w-48">
                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger>
-                        <Filter className="h-4 w-4 mr-2" />
+                      <SelectTrigger className="h-8 sm:h-10 text-sm">
+                        <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                         <SelectValue placeholder="Estado" />
                       </SelectTrigger>
                       <SelectContent>
