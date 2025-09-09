@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -508,13 +508,13 @@ export default function Orders() {
                         <SelectValue placeholder="Estado" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Todos los estados</SelectItem>
-                        <SelectItem value="pendiente_aprobacion">Pendiente de Aprobación</SelectItem>
-                        <SelectItem value="pendiente_actualizacion">Pendiente de Actualización</SelectItem>
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="pendiente_aprobacion">Pendiente Aprobación</SelectItem>
+                        <SelectItem value="pendiente_actualizacion">Actualización</SelectItem>
                         <SelectItem value="pendiente">Pendiente</SelectItem>
                         <SelectItem value="en_camino">En Camino</SelectItem>
                         <SelectItem value="en_proceso">En Proceso</SelectItem>
-                        <SelectItem value="pendiente_entrega">Pendiente de Entrega</SelectItem>
+                        <SelectItem value="pendiente_entrega">Pendiente Entrega</SelectItem>
                         <SelectItem value="finalizada">Finalizada</SelectItem>
                         <SelectItem value="cancelada">Cancelada</SelectItem>
                       </SelectContent>
