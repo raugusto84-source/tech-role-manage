@@ -2652,6 +2652,9 @@ export type Database = {
       }
       orders: {
         Row: {
+          approved_subtotal: number | null
+          approved_total: number | null
+          approved_vat_amount: number | null
           assigned_fleet: string | null
           assigned_technician: string | null
           assignment_reason: string | null
@@ -2690,6 +2693,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approved_subtotal?: number | null
+          approved_total?: number | null
+          approved_vat_amount?: number | null
           assigned_fleet?: string | null
           assigned_technician?: string | null
           assignment_reason?: string | null
@@ -2728,6 +2734,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approved_subtotal?: number | null
+          approved_total?: number | null
+          approved_vat_amount?: number | null
           assigned_fleet?: string | null
           assigned_technician?: string | null
           assignment_reason?: string | null
