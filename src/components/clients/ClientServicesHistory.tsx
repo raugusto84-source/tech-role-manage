@@ -155,9 +155,13 @@ export function ClientServicesHistory() {
     }).format(amount);
   };
 
-  // For client view, use the stored total_amount which should already include current pricing
+  // Calcular total mostrando cashback si aplica
   const calculateItemDisplayPrice = (item: OrderItem): number => {
-    return item.total_amount || 0;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+    const baseTotal = (item.subtotal + item.vat_amount) || item.total_amount || 0;
+    return baseTotal * (1 + cashbackPercent / 100);
   };
 
   const calculateOrderTotal = (items: OrderItem[]): number => {
