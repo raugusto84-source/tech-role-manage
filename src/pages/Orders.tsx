@@ -108,15 +108,32 @@ export default function Orders() {
 
       // Filter by role
       if (profile?.role === 'cliente') {
-        const { data: client } = await supabase
+        // First try to find client by user_id
+        let { data: client, error } = await supabase
           .from('clients')
           .select('id')
           .eq('user_id', user?.id)
           .single();
         
+        console.log('Client found by user_id:', client, 'error:', error);
+        
+        // If not found by user_id, try by email
+        if (!client && profile?.email) {
+          const { data: clientByEmail, error: emailError } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('email', profile.email)
+            .single();
+          
+          console.log('Client found by email:', clientByEmail, 'error:', emailError);
+          client = clientByEmail;
+        }
+        
         if (client) {
+          console.log('Loading orders for client_id:', client.id);
           query = query.eq('client_id', client.id);
         } else {
+          console.log('No client found for user:', user?.id, 'email:', profile?.email);
           setOrders([]);
           setLoading(false);
           return;
