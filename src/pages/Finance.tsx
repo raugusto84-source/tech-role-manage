@@ -2717,23 +2717,21 @@ export default function Finance() {
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader>
+                   <TableHeader>
                      <TableRow>
                        <TableHead>Referencia</TableHead>
                        <TableHead>Tipo</TableHead>
                        <TableHead>Cliente</TableHead>
                        <TableHead>Vencimiento</TableHead>
-                       <TableHead>Subtotal</TableHead>
-                       <TableHead>IVA</TableHead>
                        <TableHead>Total</TableHead>
                        <TableHead>Pagado</TableHead>
                        <TableHead>Saldo</TableHead>
                        <TableHead>Estado</TableHead>
                        <TableHead>Acciones</TableHead>
                      </TableRow>
-                  </TableHeader>
+                   </TableHeader>
                   <TableBody>
-                     {collectionsQuery.isLoading && <TableRow><TableCell colSpan={11}>Cargando cobranzas pendientes...</TableCell></TableRow>}
+                     {collectionsQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando cobranzas pendientes...</TableCell></TableRow>}
                      {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((item: any) => <TableRow key={item.id} className="hover:bg-muted/50">
                          <TableCell className="font-medium">{item.order_number}</TableCell>
                          <TableCell>
@@ -2749,18 +2747,6 @@ export default function Finance() {
                            </div>
                          </TableCell>
                          <TableCell>{new Date(item.delivery_date || item.due_date).toLocaleDateString()}</TableCell>
-                         <TableCell className="font-medium">
-                           {Number(item.subtotal_without_vat || 0).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
-                         </TableCell>
-                         <TableCell className="text-blue-600 font-medium">
-                           {Number(item.total_vat_amount || 0).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
-                         </TableCell>
                          <TableCell className="font-medium">
                            {Number(item.total_with_vat || item.estimated_cost).toLocaleString(undefined, {
                         style: 'currency',
@@ -2805,7 +2791,7 @@ export default function Finance() {
                           </TableCell>
                        </TableRow>)}
                      {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && <TableRow>
-                         <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                         <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                            <div className="flex flex-col items-center gap-2">
                              <div className="text-4xl">💰</div>
                              <div className="font-medium">No hay cobranzas pendientes</div>
