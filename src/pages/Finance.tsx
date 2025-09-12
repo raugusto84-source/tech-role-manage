@@ -2782,7 +2782,7 @@ export default function Finance() {
                                 Cobrar
                               </Button>
                                <Button size="sm" variant="destructive" onClick={() => {
-                          setCollectionToDelete(item.payment_id || item.id);
+                          setCollectionToDelete(item.id); // Use order ID directly
                           setDeleteCollectionDialogOpen(true);
                         }}>
                                  Eliminar

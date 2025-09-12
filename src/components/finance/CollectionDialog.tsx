@@ -402,11 +402,11 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
         const handleDelete = async () => {
           setLoading(true);
           try {
-            // Delete the specific order payment
+            // Delete all order payments for this order (collectionId is actually order_id)
             const { error } = await supabase
               .from('order_payments')
               .delete()
-              .eq('id', collectionId);
+              .eq('order_id', collectionId);
 
             if (error) throw error;
 
