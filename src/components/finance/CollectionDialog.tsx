@@ -388,12 +388,14 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
       export function DeleteCollectionDialog({ 
         open, 
         onOpenChange, 
+        collection, 
         collectionId, 
         onSuccess 
       }: {
         open: boolean;
         onOpenChange: (open: boolean) => void;
-        collectionId: string;
+        collection?: any | null;
+        collectionId?: string;
         onSuccess?: () => void;
       }) {
         const { toast } = useToast();
@@ -402,17 +404,37 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
         const handleDelete = async () => {
           setLoading(true);
           try {
-            // Delete all order payments for this order (collectionId is actually order_id)
-            const { error } = await supabase
-              .from('order_payments')
-              .delete()
-              .eq('order_id', collectionId);
+            const isPolicy = collection?.collection_type === 'policy_payment';
 
-            if (error) throw error;
+            if (isPolicy) {
+              const idToDelete = collection?.policy_payment_id || collection?.id || collectionId;
+              if (!idToDelete) throw new Error('No se encontró el identificador del pago de póliza');
+              const { data: deletedPP, error: delPPError } = await supabase
+                .from('policy_payments')
+                .delete()
+                .eq('id', idToDelete)
+                .select('id');
+              if (delPPError) throw delPPError;
+              if (!deletedPP || deletedPP.length === 0) {
+                throw new Error('No se encontró el cobro de póliza para eliminar');
+              }
+            } else {
+              const orderId = (collection as any)?.id || collectionId;
+              if (!orderId) throw new Error('No se encontró el identificador de la orden');
+              const { data: deletedPayments, error: delPayError } = await supabase
+                .from('order_payments')
+                .delete()
+                .eq('order_id', orderId)
+                .select('id');
+              if (delPayError) throw delPayError;
+              if (!deletedPayments || deletedPayments.length === 0) {
+                throw new Error('No había cobros registrados para esta orden');
+              }
+            }
 
             toast({
-              title: "Cobro eliminado",
-              description: "El cobro pendiente ha sido eliminado exitosamente",
+              title: 'Cobro eliminado',
+              description: 'El cobro pendiente ha sido eliminado exitosamente',
             });
 
             onSuccess?.();
@@ -420,9 +442,9 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
           } catch (error: any) {
             console.error('Error deleting collection:', error);
             toast({
-              title: "Error",
-              description: error.message || "No se pudo eliminar el cobro",
-              variant: "destructive",
+              title: 'Error',
+              description: error.message || 'No se pudo eliminar el cobro',
+              variant: 'destructive',
             });
           } finally {
             setLoading(false);

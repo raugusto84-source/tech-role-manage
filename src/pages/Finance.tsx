@@ -454,7 +454,7 @@ export default function Finance() {
 
   // Estados para eliminar cobranza
   const [deleteCollectionDialogOpen, setDeleteCollectionDialogOpen] = useState(false);
-  const [collectionToDelete, setCollectionToDelete] = useState<string>('');
+  const [collectionToDelete, setCollectionToDelete] = useState<any | null>(null);
 
   // Función para registrar en historial financiero
   const logFinancialOperation = async (operationType: string, tableName: string, recordId: string, recordData: any, description: string, amount: number, accountType?: string, operationDate?: string) => {
@@ -2782,7 +2782,7 @@ export default function Finance() {
                                 Cobrar
                               </Button>
                                <Button size="sm" variant="destructive" onClick={() => {
-                          setCollectionToDelete(item.id); // Use order ID directly
+                          setCollectionToDelete(item);
                           setDeleteCollectionDialogOpen(true);
                         }}>
                                  Eliminar
@@ -2990,10 +2990,10 @@ export default function Finance() {
         </DialogContent>
       </Dialog>
       
-      <DeleteCollectionDialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen} collectionId={collectionToDelete} onSuccess={() => {
+      <DeleteCollectionDialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen} collection={collectionToDelete} onSuccess={() => {
       // Force immediate refetch to update UI
       collectionsQuery.refetch();
-      setCollectionToDelete('');
+      setCollectionToDelete(null);
       // Close dialog immediately
       setDeleteCollectionDialogOpen(false);
     }} />
