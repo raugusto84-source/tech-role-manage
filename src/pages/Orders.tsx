@@ -343,6 +343,19 @@ export default function Orders() {
 
     try {
       setLoading(true);
+      
+      // First delete associated order payments to prevent false accounts
+      const { error: paymentsError } = await supabase
+        .from('order_payments')
+        .delete()
+        .eq('order_id', orderToDelete);
+
+      if (paymentsError) {
+        console.warn('Error deleting order payments:', paymentsError);
+        // Continue with order deletion even if payments fail
+      }
+
+      // Then delete the order
       const { error } = await supabase
         .from('orders')
         .delete()
@@ -352,7 +365,7 @@ export default function Orders() {
 
       toast({
         title: "Orden eliminada",
-        description: "La orden se ha eliminado correctamente",
+        description: "La orden y sus pagos asociados han sido eliminados correctamente",
       });
 
       setOrderToDelete(null);
