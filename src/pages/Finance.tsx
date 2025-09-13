@@ -1574,12 +1574,13 @@ export default function Finance() {
 
       <Tabs defaultValue="incomes">
         <TabsList className="bg-lime-400 rounded-none">
+           <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
           <TabsTrigger value="incomes" className="text-gray-950">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
-          <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
+         
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
