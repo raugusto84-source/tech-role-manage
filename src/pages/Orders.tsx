@@ -606,15 +606,16 @@ export default function Orders() {
                                 </Badge>
                               </div>
                               <div className="space-y-1">
-                                {sistemasOrders.map((order) => (
-                                  <OrderCard
-                                    key={order.id}
-                                    order={order}
-                                    onClick={() => setSelectedOrder(order)}
-                                    onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                    getStatusColor={getStatusColor}
-                                  />
-                                ))}
+                                 {sistemasOrders.map((order) => (
+                                   <OrderCard
+                                     key={order.id}
+                                     order={order}
+                                     onClick={() => setSelectedOrder(order)}
+                                     onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                     canDelete={canDeleteOrder}
+                                     getStatusColor={getStatusColor}
+                                   />
+                                 ))}
                               </div>
                             </div>
                           );
@@ -657,15 +658,16 @@ export default function Orders() {
                                 </Badge>
                               </div>
                               <div className="space-y-1">
-                                {seguridadOrders.map((order) => (
-                                  <OrderCard
-                                    key={order.id}
-                                    order={order}
-                                    onClick={() => setSelectedOrder(order)}
-                                    onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                    getStatusColor={getStatusColor}
-                                  />
-                                ))}
+                                 {seguridadOrders.map((order) => (
+                                   <OrderCard
+                                     key={order.id}
+                                     order={order}
+                                     onClick={() => setSelectedOrder(order)}
+                                     onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                     canDelete={canDeleteOrder}
+                                     getStatusColor={getStatusColor}
+                                   />
+                                 ))}
                               </div>
                             </div>
                           );
@@ -713,15 +715,16 @@ export default function Orders() {
                         Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
                       </h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
-                          <OrderCard
-                            key={order.id}
-                            order={order}
-                            onClick={() => setSelectedOrder(order)}
-                            onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                            getStatusColor={getStatusColor}
-                          />
-                        ))}
+                         {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
+                           <OrderCard
+                             key={order.id}
+                             order={order}
+                             onClick={() => setSelectedOrder(order)}
+                             onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                             canDelete={canDeleteOrder}
+                             getStatusColor={getStatusColor}
+                           />
+                         ))}
                         {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
                           <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
                         )}
@@ -764,15 +767,16 @@ export default function Orders() {
                         Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
                       </h4>
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
-                          <OrderCard
-                            key={order.id}
-                            order={order}
-                            onClick={() => setSelectedOrder(order)}
-                            onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                            getStatusColor={getStatusColor}
-                          />
-                        ))}
+                         {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
+                           <OrderCard
+                             key={order.id}
+                             order={order}
+                             onClick={() => setSelectedOrder(order)}
+                             onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                             canDelete={canDeleteOrder}
+                             getStatusColor={getStatusColor}
+                           />
+                         ))}
                         {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
                           <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
                         )}
