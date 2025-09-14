@@ -277,8 +277,8 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
         if (signatureError) throw signatureError;
 
-        // Actualizar el estado de la orden según el tipo de aprobación
-        const newStatus = isOrderUpdate ? 'en_proceso' : 'pendiente';
+        // Actualizar el estado de la orden a 'en_proceso' para ambos casos
+        const newStatus = 'en_proceso';
         const { error: orderError } = await supabase
           .from('orders')
           .update({
