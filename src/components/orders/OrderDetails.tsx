@@ -311,10 +311,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return order.estimated_cost || 0;
     }
 
-    const total = orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+    // Usar exactamente los importes calculados y guardados en BD
+    const total = orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
     return total;
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';

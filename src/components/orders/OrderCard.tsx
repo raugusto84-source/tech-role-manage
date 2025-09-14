@@ -132,7 +132,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       return order.estimated_cost || 0;
     }
 
-    return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+    return orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
   };
   const formatDate = (dateString: string) => {
     try {
