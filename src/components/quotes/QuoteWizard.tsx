@@ -142,7 +142,17 @@ export function QuoteWizard({
             });
             return;
           }
-          setCurrentStep('client');
+          // Skip client selection for clients role
+          if (profile?.role === 'cliente') {
+            if (selectedApproach === 'problem') {
+              setCurrentStep('diagnostic');
+            } else {
+              setCurrentStep('items');
+              setShowServiceSelection(true);
+            }
+          } else {
+            setCurrentStep('client');
+          }
           break;
         }
       case 'client':
@@ -183,13 +193,23 @@ export function QuoteWizard({
         setCurrentStep('approach');
         break;
       case 'diagnostic':
-        setCurrentStep('client');
+        // Go back to approach for clients, client selection for staff
+        if (profile?.role === 'cliente') {
+          setCurrentStep('approach');
+        } else {
+          setCurrentStep('client');
+        }
         break;
       case 'items':
         if (selectedApproach === 'problem') {
           setCurrentStep('diagnostic');
         } else {
-          setCurrentStep('client');
+          // Go back to approach for clients, client selection for staff
+          if (profile?.role === 'cliente') {
+            setCurrentStep('approach');
+          } else {
+            setCurrentStep('client');
+          }
         }
         break;
     }
@@ -335,6 +355,9 @@ export function QuoteWizard({
       <div className="flex justify-center mb-4">
         <div className="flex space-x-1">
           {Object.keys(stepTitles).map((step, index) => {
+          // Skip client step for clients
+          if (step === 'client' && profile?.role === 'cliente') return null;
+          
           const isActive = currentStep === step;
           const isCompleted = step === 'approach' && selectedApproach || 
                               step === 'client' && selectedClient || 
