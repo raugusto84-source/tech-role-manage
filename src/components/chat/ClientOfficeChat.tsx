@@ -38,11 +38,15 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && profile?.role === 'cliente') {
-      loadMessages();
-      setupRealtimeSubscription();
+      (async () => {
+        const id = await resolveClientId();
+        await loadMessages(id || undefined);
+        setupRealtimeSubscription(id || undefined);
+      })();
     }
     
     return () => {
@@ -74,16 +78,62 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  const loadMessages = async () => {
+  // Resolve or create a client_id linked to this user
+  const resolveClientId = async (): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      // Try by user_id
+      const { data: byUser } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (byUser?.id) {
+        setClientId(byUser.id);
+        return byUser.id;
+      }
+      // Try by email
+      const { data: byEmail } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile?.email || '')
+        .maybeSingle();
+      if (byEmail?.id) {
+        setClientId(byEmail.id);
+        return byEmail.id;
+      }
+      // Create minimal client record
+      const { data: clientNumberData } = await supabase.rpc('generate_client_number');
+      const clientNumber = (clientNumberData as unknown as string) || `CLI-${Date.now()}`;
+      const { data: newClient, error: createErr } = await supabase
+        .from('clients')
+        .insert({
+          user_id: user.id,
+          name: profile?.full_name || 'Cliente',
+          email: profile?.email || '',
+          address: 'Sin dirección',
+          client_number: clientNumber,
+        })
+        .select('id')
+        .single();
+      if (createErr) {
+        console.error('Error creating client record:', createErr);
+        return null;
+      }
+      setClientId(newClient.id);
+      return newClient.id;
+    } catch (e) {
+      console.error('resolveClientId error:', e);
+      return null;
+    }
+  };
+
+  const loadMessages = async (idParam?: string) => {
     if (!user) return;
 
     try {
-      // Get client_id for the current user first
-      const { data: clientData } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', profile?.email)
-        .maybeSingle();
+      const id = idParam || clientId || await resolveClientId();
+      if (!id) return;
 
       let query = supabase
         .from('general_chats')
@@ -98,15 +148,8 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
           client_id
         `)
         .order('created_at', { ascending: true })
+        .eq('client_id', id)
         .limit(100);
-
-      // Filter messages for this client's conversation
-      if (clientData?.id) {
-        query = query.eq('client_id', clientData.id);
-      } else {
-        // If no client record found, show office-only messages (legacy behavior)
-        query = query.is('client_id', null);
-      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -147,27 +190,21 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     }
   };
 
-  const setupRealtimeSubscription = () => {
+  const setupRealtimeSubscription = (idParam?: string) => {
     if (!user || !profile) return;
 
+    const id = idParam || clientId;
+    if (!id) return;
+
     const channel = supabase
-      .channel('client-office-chat')
+      .channel(`client-office-chat-${id}`)
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
         async (payload) => {
           const newMsg = payload.new as any;
-          
-          // Get current client_id
-          const { data: clientData } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('email', profile.email)
-            .maybeSingle();
 
           // Only show messages for this client's conversation
-          if (clientData?.id && newMsg.client_id !== clientData.id) {
-            return; // Skip if not for this client
-          }
+          if (newMsg.client_id !== id) return;
           
           // Add sender name and role
           supabase
@@ -178,7 +215,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
             .then(({ data }) => {
               const messageWithSender = {
                 ...newMsg,
-                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map(id => String(id)) : [],
+                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map((v: any) => String(v)) : [],
                 sender_name: data?.full_name || 'Usuario',
                 sender_role: data?.role || 'cliente'
               };
@@ -239,47 +276,8 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
 
     setLoading(true);
     try {
-      // Resolve client_id for current user (try user_id, then email). Create if missing.
-      let clientId: string | null = null;
-
-      const { data: byUser } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (byUser?.id) {
-        clientId = byUser.id;
-      } else {
-        const { data: byEmail } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('email', profile?.email || '')
-          .maybeSingle();
-        if (byEmail?.id) clientId = byEmail.id;
-      }
-
-      if (!clientId) {
-        // Create minimal client record to link the conversation
-        const { data: clientNumberData } = await supabase.rpc('generate_client_number');
-        const clientNumber = (clientNumberData as unknown as string) || `CLI-${Date.now()}`;
-
-        const { data: newClient, error: createErr } = await supabase
-          .from('clients')
-          .insert({
-            user_id: user.id,
-            name: profile?.full_name || 'Cliente',
-            email: profile?.email || '',
-            address: 'Sin dirección',
-            client_number: clientNumber,
-          })
-          .select('id')
-          .single();
-
-        if (!createErr && newClient?.id) {
-          clientId = newClient.id;
-        }
-      }
+      // Ensure we have a client_id for this user
+      const id = await resolveClientId();
 
       const messageData: any = {
         sender_id: user.id,
@@ -288,8 +286,8 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
         attachment_url: attachmentUrl
       };
 
-      if (clientId) {
-        messageData.client_id = clientId;
+      if (id) {
+        messageData.client_id = id;
       }
 
       const { error } = await supabase
