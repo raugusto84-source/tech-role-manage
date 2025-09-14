@@ -229,6 +229,11 @@ export function CategoryServiceSelection({
 
   const addService = (service: ServiceType) => {
     const calculatedPrice = calculateServicePrice(service);
+    const vatRate = service.vat_rate || 16;
+    
+    // Since calculatedPrice includes VAT, extract the VAT amount
+    const subtotalBeforeVat = calculatedPrice / (1 + vatRate / 100);
+    const vatAmount = calculatedPrice - subtotalBeforeVat;
     
     const newItem: QuoteItem = {
       id: `service-${Date.now()}-${Math.random()}`,
@@ -237,9 +242,9 @@ export function CategoryServiceSelection({
       description: service.description || '',
       quantity: 1,
       unit_price: calculatedPrice,
-      subtotal: calculatedPrice,
-      vat_rate: service.vat_rate,
-      vat_amount: 0, // VAT is included in calculatedPrice
+      subtotal: subtotalBeforeVat,
+      vat_rate: vatRate,
+      vat_amount: vatAmount,
       withholding_rate: 0,
       withholding_amount: 0,
       withholding_type: '',
@@ -258,19 +263,23 @@ export function CategoryServiceSelection({
   const addCustomItem = () => {
     if (!customItem.name || customItem.unit_price <= 0) return;
 
+    const subtotal = customItem.unit_price * customItem.quantity;
+    const vatAmount = subtotal * 0.16; // 16% VAT
+    const total = subtotal + vatAmount;
+
     const newItem: QuoteItem = {
       id: `custom-${Date.now()}-${Math.random()}`,
       name: customItem.name,
       description: customItem.description,
       quantity: customItem.quantity,
       unit_price: customItem.unit_price,
-      subtotal: customItem.unit_price * customItem.quantity,
+      subtotal: subtotal,
       vat_rate: 16, // Fixed 16% VAT for all items
-      vat_amount: (customItem.unit_price * customItem.quantity) * 0.16,
+      vat_amount: vatAmount,
       withholding_rate: 0,
       withholding_amount: 0,
       withholding_type: '',
-      total: (customItem.unit_price * customItem.quantity) * 1.16,
+      total: total,
       is_custom: true
     };
 

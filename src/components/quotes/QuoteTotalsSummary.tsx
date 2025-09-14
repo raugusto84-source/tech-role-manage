@@ -100,7 +100,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   // Calculate totals from selectedItems with proper VAT breakdown
   console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
   
-  // Calculate totals using the same logic as orders
+  // Calculate totals with proper VAT breakdown
   const calculateCorrectPricing = () => {
     let subtotalBeforeVat = 0;
     let totalVAT = 0;
@@ -109,15 +109,28 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
     
     selectedItems.forEach(item => {
       const quantity = item.quantity || 1;
+      const vatRate = item.vat_rate || 16; // Default 16% VAT
       
-      // Los precios ya incluyen IVA, así que usamos directamente el unit_price
-      const itemTotal = (item.unit_price || 0) * quantity;
-      console.log(`Item: ${item.name}, unit_price: ${item.unit_price}, quantity: ${quantity}, itemTotal: ${itemTotal}`);
-      
-      subtotalBeforeVat += itemTotal;
-      
-      // No agregamos IVA adicional ya que está incluido
-      totalVAT += 0;
+      if (item.is_custom) {
+        // Custom items: prices are entered without VAT, so we calculate it
+        const itemSubtotal = (item.unit_price || 0) * quantity;
+        const itemVAT = itemSubtotal * (vatRate / 100);
+        
+        subtotalBeforeVat += itemSubtotal;
+        totalVAT += itemVAT;
+        
+        console.log(`Custom Item: ${item.name}, subtotal: ${itemSubtotal}, VAT: ${itemVAT}`);
+      } else {
+        // Predefined services/products: prices include VAT, so we need to extract it
+        const totalWithVAT = (item.unit_price || 0) * quantity;
+        const itemSubtotal = totalWithVAT / (1 + vatRate / 100);
+        const itemVAT = totalWithVAT - itemSubtotal;
+        
+        subtotalBeforeVat += itemSubtotal;
+        totalVAT += itemVAT;
+        
+        console.log(`Service Item: ${item.name}, totalWithVAT: ${totalWithVAT}, subtotal: ${itemSubtotal}, VAT: ${itemVAT}`);
+      }
     });
 
     console.log('Final subtotalBeforeVat:', subtotalBeforeVat, 'totalVAT:', totalVAT);
