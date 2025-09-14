@@ -283,16 +283,35 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return totalHours > 0 ? totalHours : (order.average_service_time || 4);
   };
 
+  // Calcula el precio correcto por item usando la misma lógica del listado
+  const calculateItemDisplayPrice = (item: any): number => {
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
+  };
+
   const calculateTotalAmount = () => {
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
 
-    // Preservar exactamente los importes calculados en BD (incluye IVA)
-    const total = orderItems.reduce((sum, item) => {
-      return sum + (item.total_amount || 0);
-    }, 0);
-
+    const total = orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
     return total;
   };
 
