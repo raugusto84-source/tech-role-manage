@@ -103,7 +103,7 @@ export function ClientCashbackHistory({
   const totalUsed = transactions.filter(t => t.transaction_type === 'used').reduce((sum, t) => sum + t.amount, 0);
   const totalExpired = transactions.filter(t => t.transaction_type === 'expired').reduce((sum, t) => sum + t.amount, 0);
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] sm:max-h-[80vh] w-[95vw] sm:w-full">
+      <DialogContent className="max-w-4xl w-[95vw] sm:w-full flex flex-col max-h-[90svh] sm:max-h-[80vh]">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Gift className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
@@ -114,13 +114,13 @@ export function ClientCashbackHistory({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-h-0">
           {loading ? <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
               <p className="mt-2 text-muted-foreground">Cargando historial...</p>
             </div> : <div className="space-y-4 sm:space-y-6 h-full overflow-y-auto">
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 flex-shrink-0">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 flex-shrink-0">
                 <Card>
                 <CardContent className="pt-3 sm:pt-4">
                   <div className="flex items-center gap-2">
