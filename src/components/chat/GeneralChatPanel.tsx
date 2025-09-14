@@ -260,13 +260,19 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
     
     const location = await getCurrentLocation();
     if (location) {
-      let locationMessage = `📍 Ubicación compartida: ${location.address}`;
+      let finalMessage = location.address;
+      let houseNumber = location.houseNumber;
       
-      // Add house number emphasis if available
-      if (location.houseNumber) {
-        locationMessage = `📍 Ubicación compartida (Casa #${location.houseNumber}): ${location.address}`;
+      // Si no se detectó número de casa automáticamente, preguntar al usuario
+      if (!houseNumber || houseNumber.trim() === '') {
+        const userHouseNumber = prompt('¿Cuál es el número de la casa/edificio? (Opcional - presiona Cancelar si no aplica)');
+        if (userHouseNumber && userHouseNumber.trim() !== '') {
+          houseNumber = userHouseNumber.trim();
+          finalMessage = `Casa #${houseNumber}, ${location.address}`;
+        }
       }
       
+      const locationMessage = `📍 Ubicación compartida: ${finalMessage}`;
       const locationUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
       await sendMessage('location', locationMessage, locationUrl);
     }

@@ -157,7 +157,8 @@ export function useChatMedia() {
             resolve({ 
               lat: latitude, 
               lng: longitude, 
-              address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}` 
+              address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+              houseNumber: ''
             });
           }
         },
