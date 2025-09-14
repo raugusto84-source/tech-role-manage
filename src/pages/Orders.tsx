@@ -523,65 +523,65 @@ export default function Orders() {
             )}
           </TabsList>
           
-          <TabsContent value="list" className="space-y-6">
+          <TabsContent value="list" className="space-y-4 sm:space-y-6">
             {/* Mobile-first Filters */}
-            <Card className="mb-4">
-              <CardContent className="p-3 sm:p-4">
-                <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Buscar por cliente, número..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="w-full sm:w-48">
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="h-8 sm:h-10 text-sm">
-                        <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                        <SelectValue placeholder="Estado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="pendiente_aprobacion">Pendiente Aprobación</SelectItem>
-                        <SelectItem value="pendiente_actualizacion">Actualización</SelectItem>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
-                        <SelectItem value="en_camino">En Camino</SelectItem>
-                        <SelectItem value="en_proceso">En Proceso</SelectItem>
-                        <SelectItem value="pendiente_entrega">Pendiente Entrega</SelectItem>
-                        <SelectItem value="finalizada">Finalizada</SelectItem>
-                        <SelectItem value="cancelada">Cancelada</SelectItem>
-                      </SelectContent>
-                    </Select>
+            <div className="bg-white dark:bg-slate-900 rounded-lg p-3 sm:p-4 shadow-sm border">
+              <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar por cliente, número..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
+                    />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                
+                <div className="w-full sm:w-48">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-8 sm:h-10 text-sm">
+                      <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="pendiente_aprobacion">Pendiente Aprobación</SelectItem>
+                      <SelectItem value="pendiente_actualizacion">Actualización</SelectItem>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="en_camino">En Camino</SelectItem>
+                      <SelectItem value="en_proceso">En Proceso</SelectItem>
+                      <SelectItem value="pendiente_entrega">Pendiente Entrega</SelectItem>
+                      <SelectItem value="finalizada">Finalizada</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
 
-            {/* Orders Split by Category */}
+            {/* Mobile-first Content */}
             {filteredOrders.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">
-                    {searchTerm || statusFilter !== "all" 
-                      ? "No se encontraron órdenes con los filtros aplicados"
-                      : "No hay órdenes registradas"}
-                  </p>
-                  {canCreateOrder && !searchTerm && statusFilter === "all" && (
-                    <Button onClick={() => setShowForm(true)} className="mt-4">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Crear Primera Orden
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+              <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                  <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
+                <p className="text-sm sm:text-base text-muted-foreground px-4">
+                  {searchTerm || statusFilter !== 'all' 
+                    ? 'No se encontraron órdenes con los filtros aplicados'
+                    : 'Aún no hay órdenes registradas'}
+                </p>
+                {canCreateOrder && !searchTerm && statusFilter === "all" && (
+                  <Button onClick={() => setShowForm(true)} className="mt-3 sm:mt-4" size="sm">
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Crear Primera Orden
+                  </Button>
+                )}
+              </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                 {/* Sistemas Column */}
                 <div className="space-y-2">
                   <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">

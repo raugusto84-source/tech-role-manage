@@ -267,103 +267,110 @@ export default function Quotes() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Cotizaciones</h1>
-            <p className="text-muted-foreground">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4">
+        {/* Header - Mobile First */}
+        <div className="mb-4 sm:mb-6">
+          <div className="mb-4">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Cotizaciones</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">
               {profile?.role === 'cliente' ? 'Mis cotizaciones' : 'Gestiona las cotizaciones del sistema'}
             </p>
           </div>
           
-          <div className="flex gap-2">
-            {/* Botón volver al dashboard */}
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.href = getDashboardRoute()}
-              className="gap-2"
-            >
-              <Home className="h-4 w-4" />
-              Dashboard
-            </Button>
-            
-            {/* Botón cerrar sesión */}
-            <Button 
-              variant="outline" 
-              onClick={handleLogout}
-              className="gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-              Cerrar Sesión
-            </Button>
+          {/* Mobile-first action buttons */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2 flex-1">
+              {/* Botón volver al dashboard */}
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = getDashboardRoute()}
+                className="gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
+                size="sm"
+              >
+                <Home className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Dashboard</span>
+                <span className="xs:hidden">Panel</span>
+              </Button>
+              
+              {/* Botón cerrar sesión */}
+              <Button 
+                variant="outline" 
+                onClick={handleLogout}
+                className="gap-1 sm:gap-2 text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground text-xs sm:text-sm"
+                size="sm"
+              >
+                <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Cerrar Sesión</span>
+                <span className="xs:hidden">Salir</span>
+              </Button>
+            </div>
             
             {canCreateQuotes && (
               <Button 
                 onClick={() => setShowWizard(true)}
-                className="flex items-center gap-2"
+                className="text-xs sm:text-sm"
+                size="sm"
               >
-                <Plus className="h-4 w-4" />
-                Nueva Cotización
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden xs:inline">Nueva Cotización</span>
+                <span className="xs:hidden">Nueva</span>
               </Button>
             )}
           </div>
         </div>
 
-        {/* Search filter */}
-        <div className="flex gap-4">
-          <div className="flex-1 max-w-sm">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar cotizaciones..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+        {/* Mobile-first Search filter */}
+        <div className="mb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4" />
+            <Input
+              placeholder="Buscar cotizaciones..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
+            />
           </div>
         </div>
 
-        {/* Content Area */}
-        <div className="space-y-6">
+        {/* Content Area - Mobile First */}
+        <div className="space-y-4 sm:space-y-6">
           {filteredQuotes.length === 0 ? (
-            <div className="text-center py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25">
-              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
-                <Plus className="h-8 w-8 text-muted-foreground" />
+            <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-medium mb-2">No hay cotizaciones</h3>
-              <p className="text-muted-foreground mb-4">
+              <h3 className="text-base sm:text-lg font-medium mb-2">No hay cotizaciones</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
                 {searchTerm 
                   ? 'No se encontraron cotizaciones con los filtros aplicados'
                   : 'Aún no tienes cotizaciones registradas'}
               </p>
               {canCreateQuotes && (
-                <Button onClick={() => setShowWizard(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button onClick={() => setShowWizard(true)} size="sm">
+                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Crear primera cotización
                 </Button>
               )}
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {Object.entries(quotesByStatus).map(([status, statusQuotes]) => {
                 const statusInfo = getStatusInfo(status);
                 
                 if (statusQuotes.length === 0) return null;
                 
                 return (
-                  <div key={status} className="space-y-4">
-                    <div className="flex items-center gap-3 pb-2 border-b">
-                      <span className="text-2xl">{statusInfo.icon}</span>
+                  <div key={status} className="space-y-3 sm:space-y-4">
+                    <div className="flex items-center gap-2 sm:gap-3 pb-2 border-b mx-2 sm:mx-0">
+                      <span className="text-xl sm:text-2xl">{statusInfo.icon}</span>
                       <div>
-                        <h2 className="text-xl font-semibold">{statusInfo.label}</h2>
-                        <p className="text-sm text-muted-foreground">
+                        <h2 className="text-lg sm:text-xl font-semibold">{statusInfo.label}</h2>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
                           {statusQuotes.length} {statusQuotes.length === 1 ? 'cotización' : 'cotizaciones'}
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 px-2 sm:px-0">
                       {statusQuotes.map((quote) => (
                         <QuoteCard
                           key={quote.id}
