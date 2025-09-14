@@ -2147,6 +2147,42 @@ export type Database = {
           },
         ]
       }
+      order_history: {
+        Row: {
+          created_at: string
+          event_description: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          order_id: string
+          order_number: string
+          performed_by: string | null
+          performed_by_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_description: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          order_number: string
+          performed_by?: string | null
+          performed_by_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_description?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          order_number?: string
+          performed_by?: string | null
+          performed_by_name?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -2667,6 +2703,8 @@ export type Database = {
           client_id: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           delivery_date: string
           diagnosis_completed: boolean
           estimated_cost: number | null
@@ -2708,6 +2746,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_date: string
           diagnosis_completed?: boolean
           estimated_cost?: number | null
@@ -2749,6 +2789,8 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           delivery_date?: string
           diagnosis_completed?: boolean
           estimated_cost?: number | null
@@ -6219,6 +6261,16 @@ export type Database = {
               p_table_name: string
             }
         Returns: string
+      }
+      log_order_event: {
+        Args: {
+          p_event_description: string
+          p_event_type: string
+          p_metadata?: Json
+          p_order_id: string
+          p_order_number: string
+        }
+        Returns: undefined
       }
       process_scheduled_surveys: {
         Args: Record<PropertyKey, never>

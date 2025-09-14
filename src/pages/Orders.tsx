@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -29,6 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { OrderHistoryPanel } from "@/components/orders/OrderHistoryPanel";
 
 /**
  * Página principal del módulo de órdenes
@@ -344,28 +345,20 @@ export default function Orders() {
     try {
       setLoading(true);
       
-      // First delete associated order payments to prevent false accounts
-      const { error: paymentsError } = await supabase
-        .from('order_payments')
-        .delete()
-        .eq('order_id', orderToDelete);
-
-      if (paymentsError) {
-        console.warn('Error deleting order payments:', paymentsError);
-        // Continue with order deletion even if payments fail
-      }
-
-      // Then delete the order
+      // Usar soft delete en lugar de eliminación permanente
       const { error } = await supabase
         .from('orders')
-        .delete()
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          deleted_by: profile?.user_id 
+        })
         .eq('id', orderToDelete);
 
       if (error) throw error;
 
       toast({
         title: "Orden eliminada",
-        description: "La orden y sus pagos asociados han sido eliminados correctamente",
+        description: "La orden ha sido marcada como eliminada y se puede restaurar desde el historial",
       });
 
       setOrderToDelete(null);
@@ -380,6 +373,10 @@ export default function Orders() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRestoreOrder = (orderId: string) => {
+    loadOrders(); // Recargar órdenes después de la restauración
   };
 
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
@@ -503,7 +500,7 @@ export default function Orders() {
 
         {/* Mobile-first Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="list" className="text-xs sm:text-sm">
               <ClipboardList className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Lista
@@ -512,6 +509,16 @@ export default function Orders() {
               <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Calendario
             </TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm">
+              <History className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+              Historial
+            </TabsTrigger>
+            {canDeleteOrder && (
+              <TabsTrigger value="deleted" className="text-xs sm:text-sm">
+                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                Eliminadas
+              </TabsTrigger>
+            )}
           </TabsList>
           
           <TabsContent value="list" className="space-y-6">
@@ -787,6 +794,19 @@ export default function Orders() {
               </Card>
             </div>
           </TabsContent>
+
+          <TabsContent value="history" className="space-y-6">
+            <OrderHistoryPanel />
+          </TabsContent>
+
+          {canDeleteOrder && (
+            <TabsContent value="deleted" className="space-y-6">
+              <OrderHistoryPanel 
+                showDeleted={true}
+                onRestoreOrder={handleRestoreOrder}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -796,7 +816,7 @@ export default function Orders() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar orden?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción no se puede deshacer. La orden será eliminada permanentemente del sistema.
+              La orden será marcada como eliminada pero se podrá restaurar desde el historial de órdenes eliminadas.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
