@@ -317,6 +317,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
     
     if (orderItems && orderItems.length > 0) {
+      // Si los items vienen de una cotización convertida y están bloqueados, usar el total guardado (incluye IVA)
+      const hasLockedItems = orderItems.some((item) => item.pricing_locked);
+      if (hasLockedItems) {
+        return orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
+      }
+      // Para órdenes normales, calcular con la lógica estándar (incluye IVA)
       return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
     }
     
