@@ -44,8 +44,9 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const [applyCashback, setApplyCashback] = useState(false);
   const [cashbackLoading, setCashbackLoading] = useState(false);
   const { settings: rewardSettings } = useRewardSettings();
-
+  
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
+  const formatCashback = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(amount);
 
   // Load available cashback for the client
   useEffect(() => {
@@ -178,10 +179,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         <div className="border-t pt-2">
           <div className="space-y-2">
             <div className="text-sm text-green-600 font-medium">
-              🎉 Ganarás {formatCurrency(totalFinal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {rewardSettings.general_cashback_percent}% sobre el total de {formatCurrency(totalFinal)}
+              🎉 Ganarás {formatCashback(totalFinal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
             </div>
           </div>
         </div>
