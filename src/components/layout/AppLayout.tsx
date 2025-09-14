@@ -4,6 +4,7 @@ import { AppSidebar } from './AppSidebar';
 import { Header } from './Header';
 import { ImprovedGeneralChat } from '@/components/chat/ImprovedGeneralChat';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,25 +34,34 @@ export function AppLayout({ children }: AppLayoutProps) {
         
         {/* Chat Panel for clients */}
         <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
-            >
-              <div className="relative">
-                <MessageSquare className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="absolute -top-2 -right-2 h-5 min-w-5 text-xs p-0 flex items-center justify-center"
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
                   >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
-                )}
-              </div>
-            </Button>
-          </SheetTrigger>
+                    <div className="relative">
+                      <MessageSquare className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="absolute -top-2 -right-2 h-5 min-w-5 text-xs p-0 flex items-center justify-center"
+                        >
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </Badge>
+                      )}
+                    </div>
+                  </Button>
+                </SheetTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="left" className="bg-primary text-primary-foreground">
+                <p>¡Hola! Estamos aquí para ayudarte 👋</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <SheetContent side="right" className="w-[95vw] max-w-[1200px] p-0">
             <div className="h-full p-2">
               <ImprovedGeneralChat />
@@ -77,25 +87,34 @@ export function AppLayout({ children }: AppLayoutProps) {
           
           {/* Chat Panel for all users */}
           <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg"
-              >
-                <div className="relative">
-                  <MessageSquare className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge 
-                      variant="destructive" 
-                      className="absolute -top-2 -right-2 h-5 min-w-5 text-xs p-0 flex items-center justify-center"
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
                     >
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </Badge>
-                  )}
-                </div>
-              </Button>
-            </SheetTrigger>
+                      <div className="relative">
+                        <MessageSquare className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                          <Badge 
+                            variant="destructive" 
+                            className="absolute -top-2 -right-2 h-5 min-w-5 text-xs p-0 flex items-center justify-center"
+                          >
+                            {unreadCount > 99 ? '99+' : unreadCount}
+                          </Badge>
+                        )}
+                      </div>
+                    </Button>
+                  </SheetTrigger>
+                </TooltipTrigger>
+                <TooltipContent side="left" className="bg-primary text-primary-foreground">
+                  <p>¡Hola! Estamos aquí para ayudarte 👋</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <SheetContent side="right" className="w-[95vw] max-w-[1200px] p-0">
               <div className="h-full p-2">
                 <ImprovedGeneralChat />
