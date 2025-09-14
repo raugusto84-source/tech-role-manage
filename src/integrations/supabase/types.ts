@@ -2372,6 +2372,7 @@ export type Database = {
           policy_discount_amount: number | null
           policy_discount_percentage: number | null
           policy_name: string | null
+          pricing_locked: boolean
           profit_margin_rate: number
           quantity: number
           serial_number: string | null
@@ -2400,6 +2401,7 @@ export type Database = {
           policy_discount_amount?: number | null
           policy_discount_percentage?: number | null
           policy_name?: string | null
+          pricing_locked?: boolean
           profit_margin_rate?: number
           quantity?: number
           serial_number?: string | null
@@ -2428,6 +2430,7 @@ export type Database = {
           policy_discount_amount?: number | null
           policy_discount_percentage?: number | null
           policy_name?: string | null
+          pricing_locked?: boolean
           profit_margin_rate?: number
           quantity?: number
           serial_number?: string | null
