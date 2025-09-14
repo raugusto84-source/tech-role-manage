@@ -651,7 +651,7 @@ export function QuoteWizard({
       </div>
 
       {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-3 z-50">
         <div className="flex justify-between items-center max-w-md mx-auto">
           <Button variant="outline" onClick={prevStep} disabled={currentStep === 'client'} size="sm">
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -672,6 +672,6 @@ export function QuoteWizard({
       </div>
 
       {/* Bottom spacing for fixed navigation */}
-      
+      <div className="h-20"></div>
     </div>;
 }
