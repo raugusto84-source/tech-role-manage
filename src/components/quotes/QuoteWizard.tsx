@@ -390,17 +390,17 @@ export function QuoteWizard({
                   }`}
                 >
                   <div className="flex items-start space-x-4">
-                    <div className={`p-3 rounded-lg ${selectedApproach === 'problem' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <div className={`p-3 rounded-lg flex-shrink-0 ${selectedApproach === 'problem' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <CheckSquare className="h-6 w-6" />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-base mb-1">Tengo un problema específico</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base mb-1 break-words">Tengo un problema específico</h3>
+                      <p className="text-sm text-muted-foreground mb-2 break-words leading-relaxed">
                         Te ayudaremos a diagnosticar tu problema y te recomendaremos la solución más adecuada
                       </p>
-                      <div className="flex items-center text-xs text-primary font-medium">
-                        <Check className="h-3 w-3 mr-1" />
-                        Recomendado para problemas técnicos
+                      <div className="flex items-center text-xs text-primary font-medium flex-wrap">
+                        <Check className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="break-words">Recomendado para problemas técnicos</span>
                       </div>
                     </div>
                   </div>
@@ -416,17 +416,17 @@ export function QuoteWizard({
                   }`}
                 >
                   <div className="flex items-start space-x-4">
-                    <div className={`p-3 rounded-lg ${selectedApproach === 'catalog' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                    <div className={`p-3 rounded-lg flex-shrink-0 ${selectedApproach === 'catalog' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                       <Package className="h-6 w-6" />
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-base mb-1">Ver catálogo de servicios</h3>
-                      <p className="text-sm text-muted-foreground mb-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base mb-1 break-words">Ver catálogo de servicios</h3>
+                      <p className="text-sm text-muted-foreground mb-2 break-words leading-relaxed">
                         Explora todos nuestros productos y servicios disponibles para crear tu cotización personalizada
                       </p>
-                      <div className="flex items-center text-xs text-primary font-medium">
-                        <Check className="h-3 w-3 mr-1" />
-                        Ideal para cotizaciones personalizadas
+                      <div className="flex items-center text-xs text-primary font-medium flex-wrap">
+                        <Check className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="break-words">Ideal para cotizaciones personalizadas</span>
                       </div>
                     </div>
                   </div>
