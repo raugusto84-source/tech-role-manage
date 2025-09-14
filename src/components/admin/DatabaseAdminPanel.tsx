@@ -53,6 +53,8 @@ export function DatabaseAdminPanel() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [importData, setImportData] = useState<any>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [isCleaningWorkflow, setIsCleaningWorkflow] = useState(false);
+  const [cleanWorkflowDialogOpen, setCleanWorkflowDialogOpen] = useState(false);
 
   const handleModuleSelect = (moduleId: string, checked: boolean) => {
     if (checked) {
@@ -343,6 +345,60 @@ export function DatabaseAdminPanel() {
     }
   };
 
+  const cleanWorkflowData = async () => {
+    if (confirmText !== 'LIMPIAR FLUJO DE TRABAJO') {
+      toast({
+        title: "Confirmación Incorrecta",
+        description: "Debes escribir exactamente 'LIMPIAR FLUJO DE TRABAJO' para confirmar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsCleaningWorkflow(true);
+    try {
+      const { data, error } = await supabase.rpc('clean_workflow_data');
+      
+      if (error) {
+        console.error('Clean workflow error:', error);
+        toast({
+          title: "Error",
+          description: "No se pudo limpiar el flujo de trabajo: " + error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const result = data as { error?: string; message?: string; success?: boolean };
+
+      if (result?.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Flujo de Trabajo Limpiado",
+        description: result?.message || "Se eliminaron todas las órdenes, cotizaciones y finanzas. Se preservaron artículos, servicios y clientes.",
+      });
+      
+      setCleanWorkflowDialogOpen(false);
+      setConfirmText('');
+    } catch (error) {
+      console.error('Clean workflow error:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo limpiar el flujo de trabajo",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCleaningWorkflow(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Export Section */}
@@ -575,6 +631,109 @@ export function DatabaseAdminPanel() {
                   disabled={confirmText !== 'ELIMINAR DATOS' || isDeleting}
                 >
                   {isDeleting ? 'Eliminando...' : 'Eliminar Datos'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* Clean Workflow Section */}
+      <Card className="border-orange-500 bg-orange-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-orange-700">
+            <RotateCcw className="h-5 w-5" />
+            Limpiar Flujo de Trabajo
+          </CardTitle>
+          <CardDescription className="text-orange-600">
+            Elimina órdenes, cotizaciones y finanzas preservando artículos, servicios y clientes
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert className="mb-4 border-orange-200 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-700">
+              <strong>ADVERTENCIA:</strong> Esta acción elimina permanentemente todas las órdenes, 
+              cotizaciones, pagos y datos financieros. Se preservan los clientes, servicios, 
+              artículos y configuraciones del sistema.
+            </AlertDescription>
+          </Alert>
+
+          <Dialog open={cleanWorkflowDialogOpen} onOpenChange={setCleanWorkflowDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" className="w-full bg-orange-600 hover:bg-orange-700">
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Limpiar Flujo de Trabajo
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-orange-700 flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5" />
+                  Confirmar Limpieza del Flujo de Trabajo
+                </DialogTitle>
+                <DialogDescription className="text-orange-600">
+                  Esta acción eliminará permanentemente los datos del flujo operativo:
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                  <h4 className="font-semibold text-orange-800 mb-2">Se eliminarán:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-orange-700">
+                    <li>Todas las órdenes y sus items</li>
+                    <li>Todas las cotizaciones y sus items</li>
+                    <li>Todo el historial financiero (ingresos, egresos, pagos)</li>
+                    <li>Todas las encuestas de satisfacción</li>
+                    <li>Todos los seguimientos y notificaciones</li>
+                    <li>Transacciones de recompensas</li>
+                  </ul>
+                </div>
+
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-2">Se preservarán:</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-green-700">
+                    <li>Todos los clientes y su información</li>
+                    <li>Catálogo de servicios y artículos</li>
+                    <li>Perfiles de usuarios y empleados</li>
+                    <li>Configuraciones del sistema</li>
+                    <li>Habilidades de técnicos</li>
+                    <li>Flota de vehículos</li>
+                    <li>Pólizas de seguros</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="workflow-confirm-text" className="text-orange-700">
+                    Para confirmar la limpieza, escribe: <strong>LIMPIAR FLUJO DE TRABAJO</strong>
+                  </Label>
+                  <Input
+                    id="workflow-confirm-text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="LIMPIAR FLUJO DE TRABAJO"
+                    className="border-orange-300 focus:border-orange-500"
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setCleanWorkflowDialogOpen(false);
+                    setConfirmText('');
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  onClick={cleanWorkflowData}
+                  disabled={confirmText !== 'LIMPIAR FLUJO DE TRABAJO' || isCleaningWorkflow}
+                  className="bg-orange-600 hover:bg-orange-700"
+                >
+                  {isCleaningWorkflow ? 'Limpiando...' : 'Limpiar Flujo de Trabajo'}
                 </Button>
               </DialogFooter>
             </DialogContent>

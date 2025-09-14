@@ -6285,6 +6285,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      clean_workflow_data: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       convert_quote_to_order: {
         Args: { quote_id: string }
         Returns: Json
