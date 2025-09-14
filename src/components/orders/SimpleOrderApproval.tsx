@@ -310,11 +310,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
         if (signatureError) throw signatureError;
 
-        // Actualizar el estado de la orden a 'pendiente'
+        // Actualizar el estado de la orden a 'en_proceso'
         const { error: orderError } = await supabase
           .from('orders')
           .update({
-            status: 'pendiente',
+            status: 'en_proceso',
             client_approval: true,
             client_approved_at: new Date().toISOString()
           })
@@ -324,7 +324,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
         toast({
           title: "Orden aprobada",
-          description: "La orden ha sido aprobada exitosamente y está lista para ser procesada.",
+          description: "La orden ha sido aprobada exitosamente y está en proceso.",
           variant: "default"
         });
       }
