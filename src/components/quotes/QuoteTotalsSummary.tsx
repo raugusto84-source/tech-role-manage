@@ -159,30 +159,13 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         </div>
       )}
       
-      {/* Cashback Section */}
-      {(clientEmail || clientId) && (
+      {/* Cashback Earning Section */}
+      {(clientEmail || clientId) && rewardSettings?.general_cashback_percent && rewardSettings.general_cashback_percent > 0 && (
         <div className="border-t pt-2">
           <div className="space-y-2">
-            <div className="text-sm text-muted-foreground">
-              Cashback disponible: {formatCurrency(availableCashback)}
+            <div className="text-sm text-green-600 font-medium">
+              🎉 Ganarás {formatCurrency(Math.floor(totalFinal * (rewardSettings.general_cashback_percent / 100)))} en cashback con esta cotización
             </div>
-            
-            {availableCashback > 0 && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="apply-cashback"
-                  checked={applyCashback}
-                  onCheckedChange={handleCashbackToggle}
-                  disabled={cashbackLoading}
-                />
-                <label 
-                  htmlFor="apply-cashback" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Aplicar cashback (-{formatCurrency(cashbackAmount)})
-                </label>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -190,7 +173,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total Final:</span>
-          <span>{formatCurrency(finalTotal)}</span>
+          <span>{formatCurrency(totalFinal)}</span>
         </div>
       </div>
     </div>

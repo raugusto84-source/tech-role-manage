@@ -559,8 +559,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();
   
-  // Calculate final total with cashback discount
-  const finalTotal = applyCashback ? total - cashbackAmount : total;
+  // Calculate final total (no more cashback discount)
+  const finalTotal = total;
 
   const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
   const StatusIcon = getStatusIcon(quote.status);
@@ -714,19 +714,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                           <span>Total:</span>
                           <span>{formatCurrency(finalTotal)}</span>
                         </div>
-                        
-                        {applyCashback && cashbackAmount > 0 && (
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
-                            <div className="flex justify-between text-sm text-green-800">
-                              <span>Total original:</span>
-                              <span>{formatCurrency(total)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm font-medium text-green-800">
-                              <span>Descuento cashback:</span>
-                              <span>-{formatCurrency(cashbackAmount)}</span>
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -841,15 +828,15 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         htmlFor="apply-cashback" 
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        Aplicar cashback
+                        Ganarás cashback con esta cotización
                       </label>
                     </div>
                     
                     {applyCashback && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <p className="text-sm text-green-800">
-                          Descuento marcado: <span className="font-medium">
-                            -{formatCurrency(cashbackAmount)}
+                          Cashback que ganarás: <span className="font-medium">
+                            +{formatCurrency(Math.floor(finalTotal * ((rewardSettings?.general_cashback_percent || 0) / 100)))}
                           </span>
                         </p>
                         <p className="text-xs text-green-700 mt-1">
