@@ -499,312 +499,127 @@ export default function Orders() {
           </div>
         </div>
 
-        {/* Mobile-first Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full mb-4 ${
-            profile?.role === 'administrador' ? 'grid-cols-3' : 
-            profile?.role === 'cliente' ? 'grid-cols-1' : 'grid-cols-2'
-          }`}>
-            <TabsTrigger value="list" className="text-xs sm:text-sm">
-              <ClipboardList className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              Lista
-            </TabsTrigger>
-            {profile?.role !== 'cliente' && (
-              <TabsTrigger value="calendar" className="text-xs sm:text-sm">
-                <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                Calendario
-              </TabsTrigger>
-            )}
-            {profile?.role === 'administrador' && (
-              <TabsTrigger value="history" className="text-xs sm:text-sm">
-                <History className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                Historial
-              </TabsTrigger>
-            )}
-          </TabsList>
-          
-          <TabsContent value="list" className="space-y-4 sm:space-y-6">
-            {/* Mobile-first Filters */}
-            <div className="bg-white dark:bg-slate-900 rounded-lg p-3 sm:p-4 shadow-sm border">
-              <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar por cliente, número..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
-                    />
+      </div>
+
+      {/* Content Section */}
+      <div className="space-y-4 sm:space-y-6">
+        {filteredOrders.length === 0 ? (
+          <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
+              <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
+            <p className="text-sm sm:text-base text-muted-foreground px-4">
+              Aún no hay órdenes registradas
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            {/* Sistemas Column */}
+            <div className="space-y-2">
+              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                <CardHeader>
+                  <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                    💻 SISTEMAS
+                    <Badge variant="secondary" className="ml-auto">
+                      {filteredOrders.filter(order => {
+                        const serviceCategory = order.service_types?.service_category || "sistemas";
+                        return serviceCategory === "sistemas";
+                      }).length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(groupedOrders).map(([status, orders]) => {
+                      const sistemasOrders = orders.filter(order => {
+                        const serviceCategory = order.service_types?.service_category || "sistemas";
+                        return serviceCategory === "sistemas";
+                      });
+                      
+                      if (sistemasOrders.length === 0) return null;
+                      
+                      return (
+                        <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {sistemasOrders.length}
+                            </Badge>
+                          </div>
+                          <div className="space-y-1">
+                             {sistemasOrders.map((order) => (
+                               <OrderCard
+                                 key={order.id}
+                                 order={order}
+                                 onClick={() => setSelectedOrder(order)}
+                                 onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                 canDelete={canDeleteOrder}
+                                 getStatusColor={getStatusColor}
+                               />
+                             ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
-                
-                <div className="w-full sm:w-48">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-8 sm:h-10 text-sm">
-                      <Filter className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                      <SelectValue placeholder="Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="pendiente_aprobacion">Pendiente Aprobación</SelectItem>
-                      <SelectItem value="pendiente_actualizacion">Actualización</SelectItem>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="en_camino">En Camino</SelectItem>
-                      <SelectItem value="en_proceso">En Proceso</SelectItem>
-                      <SelectItem value="pendiente_entrega">Pendiente Entrega</SelectItem>
-                      <SelectItem value="finalizada">Finalizada</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Mobile-first Content */}
-            {filteredOrders.length === 0 ? (
-              <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                  <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
-                <p className="text-sm sm:text-base text-muted-foreground px-4">
-                  {searchTerm || statusFilter !== 'all' 
-                    ? 'No se encontraron órdenes con los filtros aplicados'
-                    : 'Aún no hay órdenes registradas'}
-                </p>
-                {canCreateOrder && !searchTerm && statusFilter === "all" && (
-                  <Button onClick={() => setShowForm(true)} className="mt-3 sm:mt-4" size="sm">
-                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                    Crear Primera Orden
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-                {/* Sistemas Column */}
-                <div className="space-y-2">
-                  <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                    <CardHeader>
-                      <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                        💻 SISTEMAS
-                        <Badge variant="secondary" className="ml-auto">
-                          {filteredOrders.filter(order => {
-                            const serviceCategory = order.service_types?.service_category || "sistemas";
-                            return serviceCategory === "sistemas";
-                          }).length}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {Object.entries(groupedOrders).map(([status, orders]) => {
-                          const sistemasOrders = orders.filter(order => {
-                            const serviceCategory = order.service_types?.service_category || "sistemas";
-                            return serviceCategory === "sistemas";
-                          });
-                          
-                          if (sistemasOrders.length === 0) return null;
-                          
-                          return (
-                            <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
-                                <Badge variant="outline" className="text-xs">
-                                  {sistemasOrders.length}
-                                </Badge>
-                              </div>
-                              <div className="space-y-1">
-                                 {sistemasOrders.map((order) => (
-                                   <OrderCard
-                                     key={order.id}
-                                     order={order}
-                                     onClick={() => setSelectedOrder(order)}
-                                     onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                     canDelete={canDeleteOrder}
-                                     getStatusColor={getStatusColor}
-                                   />
-                                 ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                {/* Seguridad Column */}
-                <div className="space-y-2">
-                  <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                    <CardHeader>
-                      <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                        🛡️ SEGURIDAD
-                        <Badge variant="secondary" className="ml-auto">
-                          {filteredOrders.filter(order => {
-                            const serviceCategory = order.service_types?.service_category || "sistemas";
-                            return serviceCategory === "seguridad";
-                          }).length}
-                        </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {Object.entries(groupedOrders).map(([status, orders]) => {
-                          const seguridadOrders = orders.filter(order => {
-                            const serviceCategory = order.service_types?.service_category || "sistemas";
-                            return serviceCategory === "seguridad";
-                          });
-                          
-                          if (seguridadOrders.length === 0) return null;
-                          
-                          return (
-                            <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
-                                <Badge variant="outline" className="text-xs">
-                                  {seguridadOrders.length}
-                                </Badge>
-                              </div>
-                              <div className="space-y-1">
-                                 {seguridadOrders.map((order) => (
-                                   <OrderCard
-                                     key={order.id}
-                                     order={order}
-                                     onClick={() => setSelectedOrder(order)}
-                                     onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                     canDelete={canDeleteOrder}
-                                     getStatusColor={getStatusColor}
-                                   />
-                                 ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          {profile?.role !== 'cliente' && (
-            <TabsContent value="calendar" className="space-y-6">
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Calendario Sistemas */}
-                <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                  <CardHeader>
-                    <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                      <CalendarIcon className="h-5 w-5" />
-                      💻 Calendario Sistemas
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Calendar
-                      mode="single"
-                      selected={selectedDateSistemas}
-                      onSelect={setSelectedDateSistemas}
-                      locale={es}
-                      className="rounded-md border pointer-events-auto"
-                      modifiers={{
-                        hasOrders: getDatesWithOrders("sistemas")
-                      }}
-                      modifiersStyles={{
-                        hasOrders: {
-                          backgroundColor: "hsl(217, 91%, 85%)",
-                          color: "hsl(217, 91%, 30%)",
-                          fontWeight: "bold"
-                        }
-                      }}
-                    />
-                    
-                    {selectedDateSistemas && (
-                      <div className="mt-4">
-                        <h4 className="font-semibold text-sm mb-2">
-                          Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
-                        </h4>
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                           {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
-                             <OrderCard
-                               key={order.id}
-                               order={order}
-                               onClick={() => setSelectedOrder(order)}
-                               onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                               canDelete={canDeleteOrder}
-                               getStatusColor={getStatusColor}
-                             />
-                           ))}
-                          {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
-                            <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
-                          )}
+            {/* Seguridad Column */}
+            <div className="space-y-2">
+              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                <CardHeader>
+                  <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                    🛡️ SEGURIDAD
+                    <Badge variant="secondary" className="ml-auto">
+                      {filteredOrders.filter(order => {
+                        const serviceCategory = order.service_types?.service_category || "sistemas";
+                        return serviceCategory === "seguridad";
+                      }).length}
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(groupedOrders).map(([status, orders]) => {
+                      const seguridadOrders = orders.filter(order => {
+                        const serviceCategory = order.service_types?.service_category || "sistemas";
+                        return serviceCategory === "seguridad";
+                      });
+                      
+                      if (seguridadOrders.length === 0) return null;
+                      
+                      return (
+                        <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
+                            <Badge variant="outline" className="text-xs">
+                              {seguridadOrders.length}
+                            </Badge>
+                          </div>
+                          <div className="space-y-1">
+                             {seguridadOrders.map((order) => (
+                               <OrderCard
+                                 key={order.id}
+                                 order={order}
+                                 onClick={() => setSelectedOrder(order)}
+                                 onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                 canDelete={canDeleteOrder}
+                                 getStatusColor={getStatusColor}
+                               />
+                             ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Calendario Seguridad */}
-                <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                  <CardHeader>
-                    <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                      <CalendarIcon className="h-5 w-5" />
-                      🛡️ Calendario Seguridad
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <Calendar
-                      mode="single"
-                      selected={selectedDateSeguridad}
-                      onSelect={setSelectedDateSeguridad}
-                      locale={es}
-                      className="rounded-md border pointer-events-auto"
-                      modifiers={{
-                        hasOrders: getDatesWithOrders("seguridad")
-                      }}
-                      modifiersStyles={{
-                        hasOrders: {
-                          backgroundColor: "hsl(142, 76%, 85%)",
-                          color: "hsl(142, 76%, 30%)",
-                          fontWeight: "bold"
-                        }
-                      }}
-                    />
-                    
-                    {selectedDateSeguridad && (
-                      <div className="mt-4">
-                        <h4 className="font-semibold text-sm mb-2">
-                          Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
-                        </h4>
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                           {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
-                             <OrderCard
-                               key={order.id}
-                               order={order}
-                               onClick={() => setSelectedOrder(order)}
-                               onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                               canDelete={canDeleteOrder}
-                               getStatusColor={getStatusColor}
-                             />
-                           ))}
-                          {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
-                            <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-          )}
-
-          {profile?.role === 'administrador' && (
-            <TabsContent value="history" className="space-y-6">
-              <OrderHistoryPanel onRestoreOrder={handleRestoreOrder} />
-            </TabsContent>
-          )}
-        </Tabs>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}
