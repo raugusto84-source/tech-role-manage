@@ -89,38 +89,14 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     loadOrderItems();
   }, [order.id]);
 
-  // Calcular el precio correcto usando la lógica completa
+  // Usar directamente el total_amount de los items que ya incluye IVA
   const calculateCorrectTotal = () => {
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
 
     return orderItems.reduce((sum, item) => {
-      const quantity = item.quantity || 1;
-      const salesVatRate = item.vat_rate || 16;
-      const cashbackPercent = rewardSettings?.apply_cashback_to_items
-        ? (rewardSettings.general_cashback_percent || 0)
-        : 0;
-
-      if (item.item_type === 'servicio') {
-        // Para servicios: precio base + IVA + cashback
-        const basePrice = (item.unit_base_price || 0) * quantity;
-        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        return sum + finalWithCashback;
-      } else {
-        // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
-        const purchaseVatRate = 16;
-        const baseCost = (item.unit_cost_price || 0) * quantity;
-        const profitMargin = item.profit_margin_rate || 20;
-        
-        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        
-        return sum + finalWithCashback;
-      }
+      return sum + (item.total_amount || 0);
     }, 0);
   };
   const formatDate = (dateString: string) => {
