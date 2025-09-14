@@ -102,113 +102,115 @@ export function ClientCashbackHistory({
   const totalUsed = transactions.filter(t => t.transaction_type === 'used').reduce((sum, t) => sum + t.amount, 0);
   const totalExpired = transactions.filter(t => t.transaction_type === 'expired').reduce((sum, t) => sum + t.amount, 0);
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5 text-primary" />
+      <DialogContent className="max-w-4xl max-h-[90vh] sm:max-h-[80vh] w-[95vw] sm:w-full">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Gift className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             Historial Completo de Cashback
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm">
             Revisa todo tu historial de cashback ganado, usado y expirado
           </DialogDescription>
         </DialogHeader>
 
-        {loading ? <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Cargando historial...</p>
-          </div> : <div className="space-y-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardContent className="pt-4">
+        <div className="flex-1 overflow-hidden">
+          {loading ? <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-muted-foreground">Cargando historial...</p>
+            </div> : <div className="space-y-4 sm:space-y-6 h-full overflow-y-auto">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 flex-shrink-0">
+                <Card>
+                <CardContent className="pt-3 sm:pt-4">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-4 w-4 text-success" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Ganado</p>
-                      <p className="text-lg font-bold text-success">{formatCurrency(totalEarned)}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Total Ganado</p>
+                      <p className="text-base sm:text-lg font-bold text-success">{formatCurrency(totalEarned)}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="pt-4">
+                <CardContent className="pt-3 sm:pt-4">
                   <div className="flex items-center gap-2">
                     <TrendingDown className="h-4 w-4 text-destructive" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Usado</p>
-                      <p className="text-lg font-bold text-destructive">{formatCurrency(totalUsed)}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Total Usado</p>
+                      <p className="text-base sm:text-lg font-bold text-destructive">{formatCurrency(totalUsed)}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="pt-4">
+                <CardContent className="pt-3 sm:pt-4">
                   <div className="flex items-center gap-2">
                     <XCircle className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Expirado</p>
-                      <p className="text-lg font-bold text-muted-foreground">{formatCurrency(totalExpired)}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Total Expirado</p>
+                      <p className="text-base sm:text-lg font-bold text-muted-foreground">{formatCurrency(totalExpired)}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <Separator />
+              <Separator className="flex-shrink-0" />
 
-            {/* Transactions List */}
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {transactions.length > 0 ? transactions.map(transaction => <Card key={transaction.id} className="transition-colors hover:bg-muted/50">
-                    <CardContent className="pt-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {getTransactionIcon(transaction.transaction_type)}
-                          <div>
-                            <p className="font-medium">{transaction.description}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(transaction.created_at).toLocaleDateString('es-CO', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })} a las {new Date(transaction.created_at).toLocaleTimeString('es-CO', {
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                              </p>
+              {/* Transactions List */}
+              <div className="space-y-3 sm:space-y-4 flex-1 overflow-y-auto min-h-0">
+                {transactions.length > 0 ? transactions.map(transaction => <Card key={transaction.id} className="transition-colors hover:bg-muted/50">
+                      <CardContent className="pt-3 sm:pt-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            {getTransactionIcon(transaction.transaction_type)}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm sm:text-base truncate">{transaction.description}</p>
+                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mt-1">
+                                <p className="text-xs sm:text-sm text-muted-foreground">
+                                  {new Date(transaction.created_at).toLocaleDateString('es-CO', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })} {new Date(transaction.created_at).toLocaleTimeString('es-CO', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                                </p>
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="text-right">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-lg font-bold ${transaction.transaction_type === 'earned' ? 'text-success' : transaction.transaction_type === 'used' ? 'text-destructive' : 'text-muted-foreground'}`}>
-                              {transaction.transaction_type === 'earned' ? '+' : '-'}
-                              {formatCurrency(transaction.amount)}
-                            </span>
-                            {getTransactionBadge(transaction.transaction_type)}
-                          </div>
-                          
-                          {transaction.expires_at && transaction.transaction_type === 'earned' && <div className="flex items-center gap-1 text-xs">
-                              <Clock className="h-3 w-3" />
-                              <span className={isExpiringSoon(transaction.expires_at) ? 'text-warning' : 'text-muted-foreground'}>
-                                Expira: {new Date(transaction.expires_at).toLocaleDateString('es-CO')}
+                          <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-base sm:text-lg font-bold ${transaction.transaction_type === 'earned' ? 'text-success' : transaction.transaction_type === 'used' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                {transaction.transaction_type === 'earned' ? '+' : '-'}
+                                {formatCurrency(transaction.amount)}
                               </span>
-                              {isExpiringSoon(transaction.expires_at) && <Badge variant="outline" className="text-warning border-warning">
-                                  ¡Próximo a expirar!
-                                </Badge>}
-                            </div>}
+                              {getTransactionBadge(transaction.transaction_type)}
+                            </div>
+                            
+                            {transaction.expires_at && transaction.transaction_type === 'earned' && <div className="flex items-center gap-1 text-xs flex-wrap">
+                                <Clock className="h-3 w-3 flex-shrink-0" />
+                                <span className={isExpiringSoon(transaction.expires_at) ? 'text-warning' : 'text-muted-foreground'}>
+                                  Expira: {new Date(transaction.expires_at).toLocaleDateString('es-CO')}
+                                </span>
+                                {isExpiringSoon(transaction.expires_at) && <Badge variant="outline" className="text-warning border-warning text-xs">
+                                    ¡Próximo a expirar!
+                                  </Badge>}
+                              </div>}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>) : <div className="text-center py-8">
-                  <Gift className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-muted-foreground">No tienes transacciones de cashback aún.</p>
-                </div>}
-            </div>
-          </div>}
+                      </CardContent>
+                    </Card>) : <div className="text-center py-8">
+                    <Gift className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-muted-foreground text-sm sm:text-base">No tienes transacciones de cashback aún.</p>
+                  </div>}
+              </div>
+            </div>}
+        </div>
       </DialogContent>
     </Dialog>;
 }
