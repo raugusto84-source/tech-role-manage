@@ -73,6 +73,13 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
     }
   };
 
+  const isOrderRestored = (orderIdToCheck: string) => {
+    return events.some(event => 
+      event.order_id === orderIdToCheck && 
+      event.event_type === 'restored'
+    );
+  };
+
   const getEventIcon = (eventType: string) => {
     switch (eventType) {
       case 'created':
@@ -137,7 +144,7 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
 
     try {
       // Actualizar la orden para remover el soft delete
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from('orders')
         .update({ 
           deleted_at: null,
@@ -145,7 +152,24 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
         })
         .eq('id', orderIdToRestore);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
+
+      // Crear evento de restauración en el historial
+      const { error: historyError } = await supabase
+        .from('order_history')
+        .insert({
+          order_id: orderIdToRestore,
+          order_number: orderNumber,
+          event_type: 'restored',
+          event_description: `Orden ${orderNumber} restaurada exitosamente`,
+          performed_by: (await supabase.auth.getUser()).data.user?.id,
+          performed_by_name: (await supabase.from('profiles').select('full_name').eq('user_id', (await supabase.auth.getUser()).data.user?.id).single()).data?.full_name
+        });
+
+      if (historyError) {
+        console.error('Error creating history event:', historyError);
+        // No lanzar error, la restauración ya fue exitosa
+      }
 
       toast({
         title: "Orden restaurada",
@@ -225,7 +249,9 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
                         <p className="text-xs text-muted-foreground">
                           por {event.performed_by_name || 'Sistema'}
                         </p>
-                        {event.event_type === 'deleted' && onRestoreOrder && (
+                        {event.event_type === 'deleted' && 
+                         !isOrderRestored(event.order_id) && 
+                         onRestoreOrder && (
                           <Button
                             variant="outline"
                             size="sm"
