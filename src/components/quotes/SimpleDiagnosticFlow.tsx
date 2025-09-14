@@ -361,12 +361,17 @@ export function SimpleDiagnosticFlow({
               </Button>
             </div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {flows.map(flow => <Button key={flow.id} variant="outline" className="h-auto p-6 justify-start hover:bg-primary hover:text-primary-foreground transition-colors" onClick={() => handleFlowSelect(flow)}>
-                  <div className="text-left flex-1">
-                    <div className="font-medium text-lg">{flow.problem_title}</div>
-                    {flow.description && <div className="text-sm opacity-80 mt-1">
+                  <div className="text-left flex-1 min-w-0 overflow-hidden">
+                    <div className="font-medium text-lg break-words leading-tight">{flow.problem_title}</div>
+                    {flow.description && <div className="text-sm opacity-80 mt-1 break-words overflow-hidden" style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical' as any,
+                        maxHeight: '2.5rem'
+                      }}>
                         {flow.description}
                       </div>}
-                    <div className="flex gap-2 mt-3">
+                    <div className="flex gap-2 mt-3 flex-wrap">
                       <Badge variant="secondary" className="text-xs">
                         {flow.flow_data.steps.length} preguntas
                       </Badge>
@@ -375,7 +380,7 @@ export function SimpleDiagnosticFlow({
                       </Badge>
                     </div>
                   </div>
-                  <ArrowRight className="h-6 w-6 ml-4" />
+                  <ArrowRight className="h-6 w-6 ml-4 flex-shrink-0" />
                 </Button>)}
             </div>}
         </CardContent>
