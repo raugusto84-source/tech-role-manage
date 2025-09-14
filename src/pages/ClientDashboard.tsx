@@ -546,19 +546,28 @@ export default function ClientDashboard() {
 
         {/* Botones de acción principales */}
         <div className="grid grid-cols-2 gap-3">
-          <Button 
-            onClick={() => window.location.href = '/orders?new=1'}
-            className="h-24 flex-col gap-2 bg-primary hover:bg-primary/90"
-            size="lg"
-          >
-            <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center">
-              <Plus className="h-4 w-4" />
-            </div>
-            <div className="text-center">
-              <div className="font-semibold">Nueva Orden</div>
-              <div className="text-xs opacity-90">Crear orden completa</div>
-            </div>
-          </Button>
+          {/* Cashback Card - Moved here */}
+          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 h-24">
+            <CardContent className="p-3 h-full flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                  <Gift className="h-4 w-4 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-yellow-800">Cashback</p>
+                  <p className="text-lg font-bold text-yellow-700">${rewards.totalCashback}</p>
+                </div>
+              </div>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="border-yellow-300 text-yellow-700"
+                onClick={() => setShowCashbackHistory(true)}
+              >
+                <Star className="h-3 w-3" />
+              </Button>
+            </CardContent>
+          </Card>
           
           <Button 
             onClick={() => window.location.href = '/quotes'}
@@ -595,31 +604,6 @@ export default function ClientDashboard() {
           </Card>
         </div>
 
-        {/* Cashback */}
-        <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Gift className="h-5 w-5 text-yellow-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-yellow-800">Tu Cashback</p>
-                  <p className="text-xl font-bold text-yellow-700">${rewards.totalCashback}</p>
-                </div>
-              </div>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="border-yellow-300 text-yellow-700"
-                onClick={() => setShowCashbackHistory(true)}
-              >
-                <Star className="h-3 w-3 mr-1" />
-                Ver más
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Secciones específicas de elementos pendientes */}
         <Card>
