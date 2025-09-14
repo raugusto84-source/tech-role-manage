@@ -370,26 +370,19 @@ export default function ClientDashboard() {
   };
 
   // Métricas calculadas
-  const metrics = useMemo(() => {
-    const pendingOrdersCount = orders.filter(o => 
+  const metrics = useMemo(() => ({
+    pendingOrders: orders.filter(o => 
       ['pendiente', 'en_proceso', 'en_camino'].includes(o.status)
-    ).length;
-    
-    console.log('All orders:', orders.map(o => ({ id: o.id, status: o.status, order_number: o.order_number })));
-    console.log('Pending orders count:', pendingOrdersCount);
-    
-    return {
-      pendingOrders: pendingOrdersCount,
-      readyToSign: readyForSignatureOrders.length,
-      pendingApproval: pendingApprovalOrders.length,
-      pendingUpdates: pendingUpdateOrders.length,
-      completedOrders: orders.filter(o => o.status === 'finalizada').length,
-      activeQuotes: quotes.filter(q => 
-        ['solicitud', 'enviada'].includes(q.status)
-      ).length,
-      quotesToApprove: pendingApprovalQuotes.length, // Solo cotizaciones "enviadas" por ventas
-    };
-  }, [orders, quotes, pendingApprovalOrders, pendingUpdateOrders, readyForSignatureOrders, pendingApprovalQuotes]);
+    ).length,
+    readyToSign: readyForSignatureOrders.length,
+    pendingApproval: pendingApprovalOrders.length,
+    pendingUpdates: pendingUpdateOrders.length,
+    completedOrders: orders.filter(o => o.status === 'finalizada').length,
+    activeQuotes: quotes.filter(q => 
+      ['solicitud', 'enviada'].includes(q.status)
+    ).length,
+    quotesToApprove: pendingApprovalQuotes.length, // Solo cotizaciones "enviadas" por ventas
+  }), [orders, quotes, pendingApprovalOrders, pendingUpdateOrders, readyForSignatureOrders, pendingApprovalQuotes]);
 
   // Funciones de navegación
   const handleNewRequest = () => {
@@ -598,7 +591,7 @@ export default function ClientDashboard() {
             <CardContent className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600" />
               <p className="text-xl font-bold text-blue-700">{metrics.pendingOrders}</p>
-              <p className="text-xs text-blue-600">En proceso</p>
+              <p className="text-xs text-blue-600">Activas</p>
             </CardContent>
           </Card>
           
