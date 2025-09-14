@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Gift, TrendingUp, TrendingDown, Clock, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -160,7 +161,8 @@ export function ClientCashbackHistory({
               <Separator className="flex-shrink-0" />
 
               {/* Transactions List */}
-              <div className="space-y-3 sm:space-y-4 flex-1 overflow-y-auto min-h-0">
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="space-y-3 sm:space-y-4 pr-4">
                 {transactions.length > 0 ? transactions.map(transaction => <Card key={transaction.id} className="transition-colors hover:bg-muted/50">
                       <CardContent className="pt-3 sm:pt-4">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -208,7 +210,8 @@ export function ClientCashbackHistory({
                     <Gift className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-muted-foreground text-sm sm:text-base">No tienes transacciones de cashback aún.</p>
                   </div>}
-              </div>
+                </div>
+              </ScrollArea>
             </div>}
         </div>
       </DialogContent>
