@@ -117,36 +117,44 @@ export function useChatMedia() {
             let houseNumber = '';
             
             if (data && data.display_name) {
-              // Extract detailed address information
+              // Extract detailed address information with priority on street and house number
               const addressParts = [];
               if (data.address) {
-                // Prioritize house number
+                // Build complete street address
+                const streetParts = [];
+                
+                // Add house number first if available
                 if (data.address.house_number) {
                   houseNumber = data.address.house_number;
-                  addressParts.push(`#${data.address.house_number}`);
+                  streetParts.push(`${data.address.house_number}`);
                 }
                 
-                // Add street information
-                if (data.address.road) addressParts.push(data.address.road);
+                // Add street name
+                if (data.address.road) {
+                  streetParts.push(data.address.road);
+                }
                 
-                // Add neighborhood or locality
+                // Join street parts
+                if (streetParts.length > 0) {
+                  addressParts.push(streetParts.join(' '));
+                }
+                
+                // Add neighborhood or locality for more context
                 if (data.address.neighbourhood) {
                   addressParts.push(data.address.neighbourhood);
                 } else if (data.address.suburb) {
                   addressParts.push(data.address.suburb);
+                } else if (data.address.quarter) {
+                  addressParts.push(data.address.quarter);
                 }
                 
                 // Add city information
                 if (data.address.city || data.address.town || data.address.village) {
                   addressParts.push(data.address.city || data.address.town || data.address.village);
                 }
-                
-                // Add state/region if available
-                if (data.address.state) {
-                  addressParts.push(data.address.state);
-                }
               }
               
+              // Use detailed parts if available, otherwise fallback to display_name
               address = addressParts.length > 0 ? addressParts.join(', ') : data.display_name;
             }
             
