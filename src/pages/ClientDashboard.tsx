@@ -372,9 +372,7 @@ export default function ClientDashboard() {
 
   // Métricas calculadas
   const metrics = useMemo(() => ({
-    pendingOrders: orders.filter(o => 
-      ['pendiente', 'en_proceso', 'en_camino'].includes(o.status)
-    ).length,
+    pendingOrders: orders.filter(o => o.status === 'en_proceso').length,
     readyToSign: readyForSignatureOrders.length,
     pendingApproval: pendingApprovalOrders.length,
     pendingUpdates: pendingUpdateOrders.length,
