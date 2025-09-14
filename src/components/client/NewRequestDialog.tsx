@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ClipboardList, FileText, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from '@/hooks/useAuth';
 
 interface NewRequestDialogProps {
   open: boolean;
@@ -16,6 +17,7 @@ interface NewRequestDialogProps {
  */
 export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) {
   const navigate = useNavigate();
+  const { profile } = useAuth();
 
   const ActionCard = ({
     title,
@@ -46,6 +48,14 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
         </DialogHeader>
 
         <div className="grid gap-3">
+          {profile?.role !== 'cliente' && (
+            <ActionCard
+              title="Orden de servicio"
+              description="Reporta una falla o solicita un servicio técnico"
+              icon={ClipboardList}
+              to="/orders?new=1"
+            />
+          )}
           <ActionCard
             title="Cotización"
             description="Solicita una cotización rápida de servicios"

@@ -380,7 +380,7 @@ export default function Orders() {
     loadOrders(); // Recargar órdenes después de la restauración
   };
 
-  const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'cliente';
+  const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico' || profile?.role === 'supervisor';
   const canDeleteOrder = profile?.role === 'administrador';
   
   // Función para obtener la ruta del dashboard según el rol
@@ -484,6 +484,18 @@ export default function Orders() {
                 <span className="xs:hidden">Salir</span>
               </Button>
             </div>
+            
+            {canCreateOrder && (
+              <Button 
+                variant="default" 
+                onClick={() => setShowForm(true)}
+                className="text-xs sm:text-sm"
+                size="sm"
+              >
+                <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Nueva Orden
+              </Button>
+            )}
           </div>
         </div>
 
