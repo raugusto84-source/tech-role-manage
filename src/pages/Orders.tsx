@@ -469,7 +469,7 @@ export default function Orders() {
               >
                 <Home className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline">Dashboard</span>
-                <span className="xs:hidden">Panel</span>
+                <span className="xs:hidden">{profile?.role === 'cliente' ? 'Atrás' : 'Panel'}</span>
               </Button>
               
               {/* Botón cerrar sesión */}
