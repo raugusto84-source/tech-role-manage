@@ -468,7 +468,7 @@ export default function Orders() {
                 className="gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                 size="sm"
               >
-                <Home className="h-3 w-3 sm:h-4 sm:w-4" />
+                <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
                 <span className="hidden xs:inline">Dashboard</span>
                 <span className="xs:hidden">{profile?.role === 'cliente' ? 'Atrás' : 'Panel'}</span>
               </Button>
