@@ -47,10 +47,14 @@ export function ServiceCard({
 }: ServiceCardProps) {
   return (
     <Card 
-      className={`cursor-pointer transition-all hover:shadow-md ${
+      className={`cursor-pointer transition-all hover:shadow-md border-l-4 ${
         selectedServiceIds.includes(service.id)
           ? 'ring-1 ring-primary/50 border-primary/50' 
           : 'hover:border-primary/50'
+      } ${
+        service.item_type === 'servicio' 
+          ? 'border-l-blue-500 bg-blue-50/30' 
+          : 'border-l-green-500 bg-green-50/30'
       }`}
     >
       <CardContent className="p-4">
@@ -58,8 +62,15 @@ export function ServiceCard({
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h4 className="font-medium">{service.name}</h4>
-              <Badge variant={service.item_type === 'servicio' ? 'default' : 'secondary'}>
-                {service.item_type}
+              <Badge 
+                variant={service.item_type === 'servicio' ? 'default' : 'secondary'}
+                className={`${
+                  service.item_type === 'servicio' 
+                    ? 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200' 
+                    : 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200'
+                }`}
+              >
+                {service.item_type === 'servicio' ? '🔧 Servicio' : '📦 Producto'}
               </Badge>
               {selectedServiceIds.includes(service.id) && (
                 <Badge variant="outline" className="text-green-600 border-green-600">

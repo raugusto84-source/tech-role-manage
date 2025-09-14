@@ -13,6 +13,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, User, Calendar, DollarSign, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { getItemTypeInfo } from '@/utils/itemTypeUtils';
 
 interface QuoteItem {
   id: string;
@@ -639,41 +640,54 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {quoteItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="w-20">
-                            {item.image_url ? (
-                              <div className="w-16 h-16">
-                                <img 
-                                  src={item.image_url} 
-                                  alt={item.name}
-                                  className="w-full h-full object-cover rounded-md border"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                              </div>
-                            ) : (
-                              <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
-                                <Package className="h-6 w-6 text-gray-400" />
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{item.name}</p>
-                              {item.description && (
-                                <p className="text-sm text-muted-foreground">{item.description}</p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">{item.quantity}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(item.unit_price * item.quantity)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                       {quoteItems.map((item) => {
+                         const itemTypeInfo = getItemTypeInfo(item.item_type || 'servicio');
+                         return (
+                         <TableRow 
+                           key={item.id}
+                           className={`border-l-4 ${itemTypeInfo.colors.border} ${itemTypeInfo.colors.background}`}
+                         >
+                           <TableCell className="w-20">
+                             {item.image_url ? (
+                               <div className="w-16 h-16">
+                                 <img 
+                                   src={item.image_url} 
+                                   alt={item.name}
+                                   className="w-full h-full object-cover rounded-md border"
+                                   onError={(e) => {
+                                     const target = e.target as HTMLImageElement;
+                                     target.style.display = 'none';
+                                   }}
+                                 />
+                               </div>
+                             ) : (
+                               <div className="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
+                                 <Package className="h-6 w-6 text-gray-400" />
+                               </div>
+                             )}
+                           </TableCell>
+                           <TableCell>
+                             <div className="flex items-center gap-2">
+                               <div>
+                                 <div className="flex items-center gap-2">
+                                   <p className="font-medium">{item.name}</p>
+                                   <Badge className={itemTypeInfo.colors.badge}>
+                                     {getItemTypeInfo(item.item_type || 'servicio').icon} {itemTypeInfo.label}
+                                   </Badge>
+                                 </div>
+                                 {item.description && (
+                                   <p className="text-sm text-muted-foreground">{item.description}</p>
+                                 )}
+                               </div>
+                             </div>
+                           </TableCell>
+                           <TableCell className="text-center">{item.quantity}</TableCell>
+                           <TableCell className="text-right font-medium">
+                             {formatCurrency(item.unit_price * item.quantity)}
+                           </TableCell>
+                         </TableRow>
+                         );
+                       })}
                     </TableBody>
                   </Table>
                   

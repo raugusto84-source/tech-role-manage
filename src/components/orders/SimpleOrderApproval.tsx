@@ -584,12 +584,12 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">Cant: {item.quantity || 1}</span>
-                              <span className={`px-2 py-0.5 rounded text-xs ${
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                                 item.item_type === 'servicio' 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-green-100 text-green-800'
+                                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                                  : 'bg-green-100 text-green-800 border border-green-300'
                               }`}>
-                                {item.item_type === 'servicio' ? 'Servicio' : 'Producto'}
+                                {item.item_type === 'servicio' ? '🔧 Servicio' : '📦 Producto'}
                               </span>
                             </div>
                             <span className="text-xs text-muted-foreground">Total c/IVA</span>

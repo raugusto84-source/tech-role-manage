@@ -261,12 +261,23 @@ export function OrderItemsList({
         <CardContent className="space-y-4">
           {items.map((item, index) => <div key={item.id}>
               {index > 0 && <Separator />}
-              <div className="flex justify-between items-start py-2">
+              <div className={`flex justify-between items-start py-3 px-3 rounded-lg border-l-4 my-2 ${
+                item.item_type === 'servicio' 
+                  ? 'border-l-blue-500 bg-blue-50/50' 
+                  : 'border-l-green-500 bg-green-50/50'
+              }`}>
                   <div className="flex-1">
                    <div className="flex items-center gap-2 mb-2">
                       <h4 className="font-medium">{item.name}</h4>
-                      <Badge variant={item.item_type === 'servicio' ? 'default' : 'secondary'}>
-                        {item.item_type}
+                      <Badge 
+                        variant={item.item_type === 'servicio' ? 'default' : 'secondary'}
+                        className={`${
+                          item.item_type === 'servicio' 
+                            ? 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200' 
+                            : 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200'
+                        }`}
+                      >
+                        {item.item_type === 'servicio' ? '🔧 Servicio' : '📦 Producto'}
                       </Badge>
                       {/* Mostrar badge de póliza si aplica */}
                        {item.policy_name && <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">
