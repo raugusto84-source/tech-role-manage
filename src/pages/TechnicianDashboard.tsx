@@ -43,7 +43,7 @@ interface TechnicianOrder {
   service_type: string;
   failure_description: string;
   delivery_date: string;
-  status: 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada';
+  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada';
   assigned_technician?: string;
   evidence_photos?: string[];
   client_approval?: boolean | null;
@@ -256,11 +256,11 @@ export default function TechnicianDashboard() {
   const getFilteredOrders = (status: string) => {
     switch (status) {
       case 'pendientes':
-        return orders.filter(order => order.status === 'pendiente');
+        return orders.filter(order => order.status === 'pendiente_aprobacion');
       case 'proceso':
         return orders.filter(order => order.status === 'en_proceso');
       case 'terminadas':
-        return orders.filter(order => order.status === 'finalizada' && !order.client_approval);
+        return orders.filter(order => order.status === 'pendiente_entrega' && !order.client_approval);
       default:
         return orders;
     }
@@ -687,10 +687,10 @@ export default function TechnicianDashboard() {
  */
 function getStatusColor(status: string) {
   switch (status) {
-    case 'pendiente': return 'bg-yellow-100 text-yellow-800';
-    case 'en_camino': return 'bg-blue-100 text-blue-800';
+    case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800';
     case 'en_proceso': return 'bg-orange-100 text-orange-800';
-    case 'finalizada': return 'bg-green-100 text-green-800';
+    case 'pendiente_actualizacion': return 'bg-blue-100 text-blue-800';
+    case 'pendiente_entrega': return 'bg-green-100 text-green-800';
     case 'cancelada': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
@@ -698,10 +698,10 @@ function getStatusColor(status: string) {
 
 function getStatusLabel(status: string) {
   switch (status) {
-    case 'pendiente': return 'Pendiente';
-    case 'en_camino': return 'En Camino';
+    case 'pendiente_aprobacion': return 'Pendiente Aprobación';
     case 'en_proceso': return 'En Proceso';
-    case 'finalizada': return 'Terminado';
+    case 'pendiente_actualizacion': return 'Pendiente Actualización';
+    case 'pendiente_entrega': return 'Pendiente Entrega';
     case 'cancelada': return 'Cancelada';
     default: return status;
   }

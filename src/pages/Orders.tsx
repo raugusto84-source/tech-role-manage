@@ -48,7 +48,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega' | 'pendiente_actualizacion';
+  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -273,12 +273,9 @@ export default function Orders() {
 
   const groupedOrders = {
     pendiente_aprobacion: filteredOrders.filter(order => order.status === 'pendiente_aprobacion'),
-    pendiente_actualizacion: filteredOrders.filter(order => order.status === 'pendiente_actualizacion'),
-    pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
-    en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
     en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
+    pendiente_actualizacion: filteredOrders.filter(order => order.status === 'pendiente_actualizacion'),
     pendiente_entrega: filteredOrders.filter(order => order.status === 'pendiente_entrega'),
-    finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
     cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
   };
 
@@ -299,12 +296,9 @@ export default function Orders() {
   const getStatusTitle = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'Pendientes de Aprobación';
-      case 'pendiente_actualizacion': return 'Pendientes de Actualización';
-      case 'pendiente': return 'Pendientes';
-      case 'en_camino': return 'En Camino';
       case 'en_proceso': return 'En Proceso';
+      case 'pendiente_actualizacion': return 'Pendientes de Actualización';
       case 'pendiente_entrega': return 'Pendientes de Entrega';
-      case 'finalizada': return 'Finalizadas';
       case 'cancelada': return 'Canceladas';
       default: return status;
     }

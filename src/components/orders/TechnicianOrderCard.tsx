@@ -28,7 +28,7 @@ interface TechnicianOrderCardProps {
     service_type: string;
     failure_description: string;
     delivery_date: string;
-    status: 'pendiente' | 'en_camino' | 'en_proceso' | 'finalizada' | 'cancelada';
+    status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada';
     created_at: string;
     is_home_service?: boolean;
     service_location?: any;
@@ -77,10 +77,10 @@ export function TechnicianOrderCard({
    */
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'en_camino': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'en_proceso': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'finalizada': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pendiente_actualizacion': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'pendiente_entrega': return 'bg-green-100 text-green-800 border-green-200';
       case 'cancelada': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -91,10 +91,10 @@ export function TechnicianOrderCard({
    */
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'Pendiente';
-      case 'en_camino': return 'En Camino';
+      case 'pendiente_aprobacion': return 'Pendiente Aprobación';
       case 'en_proceso': return 'En Proceso';
-      case 'finalizada': return 'Terminado';
+      case 'pendiente_actualizacion': return 'Pendiente Actualización';
+      case 'pendiente_entrega': return 'Pendiente Entrega';
       case 'cancelada': return 'Cancelada';
       default: return status;
     }

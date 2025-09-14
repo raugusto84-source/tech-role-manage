@@ -120,16 +120,16 @@ export function ClientServicesHistory() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'finalizada':
+      case 'pendiente_aprobacion':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'en_proceso':
+        return 'bg-orange-100 text-orange-800';
+      case 'pendiente_actualizacion':
+        return 'bg-blue-100 text-blue-800';
+      case 'pendiente_entrega':
         return 'bg-green-100 text-green-800';
       case 'cancelada':
         return 'bg-red-100 text-red-800';
-      case 'en_proceso':
-        return 'bg-blue-100 text-blue-800';
-      case 'pendiente':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'en_camino':
-        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -137,13 +137,11 @@ export function ClientServicesHistory() {
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      'pendiente': 'Pendiente',
-      'en_proceso': 'En Proceso',
-      'finalizada': 'Finalizada',
-      'cancelada': 'Cancelada',
-      'en_camino': 'En Camino',
       'pendiente_aprobacion': 'Pendiente Aprobación',
-      'pendiente_entrega': 'Pendiente Entrega'
+      'en_proceso': 'En Proceso',
+      'pendiente_actualizacion': 'Pendiente Actualización',
+      'pendiente_entrega': 'Pendiente Entrega',
+      'cancelada': 'Cancelada'
     };
     return labels[status] || status;
   };
