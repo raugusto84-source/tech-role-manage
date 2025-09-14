@@ -865,7 +865,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                   {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
-                        onClick={acceptQuote}
+                        onClick={convertToOrder}
                         disabled={loading}
                         variant="default"
                         className="w-full"
