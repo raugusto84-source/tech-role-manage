@@ -208,6 +208,7 @@ export default function ClientDashboard() {
         .from("orders")
         .select("*")
         .eq("client_id", clientByEmail.id)
+        .is('deleted_at', null)
         .order("created_at", { ascending: false });
       
       console.log('Orders loaded by email client:', ordersData, 'error:', error);
@@ -247,6 +248,7 @@ export default function ClientDashboard() {
       .from("orders")
       .select("*")
       .eq("client_id", client.id)
+      .is('deleted_at', null)
       .order("created_at", { ascending: false });
     
     console.log('Orders loaded by user_id client:', ordersData, 'error:', error);
