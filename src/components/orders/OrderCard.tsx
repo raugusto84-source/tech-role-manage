@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface OrderCardProps {
   order: {
@@ -59,11 +60,12 @@ interface OrderCardProps {
 
 export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
-  const { settings: rewardSettings } = useRewardSettings();
+  const [itemsLoading, setItemsLoading] = useState(true);
+  const { settings: rewardSettings, loading: rewardLoading } = useRewardSettings();
 
-  // Cargar los items de la orden con todos los datos necesarios para el recálculo
   useEffect(() => {
     const loadOrderItems = async () => {
+      setItemsLoading(true);
       try {
         const { data, error } = await supabase
           .from('order_items')
@@ -83,21 +85,42 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       } catch (error) {
         console.error('Error loading order items for card:', error);
         setOrderItems([]);
+      } finally {
+        setItemsLoading(false);
       }
     };
 
     loadOrderItems();
   }, [order.id]);
 
-  // Usar directamente el total_amount de los items que ya incluye IVA
+  // Calcula el precio correcto por item usando la misma lógica que en detalles/lista
+  const calculateItemDisplayPrice = (item: any): number => {
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      return afterSalesVat * (1 + cashbackPercent / 100);
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      return afterSalesVat * (1 + cashbackPercent / 100);
+    }
+  };
+
+  // Total de la tarjeta
   const calculateCorrectTotal = () => {
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
 
-    return orderItems.reduce((sum, item) => {
-      return sum + (item.total_amount || 0);
-    }, 0);
+    return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
   };
   const formatDate = (dateString: string) => {
     try {
@@ -207,7 +230,11 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-primary" />
-            <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>
+            {(itemsLoading || rewardLoading) ? (
+              <Skeleton className="h-3 w-14 rounded" />
+            ) : (
+              <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>
+            )}
             {order.average_service_time && (
               <>
                 <Clock className="h-3 w-3 text-primary ml-1" />
