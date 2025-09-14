@@ -10,6 +10,7 @@ import { Plus, Package, Settings, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,12 +64,7 @@ const isProduct = (service: Service) => {
   return hasTiers || service.item_type === 'articulo';
 };
 const marginFromTiers = (service: Service): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
-const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0
-}).format(amount);
+const formatCurrency = formatCOPCeilToTen;
 
 // Normaliza la categoría seleccionada a los posibles valores del campo service_types.category
 const categoryFilterValues = (name: string): string[] => {
@@ -91,7 +87,7 @@ export default function Sales() {
   } = useAuth();
   const { settings: rewardSettings } = useRewardSettings();
 
-  // Function to calculate display price with cashback
+  // Function to calculate display price with cashback and proper rounding
   const getDisplayPrice = (service: Service): number => {
     const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
@@ -103,7 +99,7 @@ export default function Sales() {
       const basePrice = service.base_price || 0;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return ceilToTen(finalWithCashback);
     } else {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
@@ -114,7 +110,7 @@ export default function Sales() {
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return ceilToTen(finalWithCashback);
     }
   };
   const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics' | 'categories' | 'subcategories'>('list');

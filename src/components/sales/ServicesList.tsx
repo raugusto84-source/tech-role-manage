@@ -8,7 +8,7 @@ import { Pencil, Trash2, Search, Package, Clock, Camera, Monitor, Computer, Zap,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 /** ============================
  *  CATEGORÍAS / SUBCATEGORÍAS
@@ -162,7 +162,7 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
       const basePrice = service.base_price || 0;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return ceilToTen(finalWithCashback);
     } else {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
@@ -173,7 +173,7 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return ceilToTen(finalWithCashback);
     }
   };
 

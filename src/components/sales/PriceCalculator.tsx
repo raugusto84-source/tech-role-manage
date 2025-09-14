@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Package, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 /**
  * Interface para servicios simplificada para la calculadora
@@ -73,7 +74,7 @@ export function PriceCalculator() {
   }>>([]);
 
   /**
-   * Calculate correct price with cashback consideration
+   * Calculate correct price with cashback consideration and proper rounding
    */
   const calculateCorrectPrice = (service: Service, basePrice: number): number => {
     const isProduct = service.item_type === 'articulo' || (service.profit_margin_tiers && service.profit_margin_tiers.length > 0);
@@ -81,7 +82,7 @@ export function PriceCalculator() {
     if (isProduct) {
       // For products: cost price + purchase VAT + profit margin + sales VAT + cashback
       const costPrice = service.cost_price || 0;
-      const purchaseVAT = costPrice * 0.19; // 19% purchase VAT
+      const purchaseVAT = costPrice * 0.16; // 16% purchase VAT
       const costWithPurchaseVAT = costPrice + purchaseVAT;
       
       const profitMargin = service.profit_margin_tiers?.[0]?.margin || 30;
@@ -96,7 +97,7 @@ export function PriceCalculator() {
         cashback = basePriceWithVAT * (rewardSettings.general_cashback_percent / 100);
       }
       
-      return basePriceWithVAT + cashback;
+      return ceilToTen(basePriceWithVAT + cashback);
     } else {
       // For services: base price + VAT + cashback
       const vat = basePrice * (service.vat_rate / 100);
@@ -108,7 +109,7 @@ export function PriceCalculator() {
         cashback = basePriceWithVAT * (rewardSettings.general_cashback_percent / 100);
       }
       
-      return basePriceWithVAT + cashback;
+      return ceilToTen(basePriceWithVAT + cashback);
     }
   };
   /**
@@ -251,16 +252,9 @@ export function PriceCalculator() {
   };
 
   /**
-   * Formatea números como moneda
+   * Formatea números como moneda con redondeo correcto
    */
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = formatCOPCeilToTen;
 
   /**
    * Obtiene el servicio seleccionado
