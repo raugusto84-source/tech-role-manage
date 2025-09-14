@@ -431,7 +431,6 @@ export function SimpleDiagnosticFlow({
                         <div className="text-right ml-4">
                           <div className="font-bold text-lg">
                             {formatCurrency(getDisplayPrice(service, rewardSettings))}
-                            {service.unit}
                           </div>
                           {service.vat_rate && <div className="text-xs text-muted-foreground">
                               (incluye IVA {service.vat_rate}%)
