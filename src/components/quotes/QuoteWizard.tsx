@@ -599,6 +599,20 @@ export function QuoteWizard({
               </Card>
             )}
 
+            {/* Quote Totals Summary with Cashback Options */}
+            {quoteItems.length > 0 && selectedClient && (
+              <Card>
+                <CardContent className="p-4">
+                  <QuoteTotalsSummary
+                    selectedItems={quoteItems}
+                    clientId={selectedClient.id}
+                    clientEmail={selectedClient.email}
+                    onCashbackChange={handleCashbackChange}
+                  />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Additional Services Section */}
             <Card className="border-dashed border-2 border-muted">
               <CardContent className="p-4">
