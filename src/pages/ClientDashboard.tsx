@@ -635,7 +635,7 @@ export default function ClientDashboard() {
                 <CardContent className="p-4 text-center">
                   <FileText className="h-6 w-6 mx-auto mb-1 text-orange-600" />
                   <p className="text-xl font-bold text-orange-700">{metrics.activeQuotes}</p>
-                  <p className="text-xs text-orange-600">Activas</p>
+                  <p className="text-xs text-orange-600">Aceptadas</p>
                 </CardContent>
               </Card>
               
