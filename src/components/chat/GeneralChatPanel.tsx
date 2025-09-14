@@ -261,7 +261,7 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
     const location = await getCurrentLocation();
     if (location) {
       const locationMessage = `📍 Ubicación compartida: ${location.address}`;
-      const locationUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+      const locationUrl = `https://maps.google.com/maps?q=${location.lat},${location.lng}&z=17`;
       await sendMessage('location', locationMessage, locationUrl);
     }
   };
@@ -406,12 +406,21 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
                              <div className="text-sm">{message.message}</div>
                            </div>
                          ) : message.message_type === 'location' && message.attachment_url ? (
-                           <div className="space-y-2">
-                             <a 
-                               href={message.attachment_url} 
-                               target="_blank" 
-                               rel="noopener noreferrer"
-                               className="flex items-center gap-2 p-2 bg-primary/10 rounded text-primary hover:bg-primary/20 transition-colors"
+                            <div className="space-y-2">
+                              <a 
+                                href={message.attachment_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  // Intentar abrir con window.open como fallback para computadoras
+                                  const newWindow = window.open(message.attachment_url, '_blank', 'noopener,noreferrer');
+                                  if (!newWindow) {
+                                    // Si el popup fue bloqueado, intentar navegación directa
+                                    window.location.href = message.attachment_url || '';
+                                  }
+                                }}
+                                className="flex items-center gap-2 p-2 bg-primary/10 rounded text-primary hover:bg-primary/20 transition-colors"
                              >
                                <MapPin className="h-4 w-4" />
                                <span className="text-sm">Ver ubicación</span>
