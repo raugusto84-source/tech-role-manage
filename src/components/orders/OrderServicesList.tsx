@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { useAuth } from '@/hooks/useAuth';
+import { formatCOPCeilToTen } from '@/utils/currency';
 import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X } from 'lucide-react';
 interface OrderItem {
   id: string;
@@ -166,13 +167,7 @@ export function OrderServicesList({
     const completedItems = orderItems.filter(item => item.status === 'finalizada').length;
     return Math.round(completedItems / orderItems.length * 100);
   };
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = formatCOPCeilToTen;
   const handleFinishAll = async () => {
     if (!orderId || !canFinishAll) return;
     setFinishingAll(true);

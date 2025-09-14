@@ -8,6 +8,7 @@ import { Pencil, Trash2, Search, Package, Clock, Camera, Monitor, Computer, Zap,
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 /** ============================
  *  CATEGORÍAS / SUBCATEGORÍAS
@@ -181,8 +182,7 @@ export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
     return `${marginFromTiers(service)}%`;
   };
 
-  const formatCurrency = (amount: number): string =>
-    new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
+  const formatCurrency = formatCOPCeilToTen;
 
   // Icon mapping - same as MainCategoriesManager
   const ICON_COMPONENTS: Record<string, React.ComponentType<any>> = {

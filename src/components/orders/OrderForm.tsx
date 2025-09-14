@@ -27,6 +27,7 @@ import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleS
 import { CashbackApplicationDialog } from './CashbackApplicationDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -634,10 +635,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     setAppliedCashback(amount);
     toast({
       title: "Cashback aplicado",
-      description: `Se aplicaron ${new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP'
-      }).format(amount)} como descuento`,
+      description: `Se aplicaron ${formatCOPCeilToTen(amount)} como descuento`,
     });
   };
 
@@ -1306,7 +1304,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       toast({
         title: "Orden creada",
-        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(totalAmount)}`,
+        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${formatCOPCeilToTen(totalAmount)}`,
       });
 
       onSuccess();

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Gift } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatCOPCeilToTen } from "@/utils/currency";
 
 interface CashbackApplicationDialogProps {
   open: boolean;
@@ -24,13 +25,7 @@ export function CashbackApplicationDialog({
   const { toast } = useToast();
   const [amountToUse, setAmountToUse] = useState("");
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = formatCOPCeilToTen;
 
   const maxUsableAmount = Math.min(availableCashback, orderTotal);
 

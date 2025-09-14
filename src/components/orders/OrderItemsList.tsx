@@ -9,6 +9,7 @@ import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield } fro
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen } from '@/utils/currency';
 export interface OrderItem {
   id: string;
   service_type_id: string;
@@ -165,13 +166,7 @@ export function OrderItemsList({
     const updatedItems = items.filter(item => item.id !== itemId);
     onItemsChange(updatedItems);
   };
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = formatCOPCeilToTen;
   const formatHours = (hours: number) => {
     if (hours < 1) {
       return `${Math.round(hours * 60)} min`;

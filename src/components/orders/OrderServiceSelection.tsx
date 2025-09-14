@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Package, Clock, Calendar } from 'lucide-react';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { ServiceCard } from './ServiceCard';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -125,13 +126,7 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     return matchesSearch && matchesCategory && matchesType;
   });
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = formatCOPCeilToTen;
 
   const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
     const salesVatRate = service.vat_rate || 16;

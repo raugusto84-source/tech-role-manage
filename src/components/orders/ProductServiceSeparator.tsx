@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { OrderServiceSelection } from './OrderServiceSelection';
 import { Package, Wrench, ShoppingCart } from 'lucide-react';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -41,13 +42,7 @@ export function ProductServiceSeparator({
   const { settings: rewardSettings } = useRewardSettings();
   const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = formatCOPCeilToTen;
 
   // Usar la misma lógica de cálculo que OrderServiceSelection
   const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
