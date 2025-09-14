@@ -41,10 +41,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
+                    className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform bg-primary text-primary-foreground hover:bg-primary-hover"
                   >
                     <div className="relative">
-                      <MessageSquare className="h-5 w-5" />
+                      <MessageSquare className="h-6 w-6" />
                       {unreadCount > 0 && (
                         <Badge 
                           variant="destructive" 
@@ -52,6 +52,12 @@ export function AppLayout({ children }: AppLayoutProps) {
                         >
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </Badge>
+                      )}
+                      {/* Attention sign for clients */}
+                      {profile?.role === 'cliente' && (
+                        <div className="absolute -top-1 -left-1 h-4 w-4 bg-warning text-warning-foreground rounded-full flex items-center justify-center animate-pulse">
+                          <span className="text-xs font-bold">!</span>
+                        </div>
                       )}
                     </div>
                   </Button>
@@ -94,10 +100,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
+                      className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform bg-primary text-primary-foreground hover:bg-primary-hover"
                     >
                       <div className="relative">
-                        <MessageSquare className="h-5 w-5" />
+                        <MessageSquare className="h-6 w-6" />
                         {unreadCount > 0 && (
                           <Badge 
                             variant="destructive" 
@@ -106,6 +112,10 @@ export function AppLayout({ children }: AppLayoutProps) {
                             {unreadCount > 99 ? '99+' : unreadCount}
                           </Badge>
                         )}
+                         {/* Attention sign for staff */}
+                         <div className="absolute -top-1 -left-1 h-4 w-4 bg-info text-info-foreground rounded-full flex items-center justify-center animate-pulse">
+                           <span className="text-xs font-bold">!</span>
+                         </div>
                       </div>
                     </Button>
                   </SheetTrigger>
