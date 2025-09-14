@@ -8,7 +8,7 @@ import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface OrderCardProps {
@@ -292,6 +292,22 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             <p className="text-xs text-muted-foreground truncate break-words">
               {order.failure_description}
             </p>
+          </div>
+        </div>
+
+        {/* Total con IVA prominente */}
+        <div className="border-t pt-1 mt-1">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
+            <div className="flex items-center gap-1">
+              {itemsLoading ? (
+                <Skeleton className="h-4 w-20 rounded" />
+              ) : (
+                <span className="text-sm font-bold text-primary">
+                  {formatCOPCeilToTen(ceilToTen(calculateCorrectTotal()))}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>
