@@ -354,6 +354,8 @@ export default function ClientDashboard() {
       en_proceso: { label: "En Proceso", className: "bg-blue-100 text-blue-800" },
       en_camino: { label: "En Camino", className: "bg-purple-100 text-purple-800" },
       pendiente_entrega: { label: "Listo", className: "bg-green-100 text-green-800" },
+      pendiente_aprobacion: { label: "Pendiente Aprobación", className: "bg-orange-100 text-orange-800" },
+      pendiente_actualizacion: { label: "Pendiente Actualización", className: "bg-purple-100 text-purple-800" },
       finalizada: { label: "Completada", className: "bg-gray-100 text-gray-800" },
       cancelada: { label: "Cancelada", className: "bg-red-100 text-red-800" },
       solicitud: { label: "Solicitada", className: "bg-yellow-100 text-yellow-800" },
