@@ -466,9 +466,6 @@ export function SimpleDiagnosticFlow({
             {currentStep > 0 && <Button variant="outline" size="sm" onClick={handleBack} disabled={isTransitioning}>
                 <ArrowLeft className="h-4 w-4" />
               </Button>}
-            <Button variant="outline" size="sm" onClick={handleRestart} disabled={isTransitioning}>
-              Reiniciar
-            </Button>
           </div>
         </div>
       </CardHeader>
