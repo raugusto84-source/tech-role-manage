@@ -339,15 +339,11 @@ export function SimpleDiagnosticFlow({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="text-center flex-1">
-              <CardTitle>2. Selecciona tu problema específico</CardTitle>
-              <p className="text-muted-foreground">
+              <CardTitle className="break-words mobile-text-wrap leading-tight">2. Selecciona tu problema específico</CardTitle>
+              <p className="text-muted-foreground break-words mobile-text-wrap">
                 {categories.find(c => c.id === selectedCategory)?.name}
               </p>
             </div>
-            <Button variant="outline" onClick={() => setSelectedCategory('')}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Cambiar Categoría
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -393,8 +389,8 @@ export function SimpleDiagnosticFlow({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="font-medium text-lg">{selectedSolution.title}</h3>
-              <p className="text-muted-foreground mt-1">{selectedSolution.description}</p>
+              <h3 className="font-medium text-lg break-words mobile-text-wrap leading-tight">{selectedSolution.title}</h3>
+              <p className="text-muted-foreground mt-1 break-words mobile-text-wrap leading-relaxed">{selectedSolution.description}</p>
             </div>
             
             {selectedSolution.confidence_score && <div>
@@ -419,8 +415,8 @@ export function SimpleDiagnosticFlow({
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
-                          <h4 className="font-medium">{service.name}</h4>
-                          {service.description && <p className="text-sm text-muted-foreground mt-1">
+                          <h4 className="font-medium break-words mobile-text-wrap leading-tight">{service.name}</h4>
+                          {service.description && <p className="text-sm text-muted-foreground mt-1 break-words mobile-text-wrap leading-relaxed">
                               {service.description}
                             </p>}
                           {service.category && <Badge variant="outline" className="mt-2 text-xs">
@@ -454,7 +450,7 @@ export function SimpleDiagnosticFlow({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="text-center flex-1">
-            <CardTitle>2. Diagnóstico: {selectedFlow.problem_title}</CardTitle>
+            <CardTitle className="break-words mobile-text-wrap leading-tight">2. Diagnóstico: {selectedFlow.problem_title}</CardTitle>
             <p className="text-sm text-muted-foreground">
               Pregunta {currentStep + 1} de {selectedFlow.flow_data.steps.length}
             </p>
