@@ -285,42 +285,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   const calculateTotalAmount = () => {
     if (!orderItems || orderItems.length === 0) {
-      const baseTotal = order.estimated_cost || 0;
-      return order.cashback_applied && order.cashback_amount_used
-        ? Math.max(0, baseTotal - order.cashback_amount_used)
-        : baseTotal;
+      return order.estimated_cost || 0;
     }
 
-    const subtotal = orderItems.reduce((sum, item) => {
-      const quantity = item.quantity || 1;
-      const salesVatRate = item.vat_rate || 16;
-      const cashbackPercent = rewardSettings?.apply_cashback_to_items
-        ? (rewardSettings.general_cashback_percent || 0)
-        : 0;
-
-      if (item.item_type === 'servicio') {
-        const basePrice = (item.unit_base_price || 0);
-        const basePriceTotal = basePrice * quantity;
-        const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        return sum + finalWithCashback;
-      } else {
-        const purchaseVatRate = 16;
-        const baseCost = (item.unit_cost_price || 0) * quantity;
-        const profitMargin = item.profit_margin_rate || 20;
-        
-        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        
-        return sum + finalWithCashback;
-      }
+    // Preservar exactamente los importes calculados en BD (incluye IVA)
+    const total = orderItems.reduce((sum, item) => {
+      return sum + (item.total_amount || 0);
     }, 0);
 
-    return order.cashback_applied && order.cashback_amount_used
-      ? Math.max(0, subtotal - order.cashback_amount_used)
-      : subtotal;
+    return total;
   };
 
   const getStatusColor = (status: string) => {
