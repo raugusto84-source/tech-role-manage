@@ -33,17 +33,16 @@ interface OrderHistoryEvent {
 
 interface OrderHistoryPanelProps {
   orderId?: string;
-  showDeleted?: boolean;
   onRestoreOrder?: (orderId: string) => void;
 }
 
-export function OrderHistoryPanel({ orderId, showDeleted = false, onRestoreOrder }: OrderHistoryPanelProps) {
+export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanelProps) {
   const [events, setEvents] = useState<OrderHistoryEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadHistory();
-  }, [orderId, showDeleted]);
+  }, [orderId]);
 
   const loadHistory = async () => {
     try {
@@ -56,10 +55,6 @@ export function OrderHistoryPanel({ orderId, showDeleted = false, onRestoreOrder
 
       if (orderId) {
         query = query.eq('order_id', orderId);
-      }
-
-      if (showDeleted) {
-        query = query.eq('event_type', 'deleted');
       }
 
       const { data, error } = await query.limit(100);
@@ -190,14 +185,14 @@ export function OrderHistoryPanel({ orderId, showDeleted = false, onRestoreOrder
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <History className="h-5 w-5" />
-          {showDeleted ? 'Órdenes Eliminadas' : 'Historial de Órdenes'}
+          Historial de Órdenes
           <Badge variant="secondary">{events.length}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
           <p className="text-muted-foreground text-center py-8">
-            {showDeleted ? 'No hay órdenes eliminadas' : 'No hay eventos registrados'}
+            No hay eventos registrados
           </p>
         ) : (
           <ScrollArea className="h-96">
@@ -230,7 +225,7 @@ export function OrderHistoryPanel({ orderId, showDeleted = false, onRestoreOrder
                         <p className="text-xs text-muted-foreground">
                           por {event.performed_by_name || 'Sistema'}
                         </p>
-                        {showDeleted && event.event_type === 'deleted' && onRestoreOrder && (
+                        {event.event_type === 'deleted' && onRestoreOrder && (
                           <Button
                             variant="outline"
                             size="sm"

@@ -500,7 +500,7 @@ export default function Orders() {
 
         {/* Mobile-first Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className={`grid w-full mb-4 ${profile?.role === 'administrador' ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <TabsTrigger value="list" className="text-xs sm:text-sm">
               <ClipboardList className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Lista
@@ -509,14 +509,10 @@ export default function Orders() {
               <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Calendario
             </TabsTrigger>
-            <TabsTrigger value="history" className="text-xs sm:text-sm">
-              <History className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              Historial
-            </TabsTrigger>
-            {canDeleteOrder && (
-              <TabsTrigger value="deleted" className="text-xs sm:text-sm">
-                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-                Eliminadas
+            {profile?.role === 'administrador' && (
+              <TabsTrigger value="history" className="text-xs sm:text-sm">
+                <History className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                Historial
               </TabsTrigger>
             )}
           </TabsList>
@@ -795,16 +791,9 @@ export default function Orders() {
             </div>
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-6">
-            <OrderHistoryPanel />
-          </TabsContent>
-
-          {canDeleteOrder && (
-            <TabsContent value="deleted" className="space-y-6">
-              <OrderHistoryPanel 
-                showDeleted={true}
-                onRestoreOrder={handleRestoreOrder}
-              />
+          {profile?.role === 'administrador' && (
+            <TabsContent value="history" className="space-y-6">
+              <OrderHistoryPanel onRestoreOrder={handleRestoreOrder} />
             </TabsContent>
           )}
         </Tabs>
