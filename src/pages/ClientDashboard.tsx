@@ -581,7 +581,7 @@ export default function ClientDashboard() {
           <Button 
             onClick={() => window.location.href = '/quotes'}
             variant="outline"
-            className="h-24 flex-col gap-2 border-2"
+            className="h-24 flex-col gap-2 border-2 animate-pulse"
             size="lg"
           >
             <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
