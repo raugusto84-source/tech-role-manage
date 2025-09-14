@@ -291,3 +291,29 @@ All colors MUST be HSL.
     background: var(--gradient-error);
   }
 }
+
+/* Mobile-first text utilities for preventing overflow */
+@layer utilities {
+  .text-wrap-balance {
+    text-wrap: balance;
+  }
+  
+  .text-break-words {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  .text-ellipsis-mobile {
+    @apply truncate;
+  }
+  
+  @media (max-width: 640px) {
+    .mobile-text-wrap {
+      word-break: break-word;
+      overflow-wrap: break-word;
+      hyphens: auto;
+      line-height: 1.3;
+    }
+  }
+}

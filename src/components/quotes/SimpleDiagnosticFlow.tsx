@@ -324,10 +324,9 @@ export function SimpleDiagnosticFlow({
           </p>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {categories.map(category => <Button key={category.id} variant="outline" className="h-auto p-6 flex flex-col items-center gap-3 hover:bg-primary hover:text-primary-foreground transition-colors" onClick={() => handleCategorySelect(category.id)}>
-                
-                <span className="font-medium text-center">{category.name}</span>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {categories.map(category => <Button key={category.id} variant="outline" className="h-auto p-4 flex flex-col items-center gap-2 hover:bg-primary hover:text-primary-foreground transition-colors min-h-[80px]" onClick={() => handleCategorySelect(category.id)}>
+                <span className="font-medium text-center text-sm leading-tight break-words hyphens-auto" style={{wordBreak: 'break-word', overflowWrap: 'break-word'}}>{category.name}</span>
               </Button>)}
           </div>
         </CardContent>
