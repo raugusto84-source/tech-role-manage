@@ -128,15 +128,25 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     }
   };
 
-  // Total de la tarjeta - usa la misma lógica que OrderDetails
+  // Total de la tarjeta - SIEMPRE respetar el total de la cotización convertida
   const calculateCorrectTotal = () => {
     if (itemsLoading) {
       return 0; // No mostrar nada mientras carga
     }
     
-    // Sumar todos los items con precios calculados correctamente (CON IVA)
+    // Si hay items con pricing_locked (viene de cotización), usar el total guardado
     if (orderItems && orderItems.length > 0) {
-      return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+      const hasLockedItems = orderItems.some(item => item.pricing_locked);
+      
+      if (hasLockedItems) {
+        // Para órdenes de cotización: usar total_amount directamente (ya incluye IVA)
+        return orderItems.reduce((sum, item) => {
+          return sum + (Number(item.total_amount) || 0);
+        }, 0);
+      } else {
+        // Para órdenes normales: calcular con la lógica estándar
+        return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+      }
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
