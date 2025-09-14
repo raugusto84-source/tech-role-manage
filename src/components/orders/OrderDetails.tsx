@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -19,6 +19,7 @@ import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { SignatureViewer } from './SignatureViewer';
 
 interface OrderDetailsProps {
   order: {
@@ -73,11 +74,14 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [hasAuthorization, setHasAuthorization] = useState(false);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
+  const [authorizationSignatures, setAuthorizationSignatures] = useState<any[]>([]);
+  const [signaturesLoading, setSignaturesLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     details: false,
     services: true,
     chat: false,
-    warranties: false
+    warranties: false,
+    signatures: false
   });
 
   useEffect(() => {
@@ -85,6 +89,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadAssignedTechnician();
     checkExistingAuthorization();
     checkSurveyStatus();
+    loadAuthorizationSignatures();
     
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase
@@ -113,6 +118,24 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     checkSurveyStatus();
     checkExistingAuthorization();
   }, [orderStatus]);
+
+  const loadAuthorizationSignatures = async () => {
+    try {
+      setSignaturesLoading(true);
+      const { data, error } = await supabase
+        .from('order_authorization_signatures')
+        .select('*')
+        .eq('order_id', order.id)
+        .order('signed_at', { ascending: false });
+
+      if (error) throw error;
+      setAuthorizationSignatures(data || []);
+    } catch (error) {
+      console.error('Error loading authorization signatures:', error);
+    } finally {
+      setSignaturesLoading(false);
+    }
+  };
 
   const checkExistingAuthorization = async () => {
     try {
@@ -587,6 +610,31 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             </Card>
           )}
 
+          {/* Firmas de Autorización */}
+          {authorizationSignatures.length > 0 && (
+            <Card>
+              <CardContent className="p-4">
+                <button 
+                  onClick={() => toggleSection('signatures')}
+                  className="flex items-center justify-between w-full text-left mb-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <PenTool className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Firmas de Autorización ({authorizationSignatures.length})</span>
+                  </div>
+                  {expandedSections.signatures ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                
+                {expandedSections.signatures && (
+                  <SignatureViewer 
+                    signatures={authorizationSignatures} 
+                    loading={signaturesLoading}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Encuesta de Satisfacción */}
           {surveyData && (
             <Card>
@@ -723,6 +771,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           onItemsAdded={() => {
             setShowAddItemsDialog(false);
             loadOrderItems();
+            loadAuthorizationSignatures(); // Recargar firmas en caso de cambios
             onUpdate();
           }}
         />
@@ -735,6 +784,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           onClose={() => setShowDeliverySignature(false)}
           onComplete={() => {
             setShowDeliverySignature(false);
+            loadAuthorizationSignatures(); // Recargar firmas después de firmar entrega
             // If client, redirect to orders list, otherwise just update
             if (isClient) {
               navigate('/orders');
