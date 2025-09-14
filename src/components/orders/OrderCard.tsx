@@ -150,7 +150,9 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
-    return order.estimated_cost || 0;
+    const defaultVatRate = 16;
+    const base = order.estimated_cost || 0;
+    return base * (1 + defaultVatRate / 100);
   };
   const formatDate = (dateString: string) => {
     try {
