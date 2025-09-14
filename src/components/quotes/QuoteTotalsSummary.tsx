@@ -42,8 +42,8 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
     return new Intl.NumberFormat('es-CO', {
       style: 'currency',
       currency: 'COP',
-      minimumFractionDigits: 2,
-    }).format(amount);
+      minimumFractionDigits: 0,
+    }).format(Math.round(amount));
   };
 
   // Load available cashback for the client

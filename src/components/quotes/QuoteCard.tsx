@@ -35,7 +35,7 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(Math.round(amount));
   };
 
   const formatDate = (dateString: string) => {

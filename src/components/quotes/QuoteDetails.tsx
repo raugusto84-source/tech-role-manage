@@ -243,7 +243,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       style: 'currency',
       currency: 'COP',
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(Math.round(amount));
   };
 
   const formatDate = (dateString: string) => {
