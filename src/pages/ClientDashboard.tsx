@@ -596,7 +596,10 @@ export default function ClientDashboard() {
 
         {/* Métricas rápidas */}
         <div className="grid grid-cols-2 gap-3">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+          <Card 
+            className="bg-gradient-to-br from-blue-50 to-blue-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleViewAll('orders')}
+          >
             <CardContent className="p-4 text-center">
               <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600" />
               <p className="text-xl font-bold text-blue-700">{metrics.pendingOrders}</p>
@@ -604,7 +607,10 @@ export default function ClientDashboard() {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-green-50 to-green-100">
+          <Card 
+            className="bg-gradient-to-br from-green-50 to-green-100 cursor-pointer hover:shadow-md transition-shadow"
+            onClick={() => handleViewAll('orders')}
+          >
             <CardContent className="p-4 text-center">
               <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-600" />
               <p className="text-xl font-bold text-green-700">{metrics.completedOrders}</p>
