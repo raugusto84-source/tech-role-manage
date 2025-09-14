@@ -1080,6 +1080,95 @@ export type Database = {
         }
         Relationships: []
       }
+      equipment_brands: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      equipment_models: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_models_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
@@ -2140,6 +2229,96 @@ export type Database = {
           },
           {
             foreignKeyName: "order_diagnostics_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "pending_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_equipment: {
+        Row: {
+          additional_notes: string | null
+          brand_id: string | null
+          brand_name: string | null
+          category_id: string | null
+          created_at: string
+          created_by: string | null
+          equipment_name: string
+          id: string
+          model_id: string | null
+          model_name: string | null
+          order_id: string
+          physical_condition: string | null
+          problem_description: string | null
+          serial_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          brand_id?: string | null
+          brand_name?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          equipment_name: string
+          id?: string
+          model_id?: string | null
+          model_name?: string | null
+          order_id: string
+          physical_condition?: string | null
+          problem_description?: string | null
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          brand_id?: string | null
+          brand_name?: string | null
+          category_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          equipment_name?: string
+          id?: string
+          model_id?: string | null
+          model_name?: string | null
+          order_id?: string
+          physical_condition?: string | null
+          problem_description?: string | null
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_equipment_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_equipment_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_equipment_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_equipment_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_equipment_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "pending_collections"

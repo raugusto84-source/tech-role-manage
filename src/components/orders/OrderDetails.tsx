@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool, Monitor } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderChat } from '@/components/orders/OrderChat';
@@ -20,6 +20,7 @@ import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { SignatureViewer } from './SignatureViewer';
+import { EquipmentList } from './EquipmentList';
 
 interface OrderDetailsProps {
   order: {
@@ -76,9 +77,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
   const [authorizationSignatures, setAuthorizationSignatures] = useState<any[]>([]);
   const [signaturesLoading, setSignaturesLoading] = useState(false);
+  const [orderEquipment, setOrderEquipment] = useState<any[]>([]);
+  const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
     details: false,
     services: true,
+    equipment: false,
     chat: false,
     warranties: false,
     signatures: false
@@ -86,6 +90,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   useEffect(() => {
     loadOrderItems();
+    loadOrderEquipment();
     loadAssignedTechnician();
     checkExistingAuthorization();
     checkSurveyStatus();
@@ -210,6 +215,30 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       setOrderItems(data || []);
     } catch (error) {
       console.error('Error loading order items:', error);
+    }
+  };
+
+  const loadOrderEquipment = async () => {
+    try {
+      setEquipmentLoading(true);
+      const { data, error } = await supabase
+        .from('order_equipment')
+        .select(`
+          *,
+          equipment_categories (
+            name,
+            icon
+          )
+        `)
+        .eq('order_id', order.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setOrderEquipment(data || []);
+    } catch (error) {
+      console.error('Error loading order equipment:', error);
+    } finally {
+      setEquipmentLoading(false);
     }
   };
 
@@ -488,6 +517,33 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               {order.cashback_applied && order.cashback_amount_used && (
                 <div className="mt-3 p-2 bg-success/10 border border-success/20 rounded text-xs text-success">
                   Descuento: -{formatCOPCeilToTen(order.cashback_amount_used)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Equipos */}
+          <Card>
+            <CardContent className="p-4">
+              <button 
+                onClick={() => toggleSection('equipment')}
+                className="flex items-center justify-between w-full text-left mb-3"
+              >
+                <div className="flex items-center gap-2">
+                  <Monitor className="h-5 w-5 text-primary" />
+                  <span className="font-medium">Equipos</span>
+                </div>
+                {expandedSections.equipment ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              
+              {expandedSections.equipment && (
+                <div className="mt-3">
+                  <EquipmentList
+                    orderId={order.id}
+                    equipment={orderEquipment}
+                    onUpdate={loadOrderEquipment}
+                    canEdit={canModifyOrder || ['en_proceso', 'pendiente', 'pendiente_aprobacion'].includes(orderStatus)}
+                  />
                 </div>
               )}
             </CardContent>

@@ -28,6 +28,7 @@ import { CashbackApplicationDialog } from './CashbackApplicationDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { EquipmentList } from './EquipmentList';
 
 interface ServiceType {
   id: string;
@@ -113,6 +114,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   });
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [supportTechnicians, setSupportTechnicians] = useState<SupportTechnicianEntry[]>([]);
+  const [orderEquipment, setOrderEquipment] = useState<any[]>([]);
 
   // Estados para el sistema de sugerencias de flotillas
   const [showFleetSuggestions, setShowFleetSuggestions] = useState(false);
@@ -127,6 +129,28 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   // Hook for pricing calculation with cashback adjustment
   const pricing = usePricingCalculation(orderItems, formData.client_id);
+
+  // Función para cargar equipos de la orden (para edición)
+  const loadOrderEquipment = async (orderId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('order_equipment')
+        .select(`
+          *,
+          equipment_categories (
+            name,
+            icon
+          )
+        `)
+        .eq('order_id', orderId)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setOrderEquipment(data || []);
+    } catch (error) {
+      console.error('Error loading order equipment:', error);
+    }
+  };
 
   // Función para actualizar automáticamente la fecha de entrega
   const updateDeliveryDate = async () => {
@@ -1519,6 +1543,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                 items={orderItems}
                 onItemsChange={setOrderItems}
               />
+
+              {/* Equipos - Opcional para contextualizar el trabajo */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Equipos a Trabajar (Opcional)</Label>
+                  <span className="text-sm text-muted-foreground">
+                    Registra los equipos para mejor documentación
+                  </span>
+                </div>
+                <EquipmentList
+                  orderId={''} // Se pasará el orderId real después de crear la orden
+                  equipment={orderEquipment}
+                  onUpdate={() => {}} // Placeholder - se actualizará después de crear la orden
+                  canEdit={true}
+                />
+              </div>
 
               {/* Técnico asignado automáticamente */}
               {formData.assigned_technician && (
