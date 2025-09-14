@@ -220,7 +220,7 @@ export function QuoteWizard({
     if (!selectedClient || !profile) return;
     try {
       setLoading(true);
-      const initialStatus = profile?.role === 'cliente' ? 'pendiente_aprobacion' : 'solicitud';
+      const initialStatus = 'pendiente_aprobacion';
       const quoteData = {
         client_name: selectedClient.name,
         client_email: selectedClient.email,
