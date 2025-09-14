@@ -83,7 +83,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
         .from('clients')
         .select('id')
         .eq('email', profile?.email)
-        .single();
+        .maybeSingle();
 
       let query = supabase
         .from('general_chats')
@@ -162,7 +162,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
             .from('clients')
             .select('id')
             .eq('email', profile.email)
-            .single();
+            .maybeSingle();
 
           // Only show messages for this client's conversation
           if (clientData?.id && newMsg.client_id !== clientData.id) {
@@ -239,12 +239,47 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
 
     setLoading(true);
     try {
-      // Get client_id for the current user
-      const { data: clientData } = await supabase
+      // Resolve client_id for current user (try user_id, then email). Create if missing.
+      let clientId: string | null = null;
+
+      const { data: byUser } = await supabase
         .from('clients')
         .select('id')
-        .eq('email', profile?.email)
-        .single();
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (byUser?.id) {
+        clientId = byUser.id;
+      } else {
+        const { data: byEmail } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('email', profile?.email || '')
+          .maybeSingle();
+        if (byEmail?.id) clientId = byEmail.id;
+      }
+
+      if (!clientId) {
+        // Create minimal client record to link the conversation
+        const { data: clientNumberData } = await supabase.rpc('generate_client_number');
+        const clientNumber = (clientNumberData as unknown as string) || `CLI-${Date.now()}`;
+
+        const { data: newClient, error: createErr } = await supabase
+          .from('clients')
+          .insert({
+            user_id: user.id,
+            name: profile?.full_name || 'Cliente',
+            email: profile?.email || '',
+            address: 'Sin dirección',
+            client_number: clientNumber,
+          })
+          .select('id')
+          .single();
+
+        if (!createErr && newClient?.id) {
+          clientId = newClient.id;
+        }
+      }
 
       const messageData: any = {
         sender_id: user.id,
@@ -253,9 +288,8 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
         attachment_url: attachmentUrl
       };
 
-      // Add client_id if we found the client record
-      if (clientData?.id) {
-        messageData.client_id = clientData.id;
+      if (clientId) {
+        messageData.client_id = clientId;
       }
 
       const { error } = await supabase
