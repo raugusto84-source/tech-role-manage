@@ -42,6 +42,15 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   const isOrderUpdate = order.status === 'pendiente_actualizacion';
   const isInitialApproval = order.status === 'pendiente_aprobacion';
 
+  // Formateo exacto sin redondear a múltiplos de 10 (para mostrar cashback exacto)
+  const formatCOPExact = (amount: number) =>
+    new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+
   // Debug logging del estado del componente
   console.log('=== SimpleOrderApproval DEBUG ===');
   console.log('Order:', order);
@@ -630,7 +639,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                     {rewardSettings?.general_cashback_percent > 0 && (
                       <div className="bg-green-50 p-2 rounded-lg mt-3">
                         <p className="text-xs text-green-800">
-                          🎉 <strong>Ganarás {formatCOPCeilToTen(total * (rewardSettings.general_cashback_percent / 100))} en cashback</strong> al completar este servicio.
+                          🎉 <strong>Ganarás {formatCOPExact(total * (rewardSettings.general_cashback_percent / 100))} en cashback</strong> al completar este servicio.
                         </p>
                       </div>
                     )}
