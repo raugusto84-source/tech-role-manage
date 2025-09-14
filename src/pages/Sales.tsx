@@ -530,9 +530,9 @@ export default function Sales() {
                     </Card>
 
                     {/* Seguridad Column */}
-                    <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                    <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
                       <CardHeader>
-                        <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                        <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
                           🛡️ SEGURIDAD
                            <Badge variant="secondary" className="ml-auto">
                              {displayedServices.filter(svc => {

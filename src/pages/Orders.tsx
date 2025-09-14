@@ -13,6 +13,7 @@ import { OrderForm } from '@/components/orders/OrderForm';
 import { OrderFormMinimal } from '@/components/orders/OrderFormMinimal';
 import { OrderCard } from '@/components/orders/OrderCard';
 import { OrderDetails } from '@/components/orders/OrderDetails';
+import { getServiceCategoryInfo } from '@/utils/serviceCategoryUtils';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { format, isSameDay, parseISO } from 'date-fns';
@@ -517,10 +518,13 @@ export default function Orders() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* Sistemas Column */}
             <div className="space-y-2">
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardHeader>
-                  <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                    💻 SISTEMAS
+              {(() => {
+                const sistemasInfo = getServiceCategoryInfo('sistemas');
+                return (
+                  <Card className={sistemasInfo.colors.fullCard}>
+                    <CardHeader>
+                      <CardTitle className={`${sistemasInfo.colors.titleText} flex items-center gap-2`}>
+                        {sistemasInfo.icon} {sistemasInfo.label}
                     <Badge variant="secondary" className="ml-auto">
                       {filteredOrders.filter(order => {
                         const serviceCategory = order.service_types?.service_category || "sistemas";
@@ -563,16 +567,21 @@ export default function Orders() {
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
             </div>
 
             {/* Seguridad Column */}
             <div className="space-y-2">
-              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                <CardHeader>
-                  <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                    🛡️ SEGURIDAD
+              {(() => {
+                const seguridadInfo = getServiceCategoryInfo('seguridad');
+                return (
+                  <Card className={seguridadInfo.colors.fullCard}>
+                    <CardHeader>
+                      <CardTitle className={`${seguridadInfo.colors.titleText} flex items-center gap-2`}>
+                        {seguridadInfo.icon} {seguridadInfo.label}
                     <Badge variant="secondary" className="ml-auto">
                       {filteredOrders.filter(order => {
                         const serviceCategory = order.service_types?.service_category || "sistemas";
@@ -615,8 +624,10 @@ export default function Orders() {
                       );
                     })}
                   </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
             </div>
           </div>
         )}
