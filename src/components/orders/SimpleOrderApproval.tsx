@@ -7,6 +7,7 @@ import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTria
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -525,16 +526,16 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                               <div className="space-y-1 mt-1">
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Anterior:</span>
-                                  <span className="text-red-600">${Number(modifications[0].previous_total).toFixed(2)}</span>
+                                  <span className="text-red-600">{formatCOPCeilToTen(Number(modifications[0].previous_total))}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Nuevo:</span>
-                                  <span className="text-green-600">${Number(modifications[0].new_total).toFixed(2)}</span>
+                                  <span className="text-green-600">{formatCOPCeilToTen(Number(modifications[0].new_total))}</span>
                                 </div>
                                 <div className="flex justify-between border-t pt-1">
                                   <span className="font-medium text-gray-700">Diferencia:</span>
                                   <span className={`font-semibold ${Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? 'text-red-600' : 'text-green-600'}`}>
-                                    {Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? '+' : ''}${(Number(modifications[0].new_total) - Number(modifications[0].previous_total)).toFixed(2)}
+                                    {Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? '+' : ''}{formatCOPCeilToTen(Number(modifications[0].new_total) - Number(modifications[0].previous_total))}
                                   </span>
                                 </div>
                               </div>
@@ -577,7 +578,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="font-bold text-foreground">
-                                ${calculateItemCorrectPrice(item).toFixed(2)}
+                                {formatCOPCeilToTen(calculateItemCorrectPrice(item))}
                               </p>
                             </div>
                           </div>
@@ -613,23 +614,23 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <span className="font-medium">${subtotal.toFixed(2)}</span>
+                      <span className="font-medium">{formatCOPCeilToTen(subtotal)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">IVA (16%):</span>
-                      <span className="font-medium">${vatTotal.toFixed(2)}</span>
+                      <span className="font-medium">{formatCOPCeilToTen(vatTotal)}</span>
                     </div>
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
-                        <span className="text-lg font-bold text-primary">${total.toFixed(2)}</span>
+                        <span className="text-lg font-bold text-primary">{formatCOPCeilToTen(total)}</span>
                       </div>
                     </div>
                     
                     {rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0 && (
                       <div className="bg-green-50 p-2 rounded-lg mt-3">
                         <p className="text-xs text-green-800">
-                          ✨ <strong>¡Cashback incluido!</strong> Los precios ya incluyen {rewardSettings.general_cashback_percent}% de cashback.
+                          🎉 <strong>Ganarás {formatCOPCeilToTen(Math.floor(total * (rewardSettings.general_cashback_percent / 100)))} en cashback</strong> al completar este servicio.
                         </p>
                       </div>
                     )}
