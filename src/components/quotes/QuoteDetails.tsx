@@ -836,7 +836,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <p className="text-sm text-green-800">
                           Cashback que ganarás: <span className="font-medium">
-                            +{formatCurrency(Math.floor(finalTotal * ((rewardSettings?.general_cashback_percent || 0) / 100)))}
+                            +{formatCurrency(finalTotal * ((rewardSettings?.general_cashback_percent || 0) / 100))}
                           </span>
                         </p>
                         <p className="text-xs text-green-700 mt-1">
