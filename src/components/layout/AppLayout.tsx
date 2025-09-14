@@ -24,6 +24,21 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const unreadCount = useGlobalUnreadCount();
 
+  // Handle chat open for clients to clear notifications
+  const handleChatToggle = (open: boolean) => {
+    setIsChatOpen(open);
+    
+    // When chat opens for clients, trigger a refresh of unread count
+    if (open && profile?.role === 'cliente') {
+      // The ClientOfficeChat component will handle marking messages as read
+      // We just need to ensure the global count refreshes after a short delay
+      setTimeout(() => {
+        // Force refresh of global unread count by triggering a re-render
+        window.dispatchEvent(new CustomEvent('chat-opened'));
+      }, 500);
+    }
+  };
+
   // Para clientes, usar layout minimalista sin sidebar
   if (profile?.role === 'cliente') {
     return (
@@ -33,7 +48,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         </main>
         
         {/* Chat Panel for clients */}
-        <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+        <Sheet open={isChatOpen} onOpenChange={handleChatToggle}>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -86,7 +101,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </main>
           
           {/* Chat Panel for all users */}
-          <Sheet open={isChatOpen} onOpenChange={setIsChatOpen}>
+          <Sheet open={isChatOpen} onOpenChange={handleChatToggle}>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

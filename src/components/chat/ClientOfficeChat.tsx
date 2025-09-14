@@ -50,6 +50,26 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     };
   }, [user, profile]);
 
+  // Mark messages as read when component becomes visible
+  useEffect(() => {
+    const markAsReadOnVisibility = () => {
+      if (document.visibilityState === 'visible' && messages.length > 0) {
+        markMessagesAsRead();
+      }
+    };
+
+    document.addEventListener('visibilitychange', markAsReadOnVisibility);
+    
+    // Also mark as read when component mounts with messages
+    if (messages.length > 0) {
+      markMessagesAsRead();
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', markAsReadOnVisibility);
+    };
+  }, [user, profile, messages]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);

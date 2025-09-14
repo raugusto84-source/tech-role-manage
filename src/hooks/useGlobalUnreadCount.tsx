@@ -83,8 +83,16 @@ export function useGlobalUnreadCount() {
       )
       .subscribe();
 
+    // Listen for chat opened event to refresh count
+    const handleChatOpened = () => {
+      loadUnreadCount();
+    };
+
+    window.addEventListener('chat-opened', handleChatOpened);
+
     return () => {
       supabase.removeChannel(channel);
+      window.removeEventListener('chat-opened', handleChatOpened);
     };
   }, [user]);
 
