@@ -316,9 +316,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return 0; // No mostrar nada mientras carga
     }
     
-    // Siempre priorizar la suma real de items si existen
     if (orderItems && orderItems.length > 0) {
-      return orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
+      return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
