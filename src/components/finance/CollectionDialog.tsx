@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ceilToTen } from "@/utils/currency";
 
 interface CollectionDialogProps {
   open: boolean;
@@ -215,11 +216,16 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
   // Set default amount when collection changes
   useEffect(() => {
     if (collection && open) {
-      // For fiscal accounts, set the subtotal; for non-fiscal, set the total with VAT
-      const defaultAmount = accountType === "fiscal" 
-        ? (collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost)
-        : (collection.remaining_balance || collection.total_with_vat || collection.estimated_cost);
-      setAmount(defaultAmount.toString());
+      // Para NO fiscal: usar el TOTAL con IVA y redondeado; Para fiscal: subtotal sin IVA
+      if (accountType === "fiscal") {
+        const defaultAmount = collection.subtotal_without_vat || collection.remaining_balance || collection.estimated_cost;
+        setAmount(String(defaultAmount || 0));
+      } else {
+        const baseTotal = Number(collection.total_with_vat || collection.estimated_cost || 0);
+        const baseRemaining = Number(collection.remaining_balance || 0);
+        const target = baseRemaining > 0 ? baseRemaining : baseTotal;
+        setAmount(String(ceilToTen(target)));
+      }
       setDescription(`Cobro orden ${collection.order_number} - ${collection.client_name}`);
     }
   }, [collection, open, accountType]);
@@ -271,7 +277,7 @@ export function CollectionDialog({ open, onOpenChange, collection, onSuccess }: 
                   </div>
                   <div className="mt-2 pt-2 border-t">
                     <span className="text-muted-foreground">Total a cobrar:</span>
-                    <div className="font-bold text-green-600 text-lg">${(collection?.total_with_vat || collection?.estimated_cost || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
+                    <div className="font-bold text-green-600 text-lg">${ceilToTen(Number(collection?.total_with_vat || collection?.estimated_cost || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN</div>
                   </div>
                 </div>
               )}
