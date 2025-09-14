@@ -401,43 +401,6 @@ export function SimpleDiagnosticFlow({
           </CardContent>
         </Card>
 
-        {/* Recommended Services */}
-        {recommendedServices.length > 0 && <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Package className="h-6 w-6 text-blue-500" />
-                <CardTitle>3. Servicios Recomendados</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recommendedServices.map(service => <Card key={service.id} className="border-l-4 border-l-blue-500">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium break-words mobile-text-wrap leading-tight">{service.name}</h4>
-                          {service.description && <p className="text-sm text-muted-foreground mt-1 break-words mobile-text-wrap leading-relaxed">
-                              {service.description}
-                            </p>}
-                          {service.category && <Badge variant="outline" className="mt-2 text-xs">
-                              {service.category}
-                            </Badge>}
-                        </div>
-                        <div className="text-right ml-4">
-                          <div className="font-bold text-lg">
-                            {formatCurrency(getDisplayPrice(service, rewardSettings))}
-                          </div>
-                          {service.vat_rate && <div className="text-xs text-muted-foreground">
-                              (incluye IVA {service.vat_rate}%)
-                            </div>}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>)}
-              </div>
-            </CardContent>
-          </Card>}
-
         {/* Action Buttons */}
         
       </div>;
