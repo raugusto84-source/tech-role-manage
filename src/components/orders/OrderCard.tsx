@@ -76,6 +76,8 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             vat_rate,
             item_type,
             profit_margin_rate,
+            pricing_locked,
+            original_subtotal,
             total_amount
           `)
           .eq('order_id', order.id);
@@ -95,6 +97,17 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
 
   // Calcula el precio correcto por item usando la misma lógica que en detalles/lista
   const calculateItemDisplayPrice = (item: any): number => {
+    // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
+    const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+    const isLocked = Boolean(item.pricing_locked);
+    const missingKeyData = (item.item_type === 'servicio')
+      ? (!item.unit_base_price || item.unit_base_price <= 0)
+      : (!item.unit_cost_price || item.unit_cost_price <= 0);
+
+    if (hasStoredTotal && (isLocked || missingKeyData)) {
+      return Number(item.total_amount);
+    }
+
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
@@ -113,7 +126,6 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       return afterSalesVat * (1 + cashbackPercent / 100);
     }
   };
-
   // Total de la tarjeta
   const calculateCorrectTotal = () => {
     if (!orderItems || orderItems.length === 0) {
