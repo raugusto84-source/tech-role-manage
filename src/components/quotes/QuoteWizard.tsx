@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus, CheckCircle } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
 interface Client {
   id: string;
@@ -539,43 +539,90 @@ export function QuoteWizard({
           </Card>}
 
         {/* Step 3: Items Selection */}
-        {currentStep === 'items' && <div className="space-y-3">
-            {/* Selected Items Display */}
+        {currentStep === 'items' && <div className="space-y-4">
+            {/* Quote Ready Status */}
+            {quoteItems.length > 0 && (
+              <Card className="border-2 border-green-200 bg-green-50/50">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-green-800 font-semibold text-sm">¡Tu cotización está lista!</span>
+                    </div>
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  
+                  <div className="bg-white rounded-lg p-3 border border-green-200 mb-3">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-700 mb-1">
+                        {formatCurrency(calculateTotal())}
+                      </div>
+                      <div className="text-xs text-green-600">
+                        {quoteItems.length} servicio{quoteItems.length !== 1 ? 's' : ''} incluido{quoteItems.length !== 1 ? 's' : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-green-700 text-center">
+                    Puedes enviar esta cotización ahora o agregar más servicios opcionales
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Selected Items Summary - Mobile Optimized */}
             {quoteItems.length > 0 && (
               <Card>
                 <CardContent className="p-3">
-                  <div className="text-sm font-medium mb-3">Servicios y productos seleccionados ({quoteItems.length})</div>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-muted-foreground">Servicios incluidos</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {quoteItems.length}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
                     {quoteItems.map(item => (
-                      <div key={item.id} className="flex justify-between items-center p-2 bg-secondary/20 rounded-lg">
-                        <div className="flex-1">
-                          <div className="text-xs font-medium">{item.name}</div>
-                          <div className="text-xs text-muted-foreground">Cant: {item.quantity} | {formatCurrency(item.total)}</div>
+                      <div key={item.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-100">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-green-800 truncate">{item.name}</div>
+                          <div className="text-xs text-green-600">
+                            {formatCurrency(item.total)}
+                          </div>
                         </div>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setQuoteItems(prev => prev.filter(i => i.id !== item.id))}
-                          className="h-6 w-6 p-0"
+                          className="h-6 w-6 p-0 text-green-600 hover:text-red-600 hover:bg-red-50"
                         >
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
                     ))}
                   </div>
-                  <div className="border-t pt-2 mt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">Total:</span>
-                      <span className="text-sm font-bold">{formatCurrency(calculateTotal())}</span>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Service Selection - Always Visible */}
-            <Card>
-              <CardContent className="p-3">
+            {/* Additional Services Section */}
+            <Card className="border-dashed border-2 border-muted">
+              <CardContent className="p-4">
+                <div className="text-center mb-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <Plus className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-base mb-1">
+                    {quoteItems.length > 0 ? '¿Necesitas algo más?' : 'Selecciona tus servicios'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {quoteItems.length > 0 
+                      ? 'Agrega servicios adicionales a tu cotización' 
+                      : 'Explora nuestro catálogo de productos y servicios'
+                    }
+                  </p>
+                </div>
+                
                 <CategoryServiceSelection 
                   selectedItems={quoteItems} 
                   onItemsChange={setQuoteItems}
@@ -585,6 +632,20 @@ export function QuoteWizard({
                 />
               </CardContent>
             </Card>
+
+            {/* Empty State */}
+            {quoteItems.length === 0 && (
+              <Card className="border-dashed border-2 border-muted">
+                <CardContent className="p-6 text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <h3 className="font-semibold text-lg mb-2">Crea tu cotización personalizada</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Selecciona los productos y servicios que necesitas desde nuestro catálogo
+                  </p>
+                  <div className="w-full h-px bg-muted my-4"></div>
+                </CardContent>
+              </Card>
+            )}
           </div>}
 
       </div>
