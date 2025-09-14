@@ -69,20 +69,19 @@ const isProduct = (service: ServiceType) => {
 const marginFromTiers = (service: ServiceType): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
 const getDisplayPrice = (service: ServiceType, rewardSettings?: any): number => {
   let basePrice = 0;
-  
   if (!isProduct(service)) {
     basePrice = service.base_price || 0;
   } else {
     const profitMargin = marginFromTiers(service);
     basePrice = (service.cost_price || 0) * (1 + profitMargin / 100);
   }
-  
+
   // Apply cashback if enabled in settings
   if (rewardSettings?.apply_cashback_to_items) {
     const cashbackPercent = rewardSettings.general_cashback_percent || 2;
     basePrice = basePrice * (1 + cashbackPercent / 100);
   }
-  
+
   // Add VAT
   return basePrice * (1 + (service.vat_rate || 0) / 100);
 };
@@ -109,7 +108,9 @@ export function SimpleDiagnosticFlow({
   const {
     toast
   } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  const {
+    settings: rewardSettings
+  } = useRewardSettings();
   const [categories, setCategories] = useState<Category[]>([]);
   const [flows, setFlows] = useState<DiagnosticFlow[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -274,7 +275,7 @@ export function SimpleDiagnosticFlow({
       setRecommendedServices(loadedServices);
     }
     setIsCompleted(true);
-    
+
     // Automatically call onDiagnosisComplete to add services to quote
     if (onDiagnosisComplete) {
       onDiagnosisComplete({
@@ -285,7 +286,6 @@ export function SimpleDiagnosticFlow({
         recommended_services: loadedServices
       });
     }
-    
     toast({
       title: 'Diagnóstico completado',
       description: `Solución encontrada: ${selectedSolution.title}`
@@ -434,9 +434,7 @@ export function SimpleDiagnosticFlow({
                         <div className="text-right ml-4">
                           <div className="font-bold text-lg">
                             {formatCurrency(getDisplayPrice(service, rewardSettings))}
-                            {service.unit && <span className="text-sm text-muted-foreground ml-1">
-                                /{service.unit}
-                              </span>}
+                            {service.unit}
                           </div>
                           {service.vat_rate && <div className="text-xs text-muted-foreground">
                               (incluye IVA {service.vat_rate}%)
