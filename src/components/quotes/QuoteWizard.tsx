@@ -42,7 +42,7 @@ interface QuoteWizardProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-type WizardStep = 'client' | 'diagnostic' | 'items';
+type WizardStep = 'approach' | 'client' | 'diagnostic' | 'items';
 export function QuoteWizard({
   onSuccess,
   onCancel
@@ -53,9 +53,10 @@ export function QuoteWizard({
   const {
     settings: rewardSettings
   } = useRewardSettings();
-  const [currentStep, setCurrentStep] = useState<WizardStep>('client');
+  const [currentStep, setCurrentStep] = useState<WizardStep>('approach');
   const [loading, setLoading] = useState(false);
   const [showServiceSelection, setShowServiceSelection] = useState(false);
+  const [selectedApproach, setSelectedApproach] = useState<'problem' | 'catalog' | null>(null);
 
   // Estado del formulario
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -95,7 +96,7 @@ export function QuoteWizard({
       } = await supabase.from('clients').select('*').eq('email', profile.email).maybeSingle();
       if (!error && data) {
         setSelectedClient(data as any);
-        setCurrentStep('diagnostic');
+        setCurrentStep('approach');
       }
     };
     pickClient();
@@ -131,6 +132,19 @@ export function QuoteWizard({
   // Navegar entre pasos
   const nextStep = async () => {
     switch (currentStep) {
+      case 'approach':
+        {
+          if (!selectedApproach) {
+            toast({
+              title: 'Error',
+              description: 'Por favor selecciona cómo quieres crear tu cotización',
+              variant: 'destructive'
+            });
+            return;
+          }
+          setCurrentStep('client');
+          break;
+        }
       case 'client':
         {
           if (!selectedClient) {
@@ -141,7 +155,12 @@ export function QuoteWizard({
             });
             return;
           }
-          setCurrentStep('diagnostic');
+          if (selectedApproach === 'problem') {
+            setCurrentStep('diagnostic');
+          } else {
+            setCurrentStep('items');
+            setShowServiceSelection(true);
+          }
           break;
         }
       case 'diagnostic':
@@ -160,11 +179,18 @@ export function QuoteWizard({
   };
   const prevStep = () => {
     switch (currentStep) {
+      case 'client':
+        setCurrentStep('approach');
+        break;
       case 'diagnostic':
         setCurrentStep('client');
         break;
       case 'items':
-        setCurrentStep('diagnostic');
+        if (selectedApproach === 'problem') {
+          setCurrentStep('diagnostic');
+        } else {
+          setCurrentStep('client');
+        }
         break;
     }
   };
@@ -279,11 +305,13 @@ export function QuoteWizard({
   };
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
   const stepTitles = {
+    approach: 'Tipo de Cotización',
     client: 'Cliente',
     diagnostic: 'Diagnóstico',
     items: 'Servicios'
   };
   const stepIcons = {
+    approach: CheckSquare,
     client: User,
     diagnostic: CheckSquare,
     items: Package
@@ -308,14 +336,83 @@ export function QuoteWizard({
         <div className="flex space-x-1">
           {Object.keys(stepTitles).map((step, index) => {
           const isActive = currentStep === step;
-          const isCompleted = step === 'client' && selectedClient || step === 'diagnostic' && !['client'].includes(currentStep) || step === 'items' && !['client', 'diagnostic'].includes(currentStep);
-          return <div key={step} className={`h-2 w-12 rounded-full ${isActive ? 'bg-primary' : isCompleted ? 'bg-green-500' : 'bg-muted'}`} />;
+          const isCompleted = step === 'approach' && selectedApproach || 
+                              step === 'client' && selectedClient || 
+                              step === 'diagnostic' && !['approach', 'client'].includes(currentStep) || 
+                              step === 'items' && !['approach', 'client', 'diagnostic'].includes(currentStep);
+          return <div key={step} className={`h-2 w-8 rounded-full ${isActive ? 'bg-primary' : isCompleted ? 'bg-green-500' : 'bg-muted'}`} />;
         })}
         </div>
       </div>
 
       {/* Step Content */}
       <div className="space-y-4">
+        {/* Step 0: Approach Selection */}
+        {currentStep === 'approach' && (
+          <Card>
+            <CardContent className="p-6 space-y-6">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-semibold mb-2">¿Cómo prefieres crear tu cotización?</h2>
+                <p className="text-sm text-muted-foreground">Selecciona la opción que mejor se adapte a tus necesidades</p>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Problem-based approach */}
+                <div 
+                  onClick={() => setSelectedApproach('problem')}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedApproach === 'problem' 
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-muted hover:border-muted-foreground/20 hover:bg-muted/20'
+                  }`}
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className={`p-3 rounded-lg ${selectedApproach === 'problem' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <CheckSquare className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-base mb-1">Tengo un problema específico</h3>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Te ayudaremos a diagnosticar tu problema y te recomendaremos la solución más adecuada
+                      </p>
+                      <div className="flex items-center text-xs text-primary font-medium">
+                        <Check className="h-3 w-3 mr-1" />
+                        Recomendado para problemas técnicos
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Catalog-based approach */}
+                <div 
+                  onClick={() => setSelectedApproach('catalog')}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedApproach === 'catalog' 
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-muted hover:border-muted-foreground/20 hover:bg-muted/20'
+                  }`}
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className={`p-3 rounded-lg ${selectedApproach === 'catalog' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <Package className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-base mb-1">Ver catálogo de servicios</h3>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        Explora todos nuestros productos y servicios disponibles para crear tu cotización personalizada
+                      </p>
+                      <div className="flex items-center text-xs text-primary font-medium">
+                        <Check className="h-3 w-3 mr-1" />
+                        Ideal para cotizaciones personalizadas
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Step 1: Client Selection */}
         {currentStep === 'client' && <Card>
             <CardContent className="p-4 space-y-3">
