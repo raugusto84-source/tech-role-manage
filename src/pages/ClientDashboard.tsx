@@ -21,7 +21,8 @@ import {
   ArrowRight,
   Zap,
   TrendingUp,
-  CalendarDays
+  CalendarDays,
+  LogOut
 } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
@@ -53,7 +54,7 @@ interface Quote {
 }
 
 export default function ClientDashboard() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const { toast } = useToast();
 
   // Estado
@@ -407,6 +408,11 @@ export default function ClientDashboard() {
     window.location.href = `/orders?id=${orderId}`;
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    window.location.href = '/auth';
+  };
+
   if (loading) {
     return (
       <AppLayout>
@@ -425,18 +431,31 @@ export default function ClientDashboard() {
       <div className="max-w-md mx-auto space-y-4">
         {/* Header con saludo */}
         <div className="text-center space-y-2 py-4">
-          <Avatar className="h-16 w-16 mx-auto">
-            <AvatarImage src="" />
-            <AvatarFallback className="text-xl bg-primary/10 text-primary">
-              {profile?.full_name?.charAt(0) || 'C'}
-            </AvatarFallback>
-          </Avatar>
-          <h1 className="text-xl font-bold">
-            ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            ¿Qué podemos hacer por ti hoy?
-          </p>
+          <div className="flex justify-between items-start">
+            <div className="flex-1" />
+            <div className="flex flex-col items-center">
+              <Avatar className="h-16 w-16 mx-auto">
+                <AvatarImage src="" />
+                <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                  {profile?.full_name?.charAt(0) || 'C'}
+                </AvatarFallback>
+              </Avatar>
+              <h1 className="text-xl font-bold mt-2">
+                ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                ¿Qué podemos hacer por ti hoy?
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {/* Alertas importantes */}
@@ -479,14 +498,6 @@ export default function ClientDashboard() {
                   </p>
                   <p className="text-xs text-blue-600">Esperando aprobación</p>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="border-blue-200 text-blue-600"
-                  onClick={() => pendingApprovalQuotes.length > 0 && handleApproveQuote(pendingApprovalQuotes[0].id)}
-                >
-                  Revisar
-                </Button>
               </div>
             </CardContent>
           </Card>
