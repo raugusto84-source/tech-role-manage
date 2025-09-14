@@ -370,19 +370,26 @@ export default function ClientDashboard() {
   };
 
   // Métricas calculadas
-  const metrics = useMemo(() => ({
-    pendingOrders: orders.filter(o => 
+  const metrics = useMemo(() => {
+    const pendingOrdersCount = orders.filter(o => 
       ['pendiente', 'en_proceso', 'en_camino'].includes(o.status)
-    ).length,
-    readyToSign: readyForSignatureOrders.length,
-    pendingApproval: pendingApprovalOrders.length,
-    pendingUpdates: pendingUpdateOrders.length,
-    completedOrders: orders.filter(o => o.status === 'finalizada').length,
-    activeQuotes: quotes.filter(q => 
-      ['solicitud', 'enviada'].includes(q.status)
-    ).length,
-    quotesToApprove: pendingApprovalQuotes.length, // Solo cotizaciones "enviadas" por ventas
-  }), [orders, quotes, pendingApprovalOrders, pendingUpdateOrders, readyForSignatureOrders, pendingApprovalQuotes]);
+    ).length;
+    
+    console.log('All orders:', orders.map(o => ({ id: o.id, status: o.status, order_number: o.order_number })));
+    console.log('Pending orders count:', pendingOrdersCount);
+    
+    return {
+      pendingOrders: pendingOrdersCount,
+      readyToSign: readyForSignatureOrders.length,
+      pendingApproval: pendingApprovalOrders.length,
+      pendingUpdates: pendingUpdateOrders.length,
+      completedOrders: orders.filter(o => o.status === 'finalizada').length,
+      activeQuotes: quotes.filter(q => 
+        ['solicitud', 'enviada'].includes(q.status)
+      ).length,
+      quotesToApprove: pendingApprovalQuotes.length, // Solo cotizaciones "enviadas" por ventas
+    };
+  }, [orders, quotes, pendingApprovalOrders, pendingUpdateOrders, readyForSignatureOrders, pendingApprovalQuotes]);
 
   // Funciones de navegación
   const handleNewRequest = () => {
