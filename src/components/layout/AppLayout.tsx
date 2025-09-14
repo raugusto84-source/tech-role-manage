@@ -41,7 +41,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
+                    className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
                   >
                     <div className="relative">
                       <MessageSquare className="h-5 w-5" />
@@ -94,7 +94,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     <Button
                       variant="outline"
                       size="icon"
-                      className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
+                      className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform"
                     >
                       <div className="relative">
                         <MessageSquare className="h-5 w-5" />
