@@ -173,9 +173,11 @@ export function ClientCashbackHistory({
                           year: 'numeric',
                           month: 'long',
                           day: 'numeric'
+                        })} a las {new Date(transaction.created_at).toLocaleTimeString('es-CO', {
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                               </p>
-                              {transaction.order_id}
                             </div>
                           </div>
                         </div>
