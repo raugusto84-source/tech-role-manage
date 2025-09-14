@@ -2,7 +2,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Trash2, Calendar, DollarSign, User } from 'lucide-react';
-
+import { formatCOPCeilToTen } from '@/utils/currency';
 interface Quote {
   id: string;
   quote_number: string;
@@ -30,13 +30,7 @@ interface QuoteCardProps {
  * Componente reutilizable para listas de cotizaciones
  */
 export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canManage }: QuoteCardProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(Math.round(amount));
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO', {

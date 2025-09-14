@@ -3,6 +3,7 @@ import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface QuoteItem {
   id: string;
@@ -43,13 +44,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const [cashbackLoading, setCashbackLoading] = useState(false);
   const { settings: rewardSettings } = useRewardSettings();
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(Math.round(amount));
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
   // Load available cashback for the client
   useEffect(() => {

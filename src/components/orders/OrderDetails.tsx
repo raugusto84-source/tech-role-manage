@@ -18,6 +18,7 @@ import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface OrderDetailsProps {
   order: {
@@ -364,10 +365,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 
                 <div className="text-right text-sm">
                   <div className="font-medium text-success">
-                    ${calculateTotalAmount().toLocaleString('es-CO', {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0
-                    })}
+                    {formatCOPCeilToTen(calculateTotalAmount())}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getEstimatedHours()}h est.
@@ -466,7 +464,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
               {/* Cashback aplicado */}
               {order.cashback_applied && order.cashback_amount_used && (
                 <div className="mt-3 p-2 bg-success/10 border border-success/20 rounded text-xs text-success">
-                  Descuento: -${order.cashback_amount_used.toLocaleString('es-CO')}
+                  Descuento: -{formatCOPCeilToTen(order.cashback_amount_used)}
                 </div>
               )}
             </CardContent>

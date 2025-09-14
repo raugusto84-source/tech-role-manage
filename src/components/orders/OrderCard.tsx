@@ -8,6 +8,7 @@ import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface OrderCardProps {
   order: {
@@ -230,7 +231,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-primary" />
-            <span className="font-medium">${calculateCorrectTotal().toLocaleString()}</span>
+            <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>
             {order.average_service_time && (
               <>
                 <Clock className="h-3 w-3 text-primary ml-1" />
