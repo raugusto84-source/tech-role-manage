@@ -627,7 +627,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       </div>
                     </div>
                     
-                    {rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0 && (
+                    {rewardSettings?.general_cashback_percent > 0 && (
                       <div className="bg-green-50 p-2 rounded-lg mt-3">
                         <p className="text-xs text-green-800">
                           🎉 <strong>Ganarás {formatCOPCeilToTen(Math.floor(total * (rewardSettings.general_cashback_percent / 100)))} en cashback</strong> al completar este servicio.
