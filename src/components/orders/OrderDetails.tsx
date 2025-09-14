@@ -299,8 +299,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         : 0;
 
       if (item.item_type === 'servicio') {
-        const basePrice = (item.unit_base_price || 0) * quantity;
-        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+        const basePrice = (item.unit_base_price || 0);
+        const basePriceTotal = basePrice * quantity;
+        const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
         const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
         return sum + finalWithCashback;
       } else {

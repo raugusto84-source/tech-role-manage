@@ -51,9 +51,10 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     if (!isProduct(item)) {
       // Para servicios: precio base + IVA + cashback
       const basePrice = (item.base_price || item.subtotal / quantity) || 0;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const basePriceTotal = basePrice * quantity;
+      const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      const vatAmount = (finalWithCashback - basePrice * (1 + cashbackPercent / 100));
+      const vatAmount = (finalWithCashback - basePriceTotal * (1 + cashbackPercent / 100));
       
       return {
         subtotal: finalWithCashback - vatAmount,
@@ -63,7 +64,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     } else {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
-      const baseCost = item.cost_price || 0;
+      const baseCost = (item.cost_price || 0) * quantity;
       const profitMargin = item.profit_margin_rate || 30;
       
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
@@ -88,10 +89,9 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
 
     // Calculate totals using correct pricing logic for each item
     orderItems.forEach(item => {
-      const quantity = item.quantity || 1;
       const itemPricing = calculateItemCorrectPrice(item);
-      totalCostPrice += itemPricing.subtotal * quantity;
-      totalVATAmount += itemPricing.vat_amount * quantity;
+      totalCostPrice += itemPricing.subtotal;
+      totalVATAmount += itemPricing.vat_amount;
     });
 
     // Check if client is new

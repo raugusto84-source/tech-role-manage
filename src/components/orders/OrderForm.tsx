@@ -476,7 +476,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  // Calcular precios usando exactamente la misma lógica que ProductServiceSeparator
+  // Calcular precios usando exactamente la misma lógica que usePricingCalculation
   const calculateExactDisplayPrice = (service: ServiceType, quantity: number = 1) => {
     const salesVatRate = service.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
@@ -485,17 +485,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
     if (service.item_type === 'servicio') {
       // Para servicios: precio base + IVA + cashback
-      const basePrice = (service.base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const basePrice = (service.base_price || 0);
+      const basePriceTotal = basePrice * quantity;
+      const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
       return {
-        subtotal: basePrice,
-        vatAmount: basePrice * salesVatRate / 100,
+        subtotal: basePriceTotal * (1 + cashbackPercent / 100),
+        vatAmount: finalWithCashback - basePriceTotal * (1 + cashbackPercent / 100),
         totalAmount: finalWithCashback
       };
     } else {
-      // Para artículos: utilizar SIEMPRE cost_price como costo base
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16;
       const baseCost = (service.cost_price || 0) * quantity;
       
@@ -509,8 +510,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
       return {
-        subtotal: afterSalesVat - (afterSalesVat * salesVatRate / 100), // Subtotal sin IVA final
-        vatAmount: afterSalesVat * salesVatRate / 100,
+        subtotal: afterMargin * (1 + cashbackPercent / 100),
+        vatAmount: finalWithCashback - afterMargin * (1 + cashbackPercent / 100),
         totalAmount: finalWithCashback
       };
     }
