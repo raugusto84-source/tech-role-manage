@@ -110,6 +110,11 @@ export default function Quotes() {
     profile?.role === 'administrador' || 
     profile?.role === 'supervisor';
 
+  // Verificar si puede gestionar (eliminar) cotizaciones - solo staff, no clientes
+  const canManageQuotes = profile?.role === 'vendedor' || 
+    profile?.role === 'administrador' || 
+    profile?.role === 'supervisor';
+
   useEffect(() => {
     loadQuotes();
 
@@ -378,7 +383,7 @@ export default function Quotes() {
                           getStatusColor={() => statusInfo.color}
                           onViewDetails={() => setSelectedQuote(quote)}
                           onDelete={() => setDeleteQuoteId(quote.id)}
-                          canManage={canCreateQuotes}
+                          canManage={canManageQuotes}
                         />
                       ))}
                     </div>
