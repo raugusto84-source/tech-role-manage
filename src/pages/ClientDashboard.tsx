@@ -477,7 +477,7 @@ export default function ClientDashboard() {
                   <p className="font-medium text-blue-800">
                     {metrics.quotesToApprove} cotización{metrics.quotesToApprove > 1 ? 'es' : ''} por aprobar
                   </p>
-                  <p className="text-xs text-blue-600">Revisá y confirmá tu cotización</p>
+                  <p className="text-xs text-blue-600">Esperando aprobación</p>
                 </div>
                 <Button 
                   size="sm" 
