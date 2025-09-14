@@ -555,7 +555,7 @@ export default function ClientDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Cashback</p>
-                  <p className="text-lg font-bold text-yellow-700">${rewards.totalCashback}</p>
+                  <p className="text-lg font-bold text-yellow-700">${rewards.totalCashback.toFixed(2)}</p>
                 </div>
               </div>
               <Button 
