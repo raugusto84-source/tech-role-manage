@@ -13,12 +13,12 @@ import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
  * Solo permite registro de clientes, otros usuarios los crea el admin
  */
 export default function Auth() {
-  const { signIn, signUp, user, profile, loading } = useAuth();
+  const { signIn, signUp, user, profile, loading, session } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Redirect if already authenticated
-  if (user && profile && !loading) {
+  if (session && profile && !loading) {
     // Redirect based on user role
     const roleDashboards = {
       'cliente': '/client',

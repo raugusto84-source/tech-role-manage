@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('useAuth: Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
@@ -237,14 +237,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    toast({
-      title: "Sesión cerrada",
-      description: "Has cerrado sesión exitosamente",
-    });
+    try {
+      // Sign out from all sessions to avoid lingering server sessions
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (e) {
+      console.warn('useAuth: signOut warning (continuing):', e);
+    } finally {
+      // Extra safety: clear any cached Supabase auth keys
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('sb-') || k.includes('supabase'))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {}
+
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+
+      toast({
+        title: "Sesión cerrada",
+        description: "Has cerrado sesión exitosamente",
+      });
+    }
   };
 
   return (
