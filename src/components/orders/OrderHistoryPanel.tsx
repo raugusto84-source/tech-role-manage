@@ -97,6 +97,22 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
     return new Date(lastRestoreEvent.created_at) > new Date(lastDeleteEvent.created_at);
   };
 
+  const isLatestDeleteEvent = (event: OrderHistoryEvent) => {
+    if (event.event_type !== 'deleted') return false;
+    
+    // Buscar todos los eventos de eliminación para esta orden
+    const deleteEvents = events.filter(e => 
+      e.order_id === event.order_id && e.event_type === 'deleted'
+    );
+    
+    // Verificar si este es el evento de eliminación más reciente
+    const latestDeleteEvent = deleteEvents.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    
+    return event.id === latestDeleteEvent.id;
+  };
+
   const getEventIcon = (eventType: string) => {
     switch (eventType) {
       case 'created':
@@ -267,6 +283,7 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
                           por {event.performed_by_name || 'Sistema'}
                         </p>
                         {event.event_type === 'deleted' && 
+                         isLatestDeleteEvent(event) &&
                          !isOrderRestored(event.order_id) && 
                          onRestoreOrder && (
                           <Button
