@@ -794,33 +794,6 @@ export default function ClientDashboard() {
           </CardContent>
         </Card>
 
-        {/* Enlaces rápidos */}
-        <div className="grid grid-cols-2 gap-3">
-          <Button 
-            variant="ghost" 
-            className="h-12 justify-between"
-            onClick={() => handleViewAll('orders')}
-          >
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4" />
-              <span>Mis Órdenes</span>
-            </div>
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            className="h-12 justify-between"
-            onClick={() => handleViewAll('quotes')}
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span>Cotizaciones</span>
-            </div>
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </div>
-
         {/* Pie de página con versión */}
         <div className="text-center py-4">
           <p className="text-xs text-muted-foreground">
