@@ -595,28 +595,62 @@ export default function ClientDashboard() {
         </div>
 
         {/* Métricas rápidas */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card 
-            className="bg-gradient-to-br from-blue-50 to-blue-100 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleViewAll('orders')}
-          >
-            <CardContent className="p-4 text-center">
-              <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600" />
-              <p className="text-xl font-bold text-blue-700">{metrics.pendingOrders}</p>
-              <p className="text-xs text-blue-600">En proceso</p>
-            </CardContent>
-          </Card>
-          
-          <Card 
-            className="bg-gradient-to-br from-green-50 to-green-100 cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleViewAll('orders')}
-          >
-            <CardContent className="p-4 text-center">
-              <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-600" />
-              <p className="text-xl font-bold text-green-700">{metrics.completedOrders}</p>
-              <p className="text-xs text-green-600">Completadas</p>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          {/* Órdenes */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Órdenes</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Card 
+                className="bg-gradient-to-br from-blue-50 to-blue-100 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => handleViewAll('orders')}
+              >
+                <CardContent className="p-4 text-center">
+                  <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600" />
+                  <p className="text-xl font-bold text-blue-700">{metrics.pendingOrders}</p>
+                  <p className="text-xs text-blue-600">En proceso</p>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className="bg-gradient-to-br from-green-50 to-green-100 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => handleViewAll('orders')}
+              >
+                <CardContent className="p-4 text-center">
+                  <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-600" />
+                  <p className="text-xl font-bold text-green-700">{metrics.completedOrders}</p>
+                  <p className="text-xs text-green-600">Completadas</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Cotizaciones */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Cotizaciones</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <Card 
+                className="bg-gradient-to-br from-orange-50 to-orange-100 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => handleViewAll('quotes')}
+              >
+                <CardContent className="p-4 text-center">
+                  <FileText className="h-6 w-6 mx-auto mb-1 text-orange-600" />
+                  <p className="text-xl font-bold text-orange-700">{metrics.activeQuotes}</p>
+                  <p className="text-xs text-orange-600">Activas</p>
+                </CardContent>
+              </Card>
+              
+              <Card 
+                className="bg-gradient-to-br from-purple-50 to-purple-100 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => handleViewAll('quotes')}
+              >
+                <CardContent className="p-4 text-center">
+                  <Star className="h-6 w-6 mx-auto mb-1 text-purple-600" />
+                  <p className="text-xl font-bold text-purple-700">{metrics.quotesToApprove}</p>
+                  <p className="text-xs text-purple-600">Por aprobar</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
         </div>
 
 
