@@ -85,33 +85,18 @@ export function AddOrderItemsDialog({
     }
   };
 
-  // Calcular precio correcto para un item
+  // Calcular precio correcto para un item - Simplificado para ser más predecible
   const calculateItemCorrectPrice = (item: NewItem): number => {
     const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-
-    if (item.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
-      const basePrice = (item.unit_base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
-    } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
-      const purchaseVatRate = 16;
-      const baseCost = (item.unit_cost_price || 0) * quantity;
-      const profitMargin = item.profit_margin_rate || 20;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
-      return finalWithCashback;
-    }
+    const unitPrice = item.unit_base_price || 0;
+    const vatRate = item.vat_rate || 16;
+    
+    // Cálculo simple: precio unitario * cantidad + IVA
+    const subtotal = unitPrice * quantity;
+    const vatAmount = (subtotal * vatRate) / 100;
+    const total = subtotal + vatAmount;
+    
+    return total;
   };
 
   const addNewItem = () => {
@@ -412,7 +397,7 @@ export function AddOrderItemsDialog({
                       </div>
 
                       <div>
-                        <Label>Precio Unitario</Label>
+                        <Label>Precio Final Unitario (c/IVA)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -425,7 +410,10 @@ export function AddOrderItemsDialog({
                         <div>
                           <Label>Total</Label>
                           <div className="font-medium text-lg">
-                            ${calculateItemCorrectPrice(item).toLocaleString()}
+                            ${calculateItemCorrectPrice(item).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Subtotal: ${(item.unit_base_price * item.quantity).toFixed(2)} + IVA: ${((item.unit_base_price * item.quantity * (item.vat_rate || 16)) / 100).toFixed(2)}
                           </div>
                         </div>
                         <Button
@@ -450,7 +438,7 @@ export function AddOrderItemsDialog({
                 <div className="flex justify-between items-center text-lg font-semibold">
                   <span>Incremento Total:</span>
                   <span className="text-green-600">
-                    +${calculateTotalChange().toLocaleString()}
+                    +${calculateTotalChange().toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                   </span>
                 </div>
               </CardContent>
