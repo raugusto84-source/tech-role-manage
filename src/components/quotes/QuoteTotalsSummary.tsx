@@ -106,35 +106,13 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
     
     selectedItems.forEach(item => {
       const quantity = item.quantity || 1;
-      const salesVatRate = item.vat_rate || 16;
       
-      // Determine if item is a product or service
-      const isProduct = item.is_custom || 
-        (item.service_types?.item_type === 'articulo') || 
-        (item.profit_margin_rate && item.profit_margin_rate > 0);
-
-      if (!isProduct) {
-        // Para servicios: usar unit_price como precio base
-        const basePrice = item.unit_price || 0;
-        const itemSubtotal = basePrice * quantity;
-        const itemVAT = (itemSubtotal * salesVatRate / 100);
-        
-        subtotalBeforeVat += itemSubtotal;
-        totalVAT += itemVAT;
-      } else {
-        // Para artículos: costo base + IVA compra + margen + IVA venta
-        const purchaseVatRate = 16;
-        const baseCost = item.service_types?.cost_price || item.cost_price || 0;
-        const profitMargin = item.profit_margin_rate || 30;
-        
-        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-        const itemSubtotal = afterMargin * quantity;
-        const itemVAT = (itemSubtotal * salesVatRate / 100);
-        
-        subtotalBeforeVat += itemSubtotal;
-        totalVAT += itemVAT;
-      }
+      // Los precios ya incluyen IVA, así que usamos directamente el unit_price
+      const itemTotal = (item.unit_price || 0) * quantity;
+      subtotalBeforeVat += itemTotal;
+      
+      // No agregamos IVA adicional ya que está incluido
+      totalVAT += 0;
     });
 
     return { subtotalBeforeVat, totalVAT };
