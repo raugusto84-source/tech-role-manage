@@ -105,6 +105,7 @@ export default function Orders() {
           service_types:service_type(name, description, service_category),
           clients:client_id(name, client_number, email, phone, address)
         `)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       // Filter by role
@@ -805,7 +806,7 @@ export default function Orders() {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar orden?</AlertDialogTitle>
             <AlertDialogDescription>
-              La orden será marcada como eliminada pero se podrá restaurar desde el historial de órdenes eliminadas.
+              La orden será marcada como eliminada y se podrá restaurar desde el historial de órdenes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
