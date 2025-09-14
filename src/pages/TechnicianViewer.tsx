@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Users, Clock, CheckCircle, Search, MessageSquare } from 'lucide-react';
-import { OrderChat } from '@/components/orders/OrderChat';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Eye, Users, Clock, CheckCircle, Search } from 'lucide-react';
+
+
 
 interface Order {
   id: string;
@@ -412,22 +412,6 @@ export default function TechnicianViewer() {
                             hour: '2-digit',
                             minute: '2-digit'
                           })}
-                        </TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <MessageSquare className="h-4 w-4 mr-1" />
-                                Chat
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Chat - Orden {order.order_number}</DialogTitle>
-                              </DialogHeader>
-                              <OrderChat orderId={order.id} disabled={true} />
-                            </DialogContent>
-                          </Dialog>
                         </TableCell>
                       </TableRow>
                     ))}

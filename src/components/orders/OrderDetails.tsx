@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, MessageSquare, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool, Monitor } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool, Monitor } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { OrderChat } from '@/components/orders/OrderChat';
+
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { SimpleOrderApproval } from './SimpleOrderApproval';
@@ -457,7 +457,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <MessageSquare className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                <Wrench className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
                   <div className="font-medium text-sm mb-1">
                     {order.service_types?.name || 'Servicio no especificado'}
@@ -549,30 +549,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             </CardContent>
           </Card>
 
-          {/* Chat */}
-          <Card>
-            <CardContent className="p-4">
-              <button 
-                onClick={() => toggleSection('chat')}
-                className="flex items-center justify-between w-full text-left mb-3"
-              >
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                  <span className="font-medium">Chat</span>
-                </div>
-                {expandedSections.chat ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-              
-              {expandedSections.chat && (
-                <div className="border border-border rounded-md">
-                  <OrderChat 
-                    orderId={order.id} 
-                    disabled={!['pendiente','en_proceso'].includes(orderStatus)}
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
 
           {/* Botón Terminar Todo - Hidden for clients */}
           {!isClient && ['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && orderItems.some(item => item.status !== 'finalizada') && (
