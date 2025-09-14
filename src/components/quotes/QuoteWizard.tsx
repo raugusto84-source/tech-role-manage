@@ -585,7 +585,7 @@ export function QuoteWizard({
                     {quoteItems.map(item => (
                       <div key={item.id} className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-100">
                         <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-green-800 truncate">{item.name}</div>
+                          <div className="text-xs font-medium text-green-800 break-words mobile-text-wrap">{item.name}</div>
                           <div className="text-xs text-green-600">
                             {formatCurrency(item.total)}
                           </div>

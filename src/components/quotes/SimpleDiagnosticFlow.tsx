@@ -359,15 +359,10 @@ export function SimpleDiagnosticFlow({
                 Seleccionar otra categoría
               </Button>
             </div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {flows.map(flow => <Button key={flow.id} variant="outline" className="h-auto p-6 justify-start hover:bg-primary hover:text-primary-foreground transition-colors" onClick={() => handleFlowSelect(flow)}>
-                  <div className="text-left flex-1 min-w-0 overflow-hidden">
-                    <div className="font-medium text-lg break-words leading-tight">{flow.problem_title}</div>
-                    {flow.description && <div className="text-sm opacity-80 mt-1 break-words overflow-hidden" style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical' as any,
-                        maxHeight: '2.5rem'
-                      }}>
+              {flows.map(flow => <Button key={flow.id} variant="outline" className="h-auto p-6 justify-start items-start hover:bg-primary hover:text-primary-foreground transition-colors text-left" onClick={() => handleFlowSelect(flow)}>
+                  <div className="text-left flex-1 min-w-0 overflow-visible">
+                    <div className="font-medium text-lg break-words leading-tight mobile-text-wrap">{flow.problem_title}</div>
+                    {flow.description && <div className="text-sm opacity-80 mt-1 break-words whitespace-normal leading-relaxed mobile-text-wrap">
                         {flow.description}
                       </div>}
                     <div className="flex gap-2 mt-3 flex-wrap">
