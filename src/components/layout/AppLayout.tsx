@@ -53,12 +53,6 @@ export function AppLayout({ children }: AppLayoutProps) {
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </Badge>
                       )}
-                      {/* Attention sign for clients */}
-                      {profile?.role === 'cliente' && (
-                        <div className="absolute -top-1 -left-1 h-4 w-4 bg-warning text-warning-foreground rounded-full flex items-center justify-center animate-pulse">
-                          <span className="text-xs font-bold">!</span>
-                        </div>
-                      )}
                     </div>
                   </Button>
                 </SheetTrigger>
@@ -112,10 +106,6 @@ export function AppLayout({ children }: AppLayoutProps) {
                             {unreadCount > 99 ? '99+' : unreadCount}
                           </Badge>
                         )}
-                         {/* Attention sign for staff */}
-                         <div className="absolute -top-1 -left-1 h-4 w-4 bg-info text-info-foreground rounded-full flex items-center justify-center animate-pulse">
-                           <span className="text-xs font-bold">!</span>
-                         </div>
                       </div>
                     </Button>
                   </SheetTrigger>
