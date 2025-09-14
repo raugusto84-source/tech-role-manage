@@ -127,6 +127,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const { subtotalBeforeVat, totalVAT } = calculateCorrectPricing();
 
   const totalFinal = subtotalBeforeVat + totalVAT;
+  const displayTotal = Math.ceil(totalFinal / 10) * 10; // Redondear como se muestra
   const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
   const finalTotal = totalFinal - cashbackAmount;
 
@@ -179,7 +180,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         <div className="border-t pt-2">
           <div className="space-y-2">
             <div className="text-sm text-green-600 font-medium">
-              🎉 Ganarás {formatCashback(totalFinal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
+              🎉 Ganarás {formatCashback(displayTotal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
             </div>
           </div>
         </div>
