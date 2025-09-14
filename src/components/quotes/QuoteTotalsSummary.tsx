@@ -3,6 +3,7 @@ import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface QuoteItem {
@@ -159,6 +160,36 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         </div>
       )}
       
+      {/* Cashback Usage Section */}
+      {availableCashback > 0 && (clientEmail || clientId) && (
+        <div className="border-t pt-2">
+          <div className="space-y-2">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="use-cashback"
+                checked={applyCashback}
+                onCheckedChange={handleCashbackToggle}
+                disabled={cashbackLoading}
+              />
+              <Label 
+                htmlFor="use-cashback" 
+                className="text-sm font-medium cursor-pointer"
+              >
+                Usar cashback disponible
+              </Label>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Disponible: {formatCurrency(availableCashback)}
+              {applyCashback && (
+                <span className="text-green-600 font-medium ml-2">
+                  → Aplicando: {formatCurrency(cashbackAmount)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Cashback Earning Section */}
       {(clientEmail || clientId) && rewardSettings?.general_cashback_percent && rewardSettings.general_cashback_percent > 0 && (
         <div className="border-t pt-2">
@@ -170,10 +201,17 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         </div>
       )}
       
+      {cashbackAmount > 0 && (
+        <div className="flex justify-between items-center text-orange-600">
+          <span>Descuento por cashback:</span>
+          <span>-{formatCurrency(cashbackAmount)}</span>
+        </div>
+      )}
+      
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total Final:</span>
-          <span>{formatCurrency(totalFinal)}</span>
+          <span>{formatCurrency(finalTotal)}</span>
         </div>
       </div>
     </div>
