@@ -24,6 +24,10 @@ interface QuoteItem {
   base_price?: number;
   profit_margin_rate?: number;
   item_type?: string;
+  service_types?: {
+    cost_price?: number;
+    item_type?: string;
+  };
 }
 
 interface QuoteTotalsSummaryProps {
@@ -37,6 +41,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const [availableCashback, setAvailableCashback] = useState(0);
   const [applyCashback, setApplyCashback] = useState(false);
   const [cashbackLoading, setCashbackLoading] = useState(false);
+  const { settings: rewardSettings } = useRewardSettings();
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -98,37 +103,48 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   // Calculate totals from selectedItems with proper VAT breakdown
   console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
   
-  const subtotalBeforeVat = selectedItems.reduce((sum, item) => {
-    const unitPrice = item.unit_price || 0;
-    const quantity = item.quantity || 1;
-    const vatRate = item.vat_rate || 0;
+  // Calculate totals using the same logic as orders
+  const calculateCorrectPricing = () => {
+    let subtotalBeforeVat = 0;
+    let totalVAT = 0;
     
-    // Extract base price from unit_price that includes VAT
-    let basePricePerUnit = unitPrice;
-    if (vatRate > 0) {
-      basePricePerUnit = unitPrice / (1 + vatRate / 100);
-    }
-    
-    const itemSubtotal = basePricePerUnit * quantity;
-    console.log(`Item ${item.name} - Unit price: ${unitPrice}, Base price: ${basePricePerUnit}, Subtotal: ${itemSubtotal}`);
-    return sum + itemSubtotal;
-  }, 0);
+    selectedItems.forEach(item => {
+      const quantity = item.quantity || 1;
+      const salesVatRate = item.vat_rate || 16;
+      
+      // Determine if item is a product or service
+      const isProduct = item.is_custom || 
+        (item.service_types?.item_type === 'articulo') || 
+        (item.profit_margin_rate && item.profit_margin_rate > 0);
 
-  const totalVAT = selectedItems.reduce((sum, item) => {
-    const unitPrice = item.unit_price || 0;
-    const quantity = item.quantity || 1;
-    const vatRate = item.vat_rate || 0;
-    
-    let vatPerUnit = 0;
-    if (vatRate > 0) {
-      const basePricePerUnit = unitPrice / (1 + vatRate / 100);
-      vatPerUnit = unitPrice - basePricePerUnit;
-    }
-    
-    const itemVat = vatPerUnit * quantity;
-    console.log(`Item ${item.name} - VAT per unit: ${vatPerUnit}, Item VAT: ${itemVat}`);
-    return sum + itemVat;
-  }, 0);
+      if (!isProduct) {
+        // Para servicios: usar unit_price como precio base
+        const basePrice = item.unit_price || 0;
+        const itemSubtotal = basePrice * quantity;
+        const itemVAT = (itemSubtotal * salesVatRate / 100);
+        
+        subtotalBeforeVat += itemSubtotal;
+        totalVAT += itemVAT;
+      } else {
+        // Para artículos: costo base + IVA compra + margen + IVA venta
+        const purchaseVatRate = 16;
+        const baseCost = item.service_types?.cost_price || item.cost_price || 0;
+        const profitMargin = item.profit_margin_rate || 30;
+        
+        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+        const itemSubtotal = afterMargin * quantity;
+        const itemVAT = (itemSubtotal * salesVatRate / 100);
+        
+        subtotalBeforeVat += itemSubtotal;
+        totalVAT += itemVAT;
+      }
+    });
+
+    return { subtotalBeforeVat, totalVAT };
+  };
+
+  const { subtotalBeforeVat, totalVAT } = calculateCorrectPricing();
 
   const totalFinal = subtotalBeforeVat + totalVAT;
   const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
