@@ -242,11 +242,11 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
         </div>
 
         {/* Tercera fila: Técnicos y descripción */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <div className="flex items-start gap-2 text-xs text-muted-foreground">
           {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
-            <div className="flex items-center flex-1 min-w-0">
+            <div className="flex items-center min-w-0 flex-shrink-0">
               <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
-              <span className="truncate">
+              <span className="truncate max-w-[120px]">
                 {order.technician_profile?.full_name}
                 {order.support_technicians && order.support_technicians.length > 0 && 
                   ` +${order.support_technicians.length}`
@@ -255,8 +255,8 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             </div>
           )}
           
-          <div className="flex-1 ml-2">
-            <p className="text-xs text-muted-foreground line-clamp-1 truncate">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <p className="text-xs text-muted-foreground truncate break-words">
               {order.failure_description}
             </p>
           </div>
