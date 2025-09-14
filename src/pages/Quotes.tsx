@@ -261,8 +261,14 @@ export default function Quotes() {
       <AppLayout>
         <QuoteWizard 
           onSuccess={() => {
-            setShowWizard(false);
-            loadQuotes();
+            if (profile?.role === 'cliente') {
+              // Para clientes, regresar al dashboard
+              window.location.href = getDashboardRoute();
+            } else {
+              // Para staff, solo cerrar wizard y recargar
+              setShowWizard(false);
+              loadQuotes();
+            }
           }}
           onCancel={() => setShowWizard(false)}
         />
