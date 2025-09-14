@@ -77,6 +77,27 @@ interface Order {
       full_name: string;
     } | null;
   }>;
+  order_items?: Array<{
+    id: string;
+    service_type_id: string;
+    service_name: string;
+    service_description?: string;
+    quantity: number;
+    unit_cost_price: number;
+    unit_base_price: number;
+    profit_margin_rate: number;
+    subtotal: number;
+    vat_rate: number;
+    vat_amount: number;
+    total_amount: number;
+    item_type: string;
+    status: string;
+    service_types?: {
+      name: string;
+      description?: string;
+      service_category?: string;
+    } | null;
+  }>;
 }
 
 export default function Orders() {
@@ -104,7 +125,11 @@ export default function Orders() {
         .select(`
           *,
           service_types:service_type(name, description, service_category),
-          clients:client_id(name, client_number, email, phone, address)
+          clients:client_id(name, client_number, email, phone, address),
+          order_items(
+            *,
+            service_types:service_type_id(name, description, service_category)
+          )
         `)
         .is('deleted_at', null)
         .order('created_at', { ascending: false });
@@ -519,8 +544,16 @@ export default function Orders() {
                     <CardHeader>
                       <CardTitle className={`${sistemasInfo.colors.titleText} flex items-center gap-2`}>
                         {sistemasInfo.icon} {sistemasInfo.label}
-                    <Badge variant="secondary" className="ml-auto">
+                     <Badge variant="secondary" className="ml-auto">
                       {filteredOrders.filter(order => {
+                        // Determinar categoría basándose en los items de la orden
+                        if (order.order_items && order.order_items.length > 0) {
+                          const hasSeguridad = order.order_items.some(item => 
+                            item.service_types?.service_category === "seguridad"
+                          );
+                          return !hasSeguridad; // Es sistemas si NO tiene items de seguridad
+                        }
+                        // Fallback al service_type principal de la orden
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "sistemas";
                       }).length}
@@ -529,8 +562,16 @@ export default function Orders() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {Object.entries(groupedOrders).map(([status, orders]) => {
+                     {Object.entries(groupedOrders).map(([status, orders]) => {
                       const sistemasOrders = orders.filter(order => {
+                        // Determinar categoría basándose en los items de la orden
+                        if (order.order_items && order.order_items.length > 0) {
+                          const hasSeguridad = order.order_items.some(item => 
+                            item.service_types?.service_category === "seguridad"
+                          );
+                          return !hasSeguridad; // Es sistemas si NO tiene items de seguridad
+                        }
+                        // Fallback al service_type principal de la orden
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "sistemas";
                       });
@@ -576,18 +617,32 @@ export default function Orders() {
                     <CardHeader>
                       <CardTitle className={`${seguridadInfo.colors.titleText} flex items-center gap-2`}>
                         {seguridadInfo.icon} {seguridadInfo.label}
-                    <Badge variant="secondary" className="ml-auto">
+                     <Badge variant="secondary" className="ml-auto">
                       {filteredOrders.filter(order => {
+                        // Determinar categoría basándose en los items de la orden
+                        if (order.order_items && order.order_items.length > 0) {
+                          return order.order_items.some(item => 
+                            item.service_types?.service_category === "seguridad"
+                          );
+                        }
+                        // Fallback al service_type principal de la orden
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "seguridad";
                       }).length}
-                    </Badge>
+                     </Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {Object.entries(groupedOrders).map(([status, orders]) => {
+                     {Object.entries(groupedOrders).map(([status, orders]) => {
                       const seguridadOrders = orders.filter(order => {
+                        // Determinar categoría basándose en los items de la orden
+                        if (order.order_items && order.order_items.length > 0) {
+                          return order.order_items.some(item => 
+                            item.service_types?.service_category === "seguridad"
+                          );
+                        }
+                        // Fallback al service_type principal de la orden
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "seguridad";
                       });
