@@ -138,20 +138,40 @@ export function OrderAssistanceRecords({ orderId, clientName }: OrderAssistanceR
       
       try {
         const response = await fetch(
-          `https://api.openstreetmap.org/reverse?format=json&lat=${currentLocation.lat}&lon=${currentLocation.lng}`
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentLocation.lat}&lon=${currentLocation.lng}&zoom=18&addressdetails=1`
         );
         const data = await response.json();
+        
         if (data.address) {
-          // Extraer solo nombre y número de calle
-          const streetNumber = data.address.house_number || '';
-          const streetName = data.address.road || data.address.street || '';
+          // Construir dirección detallada con énfasis en número de casa
+          const addressParts = [];
+          let houseNumber = '';
           
-          if (streetName) {
-            address = `${streetNumber} ${streetName}`.trim();
+          if (data.address.house_number) {
+            houseNumber = data.address.house_number;
+            addressParts.push(`Casa #${data.address.house_number}`);
+          }
+          
+          if (data.address.road) {
+            addressParts.push(data.address.road);
+          }
+          
+          if (data.address.neighbourhood) {
+            addressParts.push(data.address.neighbourhood);
+          } else if (data.address.suburb) {
+            addressParts.push(data.address.suburb);
+          }
+          
+          if (data.address.city || data.address.town || data.address.village) {
+            addressParts.push(data.address.city || data.address.town || data.address.village);
+          }
+          
+          if (addressParts.length > 0) {
+            address = addressParts.join(', ');
           } else if (data.display_name) {
-            // Fallback: tomar los primeros elementos de la dirección completa
+            // Fallback: usar dirección completa
             const parts = data.display_name.split(',');
-            address = parts.slice(0, 2).join(',').trim();
+            address = parts.slice(0, 3).join(', ').trim();
           }
         }
       } catch (e) {

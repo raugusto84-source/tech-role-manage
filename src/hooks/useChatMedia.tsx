@@ -90,7 +90,7 @@ export function useChatMedia() {
     }
   };
 
-  const getCurrentLocation = (): Promise<{ lat: number; lng: number; address?: string } | null> => {
+  const getCurrentLocation = (): Promise<{ lat: number; lng: number; address?: string; houseNumber?: string } | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
         toast({
@@ -114,23 +114,43 @@ export function useChatMedia() {
             const data = await response.json();
             
             let address = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            let houseNumber = '';
             
             if (data && data.display_name) {
-              // Extract street name and number if available
+              // Extract detailed address information
               const addressParts = [];
               if (data.address) {
-                if (data.address.house_number) addressParts.push(data.address.house_number);
+                // Prioritize house number
+                if (data.address.house_number) {
+                  houseNumber = data.address.house_number;
+                  addressParts.push(`#${data.address.house_number}`);
+                }
+                
+                // Add street information
                 if (data.address.road) addressParts.push(data.address.road);
-                if (data.address.neighbourhood) addressParts.push(data.address.neighbourhood);
+                
+                // Add neighborhood or locality
+                if (data.address.neighbourhood) {
+                  addressParts.push(data.address.neighbourhood);
+                } else if (data.address.suburb) {
+                  addressParts.push(data.address.suburb);
+                }
+                
+                // Add city information
                 if (data.address.city || data.address.town || data.address.village) {
                   addressParts.push(data.address.city || data.address.town || data.address.village);
+                }
+                
+                // Add state/region if available
+                if (data.address.state) {
+                  addressParts.push(data.address.state);
                 }
               }
               
               address = addressParts.length > 0 ? addressParts.join(', ') : data.display_name;
             }
             
-            resolve({ lat: latitude, lng: longitude, address });
+            resolve({ lat: latitude, lng: longitude, address, houseNumber });
           } catch (error) {
             console.error('Geocoding error:', error);
             // Fallback to coordinates

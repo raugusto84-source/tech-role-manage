@@ -362,7 +362,13 @@ export function FilteredChatPanel({
     
     const location = await getCurrentLocation();
     if (location) {
-      const locationMessage = `Ubicación compartida: ${location.address}`;
+      let locationMessage = `📍 Ubicación compartida: ${location.address}`;
+      
+      // Add house number emphasis if available
+      if (location.houseNumber) {
+        locationMessage = `📍 Ubicación compartida (Casa #${location.houseNumber}): ${location.address}`;
+      }
+      
       const locationUrl = `https://www.google.com/maps?q=${location.lat},${location.lng}`;
       await sendMessage('location', locationMessage, locationUrl);
     }
