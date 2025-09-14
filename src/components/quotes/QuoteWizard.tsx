@@ -527,12 +527,6 @@ export function QuoteWizard({
               });
               
               setQuoteItems(prev => [...prev, ...newItems]);
-              
-              // Show toast confirmation
-              toast({
-                title: "Servicios agregados",
-                description: `${newItems.length} servicio(s) recomendado(s) agregado(s) automáticamente`,
-              });
             }
           }} />
             </CardContent>

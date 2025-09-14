@@ -314,12 +314,6 @@ export function AddOrderItemsDialog({
 
       if (updateError) throw updateError;
 
-      toast({
-        title: "Servicios agregados",
-        description: `Se agregaron ${newItems.length} servicios/productos. La orden requiere nueva aprobación del cliente.`,
-        variant: "default"
-      });
-
       onItemsAdded();
       onOpenChange(false);
       setNewItems([]);
