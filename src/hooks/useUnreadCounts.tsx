@@ -30,11 +30,11 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pendiente_aprobacion');
 
-      // Count quotes with "solicitud" status (new quotes)
+      // Count quotes pending approval (new status flow)
       const { count: quotesCount } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'solicitud');
+        .eq('status', 'pendiente_aprobacion');
 
       // Count warranty claims that are pending resolution
       const { count: warrantiesCount } = await supabase
