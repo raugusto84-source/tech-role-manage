@@ -74,10 +74,27 @@ export function OrderHistoryPanel({ orderId, onRestoreOrder }: OrderHistoryPanel
   };
 
   const isOrderRestored = (orderIdToCheck: string) => {
-    return events.some(event => 
-      event.order_id === orderIdToCheck && 
-      event.event_type === 'restored'
+    // Buscar el último evento de eliminación y el último evento de restauración
+    const deleteEvents = events.filter(event => 
+      event.order_id === orderIdToCheck && event.event_type === 'deleted'
     );
+    const restoreEvents = events.filter(event => 
+      event.order_id === orderIdToCheck && event.event_type === 'restored'
+    );
+    
+    if (deleteEvents.length === 0) return false;
+    if (restoreEvents.length === 0) return false;
+    
+    // Obtener el evento más reciente de cada tipo
+    const lastDeleteEvent = deleteEvents.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    const lastRestoreEvent = restoreEvents.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
+    
+    // La orden está restaurada si el último evento de restauración es más reciente que el último de eliminación
+    return new Date(lastRestoreEvent.created_at) > new Date(lastDeleteEvent.created_at);
   };
 
   const getEventIcon = (eventType: string) => {
