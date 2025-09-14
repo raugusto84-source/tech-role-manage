@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool, Monitor } from 'lucide-react';
 import { format } from 'date-fns';
@@ -71,6 +72,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [surveyData, setSurveyData] = useState<any>(null);
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [hasAuthorization, setHasAuthorization] = useState(false);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
@@ -193,6 +195,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   const loadOrderItems = async () => {
     try {
+      setItemsLoading(true);
       const { data, error } = await supabase
         .from('order_items')
         .select(`
@@ -215,6 +218,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       setOrderItems(data || []);
     } catch (error) {
       console.error('Error loading order items:', error);
+    } finally {
+      setItemsLoading(false);
     }
   };
 
@@ -307,6 +312,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   };
 
   const calculateTotalAmount = () => {
+    if (itemsLoading) {
+      // Mientras carga, mostrar 0 para evitar mostrar estimated_cost incorrecto
+      return 0;
+    }
+    
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
@@ -410,7 +420,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 
                 <div className="text-right text-sm">
                   <div className="font-medium text-success">
-                    {formatCOPCeilToTen(calculateTotalAmount())}
+                    {itemsLoading ? (
+                      <Skeleton className="h-4 w-16 rounded" />
+                    ) : (
+                      formatCOPCeilToTen(calculateTotalAmount())
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getEstimatedHours()}h est.

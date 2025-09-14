@@ -126,8 +126,13 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       return afterSalesVat * (1 + cashbackPercent / 100);
     }
   };
-  // Total de la tarjeta
+  // Total de la tarjeta - solo usar estimated_cost si realmente no hay items en BD
   const calculateCorrectTotal = () => {
+    if (itemsLoading) {
+      // Mientras carga, mostrar 0 para evitar mostrar estimated_cost incorrecto
+      return 0;
+    }
+    
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
