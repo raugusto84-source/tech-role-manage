@@ -313,17 +313,16 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   const calculateTotalAmount = () => {
     if (itemsLoading) {
-      // Mientras carga, mostrar 0 para evitar mostrar estimated_cost incorrecto
-      return 0;
+      return 0; // No mostrar nada mientras carga
     }
     
-    if (!orderItems || orderItems.length === 0) {
-      return order.estimated_cost || 0;
+    // Siempre priorizar la suma real de items si existen
+    if (orderItems && orderItems.length > 0) {
+      return orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
     }
-
-    // Usar exactamente los importes calculados y guardados en BD
-    const total = orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
-    return total;
+    
+    // Solo usar estimated_cost como último recurso si no hay items
+    return order.estimated_cost || 0;
   };
   const getStatusColor = (status: string) => {
     switch (status) {

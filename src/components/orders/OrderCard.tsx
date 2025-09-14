@@ -126,18 +126,19 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       return afterSalesVat * (1 + cashbackPercent / 100);
     }
   };
-  // Total de la tarjeta - solo usar estimated_cost si realmente no hay items en BD
+  // Total de la tarjeta - priorizar items reales de BD
   const calculateCorrectTotal = () => {
     if (itemsLoading) {
-      // Mientras carga, mostrar 0 para evitar mostrar estimated_cost incorrecto
-      return 0;
+      return 0; // No mostrar nada mientras carga
     }
     
-    if (!orderItems || orderItems.length === 0) {
-      return order.estimated_cost || 0;
+    // Siempre priorizar la suma real de items si existen
+    if (orderItems && orderItems.length > 0) {
+      return orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
     }
-
-    return orderItems.reduce((sum, item) => sum + (Number(item.total_amount) || 0), 0);
+    
+    // Solo usar estimated_cost como último recurso si no hay items
+    return order.estimated_cost || 0;
   };
   const formatDate = (dateString: string) => {
     try {
