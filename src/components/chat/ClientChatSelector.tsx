@@ -37,37 +37,40 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
   const loadClientChats = async () => {
     setLoading(true);
     try {
-      // Get clients that have messages only
-      const { data: clientsWithMessages, error } = await supabase
+      // Get all messages with client_id (not null)
+      const { data: clientMessages, error: messagesError } = await supabase
         .from('general_chats')
-        .select(`
-          client_id,
-          message,
-          created_at,
-          sender_id,
-          clients!inner (
-            id,
-            name,
-            email
-          )
-        `)
+        .select('client_id, message, created_at, sender_id')
         .not('client_id', 'is', null)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (messagesError) throw messagesError;
 
-      if (!clientsWithMessages || clientsWithMessages.length === 0) {
+      if (!clientMessages || clientMessages.length === 0) {
         setClientChats([]);
         setLoading(false);
         return;
       }
 
+      // Get unique client IDs
+      const clientIds = [...new Set(clientMessages.map(msg => msg.client_id).filter(Boolean))];
+      
+      // Get client information
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('id, name, email')
+        .in('id', clientIds);
+
+      if (clientsError) throw clientsError;
+
       // Group messages by client and get latest message + unread count
       const clientChatsMap = new Map<string, ClientChat>();
 
-      for (const msg of clientsWithMessages) {
-        const client = msg.clients;
-        if (!client || !msg.client_id) continue;
+      for (const msg of clientMessages) {
+        if (!msg.client_id) continue;
+        
+        const client = clientsData?.find(c => c.id === msg.client_id);
+        if (!client) continue;
 
         if (!clientChatsMap.has(msg.client_id)) {
           // Count unread messages for this client
@@ -110,9 +113,19 @@ export function ClientChatSelector({ onClientSelect, selectedClientId }: ClientC
     const channel = supabase
       .channel('client-chat-updates')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'general_chats' }, 
-        () => {
-          loadClientChats(); // Reload when any chat message changes
+        { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
+        (payload) => {
+          console.log('New message received in ClientChatSelector:', payload);
+          // Reload chats when new message arrives
+          loadClientChats();
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'general_chats' }, 
+        (payload) => {
+          console.log('Message updated in ClientChatSelector:', payload);
+          // Reload chats when message is read
+          loadClientChats();
         }
       )
       .subscribe();

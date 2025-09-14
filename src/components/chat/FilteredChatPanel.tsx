@@ -73,9 +73,11 @@ export function FilteredChatPanel({
           if (selectedClientId) {
             // For client chat, only show messages with matching client_id
             shouldIncludeMessage = newMsg.client_id === selectedClientId;
+            console.log(`Client chat - selectedClientId: ${selectedClientId}, message client_id: ${newMsg.client_id}, include: ${shouldIncludeMessage}`);
           } else {
             // For office chat, only show messages with no client_id
             shouldIncludeMessage = !newMsg.client_id;
+            console.log(`Office chat - message client_id: ${newMsg.client_id}, include: ${shouldIncludeMessage}`);
           }
           
           if (!shouldIncludeMessage) return;
@@ -188,16 +190,8 @@ export function FilteredChatPanel({
 
       // Filter by client_id for truly independent chats
       if (selectedClientId) {
-        // Get actual client UUID from selectedClientId (which might be user_id)
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('id')
-          .eq('id', selectedClientId)
-          .single();
-
-        if (clientData) {
-          query = query.eq('client_id', clientData.id);
-        }
+        // Use selectedClientId directly as it's already the correct client UUID
+        query = query.eq('client_id', selectedClientId);
       } else {
         // Office chat - messages with no client_id (internal chat)
         query = query.is('client_id', null);
