@@ -104,17 +104,22 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
     let subtotalBeforeVat = 0;
     let totalVAT = 0;
     
+    console.log('Calculating pricing for selectedItems:', selectedItems);
+    
     selectedItems.forEach(item => {
       const quantity = item.quantity || 1;
       
       // Los precios ya incluyen IVA, así que usamos directamente el unit_price
       const itemTotal = (item.unit_price || 0) * quantity;
+      console.log(`Item: ${item.name}, unit_price: ${item.unit_price}, quantity: ${quantity}, itemTotal: ${itemTotal}`);
+      
       subtotalBeforeVat += itemTotal;
       
       // No agregamos IVA adicional ya que está incluido
       totalVAT += 0;
     });
 
+    console.log('Final subtotalBeforeVat:', subtotalBeforeVat, 'totalVAT:', totalVAT);
     return { subtotalBeforeVat, totalVAT };
   };
 
