@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { usePricingCalculation } from '@/hooks/usePricingCalculation';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -61,7 +61,7 @@ interface OrderCardProps {
 export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
-  const { settings: rewardSettings, loading: rewardLoading } = useRewardSettings();
+  const pricing = usePricingCalculation(orderItems, order.client_id);
 
   useEffect(() => {
     const loadOrderItems = async () => {
@@ -74,6 +74,8 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
             unit_cost_price,
             unit_base_price, 
             vat_rate,
+            vat_amount,
+            subtotal,
             item_type,
             profit_margin_rate,
             pricing_locked,
@@ -95,46 +97,15 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     loadOrderItems();
   }, [order.id]);
 
-  // Calcula el precio correcto por item usando la misma lógica que en detalles/lista
-  const calculateItemDisplayPrice = (item: any): number => {
-    // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
-    const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-    const isLocked = Boolean(item.pricing_locked);
-    const missingKeyData = (item.item_type === 'servicio')
-      ? (!item.unit_base_price || item.unit_base_price <= 0)
-      : (!item.unit_cost_price || item.unit_cost_price <= 0);
-
-    if (hasStoredTotal && (isLocked || missingKeyData)) {
-      return Number(item.total_amount);
-    }
-
-    const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
-
-    if (item.item_type === 'servicio') {
-      const basePrice = (item.unit_base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat * (1 + cashbackPercent / 100);
-    } else {
-      const purchaseVatRate = 16;
-      const baseCost = (item.unit_cost_price || 0) * quantity;
-      const profitMargin = item.profit_margin_rate || 20;
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      return afterSalesVat * (1 + cashbackPercent / 100);
-    }
-  };
-  // Total de la tarjeta - priorizar items reales de BD
+  // Total de la tarjeta usando el hook de pricing estandarizado
   const calculateCorrectTotal = () => {
     if (itemsLoading) {
       return 0; // No mostrar nada mientras carga
     }
     
-    // Siempre priorizar la suma real de items si existen
+    // Usar el hook de pricing si hay items cargados
     if (orderItems && orderItems.length > 0) {
-      return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+      return pricing.totalAmount;
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
@@ -248,7 +219,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
           
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-primary" />
-            {(itemsLoading || rewardLoading) ? (
+            {itemsLoading ? (
               <Skeleton className="h-3 w-14 rounded" />
             ) : (
               <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>
