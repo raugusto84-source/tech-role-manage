@@ -10,7 +10,7 @@ import { Plus, Package, Settings, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { ceilToTen } from '@/utils/currency';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,8 +64,12 @@ const isProduct = (service: Service) => {
   return hasTiers || service.item_type === 'articulo';
 };
 const marginFromTiers = (service: Service): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
-const formatCurrency = formatCOPCeilToTen;
-
+const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0
+}).format(ceilToTen(amount));
 // Normaliza la categoría seleccionada a los posibles valores del campo service_types.category
 const categoryFilterValues = (name: string): string[] => {
   const n = name.toLowerCase();
