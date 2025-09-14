@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Settings, Plus, Trash2, Calculator } from 'lucide-react';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface Tax {
   id: string;
@@ -151,13 +152,7 @@ export function TaxConfiguration({ item, onItemChange }: TaxConfigurationProps) 
     onItemChange(updatedItem);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
   const { totalIva, totalRetenciones } = calculateTotals(taxes);
 

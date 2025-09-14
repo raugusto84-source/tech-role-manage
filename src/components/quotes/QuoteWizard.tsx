@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus } from 'lucide-react';
+import { formatCOPCeilToTen } from '@/utils/currency';
 interface Client {
   id: string;
   name: string;
@@ -276,13 +277,7 @@ export function QuoteWizard({
       setLoading(false);
     }
   };
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
   const stepTitles = {
     client: 'Cliente',
     diagnostic: 'Diagnóstico',

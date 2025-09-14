@@ -85,12 +85,9 @@ const getDisplayPrice = (service: ServiceType, rewardSettings?: any): number => 
   // Add VAT
   return basePrice * (1 + (service.vat_rate || 0) / 100);
 };
-const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
-  style: 'currency',
-  currency: 'COP',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 0
-}).format(amount);
+import { formatCOPCeilToTen } from '@/utils/currency';
+
+const formatCurrency = (amount: number): string => formatCOPCeilToTen(amount);
 interface SimpleDiagnosticFlowProps {
   onDiagnosisComplete?: (result: {
     flow_id: string;

@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Package, ShoppingCart } from 'lucide-react';
 import { TaxConfiguration } from './TaxConfiguration';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -249,13 +250,7 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
     onItemsChange(updatedItems);
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
   const getTotalAmount = () => {
     return selectedItems.reduce((sum, item) => sum + item.total, 0);

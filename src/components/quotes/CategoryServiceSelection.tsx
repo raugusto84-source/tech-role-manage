@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Package, Search, Shield, Monitor, X } from 'lucide-react';
 import { QuoteTotalsSummary } from './QuoteTotalsSummary';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -293,13 +294,7 @@ export function CategoryServiceSelection({
     (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
   const servicesByCategory = categories.map(category => ({
     ...category,
