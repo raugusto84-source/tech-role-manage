@@ -46,13 +46,37 @@ export function OrderItemsList({
 }: OrderItemsListProps) {
   const { settings: rewardSettings } = useRewardSettings();
 
-  // Use quote-style calculation: treat unit_price as VAT-inclusive
+  // Calculate display price using same logic as usePricingCalculation
   const calculateItemDisplayPrice = (item: OrderItem): number => {
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
     const quantity = item.quantity || 1;
-    
-    // Use unit_price as VAT-inclusive price (like quotes do)
-    const unitPriceWithVat = item.unit_price || 0;
-    return unitPriceWithVat * quantity;
+
+    if (item.item_type === 'servicio') {
+      // Para servicios: precio base + IVA + cashback
+      const basePrice = item.unit_price;
+      const basePriceTotal = basePrice * quantity;
+      const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16;
+      const baseCost = (item.cost_price || 0) * quantity;
+      
+      const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
+        ? item.profit_margin_tiers[0].margin 
+        : 20;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return finalWithCashback;
+    }
   };
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -65,14 +89,51 @@ export function OrderItemsList({
         const baseTimePerUnit = item.estimated_hours / item.quantity;
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
         
-        // Use simplified VAT-inclusive pricing like quotes
-        const unitPriceWithVat = item.unit_price || 0;
-        const totalWithVat = unitPriceWithVat * newQuantity;
+        // Calcular precios usando la misma lógica de calculateItemDisplayPrice
+        const salesVatRate = item.vat_rate || 16;
+        const cashbackPercent = rewardSettings?.apply_cashback_to_items
+          ? (rewardSettings.general_cashback_percent || 0)
+          : 0;
+
+        let subtotal: number;
+        let vatAmount: number;
+        let total: number;
+
+        if (item.item_type === 'servicio') {
+          // Para servicios: precio base + IVA + cashback
+          const basePrice = item.unit_price;
+          const basePriceTotal = basePrice * newQuantity;
+          const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
+          const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+          
+          subtotal = basePriceTotal * (1 + cashbackPercent / 100);
+          vatAmount = finalWithCashback - subtotal;
+          total = finalWithCashback;
+        } else {
+          // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+          const purchaseVatRate = 16;
+          const baseCost = (item.cost_price || 0) * newQuantity;
+          
+          const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
+            ? item.profit_margin_tiers[0].margin 
+            : 20;
+          
+          const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+          const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+          const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+          const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+          
+          subtotal = afterMargin * (1 + cashbackPercent / 100);
+          vatAmount = finalWithCashback - subtotal;
+          total = finalWithCashback;
+        }
 
         return {
           ...item,
           quantity: newQuantity,
-          total_amount: totalWithVat,
+          subtotal,
+          vat_amount: vatAmount,
+          total_amount: total,
           estimated_hours: totalEstimatedHours
         };
       }

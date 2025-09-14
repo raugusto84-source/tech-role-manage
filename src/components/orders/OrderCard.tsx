@@ -89,33 +89,15 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     loadOrderItems();
   }, [order.id]);
 
-  // Use quote-style calculation: treat unit_price as VAT-inclusive 
+  // Usar directamente el total_amount de los items que ya incluye IVA
   const calculateCorrectTotal = () => {
     if (!orderItems || orderItems.length === 0) {
       return order.estimated_cost || 0;
     }
 
-    const total = orderItems.reduce((sum, item) => {
-      const quantity = item.quantity || 1;
-      const vatRate = item.vat_rate || 16;
-      
-      // Use unit_base_price as the VAT-inclusive price (like quotes do)
-      const unitPriceWithVat = item.unit_base_price || 0;
-      const totalWithVat = unitPriceWithVat * quantity;
-      
-      console.log(`OrderCard calculation for ${order.order_number}:`, {
-        item_type: item.item_type,
-        quantity,
-        unit_base_price: item.unit_base_price,
-        total_amount: item.total_amount,
-        calculated_total: totalWithVat
-      });
-      
-      return sum + totalWithVat;
+    return orderItems.reduce((sum, item) => {
+      return sum + (item.total_amount || 0);
     }, 0);
-    
-    console.log(`OrderCard final total for ${order.order_number}:`, total);
-    return total;
   };
   const formatDate = (dateString: string) => {
     try {
