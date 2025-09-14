@@ -139,7 +139,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
       const hasLockedItems = orderItems.some(item => item.pricing_locked);
       
       if (hasLockedItems) {
-        // Para órdenes de cotización: usar total_amount directamente (ya incluye IVA)
+        // Para órdenes de cotización: el total_amount YA incluye IVA desde la cotización
         return orderItems.reduce((sum, item) => {
           return sum + (Number(item.total_amount) || 0);
         }, 0);
