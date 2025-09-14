@@ -47,12 +47,6 @@ export function NewRequestDialog({ open, onOpenChange }: NewRequestDialogProps) 
 
         <div className="grid gap-3">
           <ActionCard
-            title="Orden de servicio"
-            description="Reporta una falla o solicita un servicio técnico"
-            icon={ClipboardList}
-            to="/orders?new=1"
-          />
-          <ActionCard
             title="Cotización"
             description="Solicita una cotización rápida de servicios"
             icon={FileText}

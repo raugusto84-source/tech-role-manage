@@ -501,15 +501,20 @@ export default function Orders() {
 
         {/* Mobile-first Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full mb-4 ${profile?.role === 'administrador' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <TabsList className={`grid w-full mb-4 ${
+            profile?.role === 'administrador' ? 'grid-cols-3' : 
+            profile?.role === 'cliente' ? 'grid-cols-1' : 'grid-cols-2'
+          }`}>
             <TabsTrigger value="list" className="text-xs sm:text-sm">
               <ClipboardList className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Lista
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="text-xs sm:text-sm">
-              <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              Calendario
-            </TabsTrigger>
+            {profile?.role !== 'cliente' && (
+              <TabsTrigger value="calendar" className="text-xs sm:text-sm">
+                <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                Calendario
+              </TabsTrigger>
+            )}
             {profile?.role === 'administrador' && (
               <TabsTrigger value="history" className="text-xs sm:text-sm">
                 <History className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
@@ -684,113 +689,115 @@ export default function Orders() {
             )}
           </TabsContent>
 
-          <TabsContent value="calendar" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              {/* Calendario Sistemas */}
-              <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                <CardHeader>
-                  <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5" />
-                    💻 Calendario Sistemas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDateSistemas}
-                    onSelect={setSelectedDateSistemas}
-                    locale={es}
-                    className="rounded-md border pointer-events-auto"
-                    modifiers={{
-                      hasOrders: getDatesWithOrders("sistemas")
-                    }}
-                    modifiersStyles={{
-                      hasOrders: {
-                        backgroundColor: "hsl(217, 91%, 85%)",
-                        color: "hsl(217, 91%, 30%)",
-                        fontWeight: "bold"
-                      }
-                    }}
-                  />
-                  
-                  {selectedDateSistemas && (
-                    <div className="mt-4">
-                      <h4 className="font-semibold text-sm mb-2">
-                        Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
-                      </h4>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                         {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
-                           <OrderCard
-                             key={order.id}
-                             order={order}
-                             onClick={() => setSelectedOrder(order)}
-                             onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                             canDelete={canDeleteOrder}
-                             getStatusColor={getStatusColor}
-                           />
-                         ))}
-                        {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
-                          <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
-                        )}
+          {profile?.role !== 'cliente' && (
+            <TabsContent value="calendar" className="space-y-6">
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Calendario Sistemas */}
+                <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <CardHeader>
+                    <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                      <CalendarIcon className="h-5 w-5" />
+                      💻 Calendario Sistemas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Calendar
+                      mode="single"
+                      selected={selectedDateSistemas}
+                      onSelect={setSelectedDateSistemas}
+                      locale={es}
+                      className="rounded-md border pointer-events-auto"
+                      modifiers={{
+                        hasOrders: getDatesWithOrders("sistemas")
+                      }}
+                      modifiersStyles={{
+                        hasOrders: {
+                          backgroundColor: "hsl(217, 91%, 85%)",
+                          color: "hsl(217, 91%, 30%)",
+                          fontWeight: "bold"
+                        }
+                      }}
+                    />
+                    
+                    {selectedDateSistemas && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-sm mb-2">
+                          Órdenes para {format(selectedDateSistemas, "dd/MM/yyyy", { locale: es })}
+                        </h4>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                           {getOrdersForDate(selectedDateSistemas, "sistemas").map((order) => (
+                             <OrderCard
+                               key={order.id}
+                               order={order}
+                               onClick={() => setSelectedOrder(order)}
+                               onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                               canDelete={canDeleteOrder}
+                               getStatusColor={getStatusColor}
+                             />
+                           ))}
+                          {getOrdersForDate(selectedDateSistemas, "sistemas").length === 0 && (
+                            <p className="text-xs text-muted-foreground">No hay órdenes de sistemas para este día</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                    )}
+                  </CardContent>
+                </Card>
 
-              {/* Calendario Seguridad */}
-              <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                <CardHeader>
-                  <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                    <CalendarIcon className="h-5 w-5" />
-                    🛡️ Calendario Seguridad
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Calendar
-                    mode="single"
-                    selected={selectedDateSeguridad}
-                    onSelect={setSelectedDateSeguridad}
-                    locale={es}
-                    className="rounded-md border pointer-events-auto"
-                    modifiers={{
-                      hasOrders: getDatesWithOrders("seguridad")
-                    }}
-                    modifiersStyles={{
-                      hasOrders: {
-                        backgroundColor: "hsl(142, 76%, 85%)",
-                        color: "hsl(142, 76%, 30%)",
-                        fontWeight: "bold"
-                      }
-                    }}
-                  />
-                  
-                  {selectedDateSeguridad && (
-                    <div className="mt-4">
-                      <h4 className="font-semibold text-sm mb-2">
-                        Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
-                      </h4>
-                      <div className="space-y-2 max-h-64 overflow-y-auto">
-                         {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
-                           <OrderCard
-                             key={order.id}
-                             order={order}
-                             onClick={() => setSelectedOrder(order)}
-                             onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                             canDelete={canDeleteOrder}
-                             getStatusColor={getStatusColor}
-                           />
-                         ))}
-                        {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
-                          <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
-                        )}
+                {/* Calendario Seguridad */}
+                <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+                  <CardHeader>
+                    <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                      <CalendarIcon className="h-5 w-5" />
+                      🛡️ Calendario Seguridad
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Calendar
+                      mode="single"
+                      selected={selectedDateSeguridad}
+                      onSelect={setSelectedDateSeguridad}
+                      locale={es}
+                      className="rounded-md border pointer-events-auto"
+                      modifiers={{
+                        hasOrders: getDatesWithOrders("seguridad")
+                      }}
+                      modifiersStyles={{
+                        hasOrders: {
+                          backgroundColor: "hsl(142, 76%, 85%)",
+                          color: "hsl(142, 76%, 30%)",
+                          fontWeight: "bold"
+                        }
+                      }}
+                    />
+                    
+                    {selectedDateSeguridad && (
+                      <div className="mt-4">
+                        <h4 className="font-semibold text-sm mb-2">
+                          Órdenes para {format(selectedDateSeguridad, "dd/MM/yyyy", { locale: es })}
+                        </h4>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                           {getOrdersForDate(selectedDateSeguridad, "seguridad").map((order) => (
+                             <OrderCard
+                               key={order.id}
+                               order={order}
+                               onClick={() => setSelectedOrder(order)}
+                               onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                               canDelete={canDeleteOrder}
+                               getStatusColor={getStatusColor}
+                             />
+                           ))}
+                          {getOrdersForDate(selectedDateSeguridad, "seguridad").length === 0 && (
+                            <p className="text-xs text-muted-foreground">No hay órdenes de seguridad para este día</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          )}
 
           {profile?.role === 'administrador' && (
             <TabsContent value="history" className="space-y-6">
