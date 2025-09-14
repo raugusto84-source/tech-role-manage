@@ -430,32 +430,30 @@ export default function ClientDashboard() {
     <AppLayout>
       <div className="max-w-md mx-auto space-y-4">
         {/* Header con saludo */}
-        <div className="text-center space-y-2 py-4">
-          <div className="flex justify-between items-start">
-            <div className="flex-1" />
-            <div className="flex flex-col items-center">
-              <Avatar className="h-16 w-16 mx-auto">
-                <AvatarImage src="" />
-                <AvatarFallback className="text-xl bg-primary/10 text-primary">
-                  {profile?.full_name?.charAt(0) || 'C'}
-                </AvatarFallback>
-              </Avatar>
-              <h1 className="text-xl font-bold mt-2">
-                ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                ¿Qué podemos hacer por ti hoy?
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+        <div className="relative py-4">
+          <div className="text-center space-y-2">
+            <Avatar className="h-16 w-16 mx-auto">
+              <AvatarImage src="" />
+              <AvatarFallback className="text-xl bg-primary/10 text-primary">
+                {profile?.full_name?.charAt(0) || 'C'}
+              </AvatarFallback>
+            </Avatar>
+            <h1 className="text-xl font-bold">
+              ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              ¿Qué podemos hacer por ti hoy?
+            </p>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="absolute top-4 right-0 text-muted-foreground hover:text-destructive flex items-center gap-1"
+          >
+            <LogOut className="h-4 w-4" />
+            <span className="text-xs">Salir</span>
+          </Button>
         </div>
 
         {/* Alertas importantes */}
