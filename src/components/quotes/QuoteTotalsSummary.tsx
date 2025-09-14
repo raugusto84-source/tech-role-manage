@@ -175,6 +175,9 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
             <div className="text-sm text-green-600 font-medium">
               🎉 Ganarás {formatCurrency(totalFinal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
             </div>
+            <div className="text-xs text-muted-foreground">
+              {rewardSettings.general_cashback_percent}% sobre el total de {formatCurrency(totalFinal)}
+            </div>
           </div>
         </div>
       )}
