@@ -159,11 +159,6 @@ export function ClientDiagnosticFlow({ onDiagnosisComplete }: ClientDiagnosticFl
         recommended_solution: solution
       });
     }
-
-    toast({
-      title: 'Diagnóstico completado',
-      description: 'Hemos identificado una posible solución para tu problema.',
-    });
   };
 
   const handleRestart = () => {

@@ -283,10 +283,6 @@ export function SimpleDiagnosticFlow({
         recommended_services: loadedServices
       });
     }
-    toast({
-      title: 'Diagnóstico completado',
-      description: `Solución encontrada: ${selectedSolution.title}`
-    });
   };
   const handleConfirmSolution = () => {
     if (!selectedFlow || !selectedSolution) return;
