@@ -100,6 +100,7 @@ export function PaymentCollectionDialog({
       const { data: incomeInsert, error: incomeError } = await supabase
         .from('incomes')
         .insert({
+          income_number: incomeNumber,
           income_date: new Date().toISOString().split('T')[0],
           amount: paymentAmount,
           account_type: accountType,
@@ -110,7 +111,7 @@ export function PaymentCollectionDialog({
           vat_rate: vatRate,
           vat_amount: vatAmount,
           taxable_amount: taxableAmount
-        } as any)
+        })
         .select('id')
         .maybeSingle();
 
@@ -163,7 +164,6 @@ export function PaymentCollectionDialog({
         window.location.reload();
       }, 1000);
 
-    }
     } catch (error) {
       console.error('Complete error registering payment:', error);
       toast({
