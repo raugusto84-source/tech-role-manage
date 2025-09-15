@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
+import { useSalesPricingCalculation } from "@/hooks/useSalesPricingCalculation";
 import { CollectionDialog, DeleteCollectionDialog } from "@/components/finance/CollectionDialog";
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
@@ -49,6 +50,7 @@ export default function Finance() {
     profile
   } = useAuth();
   const isAdmin = profile?.role === 'administrador';
+  const { getDisplayPrice } = useSalesPricingCalculation();
 
   // SEO básico
   useEffect(() => {
@@ -165,14 +167,90 @@ export default function Finance() {
   const collectionsQuery = useQuery({
     queryKey: ["pending_collections"],
     queryFn: async () => {
-      // Get order collections
+      // Get orders with items that are completed but have pending payments
       const {
-        data: orderCollections,
-        error: orderError
-      } = await supabase.from("pending_collections").select("id,order_number,client_name,client_email,estimated_cost,delivery_date,total_paid,remaining_balance,total_vat_amount,subtotal_without_vat,total_with_vat").gt("remaining_balance", 0).order("delivery_date", {
-        ascending: true
-      });
-      if (orderError) throw orderError;
+        data: orders,
+        error: ordersError
+      } = await supabase
+        .from("orders")
+        .select(`
+          id,
+          order_number,
+          estimated_cost,
+          delivery_date,
+          created_at,
+          updated_at,
+          clients:client_id(name, email),
+          order_items(*)
+        `)
+        .eq('status', 'finalizada')
+        .order("delivery_date", { ascending: true });
+
+      if (ordersError) throw ordersError;
+
+      // Calculate total paid and remaining balance for each order
+      const orderCollections = await Promise.all(
+        (orders || []).map(async (order) => {
+          // Get total paid for this order
+          const { data: payments } = await supabase
+            .from('incomes')
+            .select('amount')
+            .ilike('description', `%${order.order_number}%`)
+            .eq('status', 'recibido');
+
+          const totalPaid = (payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
+          
+          // Calculate correct total using order items
+          const orderItems = order.order_items || [];
+          let calculatedTotal = 0;
+          
+          if (orderItems.length > 0) {
+            // Calculate total using the same pricing logic as orders
+            calculatedTotal = orderItems.reduce((sum, item) => {
+              // Convert order item to service format for pricing calculation
+              const serviceForPricing = {
+                id: item.service_type_id,
+                name: item.service_name || 'Servicio',
+                base_price: item.unit_base_price,
+                cost_price: item.unit_cost_price,
+                profit_margin_rate: item.profit_margin_rate,
+                item_type: item.item_type,
+                vat_rate: item.vat_rate || 16
+              };
+              const displayPrice = getDisplayPrice(serviceForPricing);
+              return sum + (displayPrice * item.quantity);
+            }, 0);
+          } else {
+            // Fallback to estimated_cost if no items
+            calculatedTotal = Number(order.estimated_cost || 0);
+          }
+          
+          const remainingBalance = calculatedTotal - totalPaid;
+
+          // Only include if there's a remaining balance
+          if (remainingBalance > 0) {
+            return {
+              id: order.id,
+              order_number: order.order_number,
+              client_name: order.clients?.name || 'Cliente',
+              client_email: order.clients?.email || '',
+              estimated_cost: calculatedTotal,
+              delivery_date: order.delivery_date,
+              total_paid: totalPaid,
+              remaining_balance: remainingBalance,
+              total_vat_amount: 0,
+              subtotal_without_vat: calculatedTotal,
+              total_with_vat: calculatedTotal,
+              order_items: orderItems,
+              collection_type: 'order'
+            };
+          }
+          return null;
+        })
+      );
+
+      // Filter out null values
+      const validOrderCollections = orderCollections.filter(Boolean);
 
       // Get policy payment collections
       const {
@@ -218,10 +296,7 @@ export default function Finance() {
       }));
 
       // Combine both collections
-      return [...(orderCollections || []).map(oc => ({
-        ...oc,
-        collection_type: 'order'
-      })), ...transformedPolicyCollections];
+      return [...validOrderCollections, ...transformedPolicyCollections];
     }
   });
 
@@ -2747,24 +2822,71 @@ export default function Finance() {
                            </div>
                          </TableCell>
                          <TableCell>{new Date(item.delivery_date || item.due_date).toLocaleDateString()}</TableCell>
-                         <TableCell className="font-medium">
-                           {Number(item.total_with_vat || item.estimated_cost).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
-                         </TableCell>
+                          <TableCell className="font-medium">
+                            {(() => {
+                              if (item.collection_type === 'order' && item.order_items && item.order_items.length > 0) {
+                                // Calculate total using the same pricing logic as orders
+                                const calculatedTotal = item.order_items.reduce((sum: number, orderItem: any) => {
+                                  const serviceForPricing = {
+                                    id: orderItem.service_type_id,
+                                    name: orderItem.service_name || 'Servicio',
+                                    base_price: orderItem.unit_base_price,
+                                    cost_price: orderItem.unit_cost_price,
+                                    profit_margin_rate: orderItem.profit_margin_rate,
+                                    item_type: orderItem.item_type,
+                                    vat_rate: orderItem.vat_rate || 16
+                                  };
+                                  const displayPrice = getDisplayPrice(serviceForPricing);
+                                  return sum + (displayPrice * orderItem.quantity);
+                                }, 0);
+                                return calculatedTotal.toLocaleString(undefined, {
+                                  style: 'currency',
+                                  currency: 'MXN'
+                                });
+                              }
+                              // Fallback for policy payments or orders without items
+                              return Number(item.total_with_vat || item.estimated_cost).toLocaleString(undefined, {
+                                style: 'currency',
+                                currency: 'MXN'
+                              });
+                            })()}
+                          </TableCell>
                          <TableCell className="text-green-600 font-medium">
                            {Number(item.total_paid || 0).toLocaleString(undefined, {
                         style: 'currency',
                         currency: 'MXN'
                       })}
                          </TableCell>
-                         <TableCell className="text-red-600 font-medium">
-                           {Number(item.remaining_balance || (item.total_with_vat || item.estimated_cost) - (item.total_paid || 0)).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
-                         </TableCell>
+                          <TableCell className="text-red-600 font-medium">
+                            {(() => {
+                              if (item.collection_type === 'order' && item.order_items && item.order_items.length > 0) {
+                                // Calculate remaining balance using consistent pricing
+                                const calculatedTotal = item.order_items.reduce((sum: number, orderItem: any) => {
+                                  const serviceForPricing = {
+                                    id: orderItem.service_type_id,
+                                    name: orderItem.service_name || 'Servicio',
+                                    base_price: orderItem.unit_base_price,
+                                    cost_price: orderItem.unit_cost_price,
+                                    profit_margin_rate: orderItem.profit_margin_rate,
+                                    item_type: orderItem.item_type,
+                                    vat_rate: orderItem.vat_rate || 16
+                                  };
+                                  const displayPrice = getDisplayPrice(serviceForPricing);
+                                  return sum + (displayPrice * orderItem.quantity);
+                                }, 0);
+                                const remainingBalance = calculatedTotal - (item.total_paid || 0);
+                                return remainingBalance.toLocaleString(undefined, {
+                                  style: 'currency',
+                                  currency: 'MXN'
+                                });
+                              }
+                              // Fallback calculation
+                              return Number(item.remaining_balance || (item.total_with_vat || item.estimated_cost) - (item.total_paid || 0)).toLocaleString(undefined, {
+                                style: 'currency',
+                                currency: 'MXN'
+                              });
+                            })()}
+                          </TableCell>
                          <TableCell>
                            {item.collection_type === 'policy_payment' ? <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${item.payment_status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                {item.payment_status === 'vencido' ? 'Vencido' : 'Pendiente'}
