@@ -129,31 +129,29 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
   const formatCurrency = formatCOPCeilToTen;
 
   const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
-    const salesVatRate = service.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
+  const salesVatRate = (service.vat_rate ?? 16);
+  const cashbackPercent = rewardSettings?.apply_cashback_to_items
+    ? (rewardSettings.general_cashback_percent || 0)
+    : 0;
 
-    if (service.item_type === 'servicio') {
-      const basePrice = (service.base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
-    } else {
-      const purchaseVatRate = 16;
-      const baseCost = (service.cost_price || 0) * quantity;
-      
-      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
-        ? service.profit_margin_tiers[0].margin 
-        : 30;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
-      return finalWithCashback;
-    }
+  if (service.item_type === 'servicio') {
+    const basePrice = (service.base_price || 0) * quantity;
+    const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+    return afterSalesVat;
+  } else {
+    const purchaseVatRate = 16;
+    const baseCost = (service.cost_price || 0) * quantity;
+    
+    const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
+      ? service.profit_margin_tiers[0].margin 
+      : 30;
+    
+    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+    const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+    const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+    
+    return afterSalesVat;
+  }
   };
 
   const [calculatedPrices, setCalculatedPrices] = useState<Record<string, number>>({});

@@ -48,21 +48,20 @@ export function OrderItemsList({
 
   // Calculate display price using same logic as usePricingCalculation
   const calculateItemDisplayPrice = (item: OrderItem): number => {
-    const salesVatRate = item.vat_rate || 16;
+    const salesVatRate = (item.vat_rate ?? 16);
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
     const quantity = item.quantity || 1;
 
     if (item.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
+      // Para servicios: precio base + IVA
       const basePrice = item.unit_price;
       const basePriceTotal = basePrice * quantity;
       const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para artículos: costo base + IVA compra + margen + IVA venta
       const purchaseVatRate = 16;
       const baseCost = (item.cost_price || 0) * quantity;
       
@@ -73,9 +72,8 @@ export function OrderItemsList({
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
@@ -90,7 +88,7 @@ export function OrderItemsList({
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
         
         // Calcular precios usando la misma lógica de calculateItemDisplayPrice
-        const salesVatRate = item.vat_rate || 16;
+        const salesVatRate = (item.vat_rate ?? 16);
         const cashbackPercent = rewardSettings?.apply_cashback_to_items
           ? (rewardSettings.general_cashback_percent || 0)
           : 0;
@@ -100,17 +98,16 @@ export function OrderItemsList({
         let total: number;
 
         if (item.item_type === 'servicio') {
-          // Para servicios: precio base + IVA + cashback
+          // Para servicios: precio base + IVA
           const basePrice = item.unit_price;
           const basePriceTotal = basePrice * newQuantity;
           const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-          const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
           
-          subtotal = basePriceTotal * (1 + cashbackPercent / 100);
-          vatAmount = finalWithCashback - subtotal;
-          total = finalWithCashback;
+          subtotal = basePriceTotal;
+          vatAmount = afterSalesVat - subtotal;
+          total = afterSalesVat;
         } else {
-          // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+          // Para artículos: costo base + IVA compra + margen + IVA venta
           const purchaseVatRate = 16;
           const baseCost = (item.cost_price || 0) * newQuantity;
           
@@ -121,11 +118,10 @@ export function OrderItemsList({
           const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
           const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
           const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-          const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
           
-          subtotal = afterMargin * (1 + cashbackPercent / 100);
-          vatAmount = finalWithCashback - subtotal;
-          total = finalWithCashback;
+          subtotal = afterMargin;
+          vatAmount = afterSalesVat - subtotal;
+          total = afterSalesVat;
         }
 
         return {

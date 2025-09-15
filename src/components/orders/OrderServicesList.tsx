@@ -81,24 +81,22 @@ export function OrderServicesList({
   // Calcular precio correcto para un item
   const calculateItemCorrectPrice = (item: OrderItem): number => {
     const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate || 16;
+    const salesVatRate = (item.vat_rate ?? 16);
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? rewardSettings.general_cashback_percent || 0 : 0;
     if (item.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
+      // Para servicios: precio base + IVA
       const basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para artículos: costo base + IVA compra + margen + IVA venta
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
       const profitMargin = item.profit_margin_rate || 20;
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
   const handleStatusChange = async (itemId: string, newStatus: string) => {

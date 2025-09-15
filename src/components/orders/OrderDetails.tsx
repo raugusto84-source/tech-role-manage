@@ -309,8 +309,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     if (item.item_type === 'servicio') {
       const basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -318,8 +317,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 

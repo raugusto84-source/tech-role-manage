@@ -77,23 +77,21 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       : 0;
 
     if (item.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
-      const basePrice = (item.unit_base_price || 0) * quantity;
+      // Para servicios: precio base + IVA
+      const basePrice = (item.unit_base_price || item.unit_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para artículos: costo base + IVA compra + margen + IVA venta
       const purchaseVatRate = 16;
-      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const baseCost = (item.unit_cost_price || item.cost_price || 0) * quantity;
       const profitMargin = item.profit_margin_rate || 20;
       
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 
