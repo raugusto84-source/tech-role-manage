@@ -168,6 +168,13 @@ export default function Finance() {
   const pendingCollectionsQuery = useQuery({
     queryKey: ["pending_collections"],
     queryFn: async () => {
+      // Ensure the pending collections table is refreshed from current orders
+      try {
+        await supabase.rpc('refresh_pending_collections');
+      } catch (e) {
+        console.warn('refresh_pending_collections failed:', e);
+      }
+
       const { data, error } = await supabase
         .from("pending_collections")
         .select("*")
@@ -177,6 +184,20 @@ export default function Finance() {
       return data ?? [];
     }
   });
+
+  // Realtime updates for pending collections
+  useEffect(() => {
+    const channel = supabase
+      .channel('pending-collections-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_collections' }, () => {
+        pendingCollectionsQuery.refetch();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pendingCollectionsQuery]);
 
   // Query para retiros fiscales vinculados a órdenes
   const fiscalWithdrawalsQuery = useQuery({
