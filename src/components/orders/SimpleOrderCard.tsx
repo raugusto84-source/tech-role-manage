@@ -296,7 +296,7 @@ export function SimpleOrderCard({
           </div>
           
           {/* Estado de pagos */}
-          {!paymentsLoading && totalAmount > 0 && (
+          {totalAmount >= 0 && (
             <div className="space-y-1 text-sm">
               {paymentSummary.paymentCount > 0 && (
                 <>

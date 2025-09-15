@@ -307,7 +307,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           </div>
           
           {/* Estado de pagos */}
-          {!paymentsLoading && totalAmount > 0 && (
+          {totalAmount >= 0 && (
             <div className="space-y-0.5 text-xs">
               {paymentSummary.paymentCount > 0 && (
                 <>
