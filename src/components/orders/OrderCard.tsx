@@ -127,10 +127,17 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
     return getDisplayPrice(serviceForPricing, quantity);
   };
 
-  // Total de la tarjeta - usar totales guardados cuando existan
+  // Total de la tarjeta - usar estimated_cost si está pendiente de actualización
   const calculateCorrectTotal = () => {
     if (itemsLoading) {
       return 0; // No mostrar nada mientras carga
+    }
+    
+    // Si la orden está pendiente de actualización, usar el estimated_cost original
+    if (order.status === 'pendiente_actualizacion') {
+      const defaultVatRate = 16;
+      const base = order.estimated_cost || 0;
+      return base * (1 + defaultVatRate / 100);
     }
     
     if (orderItems && orderItems.length > 0) {
