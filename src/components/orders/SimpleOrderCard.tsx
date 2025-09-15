@@ -139,12 +139,8 @@ export function SimpleOrderCard({
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Preferir totales guardados por item (incluyen IVA, cashback y redondeo) si existen
-      return orderItems.reduce((sum, item) => {
-        const saved = Number(item.total_amount) || 0;
-        const computed = calculateItemDisplayPrice(item);
-        return sum + (saved > 0 ? saved : computed);
-      }, 0);
+      // Calcular por item con la misma lógica del módulo de ventas
+      return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
