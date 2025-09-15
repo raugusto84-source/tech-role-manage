@@ -214,9 +214,31 @@ export const useOrderMinimal = () => {
         }
       }
 
+      // Create pending collection for the order
+      const { error: collectionError } = await supabase
+        .from('pending_collections')
+        .insert([{
+          order_id: order.id,
+          order_number: orderNumber,
+          client_name: formData.client.name,
+          client_email: formData.client.email || '',
+          estimated_cost: total,
+          delivery_date: order.delivery_date,
+          total_paid: 0,
+          remaining_balance: total,
+          total_vat_amount: vatAmount,
+          subtotal_without_vat: basePrice,
+          total_with_vat: total
+        }]);
+
+      if (collectionError) {
+        console.error('Error creating pending collection:', collectionError);
+        // Don't throw error, just log it as the order was created successfully
+      }
+
       toast({ 
         title: "¡Orden creada!", 
-        description: `Orden ${orderNumber} creada exitosamente` 
+        description: `Orden ${orderNumber} creada exitosamente con cobro pendiente por ${total.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}` 
       });
 
       setIsLoading(false);
