@@ -200,10 +200,11 @@ export default function Finance() {
 
           const totalPaid = (payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
           
-          // Calculate total from order items (this is the consistent total)
+          // Calculate total from order items (using the actual total_amount which is the consistent total)
           const orderItems = order.order_items || [];
           const orderTotal = orderItems.reduce((sum, item) => {
-            return sum + (Number(item.total_amount) * Number(item.quantity));
+            // Use the total_amount directly - this is the final calculated price per item
+            return sum + Number(item.total_amount || 0);
           }, 0);
           
           // Use order total or fallback to estimated_cost
