@@ -3081,57 +3081,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pending_collections: {
-        Row: {
-          client_email: string
-          client_name: string
-          created_at: string
-          delivery_date: string | null
-          estimated_cost: number
-          id: string
-          order_id: string
-          order_number: string
-          remaining_balance: number
-          subtotal_without_vat: number
-          total_paid: number
-          total_vat_amount: number
-          total_with_vat: number
-          updated_at: string
-        }
-        Insert: {
-          client_email: string
-          client_name: string
-          created_at?: string
-          delivery_date?: string | null
-          estimated_cost?: number
-          id?: string
-          order_id: string
-          order_number: string
-          remaining_balance?: number
-          subtotal_without_vat?: number
-          total_paid?: number
-          total_vat_amount?: number
-          total_with_vat?: number
-          updated_at?: string
-        }
-        Update: {
-          client_email?: string
-          client_name?: string
-          created_at?: string
-          delivery_date?: string | null
-          estimated_cost?: number
-          id?: string
-          order_id?: string
-          order_number?: string
-          remaining_balance?: number
-          subtotal_without_vat?: number
-          total_paid?: number
-          total_vat_amount?: number
-          total_with_vat?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       pending_expenses: {
         Row: {
           amount: number

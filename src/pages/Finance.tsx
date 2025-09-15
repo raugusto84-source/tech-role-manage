@@ -55,7 +55,7 @@ export default function Finance() {
     document.title = "Finanzas y Cobranzas | SYSLAG";
     const metaDesc = document.querySelector('meta[name="description"]') || document.createElement("meta");
     metaDesc.setAttribute("name", "description");
-    metaDesc.setAttribute("content", "Finanzas SYSLAG: ingresos, egresos y cobranzas pendientes con filtros y exportación CSV.");
+    metaDesc.setAttribute("content", "Finanzas SYSLAG: ingresos, egresos y exportación CSV.");
     if (!metaDesc.parentElement) document.head.appendChild(metaDesc);
     const linkCanonical = document.querySelector('link[rel="canonical"]') || document.createElement("link");
     linkCanonical.setAttribute("rel", "canonical");
@@ -163,21 +163,9 @@ export default function Finance() {
     }
   });
   const collectionsQuery = useQuery({
-    queryKey: ["pending_collections"],
+    queryKey: ["policy_collections"],
     queryFn: async () => {
-      // Get order collections directly from pending_collections table
-      const {
-        data: orderCollections,
-        error: orderError
-      } = await supabase
-        .from("pending_collections")
-        .select("*")
-        .gt("remaining_balance", 0)
-        .order("delivery_date", { ascending: true });
-
-      if (orderError) throw orderError;
-
-      // Get policy payment collections
+      // Get policy payment collections only
       const {
         data: policyCollections,
         error: policyError
@@ -220,11 +208,7 @@ export default function Finance() {
         payment_status: payment.payment_status
       }));
 
-      // Combine both collections
-      return [...(orderCollections || []).map(oc => ({
-        ...oc,
-        collection_type: 'order'
-      })), ...transformedPolicyCollections];
+      return transformedPolicyCollections;
     }
   });
 
@@ -1328,11 +1312,11 @@ export default function Finance() {
       const orderNumbers = relatedPayments?.map(p => p.order_number).join(', ') || '';
       toast({
         title: 'Ingreso revertido',
-        description: relatedPayments && relatedPayments.length > 0 ? `Las órdenes ${orderNumbers} han regresado a cobranzas pendientes` : undefined
+        description: relatedPayments && relatedPayments.length > 0 ? `Las órdenes ${orderNumbers} han sido revertidas` : undefined
       });
       incomesQuery.refetch();
       expensesQuery.refetch();
-      collectionsQuery.refetch(); // Refresh pending collections
+      collectionsQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({
@@ -1475,7 +1459,6 @@ export default function Finance() {
     setCollectionDialogOpen(true);
   };
   const handleCollectionSuccess = () => {
-    collectionsQuery.refetch();
     incomesQuery.refetch();
     toast({
       title: "Cobro registrado exitosamente"
@@ -1581,8 +1564,8 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          <TabsTrigger value="vat-management">Gestión IVA</TabsTrigger>
-          <TabsTrigger value="collections">Cobranzas pendientes</TabsTrigger>
+          <TabsTrigger value="collections">Pólizas</TabsTrigger>
+          
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -2886,7 +2869,6 @@ export default function Finance() {
 
       <CollectionDialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen} collection={selectedCollection} onSuccess={() => {
       incomesQuery.refetch();
-      collectionsQuery.refetch();
       toast({
         title: "Cobro registrado exitosamente"
       });
@@ -2995,7 +2977,6 @@ export default function Finance() {
       
       <DeleteCollectionDialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen} collection={collectionToDelete} onSuccess={() => {
       // Force immediate refetch to update UI
-      collectionsQuery.refetch();
       setCollectionToDelete(null);
       // Close dialog immediately
       setDeleteCollectionDialogOpen(false);
