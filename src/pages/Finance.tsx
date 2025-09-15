@@ -13,7 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { CollectionDialog, DeleteCollectionDialog } from "@/components/finance/CollectionDialog";
+
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
@@ -435,13 +435,6 @@ export default function Finance() {
 
   // Estados removidos - ya no se necesitan gastos fiscales seleccionados
 
-  // Estados para el diálogo de cobro
-  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState<any>(null);
-
-  // Estados para eliminar cobranza
-  const [deleteCollectionDialogOpen, setDeleteCollectionDialogOpen] = useState(false);
-  const [collectionToDelete, setCollectionToDelete] = useState<any | null>(null);
 
   // Función para registrar en historial financiero
   const logFinancialOperation = async (operationType: string, tableName: string, recordId: string, recordData: any, description: string, amount: number, accountType?: string, operationDate?: string) => {
@@ -1453,10 +1446,6 @@ export default function Finance() {
         variant: "destructive"
       });
     }
-  };
-  const handleCollect = (order: any) => {
-    setSelectedCollection(order);
-    setCollectionDialogOpen(true);
   };
   const handleCollectionSuccess = () => {
     incomesQuery.refetch();
@@ -2761,16 +2750,10 @@ export default function Finance() {
                          </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="default" onClick={() => {
-                          setSelectedCollection(item);
-                          setCollectionDialogOpen(true);
-                        }} className="bg-green-600 hover:bg-green-700">
+                              <Button size="sm" variant="default" disabled className="bg-gray-300 text-gray-500">
                                 Cobrar
                               </Button>
-                               <Button size="sm" variant="destructive" onClick={() => {
-                          setCollectionToDelete(item);
-                          setDeleteCollectionDialogOpen(true);
-                        }}>
+                               <Button size="sm" variant="destructive" disabled className="bg-gray-300 text-gray-500">
                                  Eliminar
                                </Button>
                             </div>
@@ -2867,12 +2850,6 @@ export default function Finance() {
         </TabsContent>
       </Tabs>
 
-      <CollectionDialog open={collectionDialogOpen} onOpenChange={setCollectionDialogOpen} collection={selectedCollection} onSuccess={() => {
-      incomesQuery.refetch();
-      toast({
-        title: "Cobro registrado exitosamente"
-      });
-    }} />
 
       {/* Diálogo para gestión de proveedores */}
       <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
@@ -2975,12 +2952,6 @@ export default function Finance() {
         </DialogContent>
       </Dialog>
       
-      <DeleteCollectionDialog open={deleteCollectionDialogOpen} onOpenChange={setDeleteCollectionDialogOpen} collection={collectionToDelete} onSuccess={() => {
-      // Force immediate refetch to update UI
-      setCollectionToDelete(null);
-      // Close dialog immediately
-      setDeleteCollectionDialogOpen(false);
-    }} />
 
         <FiscalWithdrawalDialog open={fiscalWithdrawalDialog.open} onOpenChange={open => setFiscalWithdrawalDialog({
       open,
