@@ -300,6 +300,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       ? (!item.unit_base_price || item.unit_base_price <= 0)
       : (!item.unit_cost_price || item.unit_cost_price <= 0);
 
+    // En estados pendientes de aprobación/actualización, mostrar el total guardado para evitar cambios antes de autorizar
+    if ((orderStatus === 'pendiente_actualizacion' || orderStatus === 'pendiente_aprobacion') && hasStoredTotal) {
+      return Number(item.total_amount);
+    }
+
     if (hasStoredTotal && (isLocked || missingKeyData)) {
       return Number(item.total_amount);
     }
@@ -331,7 +336,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       }, 0);
     }
     
-    // Solo usar estimated_cost como último recurso - aplicar IVA y redondear a 10
+    // Solo usar estimated_cost como último recurso
+    // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
+    if (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') {
+      return ceilToTen(order.estimated_cost || 0);
+    }
+    // En otros casos, aplicar IVA por defecto
     const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
     return ceilToTen(base * (1 + defaultVatRate / 100));
