@@ -34,6 +34,7 @@ export function PaymentCollectionDialog({
   const [amount, setAmount] = useState('');
   const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Set remaining balance as default amount when dialog opens
@@ -63,6 +64,17 @@ export function PaymentCollectionDialog({
       toast({
         title: "Error",
         description: "Por favor completa todos los campos requeridos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate invoice number for fiscal accounts
+    if (accountType === 'fiscal' && !invoiceNumber.trim()) {
+      console.log('Validation failed - missing invoice number for fiscal account');
+      toast({
+        title: "Error",
+        description: "El número de factura es requerido para cuentas fiscales",
         variant: "destructive"
       });
       return;
@@ -125,7 +137,8 @@ export function PaymentCollectionDialog({
           status: 'recibido',
           vat_rate: vatRate,
           vat_amount: vatAmount,
-          taxable_amount: taxableAmount
+          taxable_amount: taxableAmount,
+          ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() })
         })
         .select('id')
         .maybeSingle();
@@ -171,6 +184,7 @@ export function PaymentCollectionDialog({
       setAmount('');
       setAccountType('no_fiscal');
       setPaymentMethod('');
+      setInvoiceNumber('');
 
       // Trigger a small delay to ensure the dialog closes properly before potential refresh
       setTimeout(() => {
@@ -237,6 +251,20 @@ export function PaymentCollectionDialog({
               </div>
             </RadioGroup>
           </div>
+
+          {accountType === 'fiscal' && (
+            <div className="space-y-2">
+              <Label htmlFor="invoice-number">Número de factura *</Label>
+              <Input
+                id="invoice-number"
+                type="text"
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
+                placeholder="Número de factura"
+                required
+              />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="payment-method">Método de pago</Label>
