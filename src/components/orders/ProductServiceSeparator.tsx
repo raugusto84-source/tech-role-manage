@@ -6,8 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { OrderServiceSelection } from './OrderServiceSelection';
 import { Package, Wrench, ShoppingCart } from 'lucide-react';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 
 interface ServiceType {
   id: string;
@@ -39,61 +38,18 @@ export function ProductServiceSeparator({
   selectedServices,
   onRemoveService 
 }: ProductServiceSeparatorProps) {
-  const { settings: rewardSettings } = useRewardSettings();
   const [activeTab, setActiveTab] = useState<'services' | 'products'>('services');
-
-  const formatCurrency = formatCOPCeilToTen;
-
-  // Usar la misma lógica de cálculo que OrderServiceSelection
-  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
-    const salesVatRate = service.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-
-    if (service.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
-      const basePrice = (service.base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
-    } else {
-      // Para artículos: utilizar SIEMPRE cost_price como costo base
-      const purchaseVatRate = 16;
-      const baseCost = (service.cost_price || 0) * quantity;
-      
-      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
-        ? service.profit_margin_tiers[0].margin 
-        : 20;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
-      console.log(`Cálculo para ${service.name}:`, {
-        baseCost,
-        afterPurchaseVat,
-        marginPercent,
-        afterMargin,
-        afterSalesVat,
-        cashbackPercent,
-        finalWithCashback
-      });
-      
-      return finalWithCashback;
-    }
-  };
+  const { getDisplayPrice, formatCurrency } = useSalesPricingCalculation();
 
   const services = selectedServices.filter(item => item.service.item_type === 'servicio');
   const products = selectedServices.filter(item => item.service.item_type === 'articulo');
 
   const servicesTotal = services.reduce((total, item) => {
-    return total + calculateDisplayPrice(item.service, item.quantity);
+    return total + getDisplayPrice(item.service, item.quantity);
   }, 0);
 
   const productsTotal = products.reduce((total, item) => {
-    return total + calculateDisplayPrice(item.service, item.quantity);
+    return total + getDisplayPrice(item.service, item.quantity);
   }, 0);
 
   return (

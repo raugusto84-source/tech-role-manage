@@ -8,9 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search, Package, Clock, Calendar } from 'lucide-react';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { ServiceCard } from './ServiceCard';
-import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -44,7 +43,7 @@ interface OrderServiceSelectionProps {
 }
 
 export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filterByType, serviceCategory }: OrderServiceSelectionProps) {
-  const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice, formatCurrency } = useSalesPricingCalculation();
   const [services, setServices] = useState<ServiceType[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -125,59 +124,6 @@ export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filter
     
     return matchesSearch && matchesCategory && matchesType;
   });
-
-  const formatCurrency = formatCOPCeilToTen;
-
-  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
-  const salesVatRate = (service.vat_rate ?? 16);
-  const cashbackPercent = rewardSettings?.apply_cashback_to_items
-    ? (rewardSettings.general_cashback_percent || 0)
-    : 0;
-
-  if (service.item_type === 'servicio') {
-    const basePrice = (service.base_price || 0) * quantity;
-    const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-    return afterSalesVat;
-  } else {
-    const purchaseVatRate = 16;
-    const baseCost = (service.cost_price || 0) * quantity;
-    
-    const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
-      ? service.profit_margin_tiers[0].margin 
-      : 30;
-    
-    const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-    const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-    const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-    
-    return afterSalesVat;
-  }
-  };
-
-  const [calculatedPrices, setCalculatedPrices] = useState<Record<string, number>>({});
-
-  const getDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
-    const key = `${service.id}-${quantity}`;
-    return calculatedPrices[key] || calculateDisplayPrice(service, quantity);
-  };
-
-  useEffect(() => {
-    const calculateAllPrices = () => {
-      const newPrices: Record<string, number> = {};
-      
-      services.forEach((service) => {
-        const quantity = quantities[service.id] || 1;
-        const key = `${service.id}-${quantity}`;
-        newPrices[key] = calculateDisplayPrice(service, quantity);
-      });
-
-      setCalculatedPrices(newPrices);
-    };
-
-    if (services.length > 0) {
-      calculateAllPrices();
-    }
-  }, [services, quantities, rewardSettings]);
 
   const formatEstimatedTime = (hours: number | null) => {
     if (!hours) return 'No especificado';

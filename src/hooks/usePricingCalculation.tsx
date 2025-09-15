@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useRewardSettings } from './useRewardSettings';
+import { useSalesPricingCalculation } from './useSalesPricingCalculation';
 
 interface OrderItem {
   subtotal: number;
@@ -22,7 +22,7 @@ interface PricingTotals {
 }
 
 export function usePricingCalculation(orderItems: OrderItem[], clientId: string) {
-  const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice: getSalesPrice, rewardSettings } = useSalesPricingCalculation();
   const [pricing, setPricing] = useState<PricingTotals>({
     totalCostPrice: 0,
     totalVATAmount: 0,
@@ -35,50 +35,32 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     calculatePricing();
   }, [orderItems, clientId, rewardSettings]);
 
-  // Helper function to determine if item is a product
-  const isProduct = (item: OrderItem): boolean => {
-    return item.item_type === 'articulo' || (item.profit_margin_rate && item.profit_margin_rate > 0);
-  };
-
-  // Calculate correct price for an item using the same logic as catalog
+  // Calculate correct price for an item using the same logic as Sales page
   const calculateItemCorrectPrice = (item: OrderItem): { subtotal: number; vat_amount: number; total: number } => {
-    const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-    const quantity = item.quantity || 1;
+    // Convert OrderItem to ServiceType format for compatibility with sales pricing
+    const serviceForPricing = {
+      id: item.item_type || 'item',
+      name: 'Order Item',
+      base_price: item.base_price,
+      cost_price: item.cost_price,
+      vat_rate: item.vat_rate,
+      item_type: item.item_type || 'servicio',
+      profit_margin_tiers: item.profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: item.profit_margin_rate }] : null
+    };
 
-    if (!isProduct(item)) {
-      // Para servicios: precio base + IVA + cashback
-      const basePrice = (item.base_price || item.subtotal / quantity) || 0;
-      const basePriceTotal = basePrice * quantity;
-      const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      const vatAmount = (finalWithCashback - basePriceTotal * (1 + cashbackPercent / 100));
-      
-      return {
-        subtotal: finalWithCashback - vatAmount,
-        vat_amount: vatAmount,
-        total: finalWithCashback
-      };
-    } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
-      const purchaseVatRate = 16; // IVA de compra fijo 16%
-      const baseCost = (item.cost_price || 0) * quantity;
-      const profitMargin = item.profit_margin_rate || 30;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      const vatAmount = (finalWithCashback - afterMargin * (1 + cashbackPercent / 100));
-      
-      return {
-        subtotal: finalWithCashback - vatAmount,
-        vat_amount: vatAmount,
-        total: finalWithCashback
-      };
-    }
+    const quantity = item.quantity || 1;
+    const totalPrice = getSalesPrice(serviceForPricing, quantity);
+    
+    // Calculate VAT component
+    const salesVatRate = item.vat_rate ?? 16;
+    const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
+    const vatAmount = totalPrice - subtotalWithoutVat;
+    
+    return {
+      subtotal: subtotalWithoutVat,
+      vat_amount: vatAmount,
+      total: totalPrice
+    };
   };
 
   const calculatePricing = async () => {
