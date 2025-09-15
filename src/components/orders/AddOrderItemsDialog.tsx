@@ -83,18 +83,19 @@ export function AddOrderItemsDialog({
     }
   };
 
-  // Usar precios directos de ventas sin modificaciones adicionales
+  // Usar precios directos de ventas con 2% adicional después del IVA
   const calculateItemCorrectPrice = (item: NewItem): number => {
     const quantity = item.quantity || 1;
     const unitPrice = item.unit_base_price || 0;
     const vatRate = item.vat_rate || 16;
     
-    // Cálculo directo: precio unitario * cantidad + IVA
+    // Cálculo: precio unitario * cantidad + IVA + 2% adicional
     const subtotal = unitPrice * quantity;
     const withVat = subtotal * (1 + vatRate / 100);
+    const withAdditional = withVat * 1.02; // 2% adicional después del IVA
     
     // Redondear a 2 decimales
-    return Math.round(withVat * 100) / 100;
+    return Math.round(withAdditional * 100) / 100;
   };
 
   const addNewItem = () => {
