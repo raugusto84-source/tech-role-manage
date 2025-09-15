@@ -6289,10 +6289,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
-      convert_quote_to_order: {
-        Args: { quote_id: string }
-        Returns: Json
-      }
       create_order_for_scheduled_service: {
         Args: { p_scheduled_service_id: string }
         Returns: {
