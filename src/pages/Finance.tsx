@@ -162,55 +162,6 @@ export default function Finance() {
       return data ?? [];
     }
   });
-  const collectionsQuery = useQuery({
-    queryKey: ["policy_collections"],
-    queryFn: async () => {
-      // Get policy payment collections only
-      const {
-        data: policyCollections,
-        error: policyError
-      } = await supabase.from('policy_payments').select(`
-          id,
-          amount,
-          due_date,
-          payment_month,
-          payment_year,
-          account_type,
-          payment_status,
-          policy_clients(
-            id,
-            clients(name, email),
-            insurance_policies(policy_name, policy_number)
-          )
-        `).eq('is_paid', false).order('due_date', {
-        ascending: true
-      });
-      if (policyError) throw policyError;
-
-      // Transform policy payments to match collection format
-      const transformedPolicyCollections = (policyCollections || []).map(payment => ({
-        id: `policy_${payment.id}`,
-        order_number: `POL-${payment.policy_clients.insurance_policies.policy_number}-${payment.payment_month}/${payment.payment_year}`,
-        client_name: payment.policy_clients.clients.name,
-        client_email: payment.policy_clients.clients.email,
-        estimated_cost: payment.amount,
-        delivery_date: payment.due_date,
-        total_paid: 0,
-        remaining_balance: payment.amount,
-        total_vat_amount: 0,
-        subtotal_without_vat: payment.amount,
-        total_with_vat: payment.amount,
-        collection_type: 'policy_payment',
-        policy_payment_id: payment.id,
-        policy_name: payment.policy_clients.insurance_policies.policy_name,
-        payment_period: `${payment.payment_month}/${payment.payment_year}`,
-        account_type: payment.account_type,
-        payment_status: payment.payment_status
-      }));
-
-      return transformedPolicyCollections;
-    }
-  });
 
   // Query para retiros fiscales vinculados a órdenes
   const fiscalWithdrawalsQuery = useQuery({
@@ -1309,7 +1260,6 @@ export default function Finance() {
       });
       incomesQuery.refetch();
       expensesQuery.refetch();
-      collectionsQuery.refetch();
       financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({
@@ -1426,14 +1376,12 @@ export default function Finance() {
       setSelectedWithdrawals(availableWithdrawals.map(fw => fw.id));
     }
   };
-  const onExport = (type: "incomes" | "expenses" | "collections") => {
+  const onExport = (type: "incomes" | "expenses") => {
     try {
       if (type === "incomes" && incomesQuery.data) {
         exportCsv(`ingresos_${startDate}_${endDate}`, incomesQuery.data as any);
       } else if (type === "expenses" && expensesQuery.data) {
         exportCsv(`egresos_${startDate}_${endDate}`, expensesQuery.data as any);
-      } else if (type === "collections" && collectionsQuery.data) {
-        exportCsv(`cobranzas_pendientes`, collectionsQuery.data as any);
       }
       toast({
         title: "Exportación lista",
@@ -1447,15 +1395,9 @@ export default function Finance() {
       });
     }
   };
-  const handleCollectionSuccess = () => {
-    incomesQuery.refetch();
-    toast({
-      title: "Cobro registrado exitosamente"
-    });
-  };
   return <AppLayout>
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos, Egresos y Cobranzas</h1>
+        <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos y Egresos</h1>
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
       </header>
 
@@ -1547,13 +1489,13 @@ export default function Finance() {
         </Card>
       </section>
 
-      <Tabs defaultValue="collections">
+      <Tabs defaultValue="incomes">
         <TabsList className="bg-lime-400 rounded-none">
           <TabsTrigger value="incomes" className="text-gray-950">Ingresos</TabsTrigger>
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          <TabsTrigger value="collections">Pólizas</TabsTrigger>
+          
           
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
@@ -2678,102 +2620,6 @@ export default function Finance() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="collections">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Cobranzas Pendientes ({collectionsQuery.data?.length ?? 0})</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Órdenes terminadas y pagos de pólizas pendientes de cobro
-                </p>
-              </div>
-              <Button size="sm" onClick={() => onExport("collections")}>Exportar CSV</Button>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                   <TableHeader>
-                     <TableRow>
-                       <TableHead>Referencia</TableHead>
-                       <TableHead>Tipo</TableHead>
-                       <TableHead>Cliente</TableHead>
-                       <TableHead>Vencimiento</TableHead>
-                       <TableHead>Total</TableHead>
-                       <TableHead>Pagado</TableHead>
-                       <TableHead>Saldo</TableHead>
-                       <TableHead>Estado</TableHead>
-                       <TableHead>Acciones</TableHead>
-                     </TableRow>
-                   </TableHeader>
-                  <TableBody>
-                     {collectionsQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando cobranzas pendientes...</TableCell></TableRow>}
-                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).map((item: any) => <TableRow key={item.id} className="hover:bg-muted/50">
-                         <TableCell className="font-medium">{item.order_number}</TableCell>
-                         <TableCell>
-                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${item.collection_type === 'policy_payment' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
-                             {item.collection_type === 'policy_payment' ? 'Póliza' : 'Orden'}
-                           </span>
-                         </TableCell>
-                         <TableCell>
-                           <div>
-                             <div className="font-medium">{item.client_name}</div>
-                             <div className="text-xs text-muted-foreground">{item.client_email}</div>
-                             {item.collection_type === 'policy_payment' && <div className="text-xs text-blue-600">{item.policy_name}</div>}
-                           </div>
-                         </TableCell>
-                         <TableCell>{new Date(item.delivery_date || item.due_date).toLocaleDateString()}</TableCell>
-                          <TableCell className="font-medium">
-                            {Number(item.total_with_vat || item.estimated_cost).toLocaleString(undefined, {
-                              style: 'currency',
-                              currency: 'MXN'
-                            })}
-                          </TableCell>
-                         <TableCell className="text-green-600 font-medium">
-                           {Number(item.total_paid || 0).toLocaleString(undefined, {
-                        style: 'currency',
-                        currency: 'MXN'
-                      })}
-                         </TableCell>
-                          <TableCell className="text-red-600 font-medium">
-                            {Number(item.remaining_balance || (item.total_with_vat || item.estimated_cost) - (item.total_paid || 0)).toLocaleString(undefined, {
-                              style: 'currency',
-                              currency: 'MXN'
-                            })}
-                          </TableCell>
-                         <TableCell>
-                           {item.collection_type === 'policy_payment' ? <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${item.payment_status === 'vencido' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                               {item.payment_status === 'vencido' ? 'Vencido' : 'Pendiente'}
-                             </span> : <div className="flex items-center gap-2">
-                               <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                               <span className="text-sm text-orange-600 font-medium">Pendiente Cobro</span>
-                             </div>}
-                         </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="default" disabled className="bg-gray-300 text-gray-500">
-                                Cobrar
-                              </Button>
-                               <Button size="sm" variant="destructive" disabled className="bg-gray-300 text-gray-500">
-                                 Eliminar
-                               </Button>
-                            </div>
-                          </TableCell>
-                       </TableRow>)}
-                     {!collectionsQuery.isLoading && (collectionsQuery.data ?? []).length === 0 && <TableRow>
-                         <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                           <div className="flex flex-col items-center gap-2">
-                             <div className="text-4xl">💰</div>
-                             <div className="font-medium">No hay cobranzas pendientes</div>
-                             <div className="text-sm">Todas las órdenes terminadas han sido cobradas</div>
-                           </div>
-                         </TableCell>
-                       </TableRow>}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="history">
           <Card>
