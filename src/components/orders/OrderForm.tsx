@@ -1302,13 +1302,45 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }
       }
 
+      // Create pending collection for the order
+      try {
+        const selectedClient = clients.find(c => c.id === formData.client_id);
+        if (selectedClient) {
+          // Generate order number for pending collection (since we don't get it from the insert)
+          const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-4)}`;
+          
+          const { error: collectionError } = await supabase
+            .from('pending_collections')
+            .insert([{
+              order_id: orderResult.id,
+              order_number: orderNumber,
+              client_name: selectedClient.name,
+              client_email: selectedClient.email || '',
+              estimated_cost: pricing.totalAmount,
+              delivery_date: computedDeliveryDate || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              total_paid: 0,
+              remaining_balance: pricing.totalAmount,
+               total_vat_amount: pricing.totalVATAmount,
+               subtotal_without_vat: pricing.totalAmount - pricing.totalVATAmount,
+              total_with_vat: pricing.totalAmount
+            }]);
+
+          if (collectionError) {
+            console.error('Error creating pending collection:', collectionError);
+            // Don't throw error, just log it as the order was created successfully
+          }
+        }
+      } catch (error) {
+        console.error('Error creating pending collection:', error);
+      }
+
       const statusMessage = profile?.role === 'cliente' 
         ? "Orden creada. Debe firmar para autorizar el servicio."
         : "Orden creada exitosamente";
 
       toast({
         title: "Orden creada",
-        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${formatCOPCeilToTen(totalAmount)}`,
+        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${formatCOPCeilToTen(totalAmount)} - Cobro pendiente generado`,
       });
 
       onSuccess();
