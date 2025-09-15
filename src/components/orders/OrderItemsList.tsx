@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { formatCOPCeilToTen } from '@/utils/currency';
 export interface OrderItem {
   id: string;
@@ -44,37 +44,22 @@ export function OrderItemsList({
   items,
   onItemsChange
 }: OrderItemsListProps) {
-  const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice } = useSalesPricingCalculation();
 
-  // Calculate display price using same logic as usePricingCalculation
+  // Calculate display price using the same logic as Sales (includes cashback and rounding)
   const calculateItemDisplayPrice = (item: OrderItem): number => {
-    const salesVatRate = (item.vat_rate ?? 16);
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
     const quantity = item.quantity || 1;
+    const serviceForPricing = {
+      id: item.service_type_id,
+      name: item.name,
+      base_price: item.unit_price,
+      cost_price: item.cost_price,
+      vat_rate: item.vat_rate,
+      item_type: item.item_type,
+      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
+    } as any;
 
-    if (item.item_type === 'servicio') {
-      // Para servicios: precio base + IVA
-      const basePrice = item.unit_price;
-      const basePriceTotal = basePrice * quantity;
-      const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-      return afterSalesVat;
-    } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta
-      const purchaseVatRate = 16;
-      const baseCost = (item.cost_price || 0) * quantity;
-      
-      const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
-        ? item.profit_margin_tiers[0].margin 
-        : 20;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      
-      return afterSalesVat;
-    }
+    return getDisplayPrice(serviceForPricing, quantity);
   };
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -87,42 +72,24 @@ export function OrderItemsList({
         const baseTimePerUnit = item.estimated_hours / item.quantity;
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
         
-        // Calcular precios usando la misma lógica de calculateItemDisplayPrice
+        // Recalcular precios usando la misma lógica de Ventas
+
+        // Recalcular precios con la misma lógica de Ventas (incluye cashback)
+        const serviceForPricing = {
+          id: item.service_type_id,
+          name: item.name,
+          base_price: item.unit_price,
+          cost_price: item.cost_price,
+          vat_rate: item.vat_rate,
+          item_type: item.item_type,
+          profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
+        } as any;
+
+        const totalPrice = getDisplayPrice(serviceForPricing, newQuantity);
         const salesVatRate = (item.vat_rate ?? 16);
-        const cashbackPercent = rewardSettings?.apply_cashback_to_items
-          ? (rewardSettings.general_cashback_percent || 0)
-          : 0;
-
-        let subtotal: number;
-        let vatAmount: number;
-        let total: number;
-
-        if (item.item_type === 'servicio') {
-          // Para servicios: precio base + IVA
-          const basePrice = item.unit_price;
-          const basePriceTotal = basePrice * newQuantity;
-          const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-          
-          subtotal = basePriceTotal;
-          vatAmount = afterSalesVat - subtotal;
-          total = afterSalesVat;
-        } else {
-          // Para artículos: costo base + IVA compra + margen + IVA venta
-          const purchaseVatRate = 16;
-          const baseCost = (item.cost_price || 0) * newQuantity;
-          
-          const marginPercent = item.profit_margin_tiers && item.profit_margin_tiers.length > 0 
-            ? item.profit_margin_tiers[0].margin 
-            : 20;
-          
-          const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-          const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-          const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-          
-          subtotal = afterMargin;
-          vatAmount = afterSalesVat - subtotal;
-          total = afterSalesVat;
-        }
+        subtotal = totalPrice / (1 + salesVatRate / 100);
+        vatAmount = totalPrice - subtotal;
+        total = totalPrice;
 
         return {
           ...item,
