@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 
 interface OrderCardProps {
   order: {
@@ -61,7 +62,7 @@ interface OrderCardProps {
 export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
-  const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice } = useSalesPricingCalculation();
 
   useEffect(() => {
     const loadOrderItems = async () => {
@@ -94,7 +95,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     loadOrderItems();
   }, [order.id]);
 
-  // Calcula el precio correcto por item - MISMA LÓGICA QUE OrderDetails
+  // Calcula el precio correcto por item usando la lógica unificada de Ventas
   const calculateItemDisplayPrice = (item: any): number => {
     // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
@@ -108,22 +109,18 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
     }
 
     const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
 
-    if (item.item_type === 'servicio') {
-      const basePrice = (item.unit_base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
-    } else {
-      const purchaseVatRate = 16;
-      const baseCost = (item.unit_cost_price || 0) * quantity;
-      const profitMargin = item.profit_margin_rate || 20;
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      return afterSalesVat;
-    }
+    const serviceForPricing = {
+      id: item.service_type_id || item.id,
+      name: item.service_name || '',
+      base_price: item.unit_base_price,
+      cost_price: item.unit_cost_price,
+      vat_rate: item.vat_rate,
+      item_type: item.item_type,
+      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
+    } as any;
+
+    return getDisplayPrice(serviceForPricing, quantity);
   };
 
   // Total de la tarjeta - usar totales guardados cuando existan

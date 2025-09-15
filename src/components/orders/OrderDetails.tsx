@@ -22,6 +22,7 @@ import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 
 interface OrderDetailsProps {
   order: {
@@ -66,6 +67,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice } = useSalesPricingCalculation();
   const [loading, setLoading] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
   const [surveyCompleted, setSurveyCompleted] = useState(false);
@@ -289,7 +291,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return totalHours > 0 ? totalHours : (order.average_service_time || 4);
   };
 
-  // Calcula el precio correcto por item usando la misma lógica del listado
+  // Calcula el precio correcto por item usando la lógica unificada de Ventas
   const calculateItemDisplayPrice = (item: any): number => {
     // Respetar total guardado solo si viene bloqueado o faltan datos clave
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
@@ -303,22 +305,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
 
     const quantity = item.quantity || 1;
-    const salesVatRate = (item.vat_rate ?? 16);
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+    const serviceForPricing = {
+      id: item.service_type_id || item.id,
+      name: item.service_name || '',
+      base_price: item.unit_base_price,
+      cost_price: item.unit_cost_price,
+      vat_rate: item.vat_rate,
+      item_type: item.item_type,
+      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
+    } as any;
 
-    if (item.item_type === 'servicio') {
-      const basePrice = (item.unit_base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
-    } else {
-      const purchaseVatRate = 16;
-      const baseCost = (item.unit_cost_price || 0) * quantity;
-      const profitMargin = item.profit_margin_rate || 20;
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      return afterSalesVat;
-    }
+    return getDisplayPrice(serviceForPricing, quantity);
   };
 
   const calculateTotalAmount = () => {
