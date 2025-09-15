@@ -91,19 +91,45 @@ export function AddOrderItemsDialog({
     }
   };
 
-  // Usar precios directos de ventas con cashback configurado después del IVA
+  // Usar la misma lógica de cálculo de precios que en ventas
+  const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
+    const salesVatRate = service.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+
+    if (service.item_type === 'servicio') {
+      const basePrice = (service.base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return Math.ceil(finalWithCashback / 10) * 10; // Redondear hacia arriba a decenas
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (service.cost_price || 0) * quantity;
+      
+      // Usar el primer tier de margin o 30% por defecto
+      const marginPercent = service.profit_margin_rate || 30;
+      
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      return Math.ceil(finalWithCashback / 10) * 10; // Redondear hacia arriba a decenas
+    }
+  };
+
+  // Calcular precio correcto para items ya agregados
   const calculateItemCorrectPrice = (item: NewItem): number => {
     const quantity = item.quantity || 1;
     const unitPrice = item.unit_base_price || 0;
     const vatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.general_cashback_percent || 2; // Usar cashback de configuración
+    const cashbackPercent = rewardSettings?.general_cashback_percent || 2;
     
-    // Cálculo: precio unitario * cantidad + IVA + cashback configurado
     const subtotal = unitPrice * quantity;
     const withVat = subtotal * (1 + vatRate / 100);
     const withCashback = withVat * (1 + cashbackPercent / 100);
     
-    // Redondear hacia arriba a la decena más cercana y quitar decimales
     return Math.ceil(withCashback / 10) * 10;
   };
 
@@ -134,30 +160,24 @@ export function AddOrderItemsDialog({
   };
 
   const addServiceToItems = (service: ServiceType) => {
+    const calculatedPrice = calculateDisplayPrice(service);
+    const vatRate = service.vat_rate || 16;
+    
+    // Calcular el precio base sin IVA ni cashback para mantener compatibilidad
+    const basePrice = service.base_price || service.cost_price || 0;
+    
     const newItem: NewItem = {
       service_type_id: service.id,
       service_name: service.name,
       quantity: 1,
-      unit_cost_price: service.cost_price || service.base_price || 0,
-      unit_base_price: service.base_price || service.cost_price || 0,
-      subtotal: service.base_price || service.cost_price || 0,
-      vat_rate: service.vat_rate || 16,
-      vat_amount: ((service.base_price || service.cost_price || 0) * (service.vat_rate || 16)) / 100,
-      total_amount: calculateItemCorrectPrice({
-        service_type_id: service.id,
-        service_name: service.name,
-        quantity: 1,
-        unit_cost_price: service.cost_price || service.base_price || 0,
-        unit_base_price: service.base_price || service.cost_price || 0,
-        subtotal: service.base_price || service.cost_price || 0,
-        vat_rate: service.vat_rate || 16,
-        vat_amount: ((service.base_price || service.cost_price || 0) * (service.vat_rate || 16)) / 100,
-        total_amount: 0,
-        item_type: service.item_type,
-        profit_margin_rate: 20
-      }),
+      unit_cost_price: service.cost_price || basePrice,
+      unit_base_price: basePrice,
+      subtotal: basePrice,
+      vat_rate: vatRate,
+      vat_amount: (basePrice * vatRate) / 100,
+      total_amount: calculatedPrice, // Usar el precio calculado que coincide con ventas
       item_type: service.item_type,
-      profit_margin_rate: 20
+      profit_margin_rate: service.profit_margin_rate || 20
     };
 
     setNewItems(prev => [...prev, newItem]);
@@ -270,7 +290,7 @@ export function AddOrderItemsDialog({
                   )}
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">
-                      ${((service.base_price || service.cost_price || 0) * 1.18 * 1.02).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      ${calculateDisplayPrice(service).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
                     <Button
                       size="sm"
