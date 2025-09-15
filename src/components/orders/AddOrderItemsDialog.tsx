@@ -29,6 +29,7 @@ interface ServiceType {
   item_type: string;
   category?: string;
   profit_margin_rate?: number;
+  profit_margin_tiers?: Array<{ margin: number; min_qty?: number; max_qty?: number }>; 
 }
 
 interface NewItem {
@@ -80,7 +81,19 @@ export function AddOrderItemsDialog({
         .order('category, name');
 
       if (error) throw error;
-      setServiceTypes(data || []);
+      const transformed = (data || []).map((service: any) => ({
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        cost_price: service.cost_price,
+        base_price: service.base_price,
+        vat_rate: service.vat_rate,
+        item_type: service.item_type,
+        category: service.category,
+        profit_margin_rate: service.profit_margin_rate,
+        profit_margin_tiers: Array.isArray(service.profit_margin_tiers) ? service.profit_margin_tiers : []
+      }));
+      setServiceTypes(transformed);
     } catch (error) {
       console.error('Error loading service types:', error);
       toast({
@@ -106,15 +119,13 @@ export function AddOrderItemsDialog({
     } else {
       const purchaseVatRate = 16;
       const baseCost = (service.cost_price || 0) * quantity;
-      
-      // Usar el primer tier de margin o 30% por defecto
-      const marginPercent = service.profit_margin_rate || 30;
-      
+      const marginPercent = (service.profit_margin_tiers && service.profit_margin_tiers.length > 0)
+        ? (service.profit_margin_tiers[0].margin || 30)
+        : 30;
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
       return Math.ceil(finalWithCashback / 10) * 10; // Redondear hacia arriba a decenas
     }
   };
@@ -124,7 +135,9 @@ export function AddOrderItemsDialog({
     const quantity = item.quantity || 1;
     const unitPrice = item.unit_base_price || 0;
     const vatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.general_cashback_percent || 2;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
     
     const subtotal = unitPrice * quantity;
     const withVat = subtotal * (1 + vatRate / 100);
@@ -163,21 +176,34 @@ export function AddOrderItemsDialog({
     const calculatedPrice = calculateDisplayPrice(service);
     const vatRate = service.vat_rate || 16;
     
-    // Calcular el precio base sin IVA ni cashback para mantener compatibilidad
-    const basePrice = service.base_price || service.cost_price || 0;
+    // Calcular precio base de venta (sin IVA ni cashback)
+    let unitBaseSale = 0;
+    let profitMarginUsed = 0;
+
+    if (service.item_type === 'servicio') {
+      unitBaseSale = service.base_price || 0;
+    } else {
+      const marginPercent = (service.profit_margin_tiers && service.profit_margin_tiers.length > 0)
+        ? (service.profit_margin_tiers[0].margin || 30)
+        : 30;
+      profitMarginUsed = marginPercent;
+      const cost = service.cost_price || 0;
+      const costWithPurchaseVat = cost * 1.16; // IVA de compra 16%
+      unitBaseSale = costWithPurchaseVat * (1 + marginPercent / 100);
+    }
     
     const newItem: NewItem = {
       service_type_id: service.id,
       service_name: service.name,
       quantity: 1,
-      unit_cost_price: service.cost_price || basePrice,
-      unit_base_price: basePrice,
-      subtotal: basePrice,
+      unit_cost_price: service.cost_price || 0,
+      unit_base_price: unitBaseSale,
+      subtotal: unitBaseSale,
       vat_rate: vatRate,
-      vat_amount: (basePrice * vatRate) / 100,
-      total_amount: calculatedPrice, // Usar el precio calculado que coincide con ventas
+      vat_amount: (unitBaseSale * vatRate) / 100,
+      total_amount: calculatedPrice, // Coincide con ventas (incluye IVA, cashback y redondeo)
       item_type: service.item_type,
-      profit_margin_rate: service.profit_margin_rate || 20
+      profit_margin_rate: profitMarginUsed || service.profit_margin_rate || 0
     };
 
     setNewItems(prev => [...prev, newItem]);
