@@ -25,7 +25,7 @@ import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
 import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
 import { CashbackApplicationDialog } from './CashbackApplicationDialog';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { EquipmentList } from './EquipmentList';
@@ -91,7 +91,7 @@ interface SupportTechnicianEntry {
 export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice, formatCurrency, rewardSettings } = useSalesPricingCalculation();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -476,45 +476,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  // Calcular precios usando exactamente la misma lógica que usePricingCalculation
+  // Use sales pricing calculation for consistent pricing
   const calculateExactDisplayPrice = (service: ServiceType, quantity: number = 1) => {
-    const salesVatRate = service.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-
-    if (service.item_type === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
-      const basePrice = (service.base_price || 0);
-      const basePriceTotal = basePrice * quantity;
-      const afterSalesVat = basePriceTotal * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
-      return {
-        subtotal: basePriceTotal * (1 + cashbackPercent / 100),
-        vatAmount: finalWithCashback - basePriceTotal * (1 + cashbackPercent / 100),
-        totalAmount: finalWithCashback
-      };
-    } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
-      const purchaseVatRate = 16;
-      const baseCost = (service.cost_price || 0) * quantity;
-      
-      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 
-        ? service.profit_margin_tiers[0].margin 
-        : 20;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
-      return {
-        subtotal: afterMargin * (1 + cashbackPercent / 100),
-        vatAmount: finalWithCashback - afterMargin * (1 + cashbackPercent / 100),
-        totalAmount: finalWithCashback
-      };
-    }
+    const totalPrice = getDisplayPrice(service, quantity);
+    const salesVatRate = service.vat_rate ?? 16;
+    const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
+    const vatAmount = totalPrice - subtotalWithoutVat;
+    
+    return {
+      subtotal: subtotalWithoutVat,
+      vatAmount: vatAmount,
+      totalAmount: totalPrice
+    };
   };
 
   const handleServiceAdd = async (service: ServiceType, quantity: number = 1) => {
