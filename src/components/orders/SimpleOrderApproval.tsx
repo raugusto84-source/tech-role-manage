@@ -71,7 +71,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   // Calcular precio correcto para un item individual
   const calculateItemCorrectPrice = (item: any): number => {
     const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate || 16;
+     const salesVatRate = (item.vat_rate ?? 16);
     const cashbackPercent = rewardSettings?.apply_cashback_to_items
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
@@ -110,7 +110,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     
     orderItems.forEach(item => {
       const quantity = item.quantity || 1;
-      const salesVatRate = item.vat_rate || 16;
+      const salesVatRate = (item.vat_rate ?? 16);
       const cashbackPercent = rewardSettings?.apply_cashback_to_items
         ? (rewardSettings.general_cashback_percent || 0)
         : 0;

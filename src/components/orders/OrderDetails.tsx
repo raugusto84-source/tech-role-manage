@@ -303,7 +303,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
 
     const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate || 16;
+    const salesVatRate = (item.vat_rate ?? 16);
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
 
     if (item.item_type === 'servicio') {
