@@ -87,9 +87,9 @@ export function OrderItemsList({
 
         const totalPrice = getDisplayPrice(serviceForPricing, newQuantity);
         const salesVatRate = (item.vat_rate ?? 16);
-        subtotal = totalPrice / (1 + salesVatRate / 100);
-        vatAmount = totalPrice - subtotal;
-        total = totalPrice;
+        const subtotal = totalPrice / (1 + salesVatRate / 100);
+        const vatAmount = totalPrice - subtotal;
+        const total = totalPrice;
 
         return {
           ...item,
