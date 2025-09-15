@@ -97,8 +97,8 @@ export function AddOrderItemsDialog({
     const withVat = subtotal * (1 + vatRate / 100);
     const withCashback = withVat * (1 + cashbackPercent / 100);
     
-    // Redondear a 2 decimales
-    return Math.round(withCashback * 100) / 100;
+    // Redondear hacia arriba a la decena más cercana y quitar decimales
+    return Math.ceil(withCashback / 10) * 10;
   };
 
   const addNewItem = () => {
