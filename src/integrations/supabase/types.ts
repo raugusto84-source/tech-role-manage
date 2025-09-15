@@ -2304,50 +2304,6 @@ export type Database = {
           },
         ]
       }
-      order_final_totals: {
-        Row: {
-          calculation_source: string | null
-          created_at: string
-          created_by: string | null
-          display_subtotal: number
-          display_vat_amount: number
-          final_total_amount: number
-          id: string
-          order_id: string
-          updated_at: string
-        }
-        Insert: {
-          calculation_source?: string | null
-          created_at?: string
-          created_by?: string | null
-          display_subtotal?: number
-          display_vat_amount?: number
-          final_total_amount?: number
-          id?: string
-          order_id: string
-          updated_at?: string
-        }
-        Update: {
-          calculation_source?: string | null
-          created_at?: string
-          created_by?: string | null
-          display_subtotal?: number
-          display_vat_amount?: number
-          final_total_amount?: number
-          id?: string
-          order_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_final_totals_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       order_history: {
         Row: {
           created_at: string
