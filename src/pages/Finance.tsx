@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
@@ -1410,28 +1411,59 @@ export default function Finance() {
     }
   };
 
+  // State for collection payment dialog
+  const [selectedCollection, setSelectedCollection] = useState<any>(null);
+  const [showCollectionDialog, setShowCollectionDialog] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<string>('');
+  const [paymentAccount, setPaymentAccount] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
+  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia'>('efectivo');
+
   // Handle collecting payment from pending collections
-  const handleCollectPayment = async (collection: any, accountType: 'fiscal' | 'no_fiscal') => {
+  const handleCollectPayment = async () => {
+    if (!selectedCollection || !paymentAmount) return;
+    
+    const amount = parseFloat(paymentAmount);
+    if (amount <= 0 || amount > selectedCollection.balance) {
+      toast({
+        title: "Monto inválido",
+        description: "El monto debe ser mayor a 0 y no exceder el saldo pendiente",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       // Create income record
       const { error: incomeError } = await supabase.from('incomes').insert({
-        amount: collection.amount,
-        description: `Cobro orden ${collection.order_number} - ${collection.client_name}`,
-        account_type: accountType,
+        amount: amount,
+        description: `Cobro ${amount === selectedCollection.balance ? 'total' : 'parcial'} orden ${selectedCollection.order_number} - ${selectedCollection.client_name}`,
+        account_type: paymentAccount,
         income_date: new Date().toISOString().split('T')[0],
         income_number: '', // Will be auto-generated
-        category: 'cobro_orden'
+        category: 'cobro_orden',
+        payment_method: paymentMethod
       });
 
       if (incomeError) throw incomeError;
 
-      // Remove from pending collections
-      const { error: deleteError } = await supabase
-        .from('pending_collections')
-        .delete()
-        .eq('id', collection.id);
-
-      if (deleteError) throw deleteError;
+      // Update balance in pending collections or remove if fully paid
+      const newBalance = selectedCollection.balance - amount;
+      
+      if (newBalance <= 0) {
+        // Remove from pending collections if fully paid
+        const { error: deleteError } = await supabase
+          .from('pending_collections')
+          .delete()
+          .eq('id', selectedCollection.id);
+        if (deleteError) throw deleteError;
+      } else {
+        // Update balance for partial payment
+        const { error: updateError } = await supabase
+          .from('pending_collections')
+          .update({ balance: newBalance })
+          .eq('id', selectedCollection.id);
+        if (updateError) throw updateError;
+      }
 
       // Refresh queries
       incomesQuery.refetch();
@@ -1439,8 +1471,13 @@ export default function Finance() {
 
       toast({
         title: "Cobro registrado exitosamente",
-        description: `Pago de ${collection.amount.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} registrado en cuenta ${accountType === 'fiscal' ? 'fiscal' : 'no fiscal'}`,
+        description: `Pago de ${amount.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} registrado en cuenta ${paymentAccount === 'fiscal' ? 'fiscal' : 'no fiscal'}${newBalance > 0 ? `. Saldo restante: ${newBalance.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}` : ''}`,
       });
+
+      // Close dialog
+      setShowCollectionDialog(false);
+      setSelectedCollection(null);
+      setPaymentAmount('');
 
     } catch (error: any) {
       toast({
@@ -1449,6 +1486,13 @@ export default function Finance() {
         variant: "destructive"
       });
     }
+  };
+
+  // Open collection dialog
+  const openCollectionDialog = (collection: any) => {
+    setSelectedCollection(collection);
+    setPaymentAmount(collection.balance.toString());
+    setShowCollectionDialog(true);
   };
   return <AppLayout>
       <header className="mb-6">
@@ -2689,8 +2733,8 @@ export default function Finance() {
                     <TableRow>
                       <TableHead>Orden</TableHead>
                       <TableHead>Cliente</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Monto</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Saldo</TableHead>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
@@ -2705,32 +2749,31 @@ export default function Finance() {
                       <TableRow key={collection.id}>
                         <TableCell className="font-mono">{collection.order_number}</TableCell>
                         <TableCell>{collection.client_name}</TableCell>
-                        <TableCell>{collection.client_email}</TableCell>
                         <TableCell className="font-mono">
                           {parseFloat(collection.amount || 0).toLocaleString(undefined, {
                             style: 'currency',
                             currency: 'MXN'
                           })}
                         </TableCell>
+                        <TableCell className="font-mono">
+                          <span className={parseFloat(collection.balance || 0) < parseFloat(collection.amount || 0) ? 'text-yellow-600' : ''}>
+                            {parseFloat(collection.balance || 0).toLocaleString(undefined, {
+                              style: 'currency',
+                              currency: 'MXN'
+                            })}
+                          </span>
+                        </TableCell>
                         <TableCell>{new Date(collection.created_at).toLocaleDateString()}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="default"
-                              onClick={() => handleCollectPayment(collection, 'fiscal')}
-                              className="bg-orange-600 hover:bg-orange-700"
-                            >
-                              Cobrar Fiscal
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleCollectPayment(collection, 'no_fiscal')}
-                            >
-                              Cobrar No Fiscal
-                            </Button>
-                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="default"
+                            onClick={() => openCollectionDialog(collection)}
+                            disabled={parseFloat(collection.balance || 0) <= 0}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Cobrar
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -2951,5 +2994,75 @@ export default function Finance() {
       fiscalWithdrawalsQuery.refetch();
       expensesQuery.refetch();
     }} />
+
+    {/* Collection Payment Dialog */}
+    <Dialog open={showCollectionDialog} onOpenChange={setShowCollectionDialog}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Registrar Cobro</DialogTitle>
+          <DialogDescription>
+            Orden: {selectedCollection?.order_number} - {selectedCollection?.client_name}
+            <br />
+            Saldo pendiente: {parseFloat(selectedCollection?.balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="payment-amount">Monto a cobrar *</Label>
+            <Input
+              id="payment-amount"
+              type="number"
+              step="0.01"
+              max={selectedCollection?.balance || 0}
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              placeholder="0.00"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Máximo: {parseFloat(selectedCollection?.balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
+            </p>
+          </div>
+
+          <div>
+            <Label>Tipo de cuenta *</Label>
+            <RadioGroup value={paymentAccount} onValueChange={(value: 'fiscal' | 'no_fiscal') => setPaymentAccount(value)}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="no_fiscal" id="no_fiscal" />
+                <Label htmlFor="no_fiscal">No fiscal</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="fiscal" id="fiscal" />
+                <Label htmlFor="fiscal">Fiscal</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div>
+            <Label>Método de pago *</Label>
+            <RadioGroup value={paymentMethod} onValueChange={(value: 'efectivo' | 'transferencia') => setPaymentMethod(value)}>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="efectivo" id="efectivo" />
+                <Label htmlFor="efectivo">Efectivo</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="transferencia" id="transferencia" />
+                <Label htmlFor="transferencia">Transferencia</Label>
+              </div>
+            </RadioGroup>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setShowCollectionDialog(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleCollectPayment} className="bg-green-600 hover:bg-green-700">
+            Registrar Cobro
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
     </AppLayout>;
 }

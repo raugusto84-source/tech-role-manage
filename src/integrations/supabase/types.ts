@@ -3084,6 +3084,7 @@ export type Database = {
       pending_collections: {
         Row: {
           amount: number
+          balance: number
           client_email: string
           client_name: string
           created_at: string
@@ -3094,6 +3095,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          balance?: number
           client_email: string
           client_name: string
           created_at?: string
@@ -3104,6 +3106,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          balance?: number
           client_email?: string
           client_name?: string
           created_at?: string
