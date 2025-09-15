@@ -86,6 +86,14 @@ export function OrderServicesList({
   const canEditSerialInfo = canEdit && !isClient;
   const canFinishAll = canEdit && !isClient;
   const canDeleteItems = !isClient && orderStatus === 'pendiente_actualizacion';
+  
+  console.log('OrderServicesList debug:', {
+    orderStatus,
+    canDeleteItems,
+    addedItemsCount: addedItems.size,
+    modificationNumbersCount: itemModificationNumbers.size,
+    orderItemsCount: orderItems.length
+  });
 
   // Calcular precio correcto para un item usando la lógica de Ventas (incluye cashback)
   const calculateItemCorrectPrice = (item: OrderItem): number => {
@@ -106,7 +114,12 @@ export function OrderServicesList({
 
   // Load modification data to identify added items and their update numbers
   const loadAddedItems = async () => {
-    if (!orderId || orderStatus !== 'pendiente_actualizacion') return;
+    if (!orderId || orderStatus !== 'pendiente_actualizacion') {
+      console.log('loadAddedItems: Skipping - orderId:', orderId, 'orderStatus:', orderStatus);
+      return;
+    }
+    
+    console.log('loadAddedItems: Loading for order:', orderId, 'status:', orderStatus);
     
     try {
       // Get all modifications for this order, ordered by creation date
@@ -118,6 +131,8 @@ export function OrderServicesList({
 
       if (error) throw error;
       
+      console.log('loadAddedItems: Found modifications:', modifications);
+      
       if (modifications && modifications.length > 0) {
         const addedItemIds = new Set<string>();
         const modificationNumbers = new Map<string, number>();
@@ -127,6 +142,11 @@ export function OrderServicesList({
           const updateNumber = index + 1; // Update numbers start from 1
           const itemsData = modification.items_added as any[];
           const modificationTime = new Date(modification.created_at);
+          
+          console.log(`loadAddedItems: Processing modification ${updateNumber}:`, {
+            items: itemsData,
+            time: modificationTime
+          });
           
           if (itemsData && itemsData.length > 0) {
             orderItems.forEach(orderItem => {
@@ -142,12 +162,18 @@ export function OrderServicesList({
                 );
                 
                 if (matchesAdded && !addedItemIds.has(orderItem.id)) {
+                  console.log(`loadAddedItems: Item ${orderItem.id} matches update ${updateNumber}`);
                   addedItemIds.add(orderItem.id);
                   modificationNumbers.set(orderItem.id, updateNumber);
                 }
               }
             });
           }
+        });
+        
+        console.log('loadAddedItems: Final results:', {
+          addedItems: Array.from(addedItemIds),
+          modificationNumbers: Array.from(modificationNumbers.entries())
         });
         
         setAddedItems(addedItemIds);
