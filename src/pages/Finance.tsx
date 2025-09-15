@@ -13,7 +13,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { useSalesPricingCalculation } from "@/hooks/useSalesPricingCalculation";
 import { CollectionDialog, DeleteCollectionDialog } from "@/components/finance/CollectionDialog";
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
@@ -50,7 +49,6 @@ export default function Finance() {
     profile
   } = useAuth();
   const isAdmin = profile?.role === 'administrador';
-  const { getDisplayPrice } = useSalesPricingCalculation();
 
   // SEO básico
   useEffect(() => {
@@ -167,73 +165,17 @@ export default function Finance() {
   const collectionsQuery = useQuery({
     queryKey: ["pending_collections"],
     queryFn: async () => {
-      // Get orders with their total amounts that are completed but have pending payments
+      // Get order collections directly from pending_collections table
       const {
-        data: orders,
-        error: ordersError
+        data: orderCollections,
+        error: orderError
       } = await supabase
-        .from("orders")
-        .select(`
-          id,
-          order_number,
-          estimated_cost,
-          delivery_date,
-          created_at,
-          updated_at,
-          clients:client_id(name, email),
-          order_items(total_amount, quantity)
-        `)
-        .eq('status', 'finalizada')
+        .from("pending_collections")
+        .select("*")
+        .gt("remaining_balance", 0)
         .order("delivery_date", { ascending: true });
 
-      if (ordersError) throw ordersError;
-
-      // Calculate collections using the actual order totals
-      const orderCollections = await Promise.all(
-        (orders || []).map(async (order) => {
-          // Get total paid for this order
-          const { data: payments } = await supabase
-            .from('incomes')
-            .select('amount')
-            .ilike('description', `%${order.order_number}%`)
-            .eq('status', 'recibido');
-
-          const totalPaid = (payments || []).reduce((sum, payment) => sum + Number(payment.amount), 0);
-          
-          // Calculate total from order items (using the actual total_amount which is the consistent total)
-          const orderItems = order.order_items || [];
-          const orderTotal = orderItems.reduce((sum, item) => {
-            // Use the total_amount directly - this is the final calculated price per item
-            return sum + Number(item.total_amount || 0);
-          }, 0);
-          
-          // Use order total or fallback to estimated_cost
-          const finalTotal = orderTotal > 0 ? orderTotal : Number(order.estimated_cost || 0);
-          const remainingBalance = finalTotal - totalPaid;
-
-          // Only include if there's a remaining balance
-          if (remainingBalance > 0) {
-            return {
-              id: order.id,
-              order_number: order.order_number,
-              client_name: order.clients?.name || 'Cliente',
-              client_email: order.clients?.email || '',
-              estimated_cost: finalTotal,
-              delivery_date: order.delivery_date,
-              total_paid: totalPaid,
-              remaining_balance: remainingBalance,
-              total_vat_amount: 0,
-              subtotal_without_vat: finalTotal,
-              total_with_vat: finalTotal,
-              collection_type: 'order'
-            };
-          }
-          return null;
-        })
-      );
-
-      // Filter out null values
-      const validOrderCollections = orderCollections.filter(Boolean);
+      if (orderError) throw orderError;
 
       // Get policy payment collections
       const {
@@ -279,7 +221,10 @@ export default function Finance() {
       }));
 
       // Combine both collections
-      return [...validOrderCollections, ...transformedPolicyCollections];
+      return [...(orderCollections || []).map(oc => ({
+        ...oc,
+        collection_type: 'order'
+      })), ...transformedPolicyCollections];
     }
   });
 

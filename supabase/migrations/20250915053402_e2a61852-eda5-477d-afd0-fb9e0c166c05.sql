@@ -1,0 +1,119 @@
+-- Corregir advertencias de seguridad agregando search_path a las nuevas funciones
+CREATE OR REPLACE FUNCTION public.manage_pending_collections()
+RETURNS TRIGGER AS $$
+DECLARE
+  order_total NUMERIC;
+  client_info RECORD;
+BEGIN
+  -- Para INSERT - crear nueva cobranza pendiente
+  IF TG_OP = 'INSERT' THEN
+    -- Obtener información del cliente
+    SELECT c.name, c.email INTO client_info
+    FROM public.clients c
+    WHERE c.id = NEW.client_id;
+    
+    -- Calcular total inicial usando order_items si existen, sino estimated_cost
+    SELECT COALESCE(SUM(total_amount), NEW.estimated_cost, 0)
+    INTO order_total
+    FROM public.order_items
+    WHERE order_id = NEW.id;
+    
+    -- Crear registro en pending_collections
+    INSERT INTO public.pending_collections (
+      order_id,
+      order_number,
+      client_name,
+      client_email,
+      estimated_cost,
+      delivery_date,
+      total_paid,
+      remaining_balance,
+      total_vat_amount,
+      subtotal_without_vat,
+      total_with_vat,
+      created_at,
+      updated_at
+    ) VALUES (
+      NEW.id,
+      NEW.order_number,
+      COALESCE(client_info.name, 'Cliente'),
+      COALESCE(client_info.email, ''),
+      order_total,
+      NEW.delivery_date,
+      0,
+      order_total,
+      0,
+      order_total,
+      order_total,
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (order_id) DO NOTHING;
+    
+    RETURN NEW;
+  END IF;
+  
+  -- Para UPDATE - actualizar cobranzas existentes
+  IF TG_OP = 'UPDATE' THEN
+    -- Calcular nuevo total basado en order_items
+    SELECT COALESCE(SUM(total_amount), NEW.estimated_cost, 0)
+    INTO order_total
+    FROM public.order_items
+    WHERE order_id = NEW.id;
+    
+    -- Actualizar pending_collections si existe
+    UPDATE public.pending_collections
+    SET 
+      estimated_cost = order_total,
+      total_with_vat = order_total,
+      subtotal_without_vat = order_total,
+      remaining_balance = order_total - COALESCE(total_paid, 0),
+      delivery_date = NEW.delivery_date,
+      updated_at = NOW()
+    WHERE order_id = NEW.id;
+    
+    RETURN NEW;
+  END IF;
+  
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
+
+-- Corregir función de actualización de items
+CREATE OR REPLACE FUNCTION public.update_pending_collections_on_items()
+RETURNS TRIGGER AS $$
+DECLARE
+  order_total NUMERIC;
+  order_info RECORD;
+  client_info RECORD;
+BEGIN
+  -- Obtener información de la orden
+  SELECT o.id, o.order_number, o.client_id, o.delivery_date
+  INTO order_info
+  FROM public.orders o
+  WHERE o.id = COALESCE(NEW.order_id, OLD.order_id);
+  
+  -- Calcular nuevo total basado en todos los items de la orden
+  SELECT COALESCE(SUM(total_amount), 0)
+  INTO order_total
+  FROM public.order_items
+  WHERE order_id = order_info.id;
+  
+  -- Obtener información del cliente
+  SELECT c.name, c.email INTO client_info
+  FROM public.clients c
+  WHERE c.id = order_info.client_id;
+  
+  -- Actualizar pending_collections
+  UPDATE public.pending_collections
+  SET 
+    estimated_cost = order_total,
+    total_with_vat = order_total,
+    subtotal_without_vat = order_total,
+    remaining_balance = order_total - COALESCE(total_paid, 0),
+    updated_at = NOW()
+  WHERE order_id = order_info.id;
+  
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
