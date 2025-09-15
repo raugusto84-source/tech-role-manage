@@ -66,21 +66,21 @@ export function useSalesPricingCalculation() {
       console.log(`Servicio ${service.name}: base=${basePrice}, afterVAT=${afterSalesVat}, final=${finalWithCashback}`);
       return ceilToTen(finalWithCashback);
     } else {
-      // Para artículos: costo base + margen + IVA (solo una vez) + cashback
+      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      const purchaseVatRate = 16; // IVA de compra fijo 16%
       const baseCost = (service.cost_price || 0) * quantity;
       const profitMargin = marginFromTiers(service); // Usar margen real del producto
       
-      // Aplicar margen sobre el costo base (sin IVA)
-      const afterMargin = baseCost * (1 + profitMargin / 100);
-      // Aplicar IVA solo UNA VEZ al final
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
       console.log(`Producto ${service.name}:`, {
         baseCost,
+        afterPurchaseVat,
         profitMargin,
         afterMargin,
-        salesVatRate,
         afterSalesVat,
         cashbackPercent,
         finalWithCashback
