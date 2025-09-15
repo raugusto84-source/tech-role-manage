@@ -336,6 +336,40 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     const base = order.estimated_cost || 0;
     return ceilToTen(base * (1 + defaultVatRate / 100));
   };
+
+  // Guarda el total de la UI en la tabla order_final_totals
+  const saveUITotalToDatabase = async (uiTotal: number) => {
+    try {
+      const { error } = await supabase
+        .from('order_final_totals')
+        .upsert({
+          order_id: order.id,
+          final_total_amount: uiTotal,
+          display_subtotal: uiTotal / 1.16, // Aproximación del subtotal
+          display_vat_amount: uiTotal - (uiTotal / 1.16), // Aproximación del IVA
+          calculation_source: 'ui_calculation',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'order_id'
+        });
+
+      if (error) {
+        console.error('Error saving UI total to database:', error);
+      }
+    } catch (error) {
+      console.error('Error saving UI total:', error);
+    }
+  };
+
+  // Efecto para guardar el total cuando cambie
+  useEffect(() => {
+    if (!itemsLoading && orderItems.length > 0) {
+      const uiTotal = calculateTotalAmount();
+      if (uiTotal > 0) {
+        saveUITotalToDatabase(uiTotal);
+      }
+    }
+  }, [orderItems, itemsLoading, rewardSettings]);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
