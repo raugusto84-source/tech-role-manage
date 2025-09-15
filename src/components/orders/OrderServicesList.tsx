@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCOPCeilToTen } from '@/utils/currency';
-import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X } from 'lucide-react';
+import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X, Trash2 } from 'lucide-react';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
+import { useEffect } from 'react';
 interface OrderItem {
   id: string;
   service_name: string;
@@ -25,6 +26,8 @@ interface OrderItem {
   status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
   serial_number?: string;
   supplier_name?: string;
+  created_at?: string;
+  service_type_id?: string;
 }
 interface OrderServicesListProps {
   orderItems: OrderItem[];
@@ -33,6 +36,7 @@ interface OrderServicesListProps {
   showReadyButtons?: boolean;
   orderId?: string;
   onBack?: () => void;
+  orderStatus?: string;
 }
 const statusConfig = {
   pendiente: {
@@ -62,12 +66,15 @@ export function OrderServicesList({
   onItemUpdate,
   showReadyButtons = false,
   orderId,
-  onBack
+  onBack,
+  orderStatus
 }: OrderServicesListProps) {
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const [editingSerialInfo, setEditingSerialInfo] = useState<Set<string>>(new Set());
   const [editableSerialFields, setEditableSerialFields] = useState<Set<string>>(new Set());
   const [finishingAll, setFinishingAll] = useState(false);
+  const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
+  const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   const { getDisplayPrice } = useSalesPricingCalculation();
   const { profile } = useAuth();
@@ -77,6 +84,7 @@ export function OrderServicesList({
   const canEditStatus = canEdit && !isClient;
   const canEditSerialInfo = canEdit && !isClient;
   const canFinishAll = canEdit && !isClient;
+  const canDeleteItems = !isClient && orderStatus === 'pendiente_actualizacion';
 
   // Calcular precio correcto para un item usando la lógica de Ventas (incluye cashback)
   const calculateItemCorrectPrice = (item: OrderItem): number => {
@@ -93,6 +101,100 @@ export function OrderServicesList({
     } as any;
 
     return getDisplayPrice(serviceForPricing, quantity);
+  };
+
+  // Load modification data to identify added items
+  const loadAddedItems = async () => {
+    if (!orderId || orderStatus !== 'pendiente_actualizacion') return;
+    
+    try {
+      const { data: modifications, error } = await supabase
+        .from('order_modifications')
+        .select('items_added, created_at')
+        .eq('order_id', orderId)
+        .is('client_approved', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      
+      if (modifications && modifications[0]?.items_added) {
+        const itemsData = modifications[0].items_added as any[];
+        const modificationTime = new Date(modifications[0].created_at);
+        
+        // Find items that match the added items criteria
+        const addedItemIds = new Set<string>();
+        
+        orderItems.forEach(orderItem => {
+          // Check if this item was created after the modification
+          const itemCreatedAt = new Date(orderItem.created_at || '');
+          
+          if (itemCreatedAt >= modificationTime) {
+            // Check if it matches any of the added items
+            const matchesAdded = itemsData.some(addedItem => 
+              orderItem.service_name === addedItem.service_name &&
+              orderItem.quantity === addedItem.quantity &&
+              orderItem.unit_base_price === addedItem.unit_base_price
+            );
+            
+            if (matchesAdded) {
+              addedItemIds.add(orderItem.id);
+            }
+          }
+        });
+        
+        setAddedItems(addedItemIds);
+      }
+    } catch (error) {
+      console.error('Error loading added items:', error);
+    }
+  };
+
+  // Load added items on mount and when orderItems change
+  useEffect(() => {
+    loadAddedItems();
+  }, [orderId, orderStatus, orderItems]);
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!canDeleteItems) return;
+    
+    setDeletingItems(prev => new Set(prev).add(itemId));
+    
+    try {
+      const { error } = await supabase
+        .from('order_items')
+        .delete()
+        .eq('id', itemId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Artículo eliminado',
+        description: 'El artículo ha sido eliminado de la orden.',
+      });
+
+      onItemUpdate?.();
+      
+      // Remove from added items set
+      setAddedItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    } catch (error) {
+      console.error('Error deleting item:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar el artículo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
   };
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     if (!canEditStatus) return;
@@ -261,8 +363,21 @@ export function OrderServicesList({
                     
                     {/* Price and Status Controls - Mobile Friendly */}
                     <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-medium text-primary mb-1">
-                        {formatCurrency(calculateItemCorrectPrice(item))}
+                      <div className="flex items-center gap-2 justify-end mb-1">
+                        <div className="text-sm font-medium text-primary">
+                          {formatCurrency(calculateItemCorrectPrice(item))}
+                        </div>
+                        {canDeleteItems && addedItems.has(item.id) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteItem(item.id)}
+                            disabled={deletingItems.has(item.id)}
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                       {canEditStatus && (
                         <div className="w-20">

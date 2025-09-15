@@ -77,6 +77,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const [itemsLoading, setItemsLoading] = useState(true);
   const [orderStatus, setOrderStatus] = useState(order.status);
   const [hasAuthorization, setHasAuthorization] = useState(false);
+  const [hasRejection, setHasRejection] = useState(false);
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
   const [authorizationSignatures, setAuthorizationSignatures] = useState<any[]>([]);
@@ -151,13 +152,24 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       if (orderStatus === 'pendiente_actualizacion') {
         const { data: modificationData } = await supabase
           .from('order_modifications')
-          .select('id')
+          .select('id, client_approved')
           .eq('order_id', order.id)
           .is('client_approved', null)
           .limit(1)
           .maybeSingle();
         
         setHasAuthorization(!modificationData);
+        
+        // Check for rejected modifications
+        const { data: rejectedData } = await supabase
+          .from('order_modifications')
+          .select('id')
+          .eq('order_id', order.id)
+          .eq('client_approved', false)
+          .limit(1)
+          .maybeSingle();
+        
+        setHasRejection(!!rejectedData);
       } else if (orderStatus === 'pendiente_aprobacion') {
         const { data } = await supabase
           .from('order_authorization_signatures')
@@ -403,13 +415,21 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           </div>
           
           <div className="flex items-center justify-between">
-            <Badge className={getStatusColor(orderStatus)} variant="outline">
-              {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE' 
-               : orderStatus === 'pendiente_entrega' ? 'LISTO'
-               : orderStatus === 'pendiente_aprobacion' ? 'PENDIENTE APROBACIÓN'
-               : ['en_proceso', 'pendiente'].includes(orderStatus) ? 'EN PROCESO'
-               : orderStatus.replace('_', ' ').toUpperCase()}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={getStatusColor(orderStatus)} variant="outline">
+                {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE' 
+                 : orderStatus === 'pendiente_entrega' ? 'LISTO'
+                 : orderStatus === 'pendiente_aprobacion' ? 'PENDIENTE APROBACIÓN'
+                 : ['en_proceso', 'pendiente'].includes(orderStatus) ? 'EN PROCESO'
+                 : orderStatus.replace('_', ' ').toUpperCase()}
+              </Badge>
+              
+              {hasRejection && (
+                <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-300">
+                  Actualización rechazada
+                </Badge>
+              )}
+            </div>
             
             <div className="text-sm text-muted-foreground">
               {formatDate(order.created_at)}
@@ -537,6 +557,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     showReadyButtons={['en_proceso', 'pendiente'].includes(orderStatus)}
                     orderId={order.id}
                     onBack={onBack}
+                    orderStatus={orderStatus}
                   />
                   
                   {/* Total General */}
