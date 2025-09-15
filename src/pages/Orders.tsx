@@ -534,36 +534,6 @@ export default function Orders() {
               Aún no hay órdenes registradas
             </p>
           </div>
-        ) : profile?.role === 'administrador' ? (
-          // Vista simplificada tipo registro para administradores
-          <div className="space-y-6">
-            {Object.entries(groupedOrders).map(([status, orders]) => {
-              if (orders.length === 0) return null;
-              
-              return (
-                <div key={status} className="space-y-4">
-                  <div className="flex items-center gap-3 pb-2 border-b">
-                    <h2 className="text-xl font-semibold">{getStatusTitle(status)}</h2>
-                    <Badge variant="outline" className="text-sm">
-                      {orders.length} {orders.length === 1 ? 'orden' : 'órdenes'}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {orders.map((order) => (
-                      <SimpleOrderCard
-                        key={order.id}
-                        order={order}
-                        onView={() => setSelectedOrder(order)}
-                        onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                        canDelete={canDeleteOrder}
-                        getStatusColor={getStatusColor}
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         ) : (
           // Vista original por categorías para otros roles
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
