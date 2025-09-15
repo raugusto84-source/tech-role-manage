@@ -49,7 +49,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada';
+  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -302,6 +302,7 @@ export default function Orders() {
     en_proceso: filteredOrders.filter(order => order.status === 'en_proceso'),
     pendiente_actualizacion: filteredOrders.filter(order => order.status === 'pendiente_actualizacion'),
     pendiente_entrega: filteredOrders.filter(order => order.status === 'pendiente_entrega'),
+    finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
     cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
   };
 
@@ -325,6 +326,7 @@ export default function Orders() {
       case 'en_proceso': return 'En Proceso';
       case 'pendiente_actualizacion': return 'Pendientes de Actualización';
       case 'pendiente_entrega': return 'Pendientes de Entrega';
+      case 'finalizada': return 'Finalizadas';
       case 'cancelada': return 'Canceladas';
       default: return status;
     }
