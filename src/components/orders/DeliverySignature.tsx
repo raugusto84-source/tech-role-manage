@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
@@ -7,6 +7,8 @@ import { PenTool, CheckCircle2, ArrowLeft, X } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { triggerOrderFollowUp } from '@/utils/followUp';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
+import { ceilToTen } from '@/utils/currency';
 
 interface DeliverySignatureProps {
   order: {
@@ -26,6 +28,105 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
   const signatureRef = useRef<SignatureCanvas>(null);
   const [loading, setLoading] = useState(false);
   const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice } = useSalesPricingCalculation();
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(true);
+
+  // Cargar items de la orden para calcular el total correcto
+  useEffect(() => {
+    const loadOrderItems = async () => {
+      setItemsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('order_items')
+          .select(`
+            quantity,
+            unit_cost_price,
+            unit_base_price, 
+            vat_rate,
+            item_type,
+            profit_margin_rate,
+            pricing_locked,
+            total_amount,
+            service_type_id,
+            service_name,
+            profit_margin_tiers
+          `)
+          .eq('order_id', order.id);
+
+        if (error) throw error;
+        setOrderItems(data || []);
+      } catch (error) {
+        console.error('Error loading order items for delivery:', error);
+        setOrderItems([]);
+      } finally {
+        setItemsLoading(false);
+      }
+    };
+
+    loadOrderItems();
+  }, [order.id]);
+
+  // Calcular el total correcto usando la misma lógica que la UI
+  const calculateUITotal = () => {
+    if (itemsLoading || !orderItems.length) {
+      return 0;
+    }
+
+    return orderItems.reduce((sum, item) => {
+      // Usar totales guardados si están bloqueados o faltan datos
+      const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+      const isLocked = Boolean(item.pricing_locked);
+      const missingKeyData = (item.item_type === 'servicio')
+        ? (!item.unit_base_price || item.unit_base_price <= 0)
+        : (!item.unit_cost_price || item.unit_cost_price <= 0);
+
+      if (hasStoredTotal && (isLocked || missingKeyData)) {
+        return sum + Number(item.total_amount);
+      }
+
+      // Calcular usando la lógica de precios unificada
+      const quantity = item.quantity || 1;
+      const serviceForPricing = {
+        id: item.service_type_id || item.id,
+        name: item.service_name || '',
+        base_price: item.unit_base_price,
+        cost_price: item.unit_cost_price,
+        vat_rate: item.vat_rate,
+        item_type: item.item_type,
+        profit_margin_tiers: item.profit_margin_tiers || (item.profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: item.profit_margin_rate }] : null)
+      } as any;
+
+      const itemTotal = getDisplayPrice(serviceForPricing, quantity);
+      return sum + ceilToTen(itemTotal);
+    }, 0);
+  };
+
+  // Guardar el total de la UI en order_final_totals
+  const saveUITotalToDatabase = async (uiTotal: number) => {
+    try {
+      const { error } = await supabase
+        .from('order_final_totals')
+        .upsert({
+          order_id: order.id,
+          final_total_amount: uiTotal,
+          display_subtotal: uiTotal / 1.16, // Aproximación del subtotal
+          display_vat_amount: uiTotal - (uiTotal / 1.16), // Aproximación del IVA
+          calculation_source: 'ui_final_signature',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'order_id'
+        });
+
+      if (error) {
+        console.error('Error saving final UI total to database:', error);
+      } else {
+        console.log('✅ Total final de UI guardado:', uiTotal);
+      }
+    } catch (error) {
+      console.error('Error saving final UI total:', error);
+    }
+  };
 
   const clearSignature = () => {
     signatureRef.current?.clear();
@@ -90,6 +191,13 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
         throw orderError;
       }
       console.log('✅ Orden actualizada exitosamente');
+
+      // GUARDAR EL TOTAL FINAL DE LA UI AL MOMENTO DE FINALIZAR LA ORDEN
+      const finalUITotal = calculateUITotal();
+      if (finalUITotal > 0) {
+        console.log('💾 Guardando total final de la UI al finalizar orden:', finalUITotal);
+        await saveUITotalToDatabase(finalUITotal);
+      }
 
       // Disparar seguimiento para orden completada
       await triggerOrderFollowUp(order, 'order_completed');
