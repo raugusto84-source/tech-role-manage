@@ -524,6 +524,25 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     onBack={onBack}
                   />
                   
+                  {/* Total General */}
+                  {orderItems.length > 0 && (
+                    <div className="mt-4 pt-3 border-t border-border">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-muted-foreground">Total General:</span>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          {itemsLoading ? (
+                            <Skeleton className="h-6 w-24 rounded" />
+                          ) : (
+                            <span className="text-lg font-bold text-primary">
+                              {formatCOPCeilToTen(calculateTotalAmount())}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                 </div>
               )}
               
