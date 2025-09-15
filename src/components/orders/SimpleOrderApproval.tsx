@@ -253,15 +253,23 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
         if (signatureError) throw signatureError;
 
-        // Actualizar el estado de la orden a 'en_proceso' para ambos casos
+        // Actualizar el estado de la orden a 'en_proceso' y el nuevo total para modificaciones
         const newStatus = 'en_proceso';
+        const updateData: any = {
+          status: newStatus,
+          client_approval: true,
+          client_approved_at: new Date().toISOString()
+        };
+        
+        // Solo actualizar estimated_cost cuando hay modificaciones aprobadas
+        if (modifications.length > 0) {
+          const latestModification = modifications[0];
+          updateData.estimated_cost = latestModification.new_total;
+        }
+        
         const { error: orderError } = await supabase
           .from('orders')
-          .update({
-            status: newStatus,
-            client_approval: true,
-            client_approved_at: new Date().toISOString()
-          })
+          .update(updateData)
           .eq('id', order.id);
 
         console.log(`Updated order status to: ${newStatus} for order ${order.id}`);

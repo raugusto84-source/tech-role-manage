@@ -447,12 +447,7 @@ export function AddOrderItemsDialog({
         if (itemError) throw itemError;
       }
 
-      const { error: updateError } = await supabase
-        .from('orders')
-        .update({ estimated_cost: newTotal })
-        .eq('id', orderId);
-
-      if (updateError) throw updateError;
+      // No actualizar estimated_cost aquí - solo se actualiza al aprobar
 
       onItemsAdded();
       onOpenChange(false);
