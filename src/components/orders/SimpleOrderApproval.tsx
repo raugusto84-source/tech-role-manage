@@ -359,20 +359,41 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           
           console.log('Processed items added:', itemsAdded);
           
-          // Eliminar cada item agregado
+          // Eliminar cada item agregado usando criterios más específicos
           for (const item of itemsAdded) {
             console.log('Deleting item:', item);
-            const { error: deleteError } = await supabase
+            
+            let deleteQuery = supabase
               .from('order_items')
               .delete()
-              .eq('order_id', order.id)
-              .eq('service_type_id', item.service_type_id);
+              .eq('order_id', order.id);
+            
+            // Usar ID específico si está disponible, sino usar múltiples criterios
+            if (item.id) {
+              deleteQuery = deleteQuery.eq('id', item.id);
+            } else {
+              // Usar múltiples criterios para identificar el item específico
+              deleteQuery = deleteQuery
+                .eq('service_type_id', item.service_type_id)
+                .eq('service_name', item.service_name || item.name);
+              
+              // Agregar cantidad si está disponible para mayor precisión
+              if (item.quantity) {
+                deleteQuery = deleteQuery.eq('quantity', item.quantity);
+              }
+            }
+
+            const { error: deleteError } = await deleteQuery;
 
             if (deleteError) {
               console.error('Error deleting item:', deleteError);
               throw deleteError;
             }
+            
+            console.log(`Successfully deleted item with service_type_id: ${item.service_type_id}`);
           }
+          
+          console.log('All added items have been deleted successfully');
         }
 
         // Eliminar el registro de modificación
