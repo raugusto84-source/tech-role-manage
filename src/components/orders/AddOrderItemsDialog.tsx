@@ -85,18 +85,24 @@ export function AddOrderItemsDialog({
     }
   };
 
-  // Para agregar items a órdenes, usar cálculo simple sin cashback adicional
+  // Para agregar items a órdenes, usar cálculo con cashback configurado
   const calculateItemCorrectPrice = (item: NewItem): number => {
     const quantity = item.quantity || 1;
     const unitPrice = item.unit_base_price || 0;
     const vatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
     
-    // Cálculo simple: precio unitario * cantidad + IVA
+    // Cálculo: precio unitario * cantidad
     const subtotal = unitPrice * quantity;
-    const vatAmount = (subtotal * vatRate) / 100;
-    const total = subtotal + vatAmount;
+    // Agregar IVA
+    const withVat = subtotal * (1 + vatRate / 100);
+    // Agregar cashback configurado
+    const withCashback = withVat * (1 + cashbackPercent / 100);
     
-    return total;
+    // Redondear a 2 decimales
+    return Math.round(withCashback * 100) / 100;
   };
 
   const addNewItem = () => {
