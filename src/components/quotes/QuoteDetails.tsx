@@ -368,78 +368,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  // Convertir cotización a orden usando la función de base de datos
-  const convertToOrder = async () => {
-    try {
-      setLoading(true);
-
-      // Primero actualizar el estado de la cotización a 'aceptada'
-      const { error: updateError } = await supabase
-        .from('quotes')
-        .update({ 
-          status: 'aceptada',
-          final_decision_date: new Date().toISOString()
-        })
-        .eq('id', quote.id);
-
-      if (updateError) {
-        toast({
-          title: "Error",
-          description: `Error al aceptar cotización: ${updateError.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Luego llamar a la función que crea la orden
-      const { data, error } = await supabase.rpc('convert_quote_to_order', {
-        quote_id: quote.id
-      });
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: `Error al crear orden: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Verificar el resultado de la función
-      const result = data as ConvertQuoteResult;
-      if (result?.error) {
-        toast({
-          title: "Error",
-          description: result.error,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (result?.success) {
-        toast({
-          title: "Orden creada exitosamente",
-          description: `Se ha creado la orden ${result.order_number} con un total de ${formatCurrency(result.total_amount || 0)}`,
-        });
-      } else {
-        toast({
-          title: "Cotización aceptada",
-          description: "La cotización ha sido aceptada correctamente.",
-        });
-      }
-
-      onQuoteUpdated();
-    } catch (error) {
-      console.error('Error converting quote to order:', error);
-      toast({
-        title: "Error inesperado",
-        description: "No se pudo procesar la cotización",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Funcionalidad de conversión eliminada - será reimplementada
 
   // Handle cashback toggle
   const handleCashbackToggle = async (checked: boolean) => {
@@ -865,14 +794,14 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                   {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
-                        onClick={convertToOrder}
-                        disabled={loading}
-                        variant="default"
+                        disabled={true}
+                        variant="secondary"
                         className="w-full"
                         size="sm"
+                        title="Conversión a orden temporalmente deshabilitada"
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Aceptar
+                        Aceptar (En mantenimiento)
                       </Button>
                       <Button 
                         onClick={rejectQuote}
