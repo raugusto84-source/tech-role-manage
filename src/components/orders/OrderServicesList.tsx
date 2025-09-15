@@ -75,6 +75,7 @@ export function OrderServicesList({
   const [finishingAll, setFinishingAll] = useState(false);
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
+  const [itemModificationNumbers, setItemModificationNumbers] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
   const { getDisplayPrice } = useSalesPricingCalculation();
   const { profile } = useAuth();
@@ -103,47 +104,54 @@ export function OrderServicesList({
     return getDisplayPrice(serviceForPricing, quantity);
   };
 
-  // Load modification data to identify added items
+  // Load modification data to identify added items and their update numbers
   const loadAddedItems = async () => {
     if (!orderId || orderStatus !== 'pendiente_actualizacion') return;
     
     try {
+      // Get all modifications for this order, ordered by creation date
       const { data: modifications, error } = await supabase
         .from('order_modifications')
         .select('items_added, created_at')
         .eq('order_id', orderId)
-        .is('client_approved', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .order('created_at', { ascending: true }); // Ascending to get correct numbering
 
       if (error) throw error;
       
-      if (modifications && modifications[0]?.items_added) {
-        const itemsData = modifications[0].items_added as any[];
-        const modificationTime = new Date(modifications[0].created_at);
-        
-        // Find items that match the added items criteria
+      if (modifications && modifications.length > 0) {
         const addedItemIds = new Set<string>();
+        const modificationNumbers = new Map<string, number>();
         
-        orderItems.forEach(orderItem => {
-          // Check if this item was created after the modification
-          const itemCreatedAt = new Date(orderItem.created_at || '');
+        // Process each modification to identify which items belong to which update
+        modifications.forEach((modification, index) => {
+          const updateNumber = index + 1; // Update numbers start from 1
+          const itemsData = modification.items_added as any[];
+          const modificationTime = new Date(modification.created_at);
           
-          if (itemCreatedAt >= modificationTime) {
-            // Check if it matches any of the added items
-            const matchesAdded = itemsData.some(addedItem => 
-              orderItem.service_name === addedItem.service_name &&
-              orderItem.quantity === addedItem.quantity &&
-              orderItem.unit_base_price === addedItem.unit_base_price
-            );
-            
-            if (matchesAdded) {
-              addedItemIds.add(orderItem.id);
-            }
+          if (itemsData && itemsData.length > 0) {
+            orderItems.forEach(orderItem => {
+              // Check if this item was created after this modification
+              const itemCreatedAt = new Date(orderItem.created_at || '');
+              
+              if (itemCreatedAt >= modificationTime) {
+                // Check if it matches any of the added items in this modification
+                const matchesAdded = itemsData.some(addedItem => 
+                  orderItem.service_name === addedItem.service_name &&
+                  orderItem.quantity === addedItem.quantity &&
+                  orderItem.unit_base_price === addedItem.unit_base_price
+                );
+                
+                if (matchesAdded && !addedItemIds.has(orderItem.id)) {
+                  addedItemIds.add(orderItem.id);
+                  modificationNumbers.set(orderItem.id, updateNumber);
+                }
+              }
+            });
           }
         });
         
         setAddedItems(addedItemIds);
+        setItemModificationNumbers(modificationNumbers);
       }
     } catch (error) {
       console.error('Error loading added items:', error);
@@ -358,6 +366,11 @@ export function OrderServicesList({
                             Artículo
                           </Badge>
                         )}
+                        {addedItems.has(item.id) && itemModificationNumbers.has(item.id) && (
+                          <Badge variant="default" className="text-xs bg-blue-600 hover:bg-blue-700">
+                            Actualización {itemModificationNumbers.get(item.id)}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                     
@@ -369,13 +382,13 @@ export function OrderServicesList({
                         </div>
                         {canDeleteItems && addedItems.has(item.id) && (
                           <Button
-                            variant="ghost"
+                            variant="destructive"
                             size="sm"
                             onClick={() => handleDeleteItem(item.id)}
                             disabled={deletingItems.has(item.id)}
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            className="h-7 w-7 p-0"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
