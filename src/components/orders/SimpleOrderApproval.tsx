@@ -209,6 +209,32 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     signatureRef.current?.clear();
   };
 
+  // Guardar el total de la UI en order_final_totals cuando se autoriza
+  const saveUITotalToDatabase = async (uiTotal: number) => {
+    try {
+      const { error } = await supabase
+        .from('order_final_totals')
+        .upsert({
+          order_id: order.id,
+          final_total_amount: uiTotal,
+          display_subtotal: uiTotal / 1.16, // Aproximación del subtotal
+          display_vat_amount: uiTotal - (uiTotal / 1.16), // Aproximación del IVA
+          calculation_source: 'ui_authorization',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'order_id'
+        });
+
+      if (error) {
+        console.error('Error saving authorized UI total to database:', error);
+      } else {
+        console.log('✅ Total autorizado guardado:', uiTotal);
+      }
+    } catch (error) {
+      console.error('Error saving authorized UI total:', error);
+    }
+  };
+
   const handleApproval = async () => {
     if (!signatureRef.current || signatureRef.current.isEmpty()) {
       toast({
@@ -266,9 +292,14 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
         console.log(`Updated order status to: ${newStatus} for order ${order.id}`);
 
-        if (orderError) throw orderError;
+      if (orderError) throw orderError;
 
-        toast({
+      // GUARDAR EL TOTAL DE LA UI AL MOMENTO DE AUTORIZAR LA ORDEN
+      const authorizedTotal = calculateTotals().total;
+      console.log('💾 Guardando total autorizado de la UI:', authorizedTotal);
+      await saveUITotalToDatabase(authorizedTotal);
+
+      toast({
           title: "Modificación aprobada",
           description: "Los cambios en la orden han sido aprobados exitosamente.",
           variant: "default"
@@ -299,6 +330,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           .eq('id', order.id);
 
         if (orderError) throw orderError;
+
+        // GUARDAR EL TOTAL DE LA UI AL MOMENTO DE AUTORIZAR LA ORDEN INICIAL
+        const authorizedTotal = calculateTotals().total;
+        console.log('💾 Guardando total autorizado inicial de la UI:', authorizedTotal);
+        await saveUITotalToDatabase(authorizedTotal);
 
         toast({
           title: "Orden aprobada",

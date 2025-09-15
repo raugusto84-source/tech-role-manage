@@ -127,6 +127,35 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
 
       if (error) throw error;
 
+      // GUARDAR EL TOTAL DE LA UI SI LA TRANSICIÓN ES DE AUTORIZACIÓN
+      if (order.status === 'pendiente_aprobacion' && newStatus === 'en_proceso') {
+        console.log('💾 Guardando total de UI al autorizar orden via cambio de estado');
+        // Necesitamos obtener los items para calcular el total
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', order.id);
+        
+        if (orderItems && orderItems.length > 0) {
+          // Calcular total usando la misma lógica que otros componentes
+          const total = orderItems.reduce((sum, item) => {
+            const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+            const isLocked = Boolean(item.pricing_locked);
+            if (hasStoredTotal && isLocked) {
+              return sum + Number(item.total_amount);
+            }
+            // Para items sin total guardado, usar precio base * cantidad + IVA aproximado
+            const basePrice = item.unit_base_price || item.unit_cost_price || 0;
+            const quantity = item.quantity || 1;
+            const vatRate = item.vat_rate || 16;
+            const itemTotal = basePrice * quantity * (1 + vatRate / 100);
+            return sum + Math.ceil(itemTotal / 10) * 10; // Redondear a múltiplo de 10
+          }, 0);
+          
+          await saveUITotalToDatabase(total);
+        }
+      }
+
       // Mostrar confirmación
       const statusLabels = {
         'pendiente_aprobacion': 'Pendiente Aprobación',
@@ -191,6 +220,32 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
       case 'pendiente_entrega': return 'Pendiente Entrega';
       case 'cancelada': return 'Cancelada';
       default: return status;
+    }
+  };
+
+  // Guardar el total de la UI en order_final_totals cuando se autoriza
+  const saveUITotalToDatabase = async (uiTotal: number) => {
+    try {
+      const { error } = await supabase
+        .from('order_final_totals')
+        .upsert({
+          order_id: order.id,
+          final_total_amount: uiTotal,
+          display_subtotal: uiTotal / 1.16,
+          display_vat_amount: uiTotal - (uiTotal / 1.16),
+          calculation_source: 'ui_status_change_authorization',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'order_id'
+        });
+
+      if (error) {
+        console.error('Error saving authorized UI total via status change:', error);
+      } else {
+        console.log('✅ Total autorizado guardado via cambio de estado:', uiTotal);
+      }
+    } catch (error) {
+      console.error('Error saving authorized UI total via status change:', error);
     }
   };
 
