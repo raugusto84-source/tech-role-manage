@@ -301,21 +301,31 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           </div>
           
           {/* Botón de cobrar para órdenes finalizadas */}
-          {showCollectButton && order.status === 'finalizada' && (
-            <div className="flex justify-end mt-2">
-              <Button
-                variant="default"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowPaymentDialog(true);
-                }}
-              >
-                <CreditCard className="h-3 w-3 mr-1" />
-                Cobrar
-              </Button>
-            </div>
-          )}
+          {(() => {
+            const shouldShowButton = showCollectButton && order.status === 'finalizada';
+            console.log('OrderCard collect button debug:', {
+              showCollectButton,
+              orderStatus: order.status,
+              orderNumber: order.order_number,
+              shouldShow: shouldShowButton
+            });
+            
+            return shouldShowButton ? (
+              <div className="flex justify-end mt-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowPaymentDialog(true);
+                  }}
+                >
+                  <CreditCard className="h-3 w-3 mr-1" />
+                  Cobrar
+                </Button>
+              </div>
+            ) : null;
+          })()}
         </div>
       </CardContent>
       

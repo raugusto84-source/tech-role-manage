@@ -407,6 +407,14 @@ export default function Orders() {
   const canDeleteOrder = profile?.role === 'administrador';
   const canCollectPayment = profile?.role === 'administrador' || profile?.role === 'vendedor';
   
+  // Debug logging
+  console.log('Orders page debug:', {
+    profile: profile,
+    userRole: profile?.role,
+    canCollectPayment: canCollectPayment,
+    finalizedOrders: filteredOrders.filter(o => o.status === 'finalizada').length
+  });
+  
   // Función para obtener la ruta del dashboard según el rol
   const getDashboardRoute = () => {
     if (!profile) return '/dashboard';
