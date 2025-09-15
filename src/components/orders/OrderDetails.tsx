@@ -208,6 +208,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           vat_rate,
           item_type,
           profit_margin_rate,
+          pricing_locked,
           total_amount,
           status
         `)
