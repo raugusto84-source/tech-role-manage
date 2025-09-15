@@ -139,8 +139,8 @@ export function SimpleOrderCard({
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Calcular por item con la misma lógica del módulo de ventas
-      return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+      // Sumar cada tarjeta como se muestra: redondear cada ítem a 10 y luego sumar
+      return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
