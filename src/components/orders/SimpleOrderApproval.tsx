@@ -408,11 +408,12 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           throw deleteModError;
         }
 
-        // Revertir el estado de la orden a 'en_proceso'
+        // Revertir el estado de la orden a 'en_proceso' y restaurar el total original
         const { error: orderError } = await supabase
           .from('orders')
           .update({
             status: 'en_proceso',
+            estimated_cost: latestModification.previous_total, // Restaurar el total anterior
             updated_at: new Date().toISOString()
           })
           .eq('id', order.id);
