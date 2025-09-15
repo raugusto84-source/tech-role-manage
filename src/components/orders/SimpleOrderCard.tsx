@@ -292,7 +292,7 @@ export function SimpleOrderCard({
 
         {/* Botones de acción */}
         <div className="flex justify-end gap-2 pt-2">
-          {showCollectButton && order.status === 'finalizada' && (
+          {showCollectButton && (
             <Button 
               variant="default"
               size="sm" 

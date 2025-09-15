@@ -302,7 +302,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           
           {/* Botón de cobrar para órdenes finalizadas */}
           {(() => {
-            const shouldShowButton = showCollectButton && order.status === 'finalizada';
+            const shouldShowButton = showCollectButton;
             console.log('OrderCard collect button debug:', {
               showCollectButton,
               orderStatus: order.status,
