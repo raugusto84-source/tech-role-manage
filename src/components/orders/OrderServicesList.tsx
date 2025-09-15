@@ -114,6 +114,12 @@ export function OrderServicesList({
 
   // Load modification data to identify added items and their update numbers
   const loadAddedItems = async () => {
+    console.log('loadAddedItems CALLED with:', {
+      orderId,
+      orderStatus,
+      condition: orderStatus === 'pendiente_actualizacion'
+    });
+    
     if (!orderId || orderStatus !== 'pendiente_actualizacion') {
       console.log('loadAddedItems: Skipping - orderId:', orderId, 'orderStatus:', orderStatus);
       return;
@@ -129,7 +135,10 @@ export function OrderServicesList({
         .eq('order_id', orderId)
         .order('created_at', { ascending: true }); // Ascending to get correct numbering
 
-      if (error) throw error;
+      if (error) {
+        console.error('loadAddedItems: Supabase error:', error);
+        throw error;
+      }
       
       console.log('loadAddedItems: Found modifications:', modifications);
       
@@ -153,6 +162,12 @@ export function OrderServicesList({
               // Check if this item was created after this modification
               const itemCreatedAt = new Date(orderItem.created_at || '');
               
+              console.log(`loadAddedItems: Checking item ${orderItem.id}:`, {
+                itemCreatedAt,
+                modificationTime,
+                isAfter: itemCreatedAt >= modificationTime
+              });
+              
               if (itemCreatedAt >= modificationTime) {
                 // Check if it matches any of the added items in this modification
                 const matchesAdded = itemsData.some(addedItem => 
@@ -160,6 +175,12 @@ export function OrderServicesList({
                   orderItem.quantity === addedItem.quantity &&
                   orderItem.unit_base_price === addedItem.unit_base_price
                 );
+                
+                console.log(`loadAddedItems: Item match check:`, {
+                  itemId: orderItem.id,
+                  matchesAdded,
+                  itemService: orderItem.service_name
+                });
                 
                 if (matchesAdded && !addedItemIds.has(orderItem.id)) {
                   console.log(`loadAddedItems: Item ${orderItem.id} matches update ${updateNumber}`);
@@ -178,6 +199,8 @@ export function OrderServicesList({
         
         setAddedItems(addedItemIds);
         setItemModificationNumbers(modificationNumbers);
+      } else {
+        console.log('loadAddedItems: No modifications found for order:', orderId);
       }
     } catch (error) {
       console.error('Error loading added items:', error);
@@ -186,8 +209,13 @@ export function OrderServicesList({
 
   // Load added items on mount and when orderItems change
   useEffect(() => {
+    console.log('useEffect triggered for loadAddedItems:', {
+      orderId,
+      orderStatus,
+      orderItemsLength: orderItems?.length
+    });
     loadAddedItems();
-  }, [orderId, orderStatus, orderItems]);
+  }, [orderId, orderStatus, orderItems.length]); // Use length instead of full array
 
   const handleDeleteItem = async (itemId: string) => {
     if (!canDeleteItems) return;
