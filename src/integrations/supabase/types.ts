@@ -2804,47 +2804,6 @@ export type Database = {
           },
         ]
       }
-      order_totals: {
-        Row: {
-          calculated_at: string
-          created_at: string
-          id: string
-          order_id: string
-          subtotal: number
-          total_amount: number
-          updated_at: string
-          vat_amount: number
-        }
-        Insert: {
-          calculated_at?: string
-          created_at?: string
-          id?: string
-          order_id: string
-          subtotal?: number
-          total_amount?: number
-          updated_at?: string
-          vat_amount?: number
-        }
-        Update: {
-          calculated_at?: string
-          created_at?: string
-          id?: string
-          order_id?: string
-          subtotal?: number
-          total_amount?: number
-          updated_at?: string
-          vat_amount?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_totals_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orders: {
         Row: {
           approved_subtotal: number | null
@@ -3118,42 +3077,6 @@ export type Database = {
           period_week?: number | null
           period_year?: number
           status?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      pending_collections: {
-        Row: {
-          amount: number
-          balance: number
-          client_email: string
-          client_name: string
-          created_at: string
-          id: string
-          order_id: string
-          order_number: string
-          updated_at: string
-        }
-        Insert: {
-          amount?: number
-          balance?: number
-          client_email: string
-          client_name: string
-          created_at?: string
-          id?: string
-          order_id: string
-          order_number: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          balance?: number
-          client_email?: string
-          client_name?: string
-          created_at?: string
-          id?: string
-          order_id?: string
-          order_number?: string
           updated_at?: string
         }
         Relationships: []
@@ -6194,14 +6117,6 @@ export type Database = {
           vat_rate: number
         }[]
       }
-      calculate_order_total: {
-        Args: { p_order_id: string }
-        Returns: {
-          subtotal: number
-          total_amount: number
-          vat_amount: number
-        }[]
-      }
       calculate_schedule_weekly_hours: {
         Args: {
           break_duration_minutes: number
@@ -6362,10 +6277,6 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      handle_calculate_order_total: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       has_logged_time_today: {
         Args: { user_id: string }
         Returns: boolean
@@ -6415,10 +6326,6 @@ export type Database = {
         Returns: undefined
       }
       process_scheduled_surveys: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_pending_collections: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

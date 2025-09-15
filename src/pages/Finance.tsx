@@ -13,7 +13,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
@@ -163,41 +162,6 @@ export default function Finance() {
       return data ?? [];
     }
   });
-
-  // Query for pending collections
-  const pendingCollectionsQuery = useQuery({
-    queryKey: ["pending_collections"],
-    queryFn: async () => {
-      // Ensure the pending collections table is refreshed from current orders
-      try {
-        await supabase.rpc('refresh_pending_collections');
-      } catch (e) {
-        console.warn('refresh_pending_collections failed:', e);
-      }
-
-      const { data, error } = await supabase
-        .from("pending_collections")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      if (error) throw error;
-      return data ?? [];
-    }
-  });
-
-  // Realtime updates for pending collections
-  useEffect(() => {
-    const channel = supabase
-      .channel('pending-collections-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pending_collections' }, () => {
-        pendingCollectionsQuery.refetch();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [pendingCollectionsQuery]);
 
   // Query para retiros fiscales vinculados a órdenes
   const fiscalWithdrawalsQuery = useQuery({
@@ -1431,94 +1395,10 @@ export default function Finance() {
       });
     }
   };
-
-  // State for collection payment dialog
-  const [selectedCollection, setSelectedCollection] = useState<any>(null);
-  const [showCollectionDialog, setShowCollectionDialog] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState<string>('');
-  const [paymentAccount, setPaymentAccount] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
-  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'transferencia'>('efectivo');
-
-  // Handle collecting payment from pending collections
-  const handleCollectPayment = async () => {
-    if (!selectedCollection || !paymentAmount) return;
-    
-    const amount = parseFloat(paymentAmount);
-    if (amount <= 0 || amount > selectedCollection.balance) {
-      toast({
-        title: "Monto inválido",
-        description: "El monto debe ser mayor a 0 y no exceder el saldo pendiente",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // Create income record
-      const { error: incomeError } = await supabase.from('incomes').insert({
-        amount: amount,
-        description: `Cobro ${amount === selectedCollection.balance ? 'total' : 'parcial'} orden ${selectedCollection.order_number} - ${selectedCollection.client_name}`,
-        account_type: paymentAccount,
-        income_date: new Date().toISOString().split('T')[0],
-        income_number: '', // Will be auto-generated
-        category: 'cobro_orden',
-        payment_method: paymentMethod
-      });
-
-      if (incomeError) throw incomeError;
-
-      // Update balance in pending collections or remove if fully paid
-      const newBalance = selectedCollection.balance - amount;
-      
-      if (newBalance <= 0) {
-        // Remove from pending collections if fully paid
-        const { error: deleteError } = await supabase
-          .from('pending_collections')
-          .delete()
-          .eq('id', selectedCollection.id);
-        if (deleteError) throw deleteError;
-      } else {
-        // Update balance for partial payment
-        const { error: updateError } = await supabase
-          .from('pending_collections')
-          .update({ balance: newBalance })
-          .eq('id', selectedCollection.id);
-        if (updateError) throw updateError;
-      }
-
-      // Refresh queries
-      incomesQuery.refetch();
-      pendingCollectionsQuery.refetch();
-
-      toast({
-        title: "Cobro registrado exitosamente",
-        description: `Pago de ${amount.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} registrado en cuenta ${paymentAccount === 'fiscal' ? 'fiscal' : 'no fiscal'}${newBalance > 0 ? `. Saldo restante: ${newBalance.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}` : ''}`,
-      });
-
-      // Close dialog
-      setShowCollectionDialog(false);
-      setSelectedCollection(null);
-      setPaymentAmount('');
-
-    } catch (error: any) {
-      toast({
-        title: "Error al procesar cobro",
-        description: error.message,
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Open collection dialog
-  const openCollectionDialog = (collection: any) => {
-    setSelectedCollection(collection);
-    setPaymentAmount(collection.balance.toString());
-    setShowCollectionDialog(true);
-  };
   return <AppLayout>
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos, Egresos y Cobranzas</h1>
-        <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas, cobrar órdenes aprobadas y controlar flujo de efectivo.</p>
+        <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos y Egresos</h1>
+        <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
       </header>
 
       <section className="mb-6">
@@ -1615,7 +1495,8 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          <TabsTrigger value="collections">Cobranzas</TabsTrigger>
+          
+          
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -2739,85 +2620,6 @@ export default function Finance() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="collections">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Cobranzas Pendientes ({pendingCollectionsQuery.data?.length ?? 0})</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Órdenes aprobadas por el cliente pendientes de cobro
-              </p>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Orden</TableHead>
-                      <TableHead>Cliente</TableHead>
-                      <TableHead>Total</TableHead>
-                      <TableHead>Saldo</TableHead>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {pendingCollectionsQuery.isLoading && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center">Cargando...</TableCell>
-                      </TableRow>
-                    )}
-                    {!pendingCollectionsQuery.isLoading && pendingCollectionsQuery.data?.map((collection: any) => (
-                      <TableRow key={collection.id}>
-                        <TableCell className="font-mono">{collection.order_number}</TableCell>
-                        <TableCell>{collection.client_name}</TableCell>
-                        <TableCell className="font-mono">
-                          {parseFloat(collection.amount || 0).toLocaleString(undefined, {
-                            style: 'currency',
-                            currency: 'MXN'
-                          })}
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          <span className={parseFloat(collection.balance || 0) < parseFloat(collection.amount || 0) ? 'text-yellow-600' : ''}>
-                            {parseFloat(collection.balance || 0).toLocaleString(undefined, {
-                              style: 'currency',
-                              currency: 'MXN'
-                            })}
-                          </span>
-                        </TableCell>
-                        <TableCell>{new Date(collection.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={() => openCollectionDialog(collection)}
-                            disabled={parseFloat(collection.balance || 0) <= 0}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            Cobrar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {!pendingCollectionsQuery.isLoading && (pendingCollectionsQuery.data?.length === 0) && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          <div className="flex flex-col items-center gap-2">
-                            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                              <span className="text-xl">💰</span>
-                            </div>
-                            <p className="font-medium">No hay cobranzas pendientes</p>
-                            <p className="text-sm">Las órdenes aprobadas por el cliente aparecerán aquí</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
 
         <TabsContent value="history">
           <Card>
@@ -3015,75 +2817,5 @@ export default function Finance() {
       fiscalWithdrawalsQuery.refetch();
       expensesQuery.refetch();
     }} />
-
-    {/* Collection Payment Dialog */}
-    <Dialog open={showCollectionDialog} onOpenChange={setShowCollectionDialog}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Registrar Cobro</DialogTitle>
-          <DialogDescription>
-            Orden: {selectedCollection?.order_number} - {selectedCollection?.client_name}
-            <br />
-            Saldo pendiente: {parseFloat(selectedCollection?.balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="payment-amount">Monto a cobrar *</Label>
-            <Input
-              id="payment-amount"
-              type="number"
-              step="0.01"
-              max={selectedCollection?.balance || 0}
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              placeholder="0.00"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Máximo: {parseFloat(selectedCollection?.balance || 0).toLocaleString(undefined, { style: 'currency', currency: 'MXN' })}
-            </p>
-          </div>
-
-          <div>
-            <Label>Tipo de cuenta *</Label>
-            <RadioGroup value={paymentAccount} onValueChange={(value: 'fiscal' | 'no_fiscal') => setPaymentAccount(value)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no_fiscal" id="no_fiscal" />
-                <Label htmlFor="no_fiscal">No fiscal</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="fiscal" id="fiscal" />
-                <Label htmlFor="fiscal">Fiscal</Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          <div>
-            <Label>Método de pago *</Label>
-            <RadioGroup value={paymentMethod} onValueChange={(value: 'efectivo' | 'transferencia') => setPaymentMethod(value)}>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="efectivo" id="efectivo" />
-                <Label htmlFor="efectivo">Efectivo</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="transferencia" id="transferencia" />
-                <Label htmlFor="transferencia">Transferencia</Label>
-              </div>
-            </RadioGroup>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setShowCollectionDialog(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleCollectPayment} className="bg-green-600 hover:bg-green-700">
-            Registrar Cobro
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-
     </AppLayout>;
 }

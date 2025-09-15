@@ -26,11 +26,6 @@ export function useSalesPricingCalculation() {
 
   // Helper function to determine if item is a product
   const isProduct = (service: ServiceType): boolean => {
-    // Explicitly check item_type first - if it's 'servicio', it's NOT a product
-    if (service.item_type === 'servicio') {
-      return false;
-    }
-    // If it's 'articulo' or has profit margin tiers, it's a product
     const hasTiers = Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0;
     return hasTiers || service.item_type === 'articulo';
   };

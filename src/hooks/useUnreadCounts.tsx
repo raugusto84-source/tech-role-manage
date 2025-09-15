@@ -42,16 +42,11 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
-      // Count pending collections
-      const { count: collectionsCount } = await supabase
-        .from('pending_collections')
-        .select('*', { count: 'exact', head: true });
-
       setCounts({
         orders: ordersCount || 0,
         quotes: quotesCount || 0,
         warranties: warrantiesCount || 0,
-        collections: collectionsCount || 0
+        collections: 0
       });
     } catch (error) {
       console.error('Error fetching unread counts:', error);
@@ -100,7 +95,7 @@ export function useUnreadCounts() {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'pending_collections'
+        table: 'order_payments'
       }, () => {
         fetchCounts();
       })
