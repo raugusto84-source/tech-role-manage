@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PenTool, User, Calendar } from 'lucide-react';
+import { PenTool, User, Calendar, DollarSign, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface AuthorizationSignature {
   id: string;
@@ -10,6 +11,8 @@ interface AuthorizationSignature {
   client_name: string;
   signed_at: string;
   authorization_notes?: string;
+  modification_reason?: string | null;
+  new_amount?: number | null;
 }
 
 interface SignatureViewerProps {
@@ -89,6 +92,26 @@ export function SignatureViewer({ signatures, loading }: SignatureViewerProps) {
                 {formatDateTime(signature.signed_at)}
               </div>
             </div>
+
+            {/* Razón de la firma y monto */}
+            {(signature.modification_reason || signature.new_amount) && (
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                {signature.modification_reason && (
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-green-600" />
+                    <span className="text-muted-foreground">Razón:</span>
+                    <span className="font-medium">{signature.modification_reason}</span>
+                  </div>
+                )}
+                {signature.new_amount && (
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                    <span className="text-muted-foreground">Monto autorizado:</span>
+                    <span className="font-bold text-primary">{formatCOPCeilToTen(signature.new_amount)}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Firma */}
             <div className="border-2 border-dashed border-border rounded-lg p-2 bg-muted/20">
