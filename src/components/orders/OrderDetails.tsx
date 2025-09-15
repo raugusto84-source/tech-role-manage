@@ -326,8 +326,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items
-    return order.estimated_cost || 0;
+    // Solo usar estimated_cost como último recurso si no hay items - APLICAR IVA
+    const defaultVatRate = 16;
+    const base = order.estimated_cost || 0;
+    return base * (1 + defaultVatRate / 100);
   };
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -423,7 +425,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
                 
                 <div className="text-right text-sm">
-                  <div className="font-medium text-success">
+                  <div className="text-xs text-muted-foreground mb-1">Total con IVA:</div>
+                  <div className="font-bold text-primary">
                     {itemsLoading ? (
                       <Skeleton className="h-4 w-16 rounded" />
                     ) : (
