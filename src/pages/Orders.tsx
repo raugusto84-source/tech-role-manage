@@ -405,6 +405,7 @@ export default function Orders() {
 
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico' || profile?.role === 'supervisor';
   const canDeleteOrder = profile?.role === 'administrador';
+  const canCollectPayment = profile?.role === 'administrador' || profile?.role === 'vendedor';
   
   // Función para obtener la ruta del dashboard según el rol
   const getDashboardRoute = () => {
@@ -592,14 +593,15 @@ export default function Orders() {
                           </div>
                           <div className="space-y-1">
                              {sistemasOrders.map((order) => (
-                               <OrderCard
-                                 key={order.id}
-                                 order={order}
-                                 onClick={() => setSelectedOrder(order)}
-                                 onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                 canDelete={canDeleteOrder}
-                                 getStatusColor={getStatusColor}
-                               />
+                                <OrderCard
+                                  key={order.id}
+                                  order={order}
+                                  onClick={() => setSelectedOrder(order)}
+                                  onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                  canDelete={canDeleteOrder}
+                                  getStatusColor={getStatusColor}
+                                  showCollectButton={canCollectPayment}
+                                />
                              ))}
                           </div>
                         </div>
@@ -663,14 +665,15 @@ export default function Orders() {
                           </div>
                           <div className="space-y-1">
                              {seguridadOrders.map((order) => (
-                               <OrderCard
-                                 key={order.id}
-                                 order={order}
-                                 onClick={() => setSelectedOrder(order)}
-                                 onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                 canDelete={canDeleteOrder}
-                                 getStatusColor={getStatusColor}
-                               />
+                                <OrderCard
+                                  key={order.id}
+                                  order={order}
+                                  onClick={() => setSelectedOrder(order)}
+                                  onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                                  canDelete={canDeleteOrder}
+                                  getStatusColor={getStatusColor}
+                                  showCollectButton={canCollectPayment}
+                                />
                              ))}
                           </div>
                         </div>

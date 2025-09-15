@@ -1,0 +1,219 @@
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import { formatCOPCeilToTen } from '@/utils/currency';
+import { DollarSign } from 'lucide-react';
+
+interface PaymentCollectionDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  order: {
+    id: string;
+    order_number: string;
+    clients?: {
+      name: string;
+    } | null;
+  };
+  totalAmount: number;
+}
+
+export function PaymentCollectionDialog({
+  open,
+  onOpenChange,
+  order,
+  totalAmount
+}: PaymentCollectionDialogProps) {
+  const [amount, setAmount] = useState(totalAmount.toString());
+  const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!amount || !paymentMethod) {
+      toast({
+        title: "Error",
+        description: "Por favor completa todos los campos requeridos",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const paymentAmount = parseFloat(amount);
+    if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      toast({
+        title: "Error", 
+        description: "El monto debe ser un número válido mayor a 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Generar número de ingreso
+      const { data: existingIncomes } = await supabase
+        .from('incomes')
+        .select('income_number')
+        .like('income_number', 'ING-%')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      let incomeNumber = 'ING-0001';
+      if (existingIncomes && existingIncomes.length > 0) {
+        const lastNumber = existingIncomes[0].income_number.split('-')[1];
+        const nextNumber = (parseInt(lastNumber) + 1).toString().padStart(4, '0');
+        incomeNumber = `ING-${nextNumber}`;
+      }
+
+      // Calcular IVA si es cuenta fiscal
+      const vatRate = accountType === 'fiscal' ? 19 : 0;
+      const taxableAmount = accountType === 'fiscal' ? paymentAmount / (1 + vatRate / 100) : paymentAmount;
+      const vatAmount = accountType === 'fiscal' ? paymentAmount - taxableAmount : 0;
+
+      // Registrar ingreso
+      const { error: incomeError } = await supabase
+        .from('incomes')
+        .insert({
+          income_number: incomeNumber,
+          income_date: new Date().toISOString().split('T')[0],
+          amount: paymentAmount,
+          account_type: accountType,
+          category: 'cobranza',
+          description: `Cobro orden ${order.order_number} - ${order.clients?.name || 'Cliente'}`,
+          payment_method: paymentMethod,
+          status: 'recibido',
+          vat_rate: vatRate,
+          vat_amount: vatAmount,
+          taxable_amount: taxableAmount
+        });
+
+      if (incomeError) throw incomeError;
+
+      // Registrar pago de orden
+      const { error: paymentError } = await supabase
+        .from('order_payments')
+        .insert({
+          order_id: order.id,
+          order_number: order.order_number,
+          client_name: order.clients?.name || 'Cliente',
+          payment_amount: paymentAmount,
+          payment_date: new Date().toISOString().split('T')[0],
+          payment_method: paymentMethod,
+          account_type: accountType,
+          description: `Cobro orden ${order.order_number}`
+        });
+
+      if (paymentError) throw paymentError;
+
+      toast({
+        title: "Pago registrado",
+        description: `Se registró el cobro de ${formatCOPCeilToTen(paymentAmount)} para la orden ${order.order_number}`,
+      });
+
+      onOpenChange(false);
+      
+      // Reset form
+      setAmount(totalAmount.toString());
+      setAccountType('no_fiscal');
+      setPaymentMethod('');
+
+    } catch (error) {
+      console.error('Error registering payment:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo registrar el pago. Intenta nuevamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5 text-primary" />
+            Cobrar Orden {order.order_number}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="amount">Monto a cobrar</Label>
+            <Input
+              id="amount"
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              required
+            />
+            <p className="text-sm text-muted-foreground">
+              Total sugerido: {formatCOPCeilToTen(totalAmount)}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <Label>Tipo de cuenta</Label>
+            <RadioGroup
+              value={accountType}
+              onValueChange={(value: 'fiscal' | 'no_fiscal') => setAccountType(value)}
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="no_fiscal" id="no_fiscal" />
+                <Label htmlFor="no_fiscal">Cuenta No Fiscal</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="fiscal" id="fiscal" />
+                <Label htmlFor="fiscal">Cuenta Fiscal (con IVA)</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="payment-method">Método de pago</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona método de pago" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="efectivo">Efectivo</SelectItem>
+                <SelectItem value="transferencia">Transferencia</SelectItem>
+                <SelectItem value="tarjeta_debito">Tarjeta de Débito</SelectItem>
+                <SelectItem value="tarjeta_credito">Tarjeta de Crédito</SelectItem>
+                <SelectItem value="cheque">Cheque</SelectItem>
+                <SelectItem value="nequi">Nequi</SelectItem>
+                <SelectItem value="daviplata">Daviplata</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Registrando...' : 'Registrar Cobro'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

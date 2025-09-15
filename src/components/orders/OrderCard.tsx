@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle, Users, MapPin, Home } from 'lucide-react';
+import { Calendar, User, Wrench, DollarSign, Clock, Trash2, MessageCircle, Users, MapPin, Home, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
@@ -11,6 +11,7 @@ import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
+import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 
 interface OrderCardProps {
   order: {
@@ -57,11 +58,13 @@ interface OrderCardProps {
   onDelete?: (orderId: string) => void;
   canDelete?: boolean;
   getStatusColor: (status: string) => string;
+  showCollectButton?: boolean;
 }
 
-export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor }: OrderCardProps) {
+export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor, showCollectButton = false }: OrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const { getDisplayPrice } = useSalesPricingCalculation();
 
   useEffect(() => {
@@ -296,8 +299,32 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor 
               )}
             </div>
           </div>
+          
+          {/* Botón de cobrar para órdenes finalizadas */}
+          {showCollectButton && order.status === 'finalizada' && (
+            <div className="flex justify-end mt-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPaymentDialog(true);
+                }}
+              >
+                <CreditCard className="h-3 w-3 mr-1" />
+                Cobrar
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
+      
+      <PaymentCollectionDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        order={order}
+        totalAmount={ceilToTen(calculateCorrectTotal())}
+      />
     </Card>
   );
 }

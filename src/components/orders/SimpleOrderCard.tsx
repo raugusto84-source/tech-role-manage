@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home } from 'lucide-react';
+import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 
 interface SimpleOrderCardProps {
   order: {
@@ -54,6 +55,7 @@ interface SimpleOrderCardProps {
   onDelete?: (orderId: string) => void;
   canDelete?: boolean;
   getStatusColor: (status: string) => string;
+  showCollectButton?: boolean;
 }
 
 export function SimpleOrderCard({ 
@@ -61,10 +63,12 @@ export function SimpleOrderCard({
   onView, 
   onDelete, 
   canDelete, 
-  getStatusColor 
+  getStatusColor,
+  showCollectButton = false
 }: SimpleOrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const { settings: rewardSettings } = useRewardSettings();
 
   useEffect(() => {
@@ -286,8 +290,21 @@ export function SimpleOrderCard({
           </div>
         </div>
 
-        {/* Botón de ver detalles */}
-        <div className="flex justify-end pt-2">
+        {/* Botones de acción */}
+        <div className="flex justify-end gap-2 pt-2">
+          {showCollectButton && order.status === 'finalizada' && (
+            <Button 
+              variant="default"
+              size="sm" 
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPaymentDialog(true);
+              }}
+            >
+              <CreditCard className="h-4 w-4 mr-2" />
+              Cobrar
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
@@ -301,6 +318,13 @@ export function SimpleOrderCard({
           </Button>
         </div>
       </CardContent>
+      
+      <PaymentCollectionDialog
+        open={showPaymentDialog}
+        onOpenChange={setShowPaymentDialog}
+        order={order}
+        totalAmount={calculateCorrectTotal()}
+      />
     </Card>
   );
 }
