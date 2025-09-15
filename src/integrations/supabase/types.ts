@@ -6365,6 +6365,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      refresh_pending_collections: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       send_whatsapp_notification: {
         Args: {
           p_client_email: string
