@@ -79,38 +79,27 @@ export function PaymentCollectionDialog({
     setLoading(true);
 
     try {
-      // Generar número de ingreso
-      const { data: existingIncomes } = await supabase
-        .from('incomes')
-        .select('income_number')
-        .like('income_number', 'ING-%')
-        .order('created_at', { ascending: false })
-        .limit(1);
 
-      let incomeNumber = 'ING-0001';
-      if (existingIncomes && existingIncomes.length > 0) {
-        const lastNumber = existingIncomes[0].income_number.split('-')[1];
-        const nextNumber = (parseInt(lastNumber) + 1).toString().padStart(4, '0');
-        incomeNumber = `ING-${nextNumber}`;
-      }
+      // Usar trigger handle_new_income() para generar income_number automáticamente
 
       // Calcular IVA si es cuenta fiscal
       const vatRate = accountType === 'fiscal' ? 19 : 0;
       const taxableAmount = accountType === 'fiscal' ? paymentAmount / (1 + vatRate / 100) : paymentAmount;
       const vatAmount = accountType === 'fiscal' ? paymentAmount - taxableAmount : 0;
+      
+      // Generar número de ingreso (simple y único por timestamp)
+      const incomeNumber = `ING-${Date.now()}`;
 
-      // Registrar ingreso
-      console.log('Inserting income with data:', {
-        income_number: incomeNumber,
+      // Registrar ingreso (el trigger handle_new_income genera income_number)
+      console.log('Inserting income (auto-number) with data:', {
         amount: paymentAmount,
         account_type: accountType,
         payment_method: paymentMethod
       });
       
-      const { error: incomeError } = await supabase
+      const { data: incomeInsert, error: incomeError } = await supabase
         .from('incomes')
         .insert({
-          income_number: incomeNumber,
           income_date: new Date().toISOString().split('T')[0],
           amount: paymentAmount,
           account_type: accountType,
@@ -121,7 +110,9 @@ export function PaymentCollectionDialog({
           vat_rate: vatRate,
           vat_amount: vatAmount,
           taxable_amount: taxableAmount
-        });
+        } as any)
+        .select('id')
+        .maybeSingle();
 
       if (incomeError) {
         console.error('Income insertion error:', incomeError);
@@ -141,7 +132,8 @@ export function PaymentCollectionDialog({
           payment_date: new Date().toISOString().split('T')[0],
           payment_method: paymentMethod,
           account_type: accountType,
-          description: `Cobro orden ${order.order_number}`
+          description: `Cobro orden ${order.order_number}`,
+          income_id: incomeInsert?.id || null
         });
 
       if (paymentError) {
@@ -171,6 +163,7 @@ export function PaymentCollectionDialog({
         window.location.reload();
       }, 1000);
 
+    }
     } catch (error) {
       console.error('Complete error registering payment:', error);
       toast({
