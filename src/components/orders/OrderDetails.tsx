@@ -323,12 +323,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return 0; // No mostrar nada mientras carga
     }
     
-    // Si la orden está pendiente de actualización, usar el estimated_cost original (ya incluye IVA)
-    if (order.status === 'pendiente_actualizacion') {
-      const base = order.estimated_cost || 0;
-      return ceilToTen(base);
-    }
-    
     if (orderItems && orderItems.length > 0) {
       // Sumar el total de CADA tarjeta: redondear cada item a 10 y luego sumar
       return orderItems.reduce((sum, item) => {
@@ -337,9 +331,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       }, 0);
     }
     
-    // Solo usar estimated_cost como último recurso - ya incluye IVA
+    // Solo usar estimated_cost como último recurso - aplicar IVA y redondear a 10
+    const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
-    return ceilToTen(base);
+    return ceilToTen(base * (1 + defaultVatRate / 100));
   };
   const getStatusColor = (status: string) => {
     switch (status) {

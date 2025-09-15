@@ -112,10 +112,7 @@ export function SimpleOrderCard({
       ? (!item.unit_base_price || item.unit_base_price <= 0)
       : (!item.unit_cost_price || item.unit_cost_price <= 0);
 
-    console.log(`SimpleOrderCard - Item ${item.service_name}: hasStoredTotal=${hasStoredTotal}, isLocked=${isLocked}, missingKeyData=${missingKeyData}, stored_total=${item.total_amount}`);
-
     if (hasStoredTotal && (isLocked || missingKeyData)) {
-      console.log(`SimpleOrderCard - Using stored total for ${item.service_name}: ${item.total_amount}`);
       return Number(item.total_amount);
     }
 
@@ -127,7 +124,6 @@ export function SimpleOrderCard({
       const basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      console.log(`SimpleOrderCard - Service ${item.service_name}: base=${basePrice}, afterVAT=${afterSalesVat}, final=${finalWithCashback}`);
       return finalWithCashback;
     } else {
       const purchaseVatRate = 16;
@@ -137,40 +133,25 @@ export function SimpleOrderCard({
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      console.log(`SimpleOrderCard - Product ${item.service_name}: cost=${baseCost}, margin=${profitMargin}%, afterPurchaseVAT=${afterPurchaseVat}, afterMargin=${afterMargin}, afterSalesVAT=${afterSalesVat}, final=${finalWithCashback}, stored_total=${item.total_amount}`);
       return finalWithCashback;
     }
   };
 
-  // Total con IVA - usar estimated_cost si está pendiente de actualización
+  // Total con IVA - usar totales guardados cuando existan
   const calculateCorrectTotal = () => {
     if (itemsLoading) {
       return 0;
     }
     
-    // Si la orden está pendiente de actualización, usar el estimated_cost original (ya incluye IVA)
-    if (order.status === 'pendiente_actualizacion') {
-      const base = order.estimated_cost || 0;
-      console.log(`SimpleOrderCard - Order ${order.order_number}: pendiente_actualizacion, estimated_cost=${base}`);
-      return base;
-    }
-    
     if (orderItems && orderItems.length > 0) {
       // Sumar cada tarjeta como se muestra: redondear cada ítem a 10 y luego sumar
-      const totalFromItems = orderItems.reduce((sum, item) => {
-        const itemPrice = calculateItemDisplayPrice(item);
-        const roundedPrice = ceilToTen(itemPrice);
-        console.log(`SimpleOrderCard - Order ${order.order_number}: item ${item.service_name}, calculated=${itemPrice}, rounded=${roundedPrice}`);
-        return sum + roundedPrice;
-      }, 0);
-      console.log(`SimpleOrderCard - Order ${order.order_number}: total from items=${totalFromItems}`);
-      return totalFromItems;
+      return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items (ya incluye IVA)
+    // Solo usar estimated_cost como último recurso si no hay items
+    const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
-    console.log(`SimpleOrderCard - Order ${order.order_number}: fallback to estimated_cost=${base}`);
-    return base;
+    return base * (1 + defaultVatRate / 100);
   };
 
   // Calculate payments after total calculation
