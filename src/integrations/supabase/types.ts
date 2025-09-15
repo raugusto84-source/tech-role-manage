@@ -2804,6 +2804,47 @@ export type Database = {
           },
         ]
       }
+      order_totals: {
+        Row: {
+          calculated_at: string
+          created_at: string
+          id: string
+          order_id: string
+          subtotal: number
+          total_amount: number
+          updated_at: string
+          vat_amount: number
+        }
+        Insert: {
+          calculated_at?: string
+          created_at?: string
+          id?: string
+          order_id: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Update: {
+          calculated_at?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+          vat_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_totals_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           approved_subtotal: number | null
@@ -6151,6 +6192,14 @@ export type Database = {
           unit_cost_price: number
           vat_amount: number
           vat_rate: number
+        }[]
+      }
+      calculate_order_total: {
+        Args: { p_order_id: string }
+        Returns: {
+          subtotal: number
+          total_amount: number
+          vat_amount: number
         }[]
       }
       calculate_schedule_weekly_hours: {
