@@ -2126,6 +2126,8 @@ export type Database = {
           client_signature_data: string
           created_at: string
           id: string
+          modification_reason: string | null
+          new_amount: number | null
           order_id: string
           signed_at: string
           updated_at: string
@@ -2136,6 +2138,8 @@ export type Database = {
           client_signature_data: string
           created_at?: string
           id?: string
+          modification_reason?: string | null
+          new_amount?: number | null
           order_id: string
           signed_at?: string
           updated_at?: string
@@ -2146,6 +2150,8 @@ export type Database = {
           client_signature_data?: string
           created_at?: string
           id?: string
+          modification_reason?: string | null
+          new_amount?: number | null
           order_id?: string
           signed_at?: string
           updated_at?: string

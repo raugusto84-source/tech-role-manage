@@ -272,7 +272,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             order_id: order.id,
             client_signature_data: signatureData,
             client_name: order.clients?.name || '',
-            signed_at: new Date().toISOString()
+            signed_at: new Date().toISOString(),
+            modification_reason: latestModification?.modification_reason || 'Modificación de orden',
+            new_amount: calculateTotals().total
           });
 
         if (signatureError) throw signatureError;
@@ -305,7 +307,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             order_id: order.id,
             client_signature_data: signatureData,
             client_name: order.clients?.name || '',
-            signed_at: new Date().toISOString()
+            signed_at: new Date().toISOString(),
+            modification_reason: 'Aprobación inicial de orden',
+            new_amount: calculateTotals().total
           });
 
         if (signatureError) throw signatureError;
