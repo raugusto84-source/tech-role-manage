@@ -45,6 +45,7 @@ export function PaymentCollectionDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    (e as any).stopPropagation?.();
     
     console.log('Payment form submitted with data:', {
       amount,
@@ -178,7 +179,7 @@ export function PaymentCollectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />

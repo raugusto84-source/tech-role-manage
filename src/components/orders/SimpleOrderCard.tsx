@@ -188,7 +188,14 @@ export function SimpleOrderCard({
   return (
     <Card 
       className="hover:shadow-sm transition-all cursor-pointer border-l-4 border-l-primary"
-      onClick={onView}
+      onClick={(e) => {
+        if (showPaymentDialog) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onView();
+      }}
     >
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">

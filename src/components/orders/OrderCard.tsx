@@ -174,7 +174,14 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           ? 'border-l-warning bg-warning/5' 
           : 'border-l-primary'
       }`}
-      onClick={onClick}
+      onClick={(e) => {
+        if (showPaymentDialog) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        onClick();
+      }}
     >
       <CardHeader className="pb-0 pt-0.5 px-2">{/* Reducir aún más la altura vertical */}
         <div className="flex justify-between items-start">
