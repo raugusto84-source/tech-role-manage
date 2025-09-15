@@ -121,11 +121,12 @@ export function SimpleOrderCard({
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       return finalWithCashback;
     } else {
-      const purchaseVatRate = 16;
+      // Para productos: costo base + margen + IVA (solo una vez) + cashback
       const baseCost = (item.unit_cost_price || 0) * quantity;
       const profitMargin = item.profit_margin_rate || 20;
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      // Aplicar margen sobre costo base (sin IVA)
+      const afterMargin = baseCost * (1 + profitMargin / 100);
+      // Aplicar IVA solo UNA VEZ al final
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       return finalWithCashback;
