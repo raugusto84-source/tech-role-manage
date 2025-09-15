@@ -163,6 +163,20 @@ export default function Finance() {
     }
   });
 
+  // Query for pending collections
+  const pendingCollectionsQuery = useQuery({
+    queryKey: ["pending_collections"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pending_collections")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
   // Query para retiros fiscales vinculados a órdenes
   const fiscalWithdrawalsQuery = useQuery({
     queryKey: ["fiscal_withdrawals"],
@@ -1395,10 +1409,51 @@ export default function Finance() {
       });
     }
   };
+
+  // Handle collecting payment from pending collections
+  const handleCollectPayment = async (collection: any, accountType: 'fiscal' | 'no_fiscal') => {
+    try {
+      // Create income record
+      const { error: incomeError } = await supabase.from('incomes').insert({
+        amount: collection.amount,
+        description: `Cobro orden ${collection.order_number} - ${collection.client_name}`,
+        account_type: accountType,
+        income_date: new Date().toISOString().split('T')[0],
+        income_number: '', // Will be auto-generated
+        category: 'cobro_orden'
+      });
+
+      if (incomeError) throw incomeError;
+
+      // Remove from pending collections
+      const { error: deleteError } = await supabase
+        .from('pending_collections')
+        .delete()
+        .eq('id', collection.id);
+
+      if (deleteError) throw deleteError;
+
+      // Refresh queries
+      incomesQuery.refetch();
+      pendingCollectionsQuery.refetch();
+
+      toast({
+        title: "Cobro registrado exitosamente",
+        description: `Pago de ${collection.amount.toLocaleString(undefined, { style: 'currency', currency: 'MXN' })} registrado en cuenta ${accountType === 'fiscal' ? 'fiscal' : 'no fiscal'}`,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Error al procesar cobro",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
   return <AppLayout>
       <header className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos y Egresos</h1>
-        <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
+        <h1 className="text-3xl font-bold text-foreground">Finanzas: Ingresos, Egresos y Cobranzas</h1>
+        <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas, cobrar órdenes aprobadas y controlar flujo de efectivo.</p>
       </header>
 
       <section className="mb-6">
@@ -1495,8 +1550,7 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          
-          
+          <TabsTrigger value="collections">Cobranzas</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -2613,6 +2667,86 @@ export default function Finance() {
                         </TableCell>
                       </TableRow>)}
                     {!vatDetailsQuery.isLoading && (vatDetailsQuery.data ?? []).length === 0 && <TableRow><TableCell colSpan={7}>No hay registros con IVA para el período seleccionado.</TableCell></TableRow>}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="collections">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Cobranzas Pendientes ({pendingCollectionsQuery.data?.length ?? 0})</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Órdenes aprobadas por el cliente pendientes de cobro
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Orden</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Monto</TableHead>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Acciones</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pendingCollectionsQuery.isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center">Cargando...</TableCell>
+                      </TableRow>
+                    )}
+                    {!pendingCollectionsQuery.isLoading && pendingCollectionsQuery.data?.map((collection: any) => (
+                      <TableRow key={collection.id}>
+                        <TableCell className="font-mono">{collection.order_number}</TableCell>
+                        <TableCell>{collection.client_name}</TableCell>
+                        <TableCell>{collection.client_email}</TableCell>
+                        <TableCell className="font-mono">
+                          {parseFloat(collection.amount || 0).toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'MXN'
+                          })}
+                        </TableCell>
+                        <TableCell>{new Date(collection.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="default"
+                              onClick={() => handleCollectPayment(collection, 'fiscal')}
+                              className="bg-orange-600 hover:bg-orange-700"
+                            >
+                              Cobrar Fiscal
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleCollectPayment(collection, 'no_fiscal')}
+                            >
+                              Cobrar No Fiscal
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {!pendingCollectionsQuery.isLoading && (pendingCollectionsQuery.data?.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                              <span className="text-xl">💰</span>
+                            </div>
+                            <p className="font-medium">No hay cobranzas pendientes</p>
+                            <p className="text-sm">Las órdenes aprobadas por el cliente aparecerán aquí</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>

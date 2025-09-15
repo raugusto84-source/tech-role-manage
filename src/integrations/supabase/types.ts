@@ -3081,6 +3081,39 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_collections: {
+        Row: {
+          amount: number
+          client_email: string
+          client_name: string
+          created_at: string
+          id: string
+          order_id: string
+          order_number: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          client_email: string
+          client_name: string
+          created_at?: string
+          id?: string
+          order_id: string
+          order_number: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_email?: string
+          client_name?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          order_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pending_expenses: {
         Row: {
           amount: number
