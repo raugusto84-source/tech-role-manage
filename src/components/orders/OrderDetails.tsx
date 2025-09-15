@@ -19,7 +19,7 @@ import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
 
@@ -291,6 +291,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
 
   // Calcula el precio correcto por item usando la misma lógica del listado
   const calculateItemDisplayPrice = (item: any): number => {
+    // Respetar total guardado solo si viene bloqueado o faltan datos clave
+    const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+    const isLocked = Boolean(item.pricing_locked);
+    const missingKeyData = (item.item_type === 'servicio')
+      ? (!item.unit_base_price || item.unit_base_price <= 0)
+      : (!item.unit_cost_price || item.unit_cost_price <= 0);
+
+    if (hasStoredTotal && (isLocked || missingKeyData)) {
+      return Number(item.total_amount);
+    }
+
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
@@ -318,18 +329,17 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Preferir totales guardados por item (incluyen IVA, cashback y redondeo) si existen
+      // Sumar el total de CADA tarjeta: redondear cada item a 10 y luego sumar
       return orderItems.reduce((sum, item) => {
-        const saved = Number(item.total_amount) || 0;
-        const computed = calculateItemDisplayPrice(item);
-        return sum + (saved > 0 ? saved : computed);
+        const itemTotal = calculateItemDisplayPrice(item);
+        return sum + ceilToTen(itemTotal);
       }, 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items - APLICAR IVA
+    // Solo usar estimated_cost como último recurso - aplicar IVA y redondear a 10
     const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100);
+    return ceilToTen(base * (1 + defaultVatRate / 100));
   };
   const getStatusColor = (status: string) => {
     switch (status) {
