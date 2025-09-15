@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { DollarSign } from 'lucide-react';
+import { useOrderPayments } from '@/hooks/useOrderPayments';
 
 interface PaymentCollectionDialogProps {
   open: boolean;
@@ -29,19 +30,21 @@ export function PaymentCollectionDialog({
   order,
   totalAmount
 }: PaymentCollectionDialogProps) {
-  const [amount, setAmount] = useState(totalAmount.toString());
+  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+  const [amount, setAmount] = useState('');
   const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Add logging for dialog state changes
+  // Set remaining balance as default amount when dialog opens
   useEffect(() => {
     console.log('PaymentCollectionDialog open state changed:', open);
-    if (open) {
-      console.log('Dialog opened for order:', order.order_number, 'with total:', totalAmount);
-      setAmount(totalAmount.toString()); // Reset amount when opening
+    if (open && !paymentsLoading) {
+      const remainingAmount = paymentSummary.remainingBalance;
+      console.log('Dialog opened for order:', order.order_number, 'remaining balance:', remainingAmount);
+      setAmount(remainingAmount > 0 ? remainingAmount.toString() : '0');
     }
-  }, [open, order.order_number, totalAmount]);
+  }, [open, order.order_number, paymentSummary.remainingBalance, paymentsLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +74,17 @@ export function PaymentCollectionDialog({
       toast({
         title: "Error", 
         description: "El monto debe ser un número válido mayor a 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate payment amount doesn't exceed remaining balance
+    if (paymentAmount > paymentSummary.remainingBalance) {
+      console.log('Validation failed - amount exceeds remaining balance:', paymentAmount, 'vs', paymentSummary.remainingBalance);
+      toast({
+        title: "Error",
+        description: `El monto no puede ser mayor al restante por cobrar: ${formatCOPCeilToTen(paymentSummary.remainingBalance)}`,
         variant: "destructive"
       });
       return;
@@ -154,7 +168,7 @@ export function PaymentCollectionDialog({
       onOpenChange(false);
       
       // Reset form
-      setAmount(totalAmount.toString());
+      setAmount('');
       setAccountType('no_fiscal');
       setPaymentMethod('');
 
@@ -199,9 +213,12 @@ export function PaymentCollectionDialog({
               placeholder="0.00"
               required
             />
-            <p className="text-sm text-muted-foreground">
-              Total sugerido: {formatCOPCeilToTen(totalAmount)}
-            </p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Restante por cobrar: {formatCOPCeilToTen(paymentSummary.remainingBalance)}</p>
+              {paymentSummary.totalPaid > 0 && (
+                <p>Ya cobrado: {formatCOPCeilToTen(paymentSummary.totalPaid)}</p>
+              )}
+            </div>
           </div>
 
           <div className="space-y-3">
