@@ -478,16 +478,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   // Use sales pricing calculation for consistent pricing
   const calculateExactDisplayPrice = (service: ServiceType, quantity: number = 1) => {
+    console.log('OrderForm calculateExactDisplayPrice called for:', service.name, 'quantity:', quantity);
     const totalPrice = getDisplayPrice(service, quantity);
+    console.log('Total price from getDisplayPrice:', totalPrice);
+    
     const salesVatRate = service.vat_rate ?? 16;
     const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
     const vatAmount = totalPrice - subtotalWithoutVat;
     
-    return {
+    const result = {
       subtotal: subtotalWithoutVat,
       vatAmount: vatAmount,
       totalAmount: totalPrice
     };
+    
+    console.log('OrderForm pricing result:', result);
+    return result;
   };
 
   const handleServiceAdd = async (service: ServiceType, quantity: number = 1) => {

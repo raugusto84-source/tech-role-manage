@@ -18,6 +18,7 @@ interface ServiceType {
   item_type?: string | null;
   subcategory?: string | null;
   service_category?: string | null;
+  profit_margin_rate?: number; // For backwards compatibility
 }
 
 export function useSalesPricingCalculation() {
@@ -31,7 +32,14 @@ export function useSalesPricingCalculation() {
 
   // Helper function to get margin from tiers
   const marginFromTiers = (service: ServiceType): number => {
-    return service.profit_margin_tiers?.[0]?.margin ?? 30;
+    if (service.profit_margin_tiers && service.profit_margin_tiers.length > 0) {
+      return service.profit_margin_tiers[0].margin;
+    }
+    // For backwards compatibility, check if there's a direct profit_margin_rate field
+    if ((service as any).profit_margin_rate) {
+      return (service as any).profit_margin_rate;
+    }
+    return 30; // Default margin
   };
 
   // Main pricing calculation function - matches Sales.tsx exactly
@@ -41,11 +49,21 @@ export function useSalesPricingCalculation() {
       ? (rewardSettings.general_cashback_percent || 0)
       : 0;
 
+    console.log(`Calculando precio para ${service.name}:`, {
+      salesVatRate,
+      cashbackPercent,
+      apply_cashback_to_items: rewardSettings?.apply_cashback_to_items,
+      general_cashback_percent: rewardSettings?.general_cashback_percent,
+      quantity
+    });
+
     if (!isProduct(service)) {
       // Para servicios: precio base + IVA + cashback
       const basePrice = (service.base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      console.log(`Servicio ${service.name}: base=${basePrice}, afterVAT=${afterSalesVat}, final=${finalWithCashback}`);
       return ceilToTen(finalWithCashback);
     } else {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
@@ -57,6 +75,16 @@ export function useSalesPricingCalculation() {
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      
+      console.log(`Producto ${service.name}:`, {
+        baseCost,
+        afterPurchaseVat,
+        profitMargin,
+        afterMargin,
+        afterSalesVat,
+        cashbackPercent,
+        finalWithCashback
+      });
       return ceilToTen(finalWithCashback);
     }
   };
