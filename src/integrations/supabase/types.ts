@@ -761,13 +761,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "delivery_signatures_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
         ]
       }
       diagnostic_flow: {
@@ -2194,13 +2187,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_chat_messages_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
         ]
       }
       order_diagnostics: {
@@ -2231,13 +2217,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_diagnostics_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -2321,13 +2300,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_equipment_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -2465,13 +2437,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "order_items_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "order_items_service_type_id_fkey"
             columns: ["service_type_id"]
             isOneToOne: false
@@ -2576,13 +2541,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_notes_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -2725,13 +2683,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_satisfaction_surveys_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: true
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
         ]
       }
       order_signatures: {
@@ -2765,13 +2716,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_signatures_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
         ]
@@ -2812,13 +2756,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "order_status_logs_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
         ]
       }
       order_support_technicians: {
@@ -2849,13 +2786,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_support_technicians_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
           {
@@ -3151,6 +3081,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_collections: {
+        Row: {
+          client_email: string
+          client_name: string
+          created_at: string
+          delivery_date: string | null
+          estimated_cost: number
+          id: string
+          order_id: string
+          order_number: string
+          remaining_balance: number
+          subtotal_without_vat: number
+          total_paid: number
+          total_vat_amount: number
+          total_with_vat: number
+          updated_at: string
+        }
+        Insert: {
+          client_email: string
+          client_name: string
+          created_at?: string
+          delivery_date?: string | null
+          estimated_cost?: number
+          id?: string
+          order_id: string
+          order_number: string
+          remaining_balance?: number
+          subtotal_without_vat?: number
+          total_paid?: number
+          total_vat_amount?: number
+          total_with_vat?: number
+          updated_at?: string
+        }
+        Update: {
+          client_email?: string
+          client_name?: string
+          created_at?: string
+          delivery_date?: string | null
+          estimated_cost?: number
+          id?: string
+          order_id?: string
+          order_number?: string
+          remaining_balance?: number
+          subtotal_without_vat?: number
+          total_paid?: number
+          total_vat_amount?: number
+          total_with_vat?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pending_expenses: {
         Row: {
           amount: number
@@ -3368,13 +3349,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_policy_expenses_order"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fk_policy_expenses_policy_client"
             columns: ["policy_client_id"]
             isOneToOne: false
@@ -3423,13 +3397,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "policy_order_expenses_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
           {
@@ -4231,13 +4198,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reward_transactions_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "reward_transactions_related_quote_id_fkey"
             columns: ["related_quote_id"]
             isOneToOne: false
@@ -4693,13 +4653,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scheduled_surveys_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
             referencedColumns: ["id"]
           },
           {
@@ -5411,13 +5364,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "fk_technician_workload_order"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
         ]
       }
       time_records: {
@@ -5898,13 +5844,6 @@ export type Database = {
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "warranties_summary_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "pending_collections"
-            referencedColumns: ["id"]
-          },
         ]
       }
       warranty_claims: {
@@ -6124,33 +6063,6 @@ export type Database = {
           work_days: number[] | null
         }
         Relationships: []
-      }
-      pending_collections: {
-        Row: {
-          client_email: string | null
-          client_id: string | null
-          client_name: string | null
-          created_at: string | null
-          delivery_date: string | null
-          estimated_cost: number | null
-          id: string | null
-          order_number: string | null
-          remaining_balance: number | null
-          subtotal_without_vat: number | null
-          total_paid: number | null
-          total_vat_amount: number | null
-          total_with_vat: number | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       technician_service_skills: {
         Row: {
