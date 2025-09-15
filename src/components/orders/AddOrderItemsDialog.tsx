@@ -5,12 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Minus, ShoppingCart, CheckCircle2 } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, CheckCircle2, Search, Shield, Monitor, Package, X } from 'lucide-react';
 
 interface AddOrderItemsDialogProps {
   open: boolean;
@@ -28,6 +27,7 @@ interface ServiceType {
   base_price?: number;
   vat_rate?: number;
   item_type: string;
+  category?: string;
   profit_margin_rate?: number;
 }
 
@@ -58,10 +58,16 @@ export function AddOrderItemsDialog({
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [newItems, setNewItems] = useState<NewItem[]>([]);
   const [reason, setReason] = useState('');
+  const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (open) {
       loadServiceTypes();
+      setNewItems([]);
+      setReason('');
+      setSelectedMainCategory(null);
+      setSearchTerm('');
     }
   }, [open]);
 
@@ -69,9 +75,9 @@ export function AddOrderItemsDialog({
     try {
       const { data, error } = await supabase
         .from('service_types')
-        .select('id, name, description, cost_price, base_price, vat_rate, item_type')
+        .select('*')
         .eq('is_active', true)
-        .order('name');
+        .order('category, name');
 
       if (error) throw error;
       setServiceTypes(data || []);
@@ -101,55 +107,192 @@ export function AddOrderItemsDialog({
     return Math.ceil(withCashback / 10) * 10;
   };
 
-  const addNewItem = () => {
-    setNewItems([...newItems, {
-      service_type_id: '',
-      service_name: '',
+  // Group categories into main categories
+  const securityCategories = ['Alarmas', 'Cámaras', 'Cercas Eléctricas', 'Control de Acceso'];
+  const systemsCategories = ['Computadoras', 'Fraccionamientos'];
+
+  const getMainCategoryIcon = (mainCategory: string) => {
+    switch (mainCategory) {
+      case 'Seguridad':
+        return Shield;
+      case 'Sistemas':
+        return Monitor;
+      default:
+        return Package;
+    }
+  };
+
+  const getFilteredServices = (mainCategory: string, itemType: string) => {
+    const categoryNames = mainCategory === 'Seguridad' ? securityCategories : systemsCategories;
+    return serviceTypes.filter(service => 
+      categoryNames.includes(service.category || '') && 
+      service.item_type === itemType &&
+      (searchTerm === '' || 
+       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
+  };
+
+  const addServiceToItems = (service: ServiceType) => {
+    const newItem: NewItem = {
+      service_type_id: service.id,
+      service_name: service.name,
       quantity: 1,
-      unit_cost_price: 0,
-      unit_base_price: 0,
-      subtotal: 0,
-      vat_rate: 0,
-      vat_amount: 0,
-      total_amount: 0,
-      item_type: 'servicio',
-      profit_margin_rate: 0
-    }]);
+      unit_cost_price: service.cost_price || service.base_price || 0,
+      unit_base_price: service.base_price || service.cost_price || 0,
+      subtotal: service.base_price || service.cost_price || 0,
+      vat_rate: service.vat_rate || 16,
+      vat_amount: ((service.base_price || service.cost_price || 0) * (service.vat_rate || 16)) / 100,
+      total_amount: calculateItemCorrectPrice({
+        service_type_id: service.id,
+        service_name: service.name,
+        quantity: 1,
+        unit_cost_price: service.cost_price || service.base_price || 0,
+        unit_base_price: service.base_price || service.cost_price || 0,
+        subtotal: service.base_price || service.cost_price || 0,
+        vat_rate: service.vat_rate || 16,
+        vat_amount: ((service.base_price || service.cost_price || 0) * (service.vat_rate || 16)) / 100,
+        total_amount: 0,
+        item_type: service.item_type,
+        profit_margin_rate: 20
+      }),
+      item_type: service.item_type,
+      profit_margin_rate: 20
+    };
+
+    setNewItems(prev => [...prev, newItem]);
   };
 
   const removeItem = (index: number) => {
     setNewItems(newItems.filter((_, i) => i !== index));
   };
 
-  const updateItem = (index: number, field: keyof NewItem, value: any) => {
+  const updateItemQuantity = (index: number, quantity: number) => {
     const updated = [...newItems];
-    updated[index] = { ...updated[index], [field]: value };
-
-    // Si se cambió el servicio, recalcular precios
-    if (field === 'service_type_id') {
-      const serviceType = serviceTypes.find(st => st.id === value);
-      if (serviceType) {
-        updated[index].service_name = serviceType.name;
-        updated[index].item_type = serviceType.item_type;
-        updated[index].unit_cost_price = serviceType.cost_price || serviceType.base_price || 0;
-        updated[index].unit_base_price = serviceType.base_price || serviceType.cost_price || 0;
-        updated[index].vat_rate = serviceType.vat_rate || 16;
-        updated[index].profit_margin_rate = 20; // Valor por defecto
-      }
-    }
-
-    // Recalcular totales usando la lógica correcta de precios
-    if (field === 'quantity' || field === 'unit_base_price' || field === 'service_type_id') {
-      const correctPrice = calculateItemCorrectPrice(updated[index]);
-      updated[index].total_amount = correctPrice;
-      
-      // Para mantener compatibilidad con la base de datos
-      const item = updated[index];
-      item.subtotal = item.unit_base_price * item.quantity;
-      item.vat_amount = (item.subtotal * item.vat_rate) / 100;
-    }
+    updated[index] = { ...updated[index], quantity: Math.max(1, quantity) };
+    
+    const correctPrice = calculateItemCorrectPrice(updated[index]);
+    updated[index].total_amount = correctPrice;
+    
+    const item = updated[index];
+    item.subtotal = item.unit_base_price * item.quantity;
+    item.vat_amount = (item.subtotal * item.vat_rate) / 100;
 
     setNewItems(updated);
+  };
+
+  const renderCategoryButton = (mainCategory: string, itemType: string) => {
+    const IconComponent = getMainCategoryIcon(mainCategory);
+    const count = getFilteredServices(mainCategory, itemType).length;
+    
+    return (
+      <Button
+        variant="outline"
+        className="h-20 flex flex-col gap-2 hover:bg-primary/10"
+        onClick={() => setSelectedMainCategory(`${mainCategory}-${itemType}`)}
+        disabled={count === 0}
+      >
+        <IconComponent className="h-6 w-6" />
+        <span className="text-xs font-medium">{mainCategory}</span>
+        <span className="text-xs text-muted-foreground">
+          {count} {itemType === 'servicio' ? 'servicios' : 'productos'}
+        </span>
+      </Button>
+    );
+  };
+
+  const renderMainCategoryView = () => {
+    if (!selectedMainCategory) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-lg font-medium mb-4">Servicios</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {renderCategoryButton('Seguridad', 'servicio')}
+              {renderCategoryButton('Sistemas', 'servicio')}
+            </div>
+          </div>
+          
+          <div>
+            <h3 className="text-lg font-medium mb-4">Productos</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {renderCategoryButton('Seguridad', 'articulo')}
+              {renderCategoryButton('Sistemas', 'articulo')}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const [mainCategory, itemType] = selectedMainCategory.split('-');
+    const services = getFilteredServices(mainCategory, itemType);
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost" 
+            size="sm"
+            onClick={() => setSelectedMainCategory(null)}
+          >
+            ← Volver
+          </Button>
+          <h3 className="text-lg font-medium">
+            {mainCategory} - {itemType === 'servicio' ? 'Servicios' : 'Productos'}
+          </h3>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+          {services.map(service => (
+            <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardContent className="p-3">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-medium text-sm">{service.name}</h4>
+                    <Badge variant="default" className="text-xs">
+                      {itemType === 'servicio' ? 'Servicio' : 'Producto'}
+                    </Badge>
+                  </div>
+                  {service.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {service.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">
+                      ${((service.base_price || service.cost_price || 0) * 1.18 * 1.02).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => addServiceToItems(service)}
+                      className="h-7 px-2"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {services.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No se encontraron {itemType === 'servicio' ? 'servicios' : 'productos'} en esta categoría
+          </div>
+        )}
+      </div>
+    );
   };
 
   const calculateTotalChange = () => {
@@ -157,26 +300,10 @@ export function AddOrderItemsDialog({
   };
 
   const handleSubmit = async () => {
-    console.log('=== HANDLE SUBMIT START ===');
-    console.log('Current orderId prop:', orderId);
-    console.log('Current reason state:', reason);
-    console.log('Reason length:', reason?.length);
-    console.log('Reason trimmed:', reason?.trim());
-    console.log('NewItems:', newItems);
-    
     if (newItems.length === 0) {
       toast({
         title: "Error",
         description: "Debe agregar al menos un servicio o producto",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (newItems.some(item => !item.service_type_id)) {
-      toast({
-        title: "Error", 
-        description: "Todos los items deben tener un servicio seleccionado",
         variant: "destructive"
       });
       return;
@@ -203,11 +330,6 @@ export function AddOrderItemsDialog({
     setLoading(true);
 
     try {
-      // Obtener totales actuales de la orden
-      console.log('=== MODIFICATION DEBUG ===');
-      console.log('Order ID:', orderId);
-      console.log('Reason:', reason);
-      
       const { data: currentOrder, error: orderError } = await supabase
         .from('orders')
         .select('estimated_cost')
@@ -221,13 +343,8 @@ export function AddOrderItemsDialog({
 
       const previousTotal = currentOrder?.estimated_cost || 0;
       const newTotal = previousTotal + calculateTotalChange();
-      
-      console.log('Previous total:', previousTotal);
-      console.log('New total:', newTotal);
 
-      // Obtener información del usuario actual
       const { data: userResult } = await supabase.auth.getUser();
-      console.log('Current user:', userResult.user?.id);
       
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -239,12 +356,8 @@ export function AddOrderItemsDialog({
         console.error('Error fetching profile:', profileError);
       }
       
-      console.log('Profile data:', profile);
-      
       const createdByName = profile?.full_name || 'Usuario desconocido';
-      console.log('Created by name:', createdByName);
 
-      // Crear registro de modificación
       const modificationData = {
         order_id: orderId,
         previous_total: previousTotal,
@@ -257,8 +370,6 @@ export function AddOrderItemsDialog({
         notes: `Servicios/productos agregados: ${newItems.map(item => `${item.service_name} (x${item.quantity})`).join(', ')}`
       };
       
-      console.log('Modification data to insert:', modificationData);
-      
       const { error: modificationError } = await supabase
         .from('order_modifications')
         .insert(modificationData);
@@ -268,9 +379,6 @@ export function AddOrderItemsDialog({
         throw modificationError;
       }
 
-      console.log('Modification inserted successfully');
-
-      // Agregar los nuevos items a la orden uno por uno
       for (const item of newItems) {
         const { error: itemError } = await supabase
           .from('order_items')
@@ -280,20 +388,19 @@ export function AddOrderItemsDialog({
             service_name: item.service_name,
             quantity: item.quantity,
             unit_cost_price: item.unit_cost_price,
-             unit_base_price: item.unit_base_price,
-             subtotal: item.subtotal,
-             vat_rate: item.vat_rate,
-             vat_amount: item.vat_amount,
-             total_amount: calculateItemCorrectPrice(item),
-             item_type: item.item_type,
-             profit_margin_rate: item.profit_margin_rate,
-             status: 'pendiente' as const
+            unit_base_price: item.unit_base_price,
+            subtotal: item.subtotal,
+            vat_rate: item.vat_rate,
+            vat_amount: item.vat_amount,
+            total_amount: calculateItemCorrectPrice(item),
+            item_type: item.item_type,
+            profit_margin_rate: item.profit_margin_rate,
+            status: 'pendiente' as const
           });
 
         if (itemError) throw itemError;
       }
 
-      // Actualizar el costo estimado de la orden
       const { error: updateError } = await supabase
         .from('orders')
         .update({ estimated_cost: newTotal })
@@ -344,94 +451,66 @@ export function AddOrderItemsDialog({
             </CardContent>
           </Card>
 
-          {/* Lista de nuevos items */}
+          {/* Selección de servicios/productos por categoría */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Servicios/Productos a Agregar
-                <Button onClick={addNewItem} size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Agregar Item
-                </Button>
-              </CardTitle>
+              <CardTitle>Seleccionar Servicios/Productos</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {newItems.length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  No hay servicios agregados. Haga clic en "Agregar Item" para comenzar.
-                </div>
-              ) : (
-                newItems.map((item, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div>
-                        <Label>Servicio/Producto</Label>
-                        <Select
-                          value={item.service_type_id}
-                          onValueChange={(value) => updateItem(index, 'service_type_id', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {serviceTypes.map((st) => (
-                              <SelectItem key={st.id} value={st.id}>
-                                <div className="flex items-center justify-between w-full">
-                                  <span>{st.name}</span>
-                                  <Badge variant="outline" className="ml-2">
-                                    {st.item_type}
-                                  </Badge>
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <Label>Cantidad</Label>
-                        <Input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                        />
-                      </div>
-
-                      <div>
-                        <Label>Precio Final Unitario (c/IVA)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.unit_base_price}
-                          onChange={(e) => updateItem(index, 'unit_base_price', parseFloat(e.target.value) || 0)}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Label>Total</Label>
-                          <div className="font-medium text-lg">
-                            ${calculateItemCorrectPrice(item).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Subtotal: ${(item.unit_base_price * item.quantity).toFixed(2)} + IVA: ${((item.unit_base_price * item.quantity * (item.vat_rate || 16)) / 100).toFixed(2)}
-                          </div>
-                        </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => removeItem(index)}
-                        >
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
+            <CardContent>
+              {renderMainCategoryView()}
             </CardContent>
           </Card>
+
+          {/* Lista de items seleccionados */}
+          {newItems.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  Servicios/Productos Seleccionados
+                  <Badge variant="outline">{newItems.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {newItems.map((item, index) => (
+                  <Card key={index} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{item.service_name}</h4>
+                          <Badge variant="outline">
+                            {item.item_type === 'servicio' ? 'Servicio' : 'Producto'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 mt-2">
+                          <Label>Cantidad:</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateItemQuantity(index, parseInt(e.target.value) || 1)}
+                            className="w-20"
+                          />
+                          <div className="text-sm text-muted-foreground">
+                            Precio unitario: ${(item.unit_base_price || 0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                          </div>
+                          <div className="font-medium">
+                            Total: ${calculateItemCorrectPrice(item).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => removeItem(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Resumen del cambio total */}
           {newItems.length > 0 && (
@@ -440,7 +519,7 @@ export function AddOrderItemsDialog({
                 <div className="flex justify-between items-center text-lg font-semibold">
                   <span>Incremento Total:</span>
                   <span className="text-green-600">
-                    +${calculateTotalChange().toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    +${calculateTotalChange().toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                   </span>
                 </div>
               </CardContent>
@@ -458,7 +537,7 @@ export function AddOrderItemsDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading || newItems.length === 0}
+              disabled={loading || newItems.length === 0 || !reason.trim()}
             >
               {loading ? (
                 <>
