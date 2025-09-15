@@ -50,9 +50,15 @@ interface QuoteItem {
 interface ConvertQuoteResult {
   success?: boolean;
   error?: string;
+  existing?: boolean;
   order_id?: string;
   order_number?: string;
+  quote_number?: string;
   total_amount?: number;
+  estimated_delivery_date?: string;
+  items_converted?: number;
+  client_name?: string;
+  message?: string;
 }
 
 interface Quote {
@@ -368,7 +374,64 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  // Funcionalidad de conversión eliminada - será reimplementada
+  // Convertir cotización a orden preservando totales exactos
+  const convertToOrder = async () => {
+    try {
+      setLoading(true);
+
+      // Llamar a la función de conversión
+      const { data, error } = await supabase.rpc('convert_quote_to_order', {
+        quote_id: quote.id
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: `Error al convertir cotización: ${error.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Verificar el resultado de la función
+      const result = data as ConvertQuoteResult;
+      if (result?.error) {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (result?.success) {
+        if (result.existing) {
+          toast({
+            title: "Orden existente",
+            description: result.message || `Orden ${result.order_number} ya existe para esta cotización`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "¡Cotización convertida exitosamente!",
+            description: `Orden ${result.order_number} creada con total de ${formatCOPCeilToTen(result.total_amount || 0)}. Se convirtieron ${result.items_converted || 0} items.`,
+          });
+        }
+      }
+
+      // Actualizar la cotización en la UI
+      onQuoteUpdated();
+    } catch (error) {
+      console.error('Error converting quote to order:', error);
+      toast({
+        title: "Error inesperado",
+        description: "No se pudo procesar la conversión",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Handle cashback toggle
   const handleCashbackToggle = async (checked: boolean) => {
@@ -794,14 +857,14 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                   {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
                     <div className="grid grid-cols-2 gap-2">
                       <Button 
-                        disabled={true}
-                        variant="secondary"
+                        onClick={convertToOrder}
+                        disabled={loading}
+                        variant="default"
                         className="w-full"
                         size="sm"
-                        title="Conversión a orden temporalmente deshabilitada"
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Aceptar (En mantenimiento)
+                        Aceptar y Crear Orden
                       </Button>
                       <Button 
                         onClick={rejectQuote}
