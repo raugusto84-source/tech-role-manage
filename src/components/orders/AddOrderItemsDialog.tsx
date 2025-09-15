@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Minus, ShoppingCart, CheckCircle2 } from 'lucide-react';
 
@@ -52,6 +53,7 @@ export function AddOrderItemsDialog({
   onItemsAdded 
 }: AddOrderItemsDialogProps) {
   const { toast } = useToast();
+  const { settings: rewardSettings } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [newItems, setNewItems] = useState<NewItem[]>([]);
@@ -83,19 +85,20 @@ export function AddOrderItemsDialog({
     }
   };
 
-  // Usar precios directos de ventas con 2% adicional después del IVA
+  // Usar precios directos de ventas con cashback configurado después del IVA
   const calculateItemCorrectPrice = (item: NewItem): number => {
     const quantity = item.quantity || 1;
     const unitPrice = item.unit_base_price || 0;
     const vatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.general_cashback_percent || 2; // Usar cashback de configuración
     
-    // Cálculo: precio unitario * cantidad + IVA + 2% adicional
+    // Cálculo: precio unitario * cantidad + IVA + cashback configurado
     const subtotal = unitPrice * quantity;
     const withVat = subtotal * (1 + vatRate / 100);
-    const withAdditional = withVat * 1.02; // 2% adicional después del IVA
+    const withCashback = withVat * (1 + cashbackPercent / 100);
     
     // Redondear a 2 decimales
-    return Math.round(withAdditional * 100) / 100;
+    return Math.round(withCashback * 100) / 100;
   };
 
   const addNewItem = () => {
