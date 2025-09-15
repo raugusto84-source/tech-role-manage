@@ -7,7 +7,7 @@ import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTria
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -98,7 +98,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const calculateTotals = () => {
-    const total = orderItems.reduce((sum, item) => sum + calculateItemCorrectPrice(item), 0);
+    // Calculate total the same way as OrderDetails - round each item to 10 then sum
+    const total = orderItems.reduce((sum, item) => {
+      const itemTotal = calculateItemCorrectPrice(item);
+      return sum + ceilToTen(itemTotal);
+    }, 0);
     
     // Calcular subtotal y IVA basado en el total correcto
     let subtotalSum = 0;
