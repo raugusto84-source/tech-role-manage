@@ -6362,6 +6362,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      handle_calculate_order_total: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       has_logged_time_today: {
         Args: { user_id: string }
         Returns: boolean
