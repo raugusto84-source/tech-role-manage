@@ -10,6 +10,7 @@ import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
+import { useOrderPayments } from '@/hooks/useOrderPayments';
 
 interface SimpleOrderCardProps {
   order: {
@@ -153,6 +154,10 @@ export function SimpleOrderCard({
     return base * (1 + defaultVatRate / 100);
   };
 
+  // Calculate payments after total calculation
+  const totalAmount = calculateCorrectTotal();
+  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
@@ -273,9 +278,10 @@ export function SimpleOrderCard({
           </p>
         </div>
 
-        {/* Total con IVA prominente */}
+        {/* Total con IVA y estado de pagos */}
         <div className="border-t pt-3 mt-3">
-          <div className="flex justify-between items-center">
+          {/* Total con IVA */}
+          <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-semibold text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-primary" />
@@ -283,11 +289,41 @@ export function SimpleOrderCard({
                 <Skeleton className="h-6 w-24 rounded" />
               ) : (
                 <span className="text-xl font-bold text-primary">
-                  {formatCOPCeilToTen(calculateCorrectTotal())}
+                  {formatCOPCeilToTen(totalAmount)}
                 </span>
               )}
             </div>
           </div>
+          
+          {/* Estado de pagos */}
+          {!paymentsLoading && totalAmount > 0 && (
+            <div className="space-y-1 text-sm">
+              {paymentSummary.paymentCount > 0 && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Cobrado ({paymentSummary.paymentCount} pago{paymentSummary.paymentCount > 1 ? 's' : ''}):</span>
+                    <span className={`font-semibold ${paymentSummary.isFullyPaid ? 'text-green-600' : 'text-orange-600'}`}>
+                      {formatCOPCeilToTen(paymentSummary.totalPaid)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Restante:</span>
+                    <span className={`font-semibold ${paymentSummary.isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCOPCeilToTen(paymentSummary.remainingBalance)}
+                    </span>
+                  </div>
+                </>
+              )}
+              {paymentSummary.paymentCount === 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Sin pagos registrados</span>
+                  <span className="text-sm text-amber-600 font-semibold">
+                    {paymentSummary.isFullyPaid ? 'Pagado' : 'Pendiente'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Botones de acción */}
@@ -323,7 +359,7 @@ export function SimpleOrderCard({
         open={showPaymentDialog}
         onOpenChange={setShowPaymentDialog}
         order={order}
-        totalAmount={calculateCorrectTotal()}
+        totalAmount={totalAmount}
       />
     </Card>
   );

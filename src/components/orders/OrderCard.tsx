@@ -12,6 +12,7 @@ import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
+import { useOrderPayments } from '@/hooks/useOrderPayments';
 
 interface OrderCardProps {
   order: {
@@ -142,6 +143,10 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
     const base = order.estimated_cost || 0;
     return base * (1 + defaultVatRate / 100);
   };
+  
+  // Calculate payments after total calculation
+  const totalAmount = calculateCorrectTotal();
+  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
@@ -285,20 +290,51 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           </div>
         </div>
 
-        {/* Total con IVA prominente */}
+        {/* Total con IVA y estado de pagos */}
         <div className="border-t pt-1 mt-1">
-          <div className="flex justify-between items-center">
+          {/* Total con IVA */}
+          <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-1">
               {itemsLoading ? (
                 <Skeleton className="h-4 w-20 rounded" />
               ) : (
                 <span className="text-sm font-bold text-primary">
-                  {formatCOPCeilToTen(ceilToTen(calculateCorrectTotal()))}
+                  {formatCOPCeilToTen(ceilToTen(totalAmount))}
                 </span>
               )}
             </div>
           </div>
+          
+          {/* Estado de pagos */}
+          {!paymentsLoading && totalAmount > 0 && (
+            <div className="space-y-0.5 text-xs">
+              {paymentSummary.paymentCount > 0 && (
+                <>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Cobrado ({paymentSummary.paymentCount} pago{paymentSummary.paymentCount > 1 ? 's' : ''}):</span>
+                    <span className={`font-medium ${paymentSummary.isFullyPaid ? 'text-green-600' : 'text-orange-600'}`}>
+                      {formatCOPCeilToTen(paymentSummary.totalPaid)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Restante:</span>
+                    <span className={`font-medium ${paymentSummary.isFullyPaid ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCOPCeilToTen(paymentSummary.remainingBalance)}
+                    </span>
+                  </div>
+                </>
+              )}
+              {paymentSummary.paymentCount === 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Sin pagos registrados</span>
+                  <span className="text-xs text-amber-600 font-medium">
+                    {paymentSummary.isFullyPaid ? 'Pagado' : 'Pendiente'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
           
           {/* Botón de cobrar para órdenes finalizadas */}
           {(() => {
