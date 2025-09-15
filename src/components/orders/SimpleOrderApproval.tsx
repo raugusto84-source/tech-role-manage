@@ -367,41 +367,76 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           
           console.log('Processed items added:', itemsAdded);
           
-          // Eliminar cada item agregado usando criterios más específicos
+          // Eliminar items agregados de forma robusta
+          // 1) Cargar items actuales de la orden
+          const { data: existingItems, error: fetchItemsError } = await supabase
+            .from('order_items')
+            .select('id, service_type_id, service_name, quantity, unit_cost_price, unit_base_price, vat_rate, profit_margin_rate, total_amount, status, pricing_locked, created_at')
+            .eq('order_id', order.id);
+
+          if (fetchItemsError) {
+            console.error('Error fetching order items for deletion:', fetchItemsError);
+            throw fetchItemsError;
+          }
+
+          const modCreatedAt = latestModification.created_at ? new Date(latestModification.created_at).toISOString() : undefined;
+
+          // 2) Encontrar coincidencias por múltiples campos para evitar falsos positivos
+          const idsToDelete = new Set<string>();
+
           for (const item of itemsAdded) {
-            console.log('Deleting item:', item);
-            
-            let deleteQuery = supabase
+            const name = item.service_name || item.name;
+            const qty = item.quantity || 1;
+
+            const candidate = (existingItems || []).find(row => {
+              const createdAfter = modCreatedAt ? (new Date(row.created_at).toISOString() >= modCreatedAt) : true;
+              const notLocked = row.pricing_locked === false || row.pricing_locked == null;
+              const statusPend = row.status === 'pendiente' || row.status == null;
+
+              const serviceMatch = (!item.service_type_id || row.service_type_id === item.service_type_id) &&
+                                   (row.service_name === name);
+
+              const qtyMatch = row.quantity === qty;
+
+              // Coincidir también por montos cuando están disponibles
+              const totalMatch = typeof item.total_amount === 'number' ? Number(row.total_amount) === Number(item.total_amount) : true;
+
+              // Coincidir por precios unitarios si existen
+              const unitMatch = (
+                (item.unit_base_price == null || Number(row.unit_base_price) === Number(item.unit_base_price)) &&
+                (item.unit_cost_price == null || Number(row.unit_cost_price) === Number(item.unit_cost_price)) &&
+                (item.vat_rate == null || Number(row.vat_rate) === Number(item.vat_rate)) &&
+                (item.profit_margin_rate == null || Number(row.profit_margin_rate) === Number(item.profit_margin_rate))
+              );
+
+              return createdAfter && notLocked && statusPend && serviceMatch && qtyMatch && totalMatch && unitMatch;
+            });
+
+            if (candidate) {
+              idsToDelete.add(candidate.id);
+            } else {
+              console.warn('No matching order_item found for added item:', item);
+            }
+          }
+
+          console.log('IDs to delete:', Array.from(idsToDelete));
+
+          // 3) Eliminar en lote por IDs; si no hay coincidencias, no fallar
+          if (idsToDelete.size > 0) {
+            const { error: batchDeleteError } = await supabase
               .from('order_items')
               .delete()
-              .eq('order_id', order.id);
-            
-            // Usar ID específico si está disponible, sino usar múltiples criterios
-            if (item.id) {
-              deleteQuery = deleteQuery.eq('id', item.id);
-            } else {
-              // Usar múltiples criterios para identificar el item específico
-              deleteQuery = deleteQuery
-                .eq('service_type_id', item.service_type_id)
-                .eq('service_name', item.service_name || item.name);
-              
-              // Agregar cantidad si está disponible para mayor precisión
-              if (item.quantity) {
-                deleteQuery = deleteQuery.eq('quantity', item.quantity);
-              }
+              .in('id', Array.from(idsToDelete));
+
+            if (batchDeleteError) {
+              console.error('Error batch-deleting items:', batchDeleteError);
+              throw batchDeleteError;
             }
 
-            const { error: deleteError } = await deleteQuery;
-
-            if (deleteError) {
-              console.error('Error deleting item:', deleteError);
-              throw deleteError;
-            }
-            
-            console.log(`Successfully deleted item with service_type_id: ${item.service_type_id}`);
+            console.log('Deleted items count:', idsToDelete.size);
+          } else {
+            console.log('No items matched for deletion. Skipping delete step.');
           }
-          
-          console.log('All added items have been deleted successfully');
         }
 
         // Eliminar el registro de modificación
