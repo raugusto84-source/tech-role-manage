@@ -376,8 +376,15 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   // Convertir cotización a orden preservando totales exactos
   const convertToOrder = async () => {
+    // Prevenir múltiples clics - salir inmediatamente si ya está procesando
+    if (loading) {
+      console.log('Conversion already in progress, ignoring click');
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('Starting quote conversion for quote:', quote.id, quote.quote_number);
 
       // Llamar a la función de conversión
       const { data, error } = await supabase.rpc('convert_quote_to_order', {
@@ -385,6 +392,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       });
 
       if (error) {
+        console.error('RPC error:', error);
         toast({
           title: "Error",
           description: `Error al convertir cotización: ${error.message}`,
@@ -392,6 +400,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         });
         return;
       }
+
+      console.log('Conversion result:', data);
 
       // Verificar el resultado de la función
       const result = data as ConvertQuoteResult;
