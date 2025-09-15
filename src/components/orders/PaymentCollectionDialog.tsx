@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +34,28 @@ export function PaymentCollectionDialog({
   const [paymentMethod, setPaymentMethod] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Add logging for dialog state changes
+  useEffect(() => {
+    console.log('PaymentCollectionDialog open state changed:', open);
+    if (open) {
+      console.log('Dialog opened for order:', order.order_number, 'with total:', totalAmount);
+      setAmount(totalAmount.toString()); // Reset amount when opening
+    }
+  }, [open, order.order_number, totalAmount]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Payment form submitted with data:', {
+      amount,
+      paymentMethod,
+      accountType,
+      orderId: order.id,
+      orderNumber: order.order_number
+    });
+    
     if (!amount || !paymentMethod) {
+      console.log('Validation failed - missing required fields');
       toast({
         title: "Error",
         description: "Por favor completa todos los campos requeridos",
@@ -48,6 +66,7 @@ export function PaymentCollectionDialog({
 
     const paymentAmount = parseFloat(amount);
     if (isNaN(paymentAmount) || paymentAmount <= 0) {
+      console.log('Validation failed - invalid amount:', paymentAmount);
       toast({
         title: "Error", 
         description: "El monto debe ser un número válido mayor a 0",
@@ -56,6 +75,7 @@ export function PaymentCollectionDialog({
       return;
     }
 
+    console.log('Starting payment registration process...');
     setLoading(true);
 
     try {
@@ -80,6 +100,13 @@ export function PaymentCollectionDialog({
       const vatAmount = accountType === 'fiscal' ? paymentAmount - taxableAmount : 0;
 
       // Registrar ingreso
+      console.log('Inserting income with data:', {
+        income_number: incomeNumber,
+        amount: paymentAmount,
+        account_type: accountType,
+        payment_method: paymentMethod
+      });
+      
       const { error: incomeError } = await supabase
         .from('incomes')
         .insert({
@@ -96,7 +123,12 @@ export function PaymentCollectionDialog({
           taxable_amount: taxableAmount
         });
 
-      if (incomeError) throw incomeError;
+      if (incomeError) {
+        console.error('Income insertion error:', incomeError);
+        throw incomeError;
+      }
+
+      console.log('Income registered successfully, now inserting order payment...');
 
       // Registrar pago de orden
       const { error: paymentError } = await supabase
@@ -112,13 +144,19 @@ export function PaymentCollectionDialog({
           description: `Cobro orden ${order.order_number}`
         });
 
-      if (paymentError) throw paymentError;
+      if (paymentError) {
+        console.error('Order payment insertion error:', paymentError);
+        throw paymentError;
+      }
+
+      console.log('Payment registered successfully!');
 
       toast({
         title: "Pago registrado",
         description: `Se registró el cobro de ${formatCOPCeilToTen(paymentAmount)} para la orden ${order.order_number}`,
       });
 
+      console.log('Closing dialog and refreshing parent component...');
       onOpenChange(false);
       
       // Reset form
@@ -126,8 +164,15 @@ export function PaymentCollectionDialog({
       setAccountType('no_fiscal');
       setPaymentMethod('');
 
+      // Trigger a small delay to ensure the dialog closes properly before potential refresh
+      setTimeout(() => {
+        console.log('Payment registration process completed');
+        // Force a page refresh to ensure all data is updated
+        window.location.reload();
+      }, 1000);
+
     } catch (error) {
-      console.error('Error registering payment:', error);
+      console.error('Complete error registering payment:', error);
       toast({
         title: "Error",
         description: "No se pudo registrar el pago. Intenta nuevamente.",

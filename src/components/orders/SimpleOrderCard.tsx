@@ -333,8 +333,10 @@ export function SimpleOrderCard({
               variant="default"
               size="sm" 
               onClick={(e) => {
+                console.log('Cobrar button clicked for order:', order.order_number);
                 e.stopPropagation();
                 setShowPaymentDialog(true);
+                console.log('Payment dialog state set to true');
               }}
             >
               <CreditCard className="h-4 w-4 mr-2" />

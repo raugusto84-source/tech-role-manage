@@ -348,14 +348,16 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
             
             return shouldShowButton ? (
               <div className="flex justify-end mt-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowPaymentDialog(true);
-                  }}
-                >
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={(e) => {
+                      console.log('Cobrar button clicked for order:', order.order_number);
+                      e.stopPropagation();
+                      setShowPaymentDialog(true);
+                      console.log('Payment dialog state set to true');
+                    }}
+                  >
                   <CreditCard className="h-3 w-3 mr-1" />
                   Cobrar
                 </Button>
