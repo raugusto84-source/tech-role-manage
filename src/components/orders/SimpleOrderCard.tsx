@@ -289,7 +289,7 @@ export function SimpleOrderCard({
                 <Skeleton className="h-6 w-24 rounded" />
               ) : (
                 <span className="text-xl font-bold text-primary">
-                  {formatCOPCeilToTen(ceilToTen(calculateCorrectTotal()))}
+                  {formatCOPCeilToTen(calculateCorrectTotal())}
                 </span>
               )}
             </div>
