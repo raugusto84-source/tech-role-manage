@@ -6,6 +6,7 @@ interface PaymentSummary {
   paymentCount: number;
   remainingBalance: number;
   isFullyPaid: boolean;
+  existingAccountType?: 'fiscal' | 'no_fiscal';
 }
 
 export function useOrderPayments(orderId: string, totalAmount: number) {
@@ -13,7 +14,8 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
     totalPaid: 0,
     paymentCount: 0,
     remainingBalance: 0,
-    isFullyPaid: false
+    isFullyPaid: false,
+    existingAccountType: undefined
   });
   const [loading, setLoading] = useState(true);
 
@@ -23,7 +25,8 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
         totalPaid: 0,
         paymentCount: 0,
         remainingBalance: totalAmount,
-        isFullyPaid: false
+        isFullyPaid: false,
+        existingAccountType: undefined
       });
       setLoading(false);
       return;
@@ -33,7 +36,7 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
       console.log('Fetching payments for order:', orderId);
       const { data, error } = await supabase
         .from('order_payments')
-        .select('payment_amount')
+        .select('payment_amount, account_type')
         .eq('order_id', orderId);
 
       if (error) throw error;
@@ -43,12 +46,14 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
       const paymentCount = data?.length || 0;
       const remainingBalance = Math.max(0, totalAmount - totalPaid);
       const isFullyPaid = remainingBalance <= 0;
+      const existingAccountType = data && data.length > 0 ? data[0].account_type : undefined;
 
       const summary = {
         totalPaid,
         paymentCount,
         remainingBalance,
-        isFullyPaid
+        isFullyPaid,
+        existingAccountType
       };
       
       console.log('Payment summary calculated:', summary);
@@ -59,7 +64,8 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
         totalPaid: 0,
         paymentCount: 0,
         remainingBalance: totalAmount,
-        isFullyPaid: false
+        isFullyPaid: false,
+        existingAccountType: undefined
       });
     } finally {
       setLoading(false);

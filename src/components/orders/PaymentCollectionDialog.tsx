@@ -44,8 +44,13 @@ export function PaymentCollectionDialog({
       const remainingAmount = paymentSummary.remainingBalance;
       console.log('Dialog opened for order:', order.order_number, 'remaining balance:', remainingAmount);
       setAmount(remainingAmount > 0 ? remainingAmount.toString() : '0');
+      
+      // Set account type to existing type if there are previous payments
+      if (paymentSummary.existingAccountType) {
+        setAccountType(paymentSummary.existingAccountType);
+      }
     }
-  }, [open, order.order_number, paymentSummary.remainingBalance, paymentsLoading]);
+  }, [open, order.order_number, paymentSummary.remainingBalance, paymentSummary.existingAccountType, paymentsLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,14 +247,37 @@ export function PaymentCollectionDialog({
               onValueChange={(value: 'fiscal' | 'no_fiscal') => setAccountType(value)}
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="no_fiscal" id="no_fiscal" />
-                <Label htmlFor="no_fiscal">Cuenta No Fiscal</Label>
+                <RadioGroupItem 
+                  value="no_fiscal" 
+                  id="no_fiscal" 
+                  disabled={paymentSummary.existingAccountType === 'fiscal'}
+                />
+                <Label 
+                  htmlFor="no_fiscal" 
+                  className={paymentSummary.existingAccountType === 'fiscal' ? 'opacity-50' : ''}
+                >
+                  Cuenta No Fiscal
+                </Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="fiscal" id="fiscal" />
-                <Label htmlFor="fiscal">Cuenta Fiscal (con IVA)</Label>
+                <RadioGroupItem 
+                  value="fiscal" 
+                  id="fiscal" 
+                  disabled={paymentSummary.existingAccountType === 'no_fiscal'}
+                />
+                <Label 
+                  htmlFor="fiscal" 
+                  className={paymentSummary.existingAccountType === 'no_fiscal' ? 'opacity-50' : ''}
+                >
+                  Cuenta Fiscal (con IVA)
+                </Label>
               </div>
             </RadioGroup>
+            {paymentSummary.existingAccountType && (
+              <p className="text-sm text-muted-foreground">
+                Los pagos anteriores fueron realizados en cuenta {paymentSummary.existingAccountType === 'fiscal' ? 'fiscal' : 'no fiscal'}
+              </p>
+            )}
           </div>
 
           {accountType === 'fiscal' && (
