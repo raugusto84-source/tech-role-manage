@@ -132,25 +132,19 @@ export function SimpleOrderCard({
     }
   };
 
-  // Total con IVA - SIEMPRE respetar el total de la cotización convertida
+  // Total con IVA - usar totales guardados cuando existan
   const calculateCorrectTotal = () => {
     if (itemsLoading) {
       return 0;
     }
     
-    // Si hay items con pricing_locked (viene de cotización), el total_amount YA incluye IVA
     if (orderItems && orderItems.length > 0) {
-      const hasLockedItems = orderItems.some(item => item.pricing_locked);
-      
-      if (hasLockedItems) {
-        // Para órdenes de cotización: el total_amount YA incluye IVA desde la cotización
-        return orderItems.reduce((sum, item) => {
-          return sum + (Number(item.total_amount) || 0);
-        }, 0);
-      } else {
-        // Para órdenes normales: calcular con la lógica estándar
-        return orderItems.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
-      }
+      // Preferir totales guardados por item (incluyen IVA, cashback y redondeo) si existen
+      return orderItems.reduce((sum, item) => {
+        const saved = Number(item.total_amount) || 0;
+        const computed = calculateItemDisplayPrice(item);
+        return sum + (saved > 0 ? saved : computed);
+      }, 0);
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
