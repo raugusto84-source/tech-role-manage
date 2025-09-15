@@ -8,6 +8,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -28,6 +29,7 @@ interface SimpleOrderApprovalProps {
 export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalComplete }: SimpleOrderApprovalProps) {
   const { toast } = useToast();
   const { settings: rewardSettings } = useRewardSettings();
+  const { getDisplayPrice, formatCurrency } = useSalesPricingCalculation();
   const signatureRef = useRef<SignatureCanvas>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -68,74 +70,44 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
-  // Calcular precio correcto para un item individual
+  // Calcular precio correcto para un item individual usando la misma lógica unificada
   const calculateItemCorrectPrice = (item: any): number => {
     const quantity = item.quantity || 1;
-     const salesVatRate = (item.vat_rate ?? 16);
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
+    
+    // Convertir el item al formato esperado por useSalesPricingCalculation
+    const serviceForPricing = {
+      id: item.service_type_id || item.id,
+      name: item.name || '',
+      base_price: item.unit_base_price || item.unit_price || 0,
+      cost_price: item.unit_cost_price || item.cost_price || 0,
+      vat_rate: item.vat_rate,
+      item_type: item.item_type,
+      profit_margin_rate: item.profit_margin_rate || 30,
+      profit_margin_tiers: item.profit_margin_tiers
+    };
 
-    if (item.item_type === 'servicio') {
-      // Para servicios: precio base + IVA
-      const basePrice = (item.unit_base_price || item.unit_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
-    } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta
-      const purchaseVatRate = 16;
-      const baseCost = (item.unit_cost_price || item.cost_price || 0) * quantity;
-      const profitMargin = item.profit_margin_rate || 20;
-      
-      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      
-      return afterSalesVat;
-    }
+    return getDisplayPrice(serviceForPricing, quantity);
   };
 
   const calculateTotals = () => {
-    // Calculate total the same way as OrderDetails - round each item to 10 then sum
-    const total = orderItems.reduce((sum, item) => {
-      const itemTotal = calculateItemCorrectPrice(item);
-      return sum + ceilToTen(itemTotal);
-    }, 0);
-    
-    // Calcular subtotal y IVA basado en el total correcto
+    // Usar la misma lógica unificada que otros componentes
     let subtotalSum = 0;
     let vatSum = 0;
     
-    orderItems.forEach(item => {
-      const quantity = item.quantity || 1;
+    const total = orderItems.reduce((sum, item) => {
+      const itemTotal = calculateItemCorrectPrice(item);
+      const roundedItemTotal = ceilToTen(itemTotal);
+      
+      // Calcular subtotal y IVA para cada item
       const salesVatRate = (item.vat_rate ?? 16);
-      const cashbackPercent = rewardSettings?.apply_cashback_to_items
-        ? (rewardSettings.general_cashback_percent || 0)
-        : 0;
-
-      if (item.item_type === 'servicio') {
-        const basePrice = (item.unit_base_price || 0) * quantity;
-        const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        const vatAmount = (finalWithCashback - basePrice * (1 + cashbackPercent / 100));
-        
-        subtotalSum += finalWithCashback - vatAmount;
-        vatSum += vatAmount;
-      } else {
-        const purchaseVatRate = 16;
-        const baseCost = (item.unit_cost_price || 0) * quantity;
-        const profitMargin = item.profit_margin_rate || 20;
-        
-        const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
-        const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-        const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-        const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-        const vatAmount = (finalWithCashback - afterMargin * (1 + cashbackPercent / 100));
-        
-        subtotalSum += finalWithCashback - vatAmount;
-        vatSum += vatAmount;
-      }
-    });
+      const subtotal = roundedItemTotal / (1 + salesVatRate / 100);
+      const vatAmount = roundedItemTotal - subtotal;
+      
+      subtotalSum += subtotal;
+      vatSum += vatAmount;
+      
+      return sum + roundedItemTotal;
+    }, 0);
     
     return { 
       subtotal: subtotalSum, 
