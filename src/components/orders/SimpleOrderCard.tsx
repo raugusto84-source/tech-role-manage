@@ -143,11 +143,10 @@ export function SimpleOrderCard({
       return 0;
     }
     
-    // Si la orden está pendiente de actualización, usar el estimated_cost original
+    // Si la orden está pendiente de actualización, usar el estimated_cost original (ya incluye IVA)
     if (order.status === 'pendiente_actualizacion') {
-      const defaultVatRate = 16;
       const base = order.estimated_cost || 0;
-      return base * (1 + defaultVatRate / 100);
+      return base;
     }
     
     if (orderItems && orderItems.length > 0) {
@@ -155,10 +154,9 @@ export function SimpleOrderCard({
       return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items
-    const defaultVatRate = 16;
+    // Solo usar estimated_cost como último recurso si no hay items (ya incluye IVA)
     const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100);
+    return base;
   };
 
   // Calculate payments after total calculation

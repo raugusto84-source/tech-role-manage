@@ -323,11 +323,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return 0; // No mostrar nada mientras carga
     }
     
-    // Si la orden está pendiente de actualización, usar el estimated_cost original
+    // Si la orden está pendiente de actualización, usar el estimated_cost original (ya incluye IVA)
     if (order.status === 'pendiente_actualizacion') {
-      const defaultVatRate = 16;
       const base = order.estimated_cost || 0;
-      return ceilToTen(base * (1 + defaultVatRate / 100));
+      return ceilToTen(base);
     }
     
     if (orderItems && orderItems.length > 0) {
@@ -338,10 +337,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       }, 0);
     }
     
-    // Solo usar estimated_cost como último recurso - aplicar IVA y redondear a 10
-    const defaultVatRate = 16;
+    // Solo usar estimated_cost como último recurso - ya incluye IVA
     const base = order.estimated_cost || 0;
-    return ceilToTen(base * (1 + defaultVatRate / 100));
+    return ceilToTen(base);
   };
   const getStatusColor = (status: string) => {
     switch (status) {

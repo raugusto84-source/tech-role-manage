@@ -133,11 +133,9 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
       return 0; // No mostrar nada mientras carga
     }
     
-    // Si la orden está pendiente de actualización, usar el estimated_cost original
+    // Si la orden está pendiente de actualización, usar el estimated_cost original (ya incluye IVA)
     if (order.status === 'pendiente_actualizacion') {
-      const defaultVatRate = 16;
-      const base = order.estimated_cost || 0;
-      return base * (1 + defaultVatRate / 100);
+      return order.estimated_cost || 0;
     }
     
     if (orderItems && orderItems.length > 0) {
@@ -145,10 +143,8 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
       return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items
-    const defaultVatRate = 16;
-    const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100);
+    // Solo usar estimated_cost como último recurso si no hay items (ya incluye IVA)
+    return order.estimated_cost || 0;
   };
   
   // Calculate payments after total calculation
