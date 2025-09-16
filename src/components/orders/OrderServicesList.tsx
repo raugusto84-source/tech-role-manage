@@ -434,7 +434,8 @@ export function OrderServicesList({
                         <div className="text-sm font-medium text-primary">
                           {formatCurrency(calculateItemCorrectPrice(item))}
                         </div>
-                        {canDeleteItems && addedItems.has(item.id) && (
+                        {/* Delete button for all items when order is pending update */}
+                        {!isClient && orderStatus === 'pendiente_actualizacion' && (
                           <Button
                             variant="destructive"
                             size="sm"
