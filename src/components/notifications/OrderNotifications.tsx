@@ -65,8 +65,8 @@ export function OrderNotifications() {
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm font-medium">Finalizadas</p>
-                  <p className="text-xs text-muted-foreground">Órdenes completadas</p>
+                  <p className="text-sm font-medium">Pendientes de Cobro</p>
+                  <p className="text-xs text-muted-foreground">Órdenes finalizadas sin cobrar</p>
                 </div>
               </div>
               <Badge variant="secondary">{counts.ordersFinalized}</Badge>
