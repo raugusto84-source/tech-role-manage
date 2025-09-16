@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Package, Search, Shield, Monitor, X } from 'lucide-react';
 import { QuoteTotalsSummary } from './QuoteTotalsSummary';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -229,11 +229,12 @@ export function CategoryServiceSelection({
 
   const addService = (service: ServiceType) => {
     const calculatedPrice = calculateServicePrice(service);
+    const finalUnitPrice = ceilToTen(calculatedPrice);
     const vatRate = service.vat_rate || 16;
     
-    // Since calculatedPrice includes VAT, extract the VAT amount
-    const subtotalBeforeVat = calculatedPrice / (1 + vatRate / 100);
-    const vatAmount = calculatedPrice - subtotalBeforeVat;
+    // Calculate VAT breakdown from the rounded unit price
+    const subtotalBeforeVat = finalUnitPrice / (1 + vatRate / 100);
+    const vatAmount = finalUnitPrice - subtotalBeforeVat;
     
     const newItem: QuoteItem = {
       id: `service-${Date.now()}-${Math.random()}`,
@@ -241,14 +242,14 @@ export function CategoryServiceSelection({
       name: service.name,
       description: service.description || '',
       quantity: 1,
-      unit_price: calculatedPrice,
+      unit_price: finalUnitPrice,
       subtotal: subtotalBeforeVat,
       vat_rate: vatRate,
       vat_amount: vatAmount,
       withholding_rate: 0,
       withholding_amount: 0,
       withholding_type: '',
-      total: calculatedPrice,
+      total: finalUnitPrice,
       is_custom: false,
       image_url: service.image_url,
       cost_price: service.cost_price,

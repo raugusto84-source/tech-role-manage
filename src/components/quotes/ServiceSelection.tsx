@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, X, Package, ShoppingCart } from 'lucide-react';
 import { TaxConfiguration } from './TaxConfiguration';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 interface ServiceType {
   id: string;
@@ -120,12 +120,15 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       onItemsChange(updatedItems);
     } else {
       // Agregar nuevo
-      const subtotal = quantity * (serviceType.base_price || 0);
+      const basePrice = serviceType.base_price || 0;
+      const finalUnitPrice = ceilToTen(basePrice * 1.16); // Apply VAT and rounding
+      const quantity = 1;
+      const subtotal = finalUnitPrice / 1.16 * quantity; // Extract subtotal without VAT
       const vatRate = 16;
-      const vatAmount = subtotal * (vatRate / 100);
+      const vatAmount = finalUnitPrice - subtotal;
       const withholding_rate = 0;
       const withholding_amount = 0;
-      const total = subtotal + vatAmount - withholding_amount;
+      const total = finalUnitPrice * quantity;
       
       // Default tax for new items
       const defaultTaxes = [{
@@ -142,7 +145,7 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
         name: serviceType.name,
         description: serviceType.description || '',
         quantity,
-        unit_price: serviceType.base_price || 0,
+        unit_price: finalUnitPrice,
         subtotal,
         vat_rate: vatRate,
         vat_amount: vatAmount,
