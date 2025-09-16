@@ -341,7 +341,22 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         const latestModification = modifications[0];
         console.log('Processing latest modification:', latestModification);
         
-        // Obtener items agregados para eliminarlos
+        // STEP 1: Obtener el total de items antes de la eliminación para validación
+        const { data: preDeleteItems, error: preDeleteError } = await supabase
+          .from('order_items')
+          .select('id, total_amount')
+          .eq('order_id', order.id);
+
+        if (preDeleteError) {
+          console.error('Error fetching items before deletion:', preDeleteError);
+          throw preDeleteError;
+        }
+
+        const originalItemsCount = preDeleteItems?.length || 0;
+        const originalTotal = preDeleteItems?.reduce((sum, item) => sum + Number(item.total_amount), 0) || 0;
+        console.log('Original items count:', originalItemsCount, 'Original total:', originalTotal);
+        
+        // STEP 2: Procesar items agregados para eliminarlos
         if (latestModification.items_added) {
           console.log('Items added raw:', latestModification.items_added);
           
@@ -366,9 +381,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           }
           
           console.log('Processed items added:', itemsAdded);
+          console.log('Expected items to delete:', itemsAdded.length);
           
-          // Eliminar items agregados de forma robusta
-          // 1) Cargar items actuales de la orden
+          // STEP 3: Cargar items actuales de la orden con información completa
           const { data: existingItems, error: fetchItemsError } = await supabase
             .from('order_items')
             .select('id, service_type_id, service_name, quantity, unit_cost_price, unit_base_price, vat_rate, profit_margin_rate, total_amount, status, pricing_locked, created_at')
@@ -379,53 +394,103 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             throw fetchItemsError;
           }
 
-          const modCreatedAt = latestModification.created_at ? new Date(latestModification.created_at).toISOString() : undefined;
+          console.log('Current order items:', existingItems?.length || 0);
 
-          // 2) Encontrar coincidencias por múltiples campos para evitar falsos positivos
+          const modCreatedAt = latestModification.created_at ? new Date(latestModification.created_at) : null;
+
+          // STEP 4: Algoritmo mejorado de coincidencias con scoring
           const idsToDelete = new Set<string>();
+          const deletionLog: Array<{item: any, candidate: any, reason: string}> = [];
 
           for (const item of itemsAdded) {
             const name = item.service_name || item.name;
             const qty = item.quantity || 1;
 
-            const candidate = (existingItems || []).find(row => {
-              const createdAfter = modCreatedAt ? (new Date(row.created_at).toISOString() >= modCreatedAt) : true;
+            // Buscar candidatos y calcular un score de coincidencia
+            const candidates = (existingItems || []).map(row => {
+              let score = 0;
+              const reasons: string[] = [];
+
+              // Filtros básicos (requeridos)
+              const createdAfter = !modCreatedAt || new Date(row.created_at) >= modCreatedAt;
               const notLocked = row.pricing_locked === false || row.pricing_locked == null;
               const statusPend = row.status === 'pendiente' || row.status == null;
 
-              const serviceMatch = (!item.service_type_id || row.service_type_id === item.service_type_id) &&
-                                   (row.service_name === name);
+              if (!createdAfter || !notLocked || !statusPend) {
+                return { row, score: -1, reasons: ['Filtros básicos no cumplidos'] };
+              }
 
-              const qtyMatch = row.quantity === qty;
+              // Coincidencia exacta de nombre de servicio (crítico)
+              if (row.service_name === name) {
+                score += 50;
+                reasons.push('Nombre exacto');
+              } else {
+                return { row, score: -1, reasons: ['Nombre no coincide'] };
+              }
 
-              // Coincidir también por montos cuando están disponibles
-              const totalMatch = typeof item.total_amount === 'number' ? Number(row.total_amount) === Number(item.total_amount) : true;
+              // Coincidencia de cantidad (crítico)
+              if (row.quantity === qty) {
+                score += 30;
+                reasons.push('Cantidad exacta');
+              } else {
+                return { row, score: -1, reasons: ['Cantidad no coincide'] };
+              }
 
-              // Coincidir por precios unitarios si existen
-              const unitMatch = (
-                (item.unit_base_price == null || Number(row.unit_base_price) === Number(item.unit_base_price)) &&
-                (item.unit_cost_price == null || Number(row.unit_cost_price) === Number(item.unit_cost_price)) &&
-                (item.vat_rate == null || Number(row.vat_rate) === Number(item.vat_rate)) &&
-                (item.profit_margin_rate == null || Number(row.profit_margin_rate) === Number(item.profit_margin_rate))
-              );
+              // Coincidencia de service_type_id (importante)
+              if (item.service_type_id && row.service_type_id === item.service_type_id) {
+                score += 15;
+                reasons.push('Service type ID');
+              }
 
-              return createdAfter && notLocked && statusPend && serviceMatch && qtyMatch && totalMatch && unitMatch;
-            });
+              // Coincidencia de total amount (muy importante)
+              if (typeof item.total_amount === 'number' && Math.abs(Number(row.total_amount) - Number(item.total_amount)) < 0.01) {
+                score += 20;
+                reasons.push('Total exacto');
+              }
 
-            if (candidate) {
-              idsToDelete.add(candidate.id);
+              // Coincidencias de precios unitarios (importantes)
+              if (item.unit_base_price != null && Math.abs(Number(row.unit_base_price) - Number(item.unit_base_price)) < 0.01) {
+                score += 10;
+                reasons.push('Precio base exacto');
+              }
+
+              if (item.vat_rate != null && Math.abs(Number(row.vat_rate) - Number(item.vat_rate)) < 0.01) {
+                score += 5;
+                reasons.push('VAT rate exacto');
+              }
+
+              return { row, score, reasons };
+            }).filter(c => c.score > 0).sort((a, b) => b.score - a.score);
+
+            // Seleccionar el mejor candidato si tiene un score suficiente
+            if (candidates.length > 0 && candidates[0].score >= 95) { // Score mínimo alto para evitar falsos positivos
+              const bestMatch = candidates[0];
+              idsToDelete.add(bestMatch.row.id);
+              deletionLog.push({
+                item,
+                candidate: bestMatch.row,
+                reason: `Score: ${bestMatch.score}, Motivos: ${bestMatch.reasons.join(', ')}`
+              });
+              console.log(`✅ Match found for "${name}": Score ${bestMatch.score}, Motivos: ${bestMatch.reasons.join(', ')}`);
             } else {
-              console.warn('No matching order_item found for added item:', item);
+              console.warn(`❌ No reliable match found for "${name}". Best score: ${candidates[0]?.score || 0}`);
+              deletionLog.push({
+                item,
+                candidate: null,
+                reason: `No match - Best score: ${candidates[0]?.score || 0}`
+              });
             }
           }
 
-          console.log('IDs to delete:', Array.from(idsToDelete));
+          console.log('Deletion log:', deletionLog);
+          console.log('Final IDs to delete:', Array.from(idsToDelete));
 
-          // 3) Eliminar en lote por IDs; si no hay coincidencias, no fallar
+          // STEP 5: Eliminar items identificados y validar resultado
+          let deletedCount = 0;
           if (idsToDelete.size > 0) {
-            const { error: batchDeleteError } = await supabase
+            const { error: batchDeleteError, count } = await supabase
               .from('order_items')
-              .delete()
+              .delete({ count: 'exact' })
               .in('id', Array.from(idsToDelete));
 
             if (batchDeleteError) {
@@ -433,13 +498,42 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
               throw batchDeleteError;
             }
 
-            console.log('Deleted items count:', idsToDelete.size);
+            deletedCount = count || 0;
+            console.log('Successfully deleted items count:', deletedCount);
+
+            // Validar que se eliminaron todos los items esperados
+            if (deletedCount !== itemsAdded.length) {
+              console.warn(`⚠️ Expected to delete ${itemsAdded.length} items, but deleted ${deletedCount}`);
+            }
           } else {
-            console.log('No items matched for deletion. Skipping delete step.');
+            console.log('No items matched for deletion. This may indicate a problem with the matching logic.');
+          }
+
+          // STEP 6: Verificación posterior - confirmar eliminación
+          const { data: postDeleteItems, error: postDeleteError } = await supabase
+            .from('order_items')
+            .select('id, service_name, total_amount')
+            .eq('order_id', order.id);
+
+          if (postDeleteError) {
+            console.error('Error fetching items after deletion:', postDeleteError);
+            throw postDeleteError;
+          }
+
+          const finalItemsCount = postDeleteItems?.length || 0;
+          const finalTotal = postDeleteItems?.reduce((sum, item) => sum + Number(item.total_amount), 0) || 0;
+          
+          console.log(`Verification: Items before: ${originalItemsCount}, after: ${finalItemsCount}, deleted: ${originalItemsCount - finalItemsCount}`);
+          console.log(`Verification: Total before: ${originalTotal}, after: ${finalTotal}, difference: ${originalTotal - finalTotal}`);
+
+          // Validar que la eliminación fue exitosa
+          const expectedFinalCount = originalItemsCount - itemsAdded.length;
+          if (finalItemsCount !== expectedFinalCount) {
+            throw new Error(`Error en eliminación: se esperaban ${expectedFinalCount} items, pero hay ${finalItemsCount}`);
           }
         }
 
-        // Eliminar el registro de modificación
+        // STEP 7: Eliminar el registro de modificación
         console.log('Deleting modification:', latestModification.id);
         const { error: deleteModError } = await supabase
           .from('order_modifications')
@@ -451,7 +545,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           throw deleteModError;
         }
 
-        // Revertir el estado de la orden a 'en_proceso' y restaurar el total original
+        // STEP 8: Revertir el estado de la orden y restaurar el total original
         const { error: orderError } = await supabase
           .from('orders')
           .update({
@@ -464,6 +558,26 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         if (orderError) {
           console.error('Error updating order status:', orderError);
           throw orderError;
+        }
+
+        // STEP 9: Validación final - verificar que el total de la orden coincide con el esperado
+        const { data: updatedOrder, error: checkOrderError } = await supabase
+          .from('orders')
+          .select('estimated_cost')
+          .eq('id', order.id)
+          .single();
+
+        if (checkOrderError) {
+          console.error('Error checking updated order:', checkOrderError);
+        } else {
+          const restoredTotal = Number(updatedOrder.estimated_cost);
+          const expectedTotal = Number(latestModification.previous_total);
+          
+          if (Math.abs(restoredTotal - expectedTotal) > 0.01) {
+            console.warn(`⚠️ Order total mismatch: Expected ${expectedTotal}, but got ${restoredTotal}`);
+          } else {
+            console.log(`✅ Order total correctly restored to: ${restoredTotal}`);
+          }
         }
 
         console.log('Reject completed successfully');
@@ -479,7 +593,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       console.error('Error rejecting modifications:', error);
       toast({
         title: "Error",
-        description: "No se pudo rechazar la modificación. Intente nuevamente.",
+        description: `No se pudo rechazar la modificación: ${error instanceof Error ? error.message : 'Error desconocido'}`,
         variant: "destructive"
       });
     } finally {
