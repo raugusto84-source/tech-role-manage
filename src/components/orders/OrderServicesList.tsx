@@ -85,7 +85,7 @@ export function OrderServicesList({
   const canEditStatus = canEdit && !isClient;
   const canEditSerialInfo = canEdit && !isClient;
   const canFinishAll = canEdit && !isClient;
-  const canDeleteItems = !isClient && orderStatus === 'pendiente_actualizacion';
+  const canDeleteItems = !isClient; // Allow deletion in all states for non-clients
   
   console.log('OrderServicesList debug:', {
     orderStatus,
@@ -434,8 +434,8 @@ export function OrderServicesList({
                         <div className="text-sm font-medium text-primary">
                           {formatCurrency(calculateItemCorrectPrice(item))}
                         </div>
-                        {/* Delete button for all items when order is pending update */}
-                        {!isClient && orderStatus === 'pendiente_actualizacion' && (
+                        {/* Delete button for all items in any state */}
+                        {!isClient && (
                           <Button
                             variant="destructive"
                             size="sm"
