@@ -48,11 +48,32 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
-      // Count orders by specific states - finalized orders (simplified for now)
-      const { count: finalizedCount } = await supabase
+      // Count finalized orders with pending balance
+      const { data: finalizedOrders } = await supabase
         .from('orders')
-        .select('*', { count: 'exact', head: true })
+        .select(`
+          id,
+          estimated_cost
+        `)
         .eq('status', 'finalizada');
+
+      // Get payments for each finalized order and filter those with remaining balance > 0
+      let finalizedCount = 0;
+      if (finalizedOrders) {
+        for (const order of finalizedOrders) {
+          const { data: payments } = await supabase
+            .from('order_payments')
+            .select('payment_amount')
+            .eq('order_id', order.id);
+          
+          const totalPaid = payments?.reduce((sum, payment) => sum + (payment.payment_amount || 0), 0) || 0;
+          const remaining = (order.estimated_cost || 0) - totalPaid;
+          
+          if (remaining > 0) {
+            finalizedCount++;
+          }
+        }
+      }
 
       const { count: inProcessCount } = await supabase
         .from('orders')
