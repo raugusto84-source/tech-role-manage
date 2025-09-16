@@ -7,6 +7,9 @@ interface UnreadCounts {
   quotes: number;
   warranties: number;
   collections: number;
+  ordersFinalized: number;
+  ordersInProcess: number;
+  ordersPendingAuth: number;
 }
 
 export function useUnreadCounts() {
@@ -15,7 +18,10 @@ export function useUnreadCounts() {
     orders: 0, 
     quotes: 0, 
     warranties: 0,
-    collections: 0
+    collections: 0,
+    ordersFinalized: 0,
+    ordersInProcess: 0,
+    ordersPendingAuth: 0
   });
 
   const fetchCounts = async () => {
@@ -42,11 +48,30 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
+      // Count orders by specific states
+      const { count: finalizedCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'finalizada');
+
+      const { count: inProcessCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'en_proceso');
+
+      const { count: pendingAuthCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pendiente_aprobacion');
+
       setCounts({
         orders: ordersCount || 0,
         quotes: quotesCount || 0,
         warranties: warrantiesCount || 0,
-        collections: 0
+        collections: 0,
+        ordersFinalized: finalizedCount || 0,
+        ordersInProcess: inProcessCount || 0,
+        ordersPendingAuth: pendingAuthCount || 0
       });
     } catch (error) {
       console.error('Error fetching unread counts:', error);

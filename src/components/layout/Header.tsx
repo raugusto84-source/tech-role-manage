@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { OrderNotifications } from '@/components/notifications/OrderNotifications';
 
 /**
  * Header de la aplicación con información del usuario y logout
@@ -55,7 +56,9 @@ export function Header() {
         </span>
       </div>
 
-      <DropdownMenu>
+      <div className="flex items-center gap-4">
+        <OrderNotifications />
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-accent">
             <Avatar className="h-10 w-10 border-2 border-primary/20">
@@ -99,6 +102,7 @@ export function Header() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }
