@@ -48,7 +48,7 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
-      // Count orders by specific states
+      // Count orders by specific states - finalized orders (simplified for now)
       const { count: finalizedCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
