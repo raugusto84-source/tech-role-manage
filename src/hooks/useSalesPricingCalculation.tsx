@@ -64,7 +64,7 @@ export function useSalesPricingCalculation() {
       const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
       console.log(`Servicio ${service.name}: base=${basePrice}, afterVAT=${afterSalesVat}, final=${finalWithCashback}`);
-      return ceilToTen(finalWithCashback);
+      return finalWithCashback;
     } else {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
@@ -85,7 +85,7 @@ export function useSalesPricingCalculation() {
         cashbackPercent,
         finalWithCashback
       });
-      return ceilToTen(finalWithCashback);
+      return finalWithCashback;
     }
   };
 

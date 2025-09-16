@@ -140,9 +140,9 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const { subtotalBeforeVat, totalVAT } = calculateCorrectPricing();
 
   const totalFinal = subtotalBeforeVat + totalVAT;
-  const displayTotal = Math.ceil(totalFinal / 10) * 10; // Redondear como se muestra
   const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
   const finalTotal = totalFinal - cashbackAmount;
+  const displayTotal = Math.ceil(finalTotal / 10) * 10; // Redondear solo el total final
 
   return (
     <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
@@ -209,7 +209,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total Final:</span>
-          <span>{formatCurrency(finalTotal)}</span>
+          <span>{formatCurrency(displayTotal)}</span>
         </div>
       </div>
     </div>

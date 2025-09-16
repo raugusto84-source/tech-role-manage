@@ -51,7 +51,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     const quantity = item.quantity || 1;
     const totalPrice = getSalesPrice(serviceForPricing, quantity);
     
-    // Calculate VAT component
+    // Calculate VAT component - don't apply ceiling rounding here
     const salesVatRate = item.vat_rate ?? 16;
     const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
     const vatAmount = totalPrice - subtotalWithoutVat;
@@ -95,7 +95,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     setPricing({
       totalCostPrice,
       totalVATAmount,
-      totalAmount: totalCostPrice + totalVATAmount,
+      totalAmount: Math.ceil((totalCostPrice + totalVATAmount) / 10) * 10, // Apply rounding only to final total
       hasCashbackAdjustment,
       isNewClient
     });
