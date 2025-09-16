@@ -16,7 +16,10 @@ import {
   MessageSquare,
   ClipboardCheck,
   Truck,
-  Bell
+  Bell,
+  CheckCircle,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -163,10 +166,33 @@ export function AppSidebar() {
                         <span className="font-medium transition-all duration-200 flex items-center gap-2">
                           {item.title}
                           {/* Show badges for unread counts */}
-                          {item.url === '/orders' && unreadCounts.orders > 0 && (
-                            <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
-                              {unreadCounts.orders > 99 ? '99+' : unreadCounts.orders}
-                            </Badge>
+                          {item.url === '/orders' && (
+                            <div className="flex items-center gap-1">
+                              {unreadCounts.ordersPendingAuth > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <AlertCircle className="h-3 w-3 text-orange-600" />
+                                  <Badge variant="secondary" className="h-4 px-1 text-xs">
+                                    {unreadCounts.ordersPendingAuth}
+                                  </Badge>
+                                </div>
+                              )}
+                              {unreadCounts.ordersInProcess > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3 text-blue-600" />
+                                  <Badge variant="secondary" className="h-4 px-1 text-xs">
+                                    {unreadCounts.ordersInProcess}
+                                  </Badge>
+                                </div>
+                              )}
+                              {unreadCounts.ordersFinalized > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3 text-green-600" />
+                                  <Badge variant="secondary" className="h-4 px-1 text-xs">
+                                    {unreadCounts.ordersFinalized}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
                           )}
                           {item.url === '/quotes' && unreadCounts.quotes > 0 && (
                             <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
@@ -188,7 +214,7 @@ export function AppSidebar() {
                       {/* Show dots for collapsed state */}
                       {collapsed && (
                         <>
-                          {item.url === '/orders' && unreadCounts.orders > 0 && (
+                          {item.url === '/orders' && (unreadCounts.ordersPendingAuth > 0 || unreadCounts.ordersInProcess > 0 || unreadCounts.ordersFinalized > 0) && (
                             <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
                           )}
                           {item.url === '/quotes' && unreadCounts.quotes > 0 && (
