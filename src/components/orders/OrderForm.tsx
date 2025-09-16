@@ -517,7 +517,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         updatedItems[existingItemIndex] = {
           ...existingItem,
           quantity: newQuantity,
-          unit_price: service.base_price || service.cost_price || 0,
+          unit_price: exactPricing.totalAmount / newQuantity,
           subtotal: exactPricing.subtotal,
           original_subtotal: undefined,
           policy_discount_percentage: 0,
@@ -544,7 +544,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         name: service.name,
         description: service.description || '',
         quantity,
-        unit_price: service.base_price || service.cost_price || 0,
+        unit_price: exactPricing.totalAmount / quantity,
         cost_price: service.cost_price,
         estimated_hours: estimatedHours,
         subtotal: exactPricing.subtotal,
