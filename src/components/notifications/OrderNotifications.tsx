@@ -1,4 +1,4 @@
-import { Bell, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Bell, Clock, CheckCircle, AlertCircle, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -14,7 +14,7 @@ export function OrderNotifications() {
     return null;
   }
 
-  const totalNotifications = counts.ordersPendingAuth + counts.ordersInProcess + counts.ordersFinalized;
+  const totalNotifications = counts.ordersPendingAuth + counts.ordersInProcess + counts.ordersFinalized + counts.quotes;
 
   return (
     <Popover>
@@ -36,6 +36,18 @@ export function OrderNotifications() {
           <h4 className="font-semibold text-sm">Notificaciones de Órdenes</h4>
           
           <div className="space-y-3">
+            {/* New Quotes */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-purple-50 dark:bg-purple-950/20">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium">Cotizaciones Nuevas</p>
+                  <p className="text-xs text-muted-foreground">Cotizaciones pendientes de aprobación</p>
+                </div>
+              </div>
+              <Badge variant="secondary">{counts.quotes}</Badge>
+            </div>
+
             {/* Pending Authorization */}
             <div className="flex items-center justify-between p-2 rounded-lg bg-orange-50 dark:bg-orange-950/20">
               <div className="flex items-center gap-3">
