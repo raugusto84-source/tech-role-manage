@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCOPCeilToTen } from '@/utils/currency';
@@ -76,6 +77,7 @@ export function OrderServicesList({
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [itemModificationNumbers, setItemModificationNumbers] = useState<Map<string, number>>(new Map());
+  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
   const { getDisplayPrice } = useSalesPricingCalculation();
   const { profile } = useAuth();
@@ -217,9 +219,15 @@ export function OrderServicesList({
     loadAddedItems();
   }, [orderId, orderStatus, orderItems.length]); // Use length instead of full array
 
-  const handleDeleteItem = async (itemId: string) => {
+  const confirmDeleteItem = (itemId: string, itemName: string) => {
     if (!canDeleteItems) return;
+    setItemToDelete({ id: itemId, name: itemName });
+  };
+
+  const handleDeleteItem = async () => {
+    if (!itemToDelete) return;
     
+    const { id: itemId } = itemToDelete;
     setDeletingItems(prev => new Set(prev).add(itemId));
     
     try {
@@ -256,6 +264,7 @@ export function OrderServicesList({
         newSet.delete(itemId);
         return newSet;
       });
+      setItemToDelete(null);
     }
   };
   const handleStatusChange = async (itemId: string, newStatus: string) => {
@@ -439,7 +448,7 @@ export function OrderServicesList({
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDeleteItem(item.id)}
+                            onClick={() => confirmDeleteItem(item.id, item.service_name)}
                             disabled={deletingItems.has(item.id)}
                             className="h-7 w-7 p-0"
                           >
@@ -712,5 +721,23 @@ export function OrderServicesList({
           </Button>
         </div>
       )}
+      
+      {/* Confirmation dialog for item deletion */}
+      <AlertDialog open={itemToDelete !== null} onOpenChange={() => setItemToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Está seguro de que desea eliminar el artículo "{itemToDelete?.name}"? Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteItem} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }
