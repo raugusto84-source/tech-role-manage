@@ -218,21 +218,9 @@ export function SimpleOrderCard({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={`${getStatusColor(order.status)} text-xs`}>
-              {getStatusText(order.status)}
-            </Badge>
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDelete}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-1"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
+          <Badge className={`${getStatusColor(order.status)} text-xs`}>
+            {getStatusText(order.status)}
+          </Badge>
         </div>
       </CardHeader>
       

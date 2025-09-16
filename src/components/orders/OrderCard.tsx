@@ -205,23 +205,11 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <Badge className={`${getStatusColor(order.status)} text-xs px-1 py-0`}>
-              {order.status === "pendiente_aprobacion" 
-                ? "PEND. APROB." 
-                : order.status.replace("_", " ").toUpperCase()}
-            </Badge>
-            {canDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDelete}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10 p-0.5 h-auto"
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
+          <Badge className={`${getStatusColor(order.status)} text-xs px-1 py-0`}>
+            {order.status === "pendiente_aprobacion" 
+              ? "PEND. APROB." 
+              : order.status.replace("_", " ").toUpperCase()}
+          </Badge>
         </div>
       </CardHeader>
       
