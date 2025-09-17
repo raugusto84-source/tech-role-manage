@@ -13,7 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
-
 interface OrderCardProps {
   order: {
     id: string;
@@ -61,20 +60,28 @@ interface OrderCardProps {
   getStatusColor: (status: string) => string;
   showCollectButton?: boolean;
 }
-
-export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor, showCollectButton = false }: OrderCardProps) {
+export function OrderCard({
+  order,
+  onClick,
+  onDelete,
+  canDelete,
+  getStatusColor,
+  showCollectButton = false
+}: OrderCardProps) {
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const { getDisplayPrice } = useSalesPricingCalculation();
-
+  const {
+    getDisplayPrice
+  } = useSalesPricingCalculation();
   useEffect(() => {
     const loadOrderItems = async () => {
       setItemsLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('order_items')
-          .select(`
+        const {
+          data,
+          error
+        } = await supabase.from('order_items').select(`
             quantity,
             unit_cost_price,
             unit_base_price, 
@@ -83,9 +90,7 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
             profit_margin_rate,
             pricing_locked,
             total_amount
-          `)
-          .eq('order_id', order.id);
-
+          `).eq('order_id', order.id);
         if (error) throw error;
         setOrderItems(data || []);
       } catch (error) {
@@ -95,7 +100,6 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
         setItemsLoading(false);
       }
     };
-
     loadOrderItems();
   }, [order.id]);
 
@@ -104,16 +108,11 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
     // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
     const isLocked = Boolean(item.pricing_locked);
-    const missingKeyData = (item.item_type === 'servicio')
-      ? (!item.unit_base_price || item.unit_base_price <= 0)
-      : (!item.unit_cost_price || item.unit_cost_price <= 0);
-
+    const missingKeyData = item.item_type === 'servicio' ? !item.unit_base_price || item.unit_base_price <= 0 : !item.unit_cost_price || item.unit_cost_price <= 0;
     if (hasStoredTotal && (isLocked || missingKeyData)) {
       return Number(item.total_amount);
     }
-
     const quantity = item.quantity || 1;
-
     const serviceForPricing = {
       id: item.service_type_id || item.id,
       name: item.service_name || '',
@@ -121,9 +120,12 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
       cost_price: item.unit_cost_price,
       vat_rate: item.vat_rate,
       item_type: item.item_type,
-      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
+      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{
+        min_qty: 1,
+        max_qty: 999,
+        margin: (item as any).profit_margin_rate
+      }] : null
     } as any;
-
     return getDisplayPrice(serviceForPricing, quantity);
   };
 
@@ -132,57 +134,50 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
     if (itemsLoading) {
       return 0; // No mostrar nada mientras carga
     }
-    
     if (orderItems && orderItems.length > 0) {
       // Sumar cada tarjeta como se muestra: redondear cada ítem a 10 y luego sumar
       return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
-    
+
     // Solo usar estimated_cost como último recurso si no hay items
     const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
     return base * (1 + defaultVatRate / 100);
   };
-  
+
   // Calculate payments after total calculation
   const totalAmount = calculateCorrectTotal();
-  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+  const {
+    paymentSummary,
+    loading: paymentsLoading
+  } = useOrderPayments(order.id, totalAmount);
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+      return format(new Date(dateString), 'dd/MM/yyyy', {
+        locale: es
+      });
     } catch {
       return dateString;
     }
   };
-
   const formatTime = (hours?: number) => {
     if (!hours) return 'No estimado';
     return hours % 1 === 0 ? `${hours}h` : `${hours}h`;
   };
-
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onDelete) {
       onDelete(order.id);
     }
   };
-
-  return (
-    <Card 
-      className={`hover:shadow-sm transition-all cursor-pointer border-l-2 compact-card ${
-        order.status === 'pendiente_aprobacion' 
-          ? 'border-l-warning bg-warning/5' 
-          : 'border-l-primary'
-      }`}
-      onClick={(e) => {
-        if (showPaymentDialog) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
-        }
-        onClick();
-      }}
-    >
+  return <Card className={`hover:shadow-sm transition-all cursor-pointer border-l-2 compact-card ${order.status === 'pendiente_aprobacion' ? 'border-l-warning bg-warning/5' : 'border-l-primary'}`} onClick={e => {
+    if (showPaymentDialog) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    onClick();
+  }}>
       <CardHeader className="pb-0 pt-0.5 px-2">{/* Reducir aún más la altura vertical */}
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2 flex-1">
@@ -193,22 +188,15 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
             <span className="text-xs text-muted-foreground font-medium truncate flex-1">
               {order.clients?.name || "Cliente no especificado"}
             </span>
-            {order.unread_messages_count != null && order.unread_messages_count > 0 && (
-              <div className="relative">
+            {order.unread_messages_count != null && order.unread_messages_count > 0 && <div className="relative">
                 <MessageCircle className="h-3 w-3 text-blue-600" />
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-3 w-3 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white"
-                >
+                <Badge variant="destructive" className="absolute -top-1 -right-1 h-3 w-3 rounded-full p-0 text-xs flex items-center justify-center bg-red-500 text-white">
                   {order.unread_messages_count}
                 </Badge>
-              </div>
-            )}
+              </div>}
           </div>
           <Badge className={`${getStatusColor(order.status)} text-xs px-1 py-0`}>
-            {order.status === "pendiente_aprobacion" 
-              ? "PEND. APROB." 
-              : order.status.replace("_", " ").toUpperCase()}
+            {order.status === "pendiente_aprobacion" ? "PEND. APROB." : order.status.replace("_", " ").toUpperCase()}
           </Badge>
         </div>
       </CardHeader>
@@ -222,12 +210,10 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
               {order.service_types?.name || "Servicio no especificado"}
             </span>
           </div>
-          {order.is_home_service && (
-            <div className="flex items-center gap-1 text-blue-600 ml-2">
+          {order.is_home_service && <div className="flex items-center gap-1 text-blue-600 ml-2">
               <Home className="h-3 w-3" />
               <span className="text-xs font-medium">Dom</span>
-            </div>
-          )}
+            </div>}
         </div>
         
         {/* Segunda fila: Fecha, cliente, técnico y precio */}
@@ -235,48 +221,34 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           <div className="flex items-center gap-2">
             <Calendar className="h-3 w-3 text-primary flex-shrink-0" />
             <span className="text-xs">
-              {order.estimated_delivery_date 
-                ? formatDate(order.estimated_delivery_date) 
-                : formatDate(order.delivery_date)}
+              {order.estimated_delivery_date ? formatDate(order.estimated_delivery_date) : formatDate(order.delivery_date)}
             </span>
-            {order.clients?.client_number && (
-              <>
+            {order.clients?.client_number && <>
                 <span>•</span>
-                <User className="h-3 w-3 text-primary flex-shrink-0" />
-                <span>{order.clients.client_number}</span>
-              </>
-            )}
+                
+                
+              </>}
           </div>
           
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-primary" />
-            {itemsLoading ? (
-              <Skeleton className="h-3 w-14 rounded" />
-            ) : (
-              <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>
-            )}
-            {order.average_service_time && (
-              <>
+            {itemsLoading ? <Skeleton className="h-3 w-14 rounded" /> : <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>}
+            {order.average_service_time && <>
                 <Clock className="h-3 w-3 text-primary ml-1" />
                 <span>{formatTime(order.average_service_time)}</span>
-              </>
-            )}
+              </>}
           </div>
         </div>
 
         {/* Tercera fila: Técnicos y descripción */}
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
-          {(order.technician_profile || (order.support_technicians && order.support_technicians.length > 0)) && (
-            <div className="flex items-center min-w-0 flex-shrink-0">
+          {(order.technician_profile || order.support_technicians && order.support_technicians.length > 0) && <div className="flex items-center min-w-0 flex-shrink-0">
               <User className="h-3 w-3 mr-1 text-primary flex-shrink-0" />
               <span className="truncate max-w-[120px]">
                 {order.technician_profile?.full_name}
-                {order.support_technicians && order.support_technicians.length > 0 && 
-                  ` +${order.support_technicians.length}`
-                }
+                {order.support_technicians && order.support_technicians.length > 0 && ` +${order.support_technicians.length}`}
               </span>
-            </div>
-          )}
+            </div>}
           
           <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-xs text-muted-foreground truncate break-words">
@@ -291,21 +263,15 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-1">
-              {itemsLoading ? (
-                <Skeleton className="h-4 w-20 rounded" />
-              ) : (
-                <span className="text-sm font-bold text-primary">
+              {itemsLoading ? <Skeleton className="h-4 w-20 rounded" /> : <span className="text-sm font-bold text-primary">
                   {formatCOPCeilToTen(ceilToTen(totalAmount))}
-                </span>
-              )}
+                </span>}
             </div>
           </div>
           
           {/* Estado de pagos */}
-          {totalAmount >= 0 && (
-            <div className="space-y-0.5 text-xs">
-              {paymentSummary.paymentCount > 0 && (
-                <>
+          {totalAmount >= 0 && <div className="space-y-0.5 text-xs">
+              {paymentSummary.paymentCount > 0 && <>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Cobrado ({paymentSummary.paymentCount} pago{paymentSummary.paymentCount > 1 ? 's' : ''}):</span>
                     <span className={`font-medium ${paymentSummary.isFullyPaid ? 'text-green-600' : 'text-orange-600'}`}>
@@ -318,56 +284,39 @@ export function OrderCard({ order, onClick, onDelete, canDelete, getStatusColor,
                       {formatCOPCeilToTen(paymentSummary.remainingBalance)}
                     </span>
                   </div>
-                </>
-              )}
-              {paymentSummary.paymentCount === 0 && (
-                <div className="flex justify-between items-center">
+                </>}
+              {paymentSummary.paymentCount === 0 && <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Sin pagos registrados</span>
                   <span className="text-xs text-amber-600 font-medium">
                     {paymentSummary.isFullyPaid ? 'Pagado' : 'Pendiente'}
                   </span>
-                </div>
-              )}
-            </div>
-          )}
+                </div>}
+            </div>}
           
           {/* Botón de cobrar para órdenes finalizadas */}
           {(() => {
-            const shouldShowButton = showCollectButton;
-            console.log('OrderCard collect button debug:', {
-              showCollectButton,
-              orderStatus: order.status,
-              orderNumber: order.order_number,
-              shouldShow: shouldShowButton
-            });
-            
-            return shouldShowButton ? (
-              <div className="flex justify-end mt-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={(e) => {
-                      console.log('Cobrar button clicked for order:', order.order_number);
-                      e.stopPropagation();
-                      setShowPaymentDialog(true);
-                      console.log('Payment dialog state set to true');
-                    }}
-                  >
+          const shouldShowButton = showCollectButton;
+          console.log('OrderCard collect button debug:', {
+            showCollectButton,
+            orderStatus: order.status,
+            orderNumber: order.order_number,
+            shouldShow: shouldShowButton
+          });
+          return shouldShowButton ? <div className="flex justify-end mt-2">
+                  <Button variant="default" size="sm" onClick={e => {
+              console.log('Cobrar button clicked for order:', order.order_number);
+              e.stopPropagation();
+              setShowPaymentDialog(true);
+              console.log('Payment dialog state set to true');
+            }}>
                   <CreditCard className="h-3 w-3 mr-1" />
                   Cobrar
                 </Button>
-              </div>
-            ) : null;
-          })()}
+              </div> : null;
+        })()}
         </div>
       </CardContent>
       
-      <PaymentCollectionDialog
-        open={showPaymentDialog}
-        onOpenChange={setShowPaymentDialog}
-        order={order}
-        totalAmount={ceilToTen(calculateCorrectTotal())}
-      />
-    </Card>
-  );
+      <PaymentCollectionDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} order={order} totalAmount={ceilToTen(calculateCorrectTotal())} />
+    </Card>;
 }
