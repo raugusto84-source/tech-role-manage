@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
+import { OrderModificationsBadge } from './OrderModificationsBadge';
 interface OrderCardProps {
   order: {
     id: string;
@@ -74,14 +75,13 @@ export function OrderCard({
   const {
     getDisplayPrice
   } = useSalesPricingCalculation();
-  useEffect(() => {
-    const loadOrderItems = async () => {
-      setItemsLoading(true);
-      try {
-        const {
-          data,
-          error
-        } = await supabase.from('order_items').select(`
+  const loadOrderItems = async () => {
+    setItemsLoading(true);
+    try {
+      const {
+        data,
+        error
+      } = await supabase.from('order_items').select(`
             quantity,
             unit_cost_price,
             unit_base_price, 
@@ -91,15 +91,16 @@ export function OrderCard({
             pricing_locked,
             total_amount
           `).eq('order_id', order.id);
-        if (error) throw error;
-        setOrderItems(data || []);
-      } catch (error) {
-        console.error('Error loading order items for card:', error);
-        setOrderItems([]);
-      } finally {
-        setItemsLoading(false);
-      }
-    };
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (error) {
+      console.error('Error loading order items for card:', error);
+      setOrderItems([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+  useEffect(() => {
     loadOrderItems();
   }, [order.id]);
 
@@ -302,7 +303,8 @@ export function OrderCard({
             orderNumber: order.order_number,
             shouldShow: shouldShowButton
           });
-          return shouldShowButton ? <div className="flex justify-end mt-2">
+          return shouldShowButton ? <div className="flex justify-between items-center mt-2">
+                  <OrderModificationsBadge orderId={order.id} onChanged={loadOrderItems} />
                   <Button variant="default" size="sm" onClick={e => {
               console.log('Cobrar button clicked for order:', order.order_number);
               e.stopPropagation();

@@ -11,6 +11,7 @@ import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
+import { OrderModificationsBadge } from './OrderModificationsBadge';
 
 interface SimpleOrderCardProps {
   order: {
@@ -72,13 +73,12 @@ export function SimpleOrderCard({
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const { settings: rewardSettings } = useRewardSettings();
 
-  useEffect(() => {
-    const loadOrderItems = async () => {
-      setItemsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('order_items')
-          .select(`
+  const loadOrderItems = async () => {
+    setItemsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('order_items')
+        .select(`
             quantity,
             unit_cost_price,
             unit_base_price, 
@@ -88,18 +88,19 @@ export function SimpleOrderCard({
             pricing_locked,
             total_amount
           `)
-          .eq('order_id', order.id);
+        .eq('order_id', order.id);
 
-        if (error) throw error;
-        setOrderItems(data || []);
-      } catch (error) {
-        console.error('Error loading order items for simple card:', error);
-        setOrderItems([]);
-      } finally {
-        setItemsLoading(false);
-      }
-    };
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (error) {
+      console.error('Error loading order items for simple card:', error);
+      setOrderItems([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadOrderItems();
   }, [order.id]);
 
@@ -322,33 +323,36 @@ export function SimpleOrderCard({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex justify-end gap-2 pt-2">
-          {showCollectButton && (
+        <div className="flex justify-between items-center gap-2 pt-2">
+          <OrderModificationsBadge orderId={order.id} onChanged={loadOrderItems} />
+          <div className="flex gap-2">
+            {showCollectButton && (
+              <Button 
+                variant="default"
+                size="sm" 
+                onClick={(e) => {
+                  console.log('Cobrar button clicked for order:', order.order_number);
+                  e.stopPropagation();
+                  setShowPaymentDialog(true);
+                  console.log('Payment dialog state set to true');
+                }}
+              >
+                <CreditCard className="h-4 w-4 mr-2" />
+                Cobrar
+              </Button>
+            )}
             <Button 
-              variant="default"
+              variant="outline" 
               size="sm" 
               onClick={(e) => {
-                console.log('Cobrar button clicked for order:', order.order_number);
                 e.stopPropagation();
-                setShowPaymentDialog(true);
-                console.log('Payment dialog state set to true');
+                onView();
               }}
             >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Cobrar
+              <Eye className="h-4 w-4 mr-2" />
+              Ver detalles
             </Button>
-          )}
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={(e) => {
-              e.stopPropagation();
-              onView();
-            }}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Ver detalles
-          </Button>
+          </div>
         </div>
       </CardContent>
       
