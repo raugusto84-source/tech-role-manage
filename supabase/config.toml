@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.run-recurring-payrolls]
 verify_jwt = true
+
+[functions.reject-order-modification]
+verify_jwt = true
