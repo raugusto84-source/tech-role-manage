@@ -83,7 +83,7 @@ export function OrderModificationsBadge({
   };
   if (loading || total === 0) return null;
   return <div className="flex items-center gap-2">
-      <Badge variant="secondary" className="text-xs">Mods: {total}</Badge>
+      
       {accepted > 0 && <Check className="h-4 w-4 text-green-600" aria-label="Modificaciones aceptadas" />}
       {pending > 0}
     </div>;
