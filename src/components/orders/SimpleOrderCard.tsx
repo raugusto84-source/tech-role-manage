@@ -150,9 +150,14 @@ export function SimpleOrderCard({
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
+    // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
+    if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
+      return ceilToTen(order.estimated_cost || 0);
+    }
+    // En otros casos, aplicar IVA por defecto
     const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100);
+    return ceilToTen(base * (1 + defaultVatRate / 100));
   };
 
   // Calculate payments after total calculation
