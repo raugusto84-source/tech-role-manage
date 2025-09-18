@@ -326,7 +326,7 @@ export function SimpleOrderCard({
         <div className="flex justify-between items-center gap-2 pt-2">
           <OrderModificationsBadge orderId={order.id} onChanged={loadOrderItems} />
           <div className="flex gap-2">
-            {showCollectButton && (
+            {showCollectButton && paymentSummary.remainingBalance > 0 && (
               <Button 
                 variant="default"
                 size="sm" 

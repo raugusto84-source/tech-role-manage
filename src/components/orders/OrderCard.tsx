@@ -296,9 +296,10 @@ export function OrderCard({
           
           {/* Botón de cobrar para órdenes finalizadas */}
           {(() => {
-          const shouldShowButton = showCollectButton;
+          const shouldShowButton = showCollectButton && paymentSummary.remainingBalance > 0;
           console.log('OrderCard collect button debug:', {
             showCollectButton,
+            remainingBalance: paymentSummary.remainingBalance,
             orderStatus: order.status,
             orderNumber: order.order_number,
             shouldShow: shouldShowButton
