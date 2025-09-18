@@ -269,6 +269,22 @@ export function OrderServicesList({
   };
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     if (!canEditStatus) return;
+    
+    // Validate required fields for products before finishing
+    if (newStatus === 'finalizada') {
+      const item = orderItems.find(i => i.id === itemId);
+      if (item?.item_type === 'articulo') {
+        if (!item.serial_number || !item.supplier_name) {
+          toast({
+            title: 'Campos obligatorios',
+            description: 'Los productos requieren número de serie y proveedor para ser finalizados.',
+            variant: 'destructive'
+          });
+          return;
+        }
+      }
+    }
+    
     setUpdatingItems(prev => new Set(prev).add(itemId));
     try {
       const {
@@ -336,6 +352,23 @@ export function OrderServicesList({
   const formatCurrency = formatCOPCeilToTen;
   const handleFinishAll = async () => {
     if (!orderId || !canFinishAll) return;
+    
+    // Validate that all products have required fields before finishing
+    const incompleteProducts = orderItems.filter(item => 
+      item.status !== 'finalizada' && 
+      item.item_type === 'articulo' && 
+      (!item.serial_number || !item.supplier_name)
+    );
+    
+    if (incompleteProducts.length > 0) {
+      toast({
+        title: 'Productos incompletos',
+        description: `${incompleteProducts.length} producto(s) requieren número de serie y proveedor antes de finalizar.`,
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     setFinishingAll(true);
     try {
       // Mark all non-finished items as finished
@@ -461,10 +494,11 @@ export function OrderServicesList({
                           {showReadyButtons && item.status !== 'finalizada' ? (
                             <Button 
                               onClick={() => handleStatusChange(item.id, 'finalizada')} 
-                              disabled={isUpdating} 
-                              variant="default" 
+                              disabled={isUpdating || (item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name))} 
+                              variant={item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name) ? "outline" : "default"} 
                               size="sm" 
                               className="w-full h-7 text-xs"
+                              title={item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name) ? "Requiere número de serie y proveedor" : ""}
                             >
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Listo
