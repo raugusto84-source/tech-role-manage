@@ -303,52 +303,51 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return totalHours > 0 ? totalHours : (order.average_service_time || 4);
   };
 
-  // Calcula el precio correcto por item usando la lógica unificada de Ventas
+  // Calcula el precio correcto por item - MISMA LÓGICA QUE OrderCard
   const calculateItemDisplayPrice = (item: any): number => {
-    // Respetar total guardado solo si viene bloqueado o faltan datos clave
+    // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
     const isLocked = Boolean(item.pricing_locked);
     const missingKeyData = (item.item_type === 'servicio')
       ? (!item.unit_base_price || item.unit_base_price <= 0)
       : (!item.unit_cost_price || item.unit_cost_price <= 0);
 
-    // En estados pendientes de aprobación/actualización, mostrar el total guardado para evitar cambios antes de autorizar
-    if ((orderStatus === 'pendiente_actualizacion' || orderStatus === 'pendiente_aprobacion') && hasStoredTotal) {
-      return Number(item.total_amount);
-    }
-
     if (hasStoredTotal && (isLocked || missingKeyData)) {
       return Number(item.total_amount);
     }
 
     const quantity = item.quantity || 1;
-    const serviceForPricing = {
-      id: item.service_type_id || item.id,
-      name: item.service_name || '',
-      base_price: item.unit_base_price,
-      cost_price: item.unit_cost_price,
-      vat_rate: item.vat_rate,
-      item_type: item.item_type,
-      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
-    } as any;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
 
-    return getDisplayPrice(serviceForPricing, quantity);
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
   };
 
-  const calculateTotalAmount = () => {
+  const calculateCorrectTotal = () => {
     if (itemsLoading) {
-      return 0; // No mostrar nada mientras carga
+      return 0;
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Sumar el total de CADA tarjeta: redondear cada item a 10 y luego sumar
-      return orderItems.reduce((sum, item) => {
-        const itemTotal = calculateItemDisplayPrice(item);
-        return sum + ceilToTen(itemTotal);
-      }, 0);
+      // Sumar cada tarjeta como se muestra: redondear cada ítem a 10 y luego sumar
+      return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
-    // Solo usar estimated_cost como último recurso
+    // Solo usar estimated_cost como último recurso si no hay items
     // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
     if (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') {
       return ceilToTen(order.estimated_cost || 0);
@@ -465,7 +464,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     {itemsLoading ? (
                       <Skeleton className="h-4 w-16 rounded" />
                     ) : (
-                      formatCOPCeilToTen(calculateTotalAmount())
+                      formatCOPCeilToTen(calculateCorrectTotal())
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -571,7 +570,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                             <Skeleton className="h-6 w-24 rounded" />
                           ) : (
                             <span className="text-lg font-bold text-primary">
-                              {formatCOPCeilToTen(calculateTotalAmount())}
+                              {formatCOPCeilToTen(calculateCorrectTotal())}
                             </span>
                           )}
                         </div>
