@@ -11,7 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X, Trash2 } from 'lucide-react';
-import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
+import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { ceilToTen } from '@/utils/currency';
 import { useEffect } from 'react';
 interface OrderItem {
   id: string;
@@ -24,6 +25,7 @@ interface OrderItem {
   vat_rate?: number;
   item_type?: string;
   profit_margin_rate?: number;
+  pricing_locked?: boolean;
   status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada';
   serial_number?: string;
   supplier_name?: string;
@@ -79,7 +81,7 @@ export function OrderServicesList({
   const [itemModificationNumbers, setItemModificationNumbers] = useState<Map<string, number>>(new Map());
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
-  const { getDisplayPrice } = useSalesPricingCalculation();
+  const { settings: rewardSettings } = useRewardSettings();
   const { profile } = useAuth();
   
   // Check if user is a client - clients have restricted permissions
@@ -97,21 +99,38 @@ export function OrderServicesList({
     orderItemsCount: orderItems.length
   });
 
-  // Calcular precio correcto para un item usando la lógica de Ventas (incluye cashback)
+  // Calcular precio correcto para un item - MISMA LÓGICA QUE OrderCard y OrderDetails
   const calculateItemCorrectPrice = (item: OrderItem): number => {
-    const quantity = item.quantity || 1;
-    const serviceForPricing = {
-      id: item.id,
-      name: item.service_name,
-      base_price: item.unit_base_price,
-      cost_price: item.unit_cost_price,
-      vat_rate: item.vat_rate,
-      item_type: item.item_type,
-      profit_margin_rate: item.profit_margin_rate,
-      profit_margin_tiers: item.profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: item.profit_margin_rate }] : null
-    } as any;
+    // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
+    const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+    const isLocked = Boolean(item.pricing_locked);
+    const missingKeyData = (item.item_type === 'servicio')
+      ? (!item.unit_base_price || item.unit_base_price <= 0)
+      : (!item.unit_cost_price || item.unit_cost_price <= 0);
 
-    return getDisplayPrice(serviceForPricing, quantity);
+    if (hasStoredTotal && (isLocked || missingKeyData)) {
+      return Number(item.total_amount);
+    }
+
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
   };
 
   // Load modification data to identify added items and their update numbers
