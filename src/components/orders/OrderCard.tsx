@@ -72,9 +72,7 @@ export function OrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const {
-    getDisplayPrice
-  } = useSalesPricingCalculation();
+  const { settings: rewardSettings } = useRewardSettings();
   const loadOrderItems = async () => {
     setItemsLoading(true);
     try {
@@ -104,30 +102,38 @@ export function OrderCard({
     loadOrderItems();
   }, [order.id]);
 
-  // Calcula el precio correcto por item usando la lógica unificada de Ventas
+  // Calcula el precio correcto por item - MISMA LÓGICA QUE OrderDetails y SimpleOrderCard
   const calculateItemDisplayPrice = (item: any): number => {
     // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
     const isLocked = Boolean(item.pricing_locked);
-    const missingKeyData = item.item_type === 'servicio' ? !item.unit_base_price || item.unit_base_price <= 0 : !item.unit_cost_price || item.unit_cost_price <= 0;
+    const missingKeyData = (item.item_type === 'servicio')
+      ? (!item.unit_base_price || item.unit_base_price <= 0)
+      : (!item.unit_cost_price || item.unit_cost_price <= 0);
+
     if (hasStoredTotal && (isLocked || missingKeyData)) {
       return Number(item.total_amount);
     }
+
     const quantity = item.quantity || 1;
-    const serviceForPricing = {
-      id: item.service_type_id || item.id,
-      name: item.service_name || '',
-      base_price: item.unit_base_price,
-      cost_price: item.unit_cost_price,
-      vat_rate: item.vat_rate,
-      item_type: item.item_type,
-      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{
-        min_qty: 1,
-        max_qty: 999,
-        margin: (item as any).profit_margin_rate
-      }] : null
-    } as any;
-    return getDisplayPrice(serviceForPricing, quantity);
+    const salesVatRate = item.vat_rate || 16;
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
   };
 
   // Total de la tarjeta - usar totales guardados cuando existan
