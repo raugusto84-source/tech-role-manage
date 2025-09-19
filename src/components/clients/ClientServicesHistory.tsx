@@ -6,14 +6,21 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Search, ShoppingCart, Calendar, DollarSign, User, Wrench, Eye } from 'lucide-react';
 
 interface OrderItem {
   service_name: string;
   quantity: number;
-  subtotal: number;
-  vat_amount: number;
-  total_amount: number;
+  unit_cost_price?: number;
+  unit_base_price?: number;
+  vat_rate?: number;
+  item_type?: string;
+  profit_margin_rate?: number;
+  pricing_locked?: boolean;
+  subtotal?: number;
+  vat_amount?: number;
+  total_amount?: number;
 }
 
 interface OrderWithDetails {
@@ -75,7 +82,7 @@ export function ClientServicesHistory() {
           // Cargar ítems de la orden - usar solo columnas que existen
           const { data: itemsData } = await supabase
             .from('order_items')
-            .select('service_name, quantity, subtotal, vat_amount, total_amount')
+            .select('service_name, quantity, unit_cost_price, unit_base_price, vat_rate, item_type, profit_margin_rate, pricing_locked, total_amount')
             .eq('order_id', order.id);
 
           // Cargar información del técnico si existe
@@ -146,24 +153,43 @@ export function ClientServicesHistory() {
     return labels[status] || status;
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP'
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
-  // Calcular total mostrando cashback si aplica
+  // Calcular total por ítem con la MISMA lógica que OrderCard/OrderDetails
   const calculateItemDisplayPrice = (item: OrderItem): number => {
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-    const baseTotal = (item.subtotal + item.vat_amount) || item.total_amount || 0;
-    return baseTotal * (1 + cashbackPercent / 100);
+    const hasStoredTotal = typeof item.total_amount === 'number' && (item.total_amount || 0) > 0;
+    const isLocked = Boolean(item.pricing_locked);
+    const missingKeyData = (item.item_type === 'servicio')
+      ? (!item.unit_base_price || item.unit_base_price <= 0)
+      : (!item.unit_cost_price || item.unit_cost_price <= 0);
+
+    if (hasStoredTotal && (isLocked || missingKeyData)) {
+      return Number(item.total_amount);
+    }
+
+    const quantity = item.quantity || 1;
+    const salesVatRate = (item.vat_rate ?? 16);
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.unit_base_price || 0) * quantity;
+      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
+      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
+      return finalWithCashback;
+    }
   };
 
   const calculateOrderTotal = (items: OrderItem[]): number => {
-    return items.reduce((sum, item) => sum + calculateItemDisplayPrice(item), 0);
+    return items.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
   };
 
   const filteredOrders = orders.filter(order => {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Search, FileText, Calendar, DollarSign, Eye } from 'lucide-react';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface QuoteWithClient {
   id: string;
@@ -87,12 +88,7 @@ export function ClientQuotesHistory() {
     return labels[status] || status;
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP'
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
   const filteredQuotes = quotes.filter(quote => {
     const matchesSearch = 

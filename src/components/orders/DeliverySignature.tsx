@@ -7,7 +7,7 @@ import { PenTool, CheckCircle2, ArrowLeft, X } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { triggerOrderFollowUp } from '@/utils/followUp';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-
+import { ceilToTen } from '@/utils/currency';
 interface DeliverySignatureProps {
   order: {
     id: string;
@@ -125,7 +125,8 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
         let vatAmount = 0;
 
         if (items.length > 0) {
-          const itemsTotal = items.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0);
+          // Sumar como se muestra en la UI: redondear cada ítem a 10 primero
+          const itemsTotal = items.reduce((sum: number, item: any) => sum + ceilToTen(item.total_amount || 0), 0);
           // Aplicar cashback sobre el total con IVA
           totalAmount = itemsTotal * (1 + cashbackPercent / 100);
           // Mantener IVA sumado de items (el cashback no es IVA)
