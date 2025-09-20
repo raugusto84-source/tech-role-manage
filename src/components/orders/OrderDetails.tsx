@@ -610,7 +610,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     orderId={order.id}
                     equipment={orderEquipment}
                     onUpdate={loadOrderEquipment}
-                    canEdit={canModifyOrder || ['en_proceso', 'pendiente', 'pendiente_aprobacion'].includes(orderStatus)}
+                    canEdit={!isClient && (canModifyOrder || ['en_proceso', 'pendiente', 'pendiente_aprobacion'].includes(orderStatus))}
                   />
                 </div>
               )}
