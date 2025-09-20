@@ -93,11 +93,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     // Aplicar IVA
     itemPrice = itemPrice * (1 + salesVatRate / 100);
     
-    // Aplicar cashback si está configurado
-    if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
-      itemPrice = itemPrice * (1 + rewardSettings.general_cashback_percent / 100);
-    }
-    
+    // NO aplicar cashback aquí - se aplica al total final
     return itemPrice;
   };
 
@@ -106,7 +102,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     let subtotalSum = 0;
     let vatSum = 0;
     
-    const total = orderItems.reduce((sum, item) => {
+    let total = orderItems.reduce((sum, item) => {
       const itemTotal = calculateItemCorrectPrice(item);
       const roundedItemTotal = ceilToTen(itemTotal);
       
@@ -120,6 +116,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       
       return sum + roundedItemTotal;
     }, 0);
+    
+    // Aplicar cashback al total final si está configurado
+    if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
+      total = total * (1 + rewardSettings.general_cashback_percent / 100);
+    }
     
     return { 
       subtotal: subtotalSum, 
