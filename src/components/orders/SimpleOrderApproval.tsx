@@ -84,12 +84,10 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       // Servicios: usar base_price directamente
       itemPrice = (item.unit_base_price || 0) * quantity;
     } else {
-      // Productos: cost_price + margen, aplicar redondeo antes del IVA
+      // Productos: cost_price + margen
       const baseCost = (item.unit_cost_price || 0) * quantity;
       const margin = item.profit_margin_rate || 30;
-      const priceWithMargin = baseCost * (1 + margin / 100);
-      // Redondear antes de aplicar IVA para productos
-      itemPrice = Math.ceil(priceWithMargin / 10) * 10;
+      itemPrice = baseCost * (1 + margin / 100);
     }
     
     // Aplicar IVA
