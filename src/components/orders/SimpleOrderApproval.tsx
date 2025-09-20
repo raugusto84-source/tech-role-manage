@@ -8,7 +8,6 @@ import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
-import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -29,7 +28,6 @@ interface SimpleOrderApprovalProps {
 export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalComplete }: SimpleOrderApprovalProps) {
   const { toast } = useToast();
   const { settings: rewardSettings } = useRewardSettings();
-  const { getDisplayPrice, formatCurrency } = useSalesPricingCalculation();
   const signatureRef = useRef<SignatureCanvas>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -73,20 +71,34 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   // Calcular precio correcto para un item individual usando la misma lógica unificada
   const calculateItemCorrectPrice = (item: any): number => {
     const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate ?? 16;
     
-    // Convertir el item al formato esperado por useSalesPricingCalculation
-    const serviceForPricing = {
-      id: item.service_type_id || item.id,
-      name: item.name || '',
-      base_price: item.unit_base_price || item.unit_price || 0,
-      cost_price: item.unit_cost_price || item.cost_price || 0,
-      vat_rate: item.vat_rate,
-      item_type: item.item_type,
-      profit_margin_rate: item.profit_margin_rate || 30,
-      profit_margin_tiers: item.profit_margin_tiers
-    };
-
-    return getDisplayPrice(serviceForPricing, quantity);
+    // Si tiene pricing_locked, usar el total_amount directamente
+    if (item.pricing_locked && item.total_amount) {
+      return item.total_amount;
+    }
+    
+    let itemPrice = 0;
+    
+    if (item.item_type === 'servicio') {
+      // Servicios: usar base_price directamente
+      itemPrice = (item.unit_base_price || 0) * quantity;
+    } else {
+      // Productos: cost_price + margen
+      const baseCost = (item.unit_cost_price || 0) * quantity;
+      const margin = item.profit_margin_rate || 30;
+      itemPrice = baseCost * (1 + margin / 100);
+    }
+    
+    // Aplicar IVA
+    itemPrice = itemPrice * (1 + salesVatRate / 100);
+    
+    // Aplicar cashback si está configurado
+    if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
+      itemPrice = itemPrice * (1 + rewardSettings.general_cashback_percent / 100);
+    }
+    
+    return itemPrice;
   };
 
   const calculateTotals = () => {
