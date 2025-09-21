@@ -7,7 +7,7 @@ import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTria
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { ceilToTen } from '@/utils/currency';
+import { ceilToTen, formatMXNInt, formatMXNExact } from '@/utils/currency';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -17,6 +17,7 @@ interface SimpleOrderApprovalProps {
     status: string;
     cashback_applied?: boolean;
     cashback_amount_used?: number;
+    cashback_amount?: number; // fallback desde cotización
     clients?: {
       name: string;
       email: string;
@@ -72,6 +73,15 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
   // Calcular precio de visualización del ítem (pre-cashback) REDONDEADO a múltiplos de 10
   const calculateItemCorrectPrice = (item: any): number => {
+    // Si viene de la cotización convertida y tenemos el total guardado, úsalo SIEMPRE
+    if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+      return item.total_amount;
+    }
+    // Si el precio está bloqueado, respeta el total_amount almacenado
+    if (item.pricing_locked && typeof item.total_amount === 'number' && item.total_amount > 0) {
+      return item.total_amount;
+    }
+
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
 
@@ -517,7 +527,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="font-bold text-foreground">
-                                {formatCOPExact(calculateItemCorrectPrice(item))}
+                                {formatMXNInt(calculateItemCorrectPrice(item))}
                               </p>
                             </div>
                           </div>
@@ -553,24 +563,24 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <span className="font-medium">{formatCOPExact(subtotal)}</span>
+                      <span className="font-medium">{formatMXNExact(subtotal)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">IVA Total:</span>
-                      <span className="font-medium">{formatCOPExact(vatTotal)}</span>
+                      <span className="font-medium">{formatMXNExact(vatTotal)}</span>
                     </div>
-                    {order.cashback_applied && order.cashback_amount_used && order.cashback_amount_used > 0 && (
+                    {order.cashback_applied && (order.cashback_amount_used ?? order.cashback_amount ?? 0) > 0 && (
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-orange-600">- Cashback:</span>
-                        <span className="font-medium text-orange-600">-{formatCOPExact(order.cashback_amount_used)}</span>
+                        <span className="font-medium text-orange-600">-{formatMXNExact((order.cashback_amount_used ?? order.cashback_amount) as number)}</span>
                       </div>
                     )}
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatCOPExact(order.cashback_applied && order.cashback_amount_used 
-                            ? total - order.cashback_amount_used
+                          {formatMXNExact(order.cashback_applied && (order.cashback_amount_used ?? order.cashback_amount ?? 0) > 0
+                            ? total - (order.cashback_amount_used ?? order.cashback_amount ?? 0)
                             : total)}
                         </span>
                       </div>
