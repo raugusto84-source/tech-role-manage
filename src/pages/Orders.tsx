@@ -49,7 +49,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada';
+  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -304,6 +304,7 @@ export default function Orders() {
     pendiente_entrega: filteredOrders.filter(order => order.status === 'pendiente_entrega'),
     finalizada: filteredOrders.filter(order => order.status === 'finalizada'),
     cancelada: filteredOrders.filter(order => order.status === 'cancelada'),
+    rechazada: filteredOrders.filter(order => order.status === 'rechazada'),
   };
 
   const getStatusColor = (status: string) => {
@@ -316,6 +317,7 @@ export default function Orders() {
       case 'pendiente_entrega': return 'bg-green-100 text-green-800 border-green-300';
       case 'finalizada': return 'bg-green-100 text-green-800 border-green-300';
       case 'cancelada': return 'bg-red-100 text-red-800 border-red-300';
+      case 'rechazada': return 'bg-red-100 text-red-800 border-red-300';
       default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
@@ -328,6 +330,7 @@ export default function Orders() {
       case 'pendiente_entrega': return 'Pendientes de Entrega';
       case 'finalizada': return 'Finalizadas';
       case 'cancelada': return 'Canceladas';
+      case 'rechazada': return 'Rechazadas';
       default: return status;
     }
   };

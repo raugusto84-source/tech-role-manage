@@ -135,6 +135,8 @@ export function ClientServicesHistory() {
         return 'bg-yellow-100 text-yellow-800';
       case 'pendiente_entrega':
         return 'bg-green-100 text-green-800';
+      case 'rechazada':
+        return 'bg-red-100 text-red-800';
       case 'finalizada':
         return 'bg-green-100 text-green-800';
       case 'cancelada':
@@ -150,7 +152,9 @@ export function ClientServicesHistory() {
       'en_proceso': 'En Proceso',
       'pendiente_actualizacion': 'Pendiente Actualización',
       'pendiente_entrega': 'Pendiente Entrega',
-      'cancelada': 'Cancelada'
+      'finalizada': 'Finalizada',
+      'cancelada': 'Cancelada',
+      'rechazada': 'Rechazada'
     };
     return labels[status] || status;
   };
@@ -229,7 +233,7 @@ export function ClientServicesHistory() {
           </div>
           
           <div className="flex gap-2 flex-wrap">
-            {['all', 'pendiente', 'en_proceso', 'finalizada', 'cancelada', 'en_camino'].map((status) => (
+            {['all', 'pendiente', 'en_proceso', 'finalizada', 'cancelada', 'rechazada', 'en_camino'].map((status) => (
               <Button
                 key={status}
                 variant={statusFilter === status ? 'default' : 'outline'}

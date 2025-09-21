@@ -2637,6 +2637,41 @@ export type Database = {
         }
         Relationships: []
       }
+      order_rejections: {
+        Row: {
+          created_at: string
+          id: string
+          order_id: string
+          rejected_by: string | null
+          rejection_date: string
+          rejection_reason: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_id: string
+          rejected_by?: string | null
+          rejection_date?: string
+          rejection_reason: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_id?: string
+          rejected_by?: string | null
+          rejection_date?: string
+          rejection_reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_rejections_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_requests: {
         Row: {
           assigned_to: string | null
@@ -6472,6 +6507,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      reject_order: {
+        Args: { p_order_id: string; p_rejection_reason: string }
+        Returns: Json
+      }
       send_whatsapp_notification: {
         Args: {
           p_client_email: string
@@ -6555,6 +6594,7 @@ export type Database = {
         | "pendiente_entrega"
         | "pausa"
         | "pendiente_actualizacion"
+        | "rechazada"
       quote_status:
         | "solicitud"
         | "enviada"
@@ -6765,6 +6805,7 @@ export const Constants = {
         "pendiente_entrega",
         "pausa",
         "pendiente_actualizacion",
+        "rechazada",
       ],
       quote_status: [
         "solicitud",

@@ -377,6 +377,41 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   };
 
+  const handleOrderRejection = async () => {
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.rpc('reject_order', {
+        p_order_id: order.id,
+        p_rejection_reason: isOrderUpdate ? 'Cliente rechazó modificaciones' : 'Cliente rechazó orden inicial'
+      });
+
+      if (error) throw error;
+
+      const response = data as any;
+      if (response?.error) {
+        throw new Error(response.error);
+      }
+
+      toast({
+        title: "Orden rechazada",
+        description: response?.message || "La orden ha sido rechazada exitosamente.",
+        variant: "default"
+      });
+
+      onApprovalComplete();
+    } catch (error) {
+      console.error('Error rejecting order:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar la orden. Intente nuevamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleReject = async () => {
     console.log('=== HANDLE REJECT VIA EDGE FUNCTION ===');
     setLoading(true);
@@ -729,6 +764,25 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                         <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4" />
                           {authorizationType === 'initial_approval' ? 'Autorizar Orden' : 'Aprobar Modificaciones'}
+                        </div>
+                      )}
+                    </Button>
+                    
+                    <Button
+                      onClick={handleOrderRejection}
+                      disabled={loading}
+                      variant="destructive"
+                      className="h-11"
+                    >
+                      {loading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Rechazando...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4" />
+                          {authorizationType === 'initial_approval' ? 'Rechazar Orden' : 'Rechazar Modificaciones'}
                         </div>
                       )}
                     </Button>

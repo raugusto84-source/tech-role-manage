@@ -34,7 +34,7 @@ interface OrderDetailsProps {
     estimated_delivery_date?: string | null;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega' | 'pendiente_actualizacion';
+    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega' | 'pendiente_actualizacion' | 'rechazada';
     assigned_technician?: string;
     assignment_reason?: string;
     evidence_photos?: string[];
@@ -346,6 +346,8 @@ export function OrderDetails({
       case 'finalizada':
         return 'bg-green-100 text-green-800 border-green-300';
       case 'cancelada':
+        return 'bg-red-100 text-red-800 border-red-300';
+      case 'rechazada':
         return 'bg-red-100 text-red-800 border-red-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';

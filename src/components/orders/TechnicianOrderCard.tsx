@@ -28,7 +28,7 @@ interface TechnicianOrderCardProps {
     service_type: string;
     failure_description: string;
     delivery_date: string;
-    status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada';
+    status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'rechazada';
     created_at: string;
     is_home_service?: boolean;
     service_location?: any;
@@ -83,6 +83,7 @@ export function TechnicianOrderCard({
       case 'pendiente_entrega': return 'bg-green-100 text-green-800 border-green-200';
       case 'finalizada': return 'bg-green-100 text-green-800 border-green-200';
       case 'cancelada': return 'bg-red-100 text-red-800 border-red-200';
+      case 'rechazada': return 'bg-red-100 text-red-800 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -97,6 +98,7 @@ export function TechnicianOrderCard({
       case 'pendiente_actualizacion': return 'Pendiente Actualización';
       case 'pendiente_entrega': return 'Pendiente Entrega';
       case 'cancelada': return 'Cancelada';
+      case 'rechazada': return 'Rechazada';
       default: return status;
     }
   };
