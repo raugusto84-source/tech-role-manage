@@ -79,18 +79,25 @@ export function OrderServicesList({
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [itemModificationNumbers, setItemModificationNumbers] = useState<Map<string, number>>(new Map());
-  const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
-  const { toast } = useToast();
+  const [itemToDelete, setItemToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const {
+    toast
+  } = useToast();
   // Removed useRewardSettings - cashback system eliminated
-  const { profile } = useAuth();
-  
+  const {
+    profile
+  } = useAuth();
+
   // Check if user is a client - clients have restricted permissions
   const isClient = profile?.role === 'cliente';
   const canEditStatus = canEdit && !isClient;
   const canEditSerialInfo = canEdit && !isClient;
   const canFinishAll = canEdit && !isClient;
   const canDeleteItems = !isClient; // Allow deletion in all states for non-clients
-  
+
   console.log('OrderServicesList debug:', {
     orderStatus,
     canDeleteItems,
@@ -135,33 +142,29 @@ export function OrderServicesList({
       orderStatus,
       condition: orderStatus === 'pendiente_actualizacion'
     });
-    
     if (!orderId || orderStatus !== 'pendiente_actualizacion') {
       console.log('loadAddedItems: Skipping - orderId:', orderId, 'orderStatus:', orderStatus);
       return;
     }
-    
     console.log('loadAddedItems: Loading for order:', orderId, 'status:', orderStatus);
-    
     try {
       // Get all modifications for this order, ordered by creation date
-      const { data: modifications, error } = await supabase
-        .from('order_modifications')
-        .select('items_added, created_at')
-        .eq('order_id', orderId)
-        .order('created_at', { ascending: true }); // Ascending to get correct numbering
+      const {
+        data: modifications,
+        error
+      } = await supabase.from('order_modifications').select('items_added, created_at').eq('order_id', orderId).order('created_at', {
+        ascending: true
+      }); // Ascending to get correct numbering
 
       if (error) {
         console.error('loadAddedItems: Supabase error:', error);
         throw error;
       }
-      
       console.log('loadAddedItems: Found modifications:', modifications);
-      
       if (modifications && modifications.length > 0) {
         const addedItemIds = new Set<string>();
         const modificationNumbers = new Map<string, number>();
-        
+
         // Process each modification to identify which items belong to which update
         modifications.forEach((modification, index) => {
           const updateNumber = index + 1; // Update numbers start from 1
@@ -172,46 +175,39 @@ export function OrderServicesList({
               itemsData = raw;
             } else if (typeof raw === 'string') {
               const parsed = JSON.parse(raw);
-              itemsData = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+              itemsData = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
             } else if (raw && typeof raw === 'object') {
               itemsData = [raw];
             }
           } catch (e) {
-            console.warn('loadAddedItems: Failed to parse items_added', { raw, e });
+            console.warn('loadAddedItems: Failed to parse items_added', {
+              raw,
+              e
+            });
             itemsData = [];
           }
           const modificationTime = new Date(modification.created_at);
-          
           console.log(`loadAddedItems: Processing modification ${updateNumber}:`, {
             items: itemsData,
             time: modificationTime
           });
-          
           if (itemsData && itemsData.length > 0) {
             orderItems.forEach(orderItem => {
               // Check if this item was created after this modification
               const itemCreatedAt = new Date(orderItem.created_at || '');
-              
               console.log(`loadAddedItems: Checking item ${orderItem.id}:`, {
                 itemCreatedAt,
                 modificationTime,
                 isAfter: itemCreatedAt >= modificationTime
               });
-              
               if (itemCreatedAt >= modificationTime) {
                 // Check if it matches any of the added items in this modification
-                const matchesAdded = itemsData.some(addedItem => 
-                  orderItem.service_name === addedItem.service_name &&
-                  orderItem.quantity === addedItem.quantity &&
-                  orderItem.unit_base_price === addedItem.unit_base_price
-                );
-                
+                const matchesAdded = itemsData.some(addedItem => orderItem.service_name === addedItem.service_name && orderItem.quantity === addedItem.quantity && orderItem.unit_base_price === addedItem.unit_base_price);
                 console.log(`loadAddedItems: Item match check:`, {
                   itemId: orderItem.id,
                   matchesAdded,
                   itemService: orderItem.service_name
                 });
-                
                 if (matchesAdded && !addedItemIds.has(orderItem.id)) {
                   console.log(`loadAddedItems: Item ${orderItem.id} matches update ${updateNumber}`);
                   addedItemIds.add(orderItem.id);
@@ -221,12 +217,10 @@ export function OrderServicesList({
             });
           }
         });
-        
         console.log('loadAddedItems: Final results:', {
           addedItems: Array.from(addedItemIds),
           modificationNumbers: Array.from(modificationNumbers.entries())
         });
-        
         setAddedItems(addedItemIds);
         setItemModificationNumbers(modificationNumbers);
       } else {
@@ -249,30 +243,28 @@ export function OrderServicesList({
 
   const confirmDeleteItem = (itemId: string, itemName: string) => {
     if (!canDeleteItems) return;
-    setItemToDelete({ id: itemId, name: itemName });
+    setItemToDelete({
+      id: itemId,
+      name: itemName
+    });
   };
-
   const handleDeleteItem = async () => {
     if (!itemToDelete) return;
-    
-    const { id: itemId } = itemToDelete;
+    const {
+      id: itemId
+    } = itemToDelete;
     setDeletingItems(prev => new Set(prev).add(itemId));
-    
     try {
-      const { error } = await supabase
-        .from('order_items')
-        .delete()
-        .eq('id', itemId);
-
+      const {
+        error
+      } = await supabase.from('order_items').delete().eq('id', itemId);
       if (error) throw error;
-
       toast({
         title: 'Artículo eliminado',
-        description: 'El artículo ha sido eliminado de la orden.',
+        description: 'El artículo ha sido eliminado de la orden.'
       });
-
       onItemUpdate?.();
-      
+
       // Remove from added items set
       setAddedItems(prev => {
         const newSet = new Set(prev);
@@ -284,7 +276,7 @@ export function OrderServicesList({
       toast({
         title: 'Error',
         description: 'No se pudo eliminar el artículo.',
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setDeletingItems(prev => {
@@ -297,7 +289,7 @@ export function OrderServicesList({
   };
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     if (!canEditStatus) return;
-    
+
     // Validate required fields for products before finishing
     if (newStatus === 'finalizada') {
       const item = orderItems.find(i => i.id === itemId);
@@ -312,7 +304,6 @@ export function OrderServicesList({
         }
       }
     }
-    
     setUpdatingItems(prev => new Set(prev).add(itemId));
     try {
       const {
@@ -380,14 +371,9 @@ export function OrderServicesList({
   const formatCurrency = formatCOPCeilToTen;
   const handleFinishAll = async () => {
     if (!orderId || !canFinishAll) return;
-    
+
     // Validate that all products have required fields before finishing
-    const incompleteProducts = orderItems.filter(item => 
-      item.status !== 'finalizada' && 
-      item.item_type === 'articulo' && 
-      (!item.serial_number || !item.supplier_name)
-    );
-    
+    const incompleteProducts = orderItems.filter(item => item.status !== 'finalizada' && item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name));
     if (incompleteProducts.length > 0) {
       toast({
         title: 'Productos incompletos',
@@ -396,7 +382,6 @@ export function OrderServicesList({
       });
       return;
     }
-    
     setFinishingAll(true);
     try {
       // Mark all non-finished items as finished
@@ -459,10 +444,9 @@ export function OrderServicesList({
             <span className="font-medium">{progress}%</span>
           </div>
           <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-300" 
-              style={{ width: `${progress}%` }} 
-            />
+            <div className="h-full bg-primary transition-all duration-300" style={{
+            width: `${progress}%`
+          }} />
           </div>
         </div>
       </div>
@@ -484,17 +468,13 @@ export function OrderServicesList({
                           <StatusIcon className="w-3 h-3 mr-1" />
                           {statusConfig[item.status]?.label || item.status}
                         </Badge>
-                        {item.item_type === 'articulo' && (
-                          <Badge variant="outline" className="text-xs">
+                        {item.item_type === 'articulo' && <Badge variant="outline" className="text-xs">
                             <Package className="w-3 h-3 mr-1" />
                             Artículo
-                          </Badge>
-                        )}
-                        {addedItems.has(item.id) && itemModificationNumbers.has(item.id) && (
-                          <Badge variant="default" className="text-xs bg-blue-600 hover:bg-blue-700">
+                          </Badge>}
+                        {addedItems.has(item.id) && itemModificationNumbers.has(item.id) && <Badge variant="default" className="text-xs bg-blue-600 hover:bg-blue-700">
                             Actualización {itemModificationNumbers.get(item.id)}
-                          </Badge>
-                        )}
+                          </Badge>}
                       </div>
                     </div>
                     
@@ -505,38 +485,15 @@ export function OrderServicesList({
                           {formatCurrency(calculateItemCorrectPrice(item))}
                         </div>
                         {/* Delete button for all items in any state */}
-                        {!isClient && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => confirmDeleteItem(item.id, item.service_name)}
-                            disabled={deletingItems.has(item.id)}
-                            className="h-7 w-7 p-0"
-                          >
+                        {!isClient && <Button variant="destructive" size="sm" onClick={() => confirmDeleteItem(item.id, item.service_name)} disabled={deletingItems.has(item.id)} className="h-7 w-7 p-0">
                             <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                          </Button>}
                       </div>
-                      {canEditStatus && (
-                        <div className="w-20">
-                          {showReadyButtons && item.status !== 'finalizada' ? (
-                            <Button 
-                              onClick={() => handleStatusChange(item.id, 'finalizada')} 
-                              disabled={isUpdating || (item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name))} 
-                              variant={item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name) ? "outline" : "default"} 
-                              size="sm" 
-                              className="w-full h-7 text-xs"
-                              title={item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name) ? "Requiere número de serie y proveedor" : ""}
-                            >
+                      {canEditStatus && <div className="w-20">
+                          {showReadyButtons && item.status !== 'finalizada' ? <Button onClick={() => handleStatusChange(item.id, 'finalizada')} disabled={isUpdating || item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name)} variant={item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name) ? "outline" : "default"} size="sm" className="w-full h-7 text-xs" title={item.item_type === 'articulo' && (!item.serial_number || !item.supplier_name) ? "Requiere número de serie y proveedor" : ""}>
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Listo
-                            </Button>
-                          ) : (
-                            <Select 
-                              value={item.status} 
-                              onValueChange={value => handleStatusChange(item.id, value)} 
-                              disabled={isUpdating}
-                            >
+                            </Button> : <Select value={item.status} onValueChange={value => handleStatusChange(item.id, value)} disabled={isUpdating}>
                               <SelectTrigger className="bg-background border z-50 h-7 text-xs">
                                 <SelectValue />
                               </SelectTrigger>
@@ -560,21 +517,17 @@ export function OrderServicesList({
                                   </div>
                                 </SelectItem>
                               </SelectContent>
-                            </Select>
-                          )}
-                        </div>
-                      )}
+                            </Select>}
+                        </div>}
                     </div>
                   </div>
                   
                   {/* Description - Mobile Friendly */}
-                  {item.service_description && (
-                    <div className="overflow-hidden">
+                  {item.service_description && <div className="overflow-hidden">
                       <p className="text-xs text-muted-foreground line-clamp-2 break-words whitespace-pre-wrap">
                         {item.service_description}
                       </p>
-                    </div>
-                  )}
+                    </div>}
                   
                   {/* Item Details - Mobile Stack Layout */}
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
@@ -587,148 +540,104 @@ export function OrderServicesList({
                   </div>
 
                   {/* Show serial number and supplier for articles - Hide supplier from clients */}
-                  {item.item_type === 'articulo' && (item.serial_number || (item.supplier_name && !isClient)) && (
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      {item.serial_number && (
-                        <div>
+                  {item.item_type === 'articulo' && (item.serial_number || item.supplier_name && !isClient) && <div className="space-y-1 text-xs text-muted-foreground">
+                      {item.serial_number && <div>
                           <span className="font-medium">Serie:</span> {item.serial_number}
-                        </div>
-                      )}
-                      {item.supplier_name && !isClient && (
-                        <div>
+                        </div>}
+                      {item.supplier_name && !isClient && <div>
                           <span className="font-medium">Proveedor:</span> {item.supplier_name}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        </div>}
+                    </div>}
 
                   {/* Serial number and supplier fields for articles - Mobile First - Hidden for clients */}
-                  {item.item_type === 'articulo' && canEditSerialInfo && (
-                    <div className="border-t pt-3">
+                  {item.item_type === 'articulo' && canEditSerialInfo && <div className="border-t pt-3">
                       <div className="flex justify-between items-center mb-2">
                         <Label className="text-xs font-medium text-muted-foreground">
                           Información del Artículo
                         </Label>
-                        {canEditSerialInfo && (
-                          <div className="flex items-center gap-1">
-                            {editableSerialFields.has(item.id) ? (
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => {
-                                  // Cancelar edición, revertir cambios
-                                  setEditableSerialFields(prev => {
-                                    const newSet = new Set(prev);
-                                    newSet.delete(item.id);
-                                    return newSet;
-                                  });
-                                }} 
-                                disabled={isEditingSerial} 
-                                className="h-6 px-2"
-                              >
+                        {canEditSerialInfo && <div className="flex items-center gap-1">
+                            {editableSerialFields.has(item.id) ? <Button size="sm" variant="outline" onClick={() => {
+                      // Cancelar edición, revertir cambios
+                      setEditableSerialFields(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(item.id);
+                        return newSet;
+                      });
+                    }} disabled={isEditingSerial} className="h-6 px-2">
                                 <X className="w-3 h-3" />
-                              </Button>
-                            ) : (
-                              <Button 
-                                size="sm" 
-                                variant="outline" 
-                                onClick={() => {
-                                  setEditableSerialFields(prev => new Set(prev).add(item.id));
-                                }} 
-                                disabled={isEditingSerial} 
-                                className="h-6 px-2 text-xs"
-                              >
+                              </Button> : <Button size="sm" variant="outline" onClick={() => {
+                      setEditableSerialFields(prev => new Set(prev).add(item.id));
+                    }} disabled={isEditingSerial} className="h-6 px-2 text-xs">
                                 <Edit3 className="w-3 h-3 mr-1" />
                                 {item.serial_number || item.supplier_name ? 'Editar' : 'Agregar'}
-                              </Button>
-                            )}
-                          </div>
-                        )}
+                              </Button>}
+                          </div>}
                       </div>
                       
                       {/* Mobile-first stacked layout for inputs */}
                       <div className="space-y-3">
                         <div>
                           <Label className="text-xs">Número de Serie</Label>
-                          <Input 
-                            key={`serial-${item.id}-${editableSerialFields.has(item.id)}`} 
-                            defaultValue={item.serial_number || ''} 
-                            onBlur={e => {
-                              if (editableSerialFields.has(item.id)) {
-                                const value = e.target.value;
-                                if (value !== item.serial_number) {
-                                  handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
-                                }
-                                setEditableSerialFields(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(item.id);
-                                  return newSet;
-                                });
-                              }
-                            }} 
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && editableSerialFields.has(item.id)) {
-                                const value = e.currentTarget.value;
-                                if (value !== item.serial_number) {
-                                  handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
-                                }
-                                setEditableSerialFields(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(item.id);
-                                  return newSet;
-                                });
-                              }
-                            }} 
-                            placeholder="Ingrese número de serie" 
-                            className="h-8 mt-1 text-sm" 
-                            disabled={!editableSerialFields.has(item.id) || isEditingSerial} 
-                          />
+                          <Input key={`serial-${item.id}-${editableSerialFields.has(item.id)}`} defaultValue={item.serial_number || ''} onBlur={e => {
+                      if (editableSerialFields.has(item.id)) {
+                        const value = e.target.value;
+                        if (value !== item.serial_number) {
+                          handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
+                        }
+                        setEditableSerialFields(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(item.id);
+                          return newSet;
+                        });
+                      }
+                    }} onKeyDown={e => {
+                      if (e.key === 'Enter' && editableSerialFields.has(item.id)) {
+                        const value = e.currentTarget.value;
+                        if (value !== item.serial_number) {
+                          handleSerialInfoUpdate(item.id, value, item.supplier_name || '');
+                        }
+                        setEditableSerialFields(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(item.id);
+                          return newSet;
+                        });
+                      }
+                    }} placeholder="Ingrese número de serie" className="h-8 mt-1 text-sm" disabled={!editableSerialFields.has(item.id) || isEditingSerial} />
                         </div>
                         <div>
                           <Label className="text-xs">Proveedor</Label>
-                          <Input 
-                            key={`supplier-${item.id}-${editableSerialFields.has(item.id)}`} 
-                            defaultValue={item.supplier_name || ''} 
-                            onBlur={e => {
-                              if (editableSerialFields.has(item.id)) {
-                                const value = e.target.value;
-                                if (value !== item.supplier_name) {
-                                  handleSerialInfoUpdate(item.id, item.serial_number || '', value);
-                                }
-                                setEditableSerialFields(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(item.id);
-                                  return newSet;
-                                });
-                              }
-                            }} 
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && editableSerialFields.has(item.id)) {
-                                const value = e.currentTarget.value;
-                                if (value !== item.supplier_name) {
-                                  handleSerialInfoUpdate(item.id, item.serial_number || '', value);
-                                }
-                                setEditableSerialFields(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(item.id);
-                                  return newSet;
-                                });
-                              }
-                            }} 
-                            placeholder="Nombre del proveedor" 
-                            className="h-8 mt-1 text-sm" 
-                            disabled={!editableSerialFields.has(item.id) || isEditingSerial} 
-                          />
+                          <Input key={`supplier-${item.id}-${editableSerialFields.has(item.id)}`} defaultValue={item.supplier_name || ''} onBlur={e => {
+                      if (editableSerialFields.has(item.id)) {
+                        const value = e.target.value;
+                        if (value !== item.supplier_name) {
+                          handleSerialInfoUpdate(item.id, item.serial_number || '', value);
+                        }
+                        setEditableSerialFields(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(item.id);
+                          return newSet;
+                        });
+                      }
+                    }} onKeyDown={e => {
+                      if (e.key === 'Enter' && editableSerialFields.has(item.id)) {
+                        const value = e.currentTarget.value;
+                        if (value !== item.supplier_name) {
+                          handleSerialInfoUpdate(item.id, item.serial_number || '', value);
+                        }
+                        setEditableSerialFields(prev => {
+                          const newSet = new Set(prev);
+                          newSet.delete(item.id);
+                          return newSet;
+                        });
+                      }
+                    }} placeholder="Nombre del proveedor" className="h-8 mt-1 text-sm" disabled={!editableSerialFields.has(item.id) || isEditingSerial} />
                         </div>
-                        {isEditingSerial && (
-                          <div className="flex items-center justify-center text-xs text-muted-foreground">
+                        {isEditingSerial && <div className="flex items-center justify-center text-xs text-muted-foreground">
                             <Save className="w-3 h-3 mr-1 animate-spin" />
                             Guardando...
-                          </div>
-                        )}
+                          </div>}
                       </div>
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </CardContent>
             </Card>;
@@ -762,29 +671,9 @@ export function OrderServicesList({
       </Card>
 
       {/* Botón Terminar Todo - Only for staff, hidden for clients */}
-      {!isClient && canEdit && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && (
-        <div className="mt-4">
-          <Button 
-            onClick={handleFinishAll} 
-            disabled={finishingAll} 
-            variant="default" 
-            size="sm" 
-            className="w-full"
-          >
-            {finishingAll ? (
-              <>
-                <Save className="w-4 h-4 mr-2 animate-spin" />
-                Finalizando...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Terminar Todo
-              </>
-            )}
-          </Button>
-        </div>
-      )}
+      {!isClient && canEdit && showReadyButtons && orderItems.some(item => item.status !== 'finalizada') && <div className="mt-4">
+          
+        </div>}
       
       {/* Confirmation dialog for item deletion */}
       <AlertDialog open={itemToDelete !== null} onOpenChange={() => setItemToDelete(null)}>
