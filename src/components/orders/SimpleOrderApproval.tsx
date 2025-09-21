@@ -70,77 +70,58 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
-  // Calcular precio correcto para un item individual - SIN aplicar cashback por ítem
+  // Calcular precio de visualización del ítem (pre-cashback) REDONDEADO a múltiplos de 10
   const calculateItemCorrectPrice = (item: any): number => {
-    // CRÍTICO: Si el item tiene total_amount (viene de cotización convertida), usarlo SIEMPRE
-    if (typeof item.total_amount === 'number' && item.total_amount > 0) {
-      return item.total_amount;
-    }
-
-    // Si tiene pricing_locked, usar el total_amount directamente
-    if (item.pricing_locked && item.total_amount) {
-      return item.total_amount;
-    }
-
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
 
-    // Determinar si es producto
-    const isProduct = item.item_type === 'articulo' || item.item_type === 'producto';
+    // Subtotal base SIN cashback (priorizar valores originales si existen)
+    let baseSubtotal = 0;
 
-    if (!isProduct) {
-      // Para servicios: precio base + IVA (SIN aplicar cashback por ítem)
-      const basePrice = (item.unit_base_price || item.base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
+    if (typeof item.original_subtotal === 'number' && item.original_subtotal > 0) {
+      baseSubtotal = item.original_subtotal; // viene desde la cotización original
+    } else if (typeof item.subtotal === 'number' && item.subtotal > 0) {
+      baseSubtotal = item.subtotal; // subtotal almacenado (sin cashback)
+    } else if (item.item_type === 'servicio') {
+      // Servicios: precio base unitario * cantidad
+      const unit = item.unit_base_price ?? item.base_price ?? 0;
+      baseSubtotal = unit * quantity;
     } else {
-      // Para productos: costo base + IVA compra + margen + IVA venta (SIN cashback por ítem)
-      const purchaseVatRate = 16; // IVA de compra fijo 16%
+      // Productos: costo + IVA compra + margen (sin IVA venta todavía)
+      const purchaseVatRate = 16; // IVA de compra
       const baseCost = (item.unit_cost_price || item.cost_price || 0) * quantity;
       const profitMargin = item.profit_margin_rate || 30;
-      
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      
-      return afterSalesVat;
+      baseSubtotal = afterMargin; // este es el subtotal antes de IVA de venta
     }
+
+    // Total con IVA de venta
+    const gross = baseSubtotal * (1 + salesVatRate / 100);
+
+    // Regla de negocio: redondear SIEMPRE cada ítem hacia arriba a múltiplos de 10
+    return ceilToTen(gross);
   };
 
   const calculateTotals = () => {
-    // Usar la misma lógica unificada que otros componentes
+    // Sumar SIEMPRE los ítems como se muestran (pre-cashback y con redondeo por ítem)
     let subtotalSum = 0;
     let vatSum = 0;
-    
-    let total = orderItems.reduce((sum, item) => {
-      // CRÍTICO: Para items de cotizaciones convertidas, usar total_amount directamente
-      let finalItemTotal;
-      
-      if (typeof item.total_amount === 'number' && item.total_amount > 0) {
-        // Item tiene total_amount guardado (viene de cotización) - usar EXACTAMENTE este valor
-        finalItemTotal = item.total_amount;
-      } else {
-        // Item calculado dinámicamente - SIN redondeo en aprobación
-        const itemTotal = calculateItemCorrectPrice(item);
-        finalItemTotal = itemTotal;
-      }
-      
-      // Calcular subtotal y IVA para cada item
-      const salesVatRate = (item.vat_rate ?? 16);
-      const subtotal = finalItemTotal / (1 + salesVatRate / 100);
-      const vatAmount = finalItemTotal - subtotal;
-      
-      subtotalSum += subtotal;
-      vatSum += vatAmount;
-      
+
+    const total = orderItems.reduce((sum, item) => {
+      const finalItemTotal = calculateItemCorrectPrice(item);
+      const salesVatRate = item.vat_rate ?? 16;
+      const itemSubtotal = finalItemTotal / (1 + salesVatRate / 100);
+      const itemVat = finalItemTotal - itemSubtotal;
+      subtotalSum += itemSubtotal;
+      vatSum += itemVat;
       return sum + finalItemTotal;
     }, 0);
-    
-    // El total es la suma exacta de los items (sin redondeo adicional)
-    return { 
-      subtotal: subtotalSum, 
-      vatTotal: vatSum, 
-      total: total 
+
+    return {
+      subtotal: subtotalSum,
+      vatTotal: vatSum,
+      total,
     };
   };
 
