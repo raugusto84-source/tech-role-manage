@@ -8,7 +8,6 @@ import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 // Removed useRewardSettings import - cashback system eliminated
 import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
-
 interface SimpleOrderApprovalProps {
   order: {
     id: string;
@@ -25,9 +24,15 @@ interface SimpleOrderApprovalProps {
   onBack: () => void;
   onApprovalComplete: () => void;
 }
-
-export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalComplete }: SimpleOrderApprovalProps) {
-  const { toast } = useToast();
+export function SimpleOrderApproval({
+  order,
+  orderItems,
+  onBack,
+  onApprovalComplete
+}: SimpleOrderApprovalProps) {
+  const {
+    toast
+  } = useToast();
   // Removed useRewardSettings - cashback system eliminated
   const signatureRef = useRef<SignatureCanvas>(null);
   const [showSignature, setShowSignature] = useState(false);
@@ -39,18 +44,16 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   } | null>(null);
   const [modifications, setModifications] = useState<any[]>([]);
   const [authorizationType, setAuthorizationType] = useState<'initial_approval' | 'modification_approval'>('initial_approval');
-
   const isOrderUpdate = order.status === 'pendiente_actualizacion';
   const isInitialApproval = order.status === 'pendiente_aprobacion';
 
   // Formateo exacto sin redondear a múltiplos de 10 (para mostrar cashback exacto)
-  const formatCOPExact = (amount: number) =>
-    new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+  const formatCOPExact = (amount: number) => new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
 
   // Debug logging del estado del componente
   console.log('=== SimpleOrderApproval DEBUG ===');
@@ -59,7 +62,6 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   console.log('isOrderUpdate:', isOrderUpdate);
   console.log('isInitialApproval:', isInitialApproval);
   console.log('OrderItems count:', orderItems.length);
-
   useEffect(() => {
     // Determinar el tipo de autorización según el estado
     if (isOrderUpdate) {
@@ -101,7 +103,6 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
     // Calcular desde cero
     let baseSubtotal = 0;
-
     if (typeof item.subtotal === 'number' && item.subtotal > 0) {
       baseSubtotal = item.subtotal; // subtotal antes de IVA de venta
     } else {
@@ -119,58 +120,53 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     return ceilToTen(gross);
   };
 
-  // Mostrar SIEMPRE precios redondeados al múltiplo de 10 para el cliente
+  // Preferir SIEMPRE el total guardado del item; NO recalcular precios de cotización
   const getItemDisplayPrice = (item: any): number => {
-    // PRIORIDAD 1: Si existe total_amount, redondear para mostrar
+    // Para servicios y productos: SIEMPRE usar total_amount guardado (precio fijo de cotización)
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
-      return ceilToTen(Number(item.total_amount));
+      return Number(item.total_amount);
     }
-    
-    // PRIORIDAD 2: Si no hay total_amount, usar subtotal + IVA y redondear
-    if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
-        typeof item.vat_amount === 'number' && item.vat_amount >= 0) {
-      return ceilToTen(Number(item.subtotal) + Number(item.vat_amount));
-    }
-    
-    // PRIORIDAD 3: Cálculo completo (ya incluye redondeo interno)
+    // Solo como fallback para datos muy antiguos
     return calculateItemCorrectPrice(item);
   };
-
   const calculateTotals = () => {
+    // Usar los precios ya redondeados de cada item individual
     let subtotalSum = 0;
     let vatSum = 0;
     let totalSum = 0;
-
-    orderItems.forEach((item) => {
-      // Calcular SIEMPRE desde el precio de display redondeado para consistencia visual
+    orderItems.forEach(item => {
       const displayPrice = getItemDisplayPrice(item);
       const salesVatRate = item.vat_rate ?? 16;
+
+      // Cada item ya viene redondeado, usar el precio completo
+      totalSum += displayPrice;
+
+      // Extraer el subtotal base (sin IVA) del precio ya redondeado
       const itemSubtotal = displayPrice / (1 + salesVatRate / 100);
       const itemVat = displayPrice - itemSubtotal;
-      
       subtotalSum += itemSubtotal;
       vatSum += itemVat;
-      totalSum += displayPrice;
     });
-
     return {
       subtotal: subtotalSum,
       vatTotal: vatSum,
-      total: totalSum,
+      total: totalSum // usar suma directa de items redondeados
     };
   };
-
-  const { subtotal, vatTotal, total } = calculateTotals();
+  const {
+    subtotal,
+    vatTotal,
+    total
+  } = calculateTotals();
   // Total final: si hay modificaciones pendientes, usar suma de items; si no, usar estimated_cost si existe
   const hasPendingMods = order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion';
-  const baseTotal = hasPendingMods ? total : ((order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total);
+  const baseTotal = hasPendingMods ? total : order.estimated_cost && order.estimated_cost > 0 ? order.estimated_cost : total;
   const finalTotal = baseTotal;
   // Valores para mostrar en tarjeta de modificación
   const prevTotalForDisplay = Number((modifications && modifications[0]?.previous_total) ?? order.estimated_cost ?? 0);
   const currentTotalForDisplay = total;
   const diffFromPrev = currentTotalForDisplay - prevTotalForDisplay;
   const isIncrease = diffFromPrev > 0;
-
   useEffect(() => {
     if (order.assigned_technician && orderItems.length > 0) {
       calculateDeliveryTime();
@@ -179,26 +175,24 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       loadOrderModifications();
     }
   }, [order.id, order.assigned_technician, orderItems, isOrderUpdate]);
-
   const loadOrderModifications = async () => {
     console.log('Loading modifications for order:', order.id);
     try {
-      const { data, error } = await supabase
-        .from('order_modifications')
-        .select('*')
-        .eq('order_id', order.id)
-        .is('client_approved', null)
-        .not('modification_reason', 'is', null) // Solo modificaciones con razón válida
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      console.log('Modifications query result:', { data, error });
-      
+      const {
+        data,
+        error
+      } = await supabase.from('order_modifications').select('*').eq('order_id', order.id).is('client_approved', null).not('modification_reason', 'is', null) // Solo modificaciones con razón válida
+      .order('created_at', {
+        ascending: false
+      }).limit(1);
+      console.log('Modifications query result:', {
+        data,
+        error
+      });
       if (error) throw error;
-      
       console.log('Setting modifications:', data || []);
       setModifications(data || []);
-      
+
       // Verificar si no hay modificaciones pendientes
       if (isOrderUpdate && (!data || data.length === 0)) {
         console.log('WARNING: Order is in pendiente_actualizacion but no pending modifications found!');
@@ -221,22 +215,20 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       console.error('Error loading modifications:', error);
     }
   };
-
   const calculateDeliveryTime = () => {
     try {
       // Calcular horas totales estimadas
       const totalHours = orderItems.reduce((sum, item) => {
-        return sum + ((item.estimated_hours || 2) * (item.quantity || 1));
+        return sum + (item.estimated_hours || 2) * (item.quantity || 1);
       }, 0);
 
       // Calcular fecha de entrega simple
       const startDate = new Date();
       const workHoursPerDay = 8; // Horario estándar de trabajo
       const daysNeeded = Math.ceil(totalHours / workHoursPerDay);
-      
       const deliveryDate = new Date(startDate);
       deliveryDate.setDate(startDate.getDate() + daysNeeded);
-      
+
       // Formatear fecha y hora
       const dateStr = deliveryDate.toLocaleDateString('es-ES', {
         weekday: 'long',
@@ -244,9 +236,8 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         month: 'long',
         day: 'numeric'
       });
-      
       const timeStr = '16:00'; // Hora estándar de finalización
-      
+
       setDeliveryInfo({
         date: dateStr,
         time: timeStr,
@@ -256,11 +247,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       console.error('Error calculating delivery time:', error);
     }
   };
-
   const clearSignature = () => {
     signatureRef.current?.clear();
   };
-
   const handleApproval = async () => {
     if (!signatureRef.current || signatureRef.current.isEmpty()) {
       toast({
@@ -270,39 +259,33 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       });
       return;
     }
-
     setLoading(true);
-
     try {
       const signatureData = signatureRef.current.toDataURL();
-
       if (isOrderUpdate) {
         // Aprobar modificaciones
         const latestModification = modifications[0];
         if (latestModification) {
-          const { error: modError } = await supabase
-            .from('order_modifications')
-            .update({
-              client_approved: true,
-              approved_at: new Date().toISOString()
-            })
-            .eq('id', latestModification.id);
-
+          const {
+            error: modError
+          } = await supabase.from('order_modifications').update({
+            client_approved: true,
+            approved_at: new Date().toISOString()
+          }).eq('id', latestModification.id);
           if (modError) throw modError;
         }
 
         // Guardar nueva firma de autorización para la modificación
-        const { error: signatureError } = await supabase
-          .from('order_authorization_signatures')
-          .insert({
-            order_id: order.id,
-            client_signature_data: signatureData,
-            client_name: order.clients?.name || '',
-            signed_at: new Date().toISOString(),
-            modification_reason: latestModification?.modification_reason || 'Modificación de orden',
-            new_amount: calculateTotals().total
-          });
-
+        const {
+          error: signatureError
+        } = await supabase.from('order_authorization_signatures').insert({
+          order_id: order.id,
+          client_signature_data: signatureData,
+          client_name: order.clients?.name || '',
+          signed_at: new Date().toISOString(),
+          modification_reason: latestModification?.modification_reason || 'Modificación de orden',
+          new_amount: calculateTotals().total
+        });
         if (signatureError) throw signatureError;
 
         // Actualizar el estado de la orden a 'en_proceso' y el nuevo total para modificaciones
@@ -312,22 +295,17 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           client_approval: true,
           client_approved_at: new Date().toISOString()
         };
-        
+
         // Solo actualizar estimated_cost cuando hay modificaciones aprobadas
         if (modifications.length > 0) {
           const latestModification = modifications[0];
           updateData.estimated_cost = latestModification.new_total;
         }
-        
-        const { error: orderError } = await supabase
-          .from('orders')
-          .update(updateData)
-          .eq('id', order.id);
-
+        const {
+          error: orderError
+        } = await supabase.from('orders').update(updateData).eq('id', order.id);
         console.log(`Updated order status to: ${newStatus} for order ${order.id}`);
-
         if (orderError) throw orderError;
-
         toast({
           title: "Modificación aprobada",
           description: "Los cambios en la orden han sido aprobados exitosamente.",
@@ -335,38 +313,33 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         });
       } else {
         // Aprobación original
-        const { error: signatureError } = await supabase
-          .from('order_authorization_signatures')
-          .insert({
-            order_id: order.id,
-            client_signature_data: signatureData,
-            client_name: order.clients?.name || '',
-            signed_at: new Date().toISOString(),
-            modification_reason: 'Aprobación inicial de orden',
-            new_amount: calculateTotals().total
-          });
-
+        const {
+          error: signatureError
+        } = await supabase.from('order_authorization_signatures').insert({
+          order_id: order.id,
+          client_signature_data: signatureData,
+          client_name: order.clients?.name || '',
+          signed_at: new Date().toISOString(),
+          modification_reason: 'Aprobación inicial de orden',
+          new_amount: calculateTotals().total
+        });
         if (signatureError) throw signatureError;
 
         // Actualizar el estado de la orden a 'en_proceso'
-        const { error: orderError } = await supabase
-          .from('orders')
-          .update({
-            status: 'en_proceso',
-            client_approval: true,
-            client_approved_at: new Date().toISOString()
-          })
-          .eq('id', order.id);
-
+        const {
+          error: orderError
+        } = await supabase.from('orders').update({
+          status: 'en_proceso',
+          client_approval: true,
+          client_approved_at: new Date().toISOString()
+        }).eq('id', order.id);
         if (orderError) throw orderError;
-
         toast({
           title: "Orden aprobada",
           description: "La orden ha sido aprobada exitosamente y está en proceso.",
           variant: "default"
         });
       }
-
       onApprovalComplete();
     } catch (error) {
       console.error('Error approving order:', error);
@@ -379,81 +352,49 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       setLoading(false);
     }
   };
-
-  const handleOrderRejection = async () => {
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.rpc('reject_order', {
-        p_order_id: order.id,
-        p_rejection_reason: isOrderUpdate ? 'Cliente rechazó modificaciones' : 'Cliente rechazó orden inicial'
-      });
-
-      if (error) throw error;
-
-      const response = data as any;
-      if (response?.error) {
-        throw new Error(response.error);
-      }
-
-      toast({
-        title: "Orden rechazada",
-        description: response?.message || "La orden ha sido rechazada exitosamente.",
-        variant: "default"
-      });
-
-      onApprovalComplete();
-    } catch (error) {
-      console.error('Error rejecting order:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo rechazar la orden. Intente nuevamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleReject = async () => {
     console.log('=== HANDLE REJECT VIA EDGE FUNCTION ===');
     setLoading(true);
-
     try {
       if (!isOrderUpdate) {
-        toast({ title: 'Nada que rechazar', description: 'Esta orden no está en actualización.', variant: 'destructive' });
+        toast({
+          title: 'Nada que rechazar',
+          description: 'Esta orden no está en actualización.',
+          variant: 'destructive'
+        });
         return;
       }
-
       const latestModification = modifications[0];
-      const { data, error } = await supabase.functions.invoke('reject-order-modification', {
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('reject-order-modification', {
         body: {
           orderId: order.id,
-          modificationId: latestModification?.id,
-        },
+          modificationId: latestModification?.id
+        }
       });
-
       if (error) throw error;
       console.log('Edge reject result:', data);
-
       toast({
         title: 'Modificación rechazada',
         description: 'Se eliminaron los items agregados y se restauró el total anterior.',
-        variant: 'default',
+        variant: 'default'
       });
-
       onApprovalComplete();
     } catch (error) {
       console.error('Error rejecting via edge function:', error);
       const message = (error as any)?.message || (error as any)?.error || 'Error desconocido';
-      toast({ title: 'Error', description: `No se pudo rechazar la modificación: ${message}` , variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: `No se pudo rechazar la modificación: ${message}`,
+        variant: 'destructive'
+      });
     } finally {
       setLoading(false);
     }
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       <div className="flex flex-col h-screen">
         {/* Mobile-first Header */}
         <div className="sticky top-0 bg-background border-b px-4 py-3 z-10">
@@ -463,26 +404,18 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
             </Button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                {authorizationType === 'initial_approval' ? (
-                  <FileCheck className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                ) : (
-                  <FileEdit className="h-5 w-5 text-orange-600 flex-shrink-0" />
-                )}
+                {authorizationType === 'initial_approval' ? <FileCheck className="h-5 w-5 text-blue-600 flex-shrink-0" /> : <FileEdit className="h-5 w-5 text-orange-600 flex-shrink-0" />}
                 <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">
                   {authorizationType === 'initial_approval' ? 'Aprobación Inicial' : 'Aprobación de Modificación'}
                 </h1>
               </div>
               <p className="text-sm text-muted-foreground truncate">{order.order_number}</p>
               <div className="mt-1">
-                {authorizationType === 'initial_approval' ? (
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                {authorizationType === 'initial_approval' ? <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                     PRIMERA AUTORIZACIÓN
-                  </span>
-                ) : (
-                  <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                  </span> : <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
                     AUTORIZACIÓN DE CAMBIOS
-                  </span>
-                )}
+                  </span>}
               </div>
             </div>
           </div>
@@ -492,8 +425,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 space-y-4">
             {/* Authorization Type Warning */}
-            {authorizationType === 'initial_approval' && (
-              <Card className="border-blue-200 bg-blue-50">
+            {authorizationType === 'initial_approval' && <Card className="border-blue-200 bg-blue-50">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center text-blue-800 text-base">
                     <FileCheck className="h-4 w-4 mr-2" />
@@ -505,11 +437,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                     Esta es la <strong>primera autorización</strong> de esta orden. Al firmar, autoriza el inicio de los trabajos según los servicios y costos detallados.
                   </p>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
-            {authorizationType === 'modification_approval' && modifications.length > 0 && (
-              <Card className="border-orange-200 bg-orange-50">
+            {authorizationType === 'modification_approval' && modifications.length > 0 && <Card className="border-orange-200 bg-orange-50">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center text-orange-800 text-base">
                     <FileEdit className="h-4 w-4 mr-2" />
@@ -521,24 +451,18 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                     <p className="text-sm text-orange-700">
                       Se han realizado <strong>modificaciones</strong> a esta orden. Revise los cambios y proporcione su autorización.
                     </p>
-                    {modifications[0] && (
-                      <div className="bg-white p-3 rounded-lg border">
+                    {modifications[0] && <div className="bg-white p-3 rounded-lg border">
                         <h4 className="font-semibold text-gray-900 mb-2 text-sm">Detalles de la Modificación:</h4>
                         <div className="space-y-3 text-sm">
-                          {modifications[0].modification_reason && (
-                            <div>
+                          {modifications[0].modification_reason && <div>
                               <span className="font-medium text-gray-700">Razón:</span>
                               <p className="text-gray-600 mt-1">{modifications[0].modification_reason}</p>
-                            </div>
-                          )}
-                          {modifications[0].created_by_name && (
-                            <div>
+                            </div>}
+                          {modifications[0].created_by_name && <div>
                               <span className="font-medium text-gray-700">Modificado por:</span>
                               <p className="text-gray-600 mt-1">{modifications[0].created_by_name}</p>
-                            </div>
-                          )}
-                          {modifications[0].previous_total && modifications[0].new_total && (
-                            <div>
+                            </div>}
+                          {modifications[0].previous_total && modifications[0].new_total && <div>
                               <span className="font-medium text-gray-700">Cambio de costo:</span>
                                 <div className="space-y-1 mt-1">
                                   <div className="flex justify-between">
@@ -556,26 +480,21 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                                   <div className="flex justify-between border-t pt-1">
                                     <span className="font-medium text-gray-700">Diferencia:</span>
                                     {(() => {
-                                      const prev = Number(modifications[0].previous_total ?? order.estimated_cost ?? 0);
-                                      const diff = total - prev;
-                                      const isIncrease = diff > 0;
-                                      return (
-                                        <span className={`font-semibold ${isIncrease ? 'text-red-600' : 'text-green-600'}`}>
+                            const prev = Number(modifications[0].previous_total ?? order.estimated_cost ?? 0);
+                            const diff = total - prev;
+                            const isIncrease = diff > 0;
+                            return <span className={`font-semibold ${isIncrease ? 'text-red-600' : 'text-green-600'}`}>
                                           {isIncrease ? '+' : ''}{formatCOPCeilToTen(Math.abs(diff))}
-                                        </span>
-                                      );
-                                    })()}
+                                        </span>;
+                          })()}
                                   </div>
                                 </div>
-                              </div>
-                          )}
+                              </div>}
                         </div>
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              </Card>}
 
             {/* Order Details - Mobile First */}
             <div className="space-y-4">
@@ -584,25 +503,17 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center text-base">
                     <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                    {orderItems.filter(item => item.item_type === 'servicio').length > 0 && 
-                     orderItems.filter(item => item.item_type === 'articulo').length > 0 
-                      ? 'Servicios y Productos' 
-                      : orderItems.filter(item => item.item_type === 'servicio').length > 0 
-                        ? 'Servicios' 
-                        : 'Productos'}
+                    {orderItems.filter(item => item.item_type === 'servicio').length > 0 && orderItems.filter(item => item.item_type === 'articulo').length > 0 ? 'Servicios y Productos' : orderItems.filter(item => item.item_type === 'servicio').length > 0 ? 'Servicios' : 'Productos'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-3">
-                    {orderItems.map((item, index) => (
-                      <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
+                    {orderItems.map((item, index) => <div key={index} className="border-b pb-3 last:border-b-0 last:pb-0">
                         <div className="space-y-2">
                           <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0 pr-2">
                               <h4 className="font-medium text-foreground text-sm">{item.service_name}</h4>
-                              {item.service_description && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.service_description}</p>
-                              )}
+                              {item.service_description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.service_description}</p>}
                             </div>
                             <div className="text-right flex-shrink-0">
                                <p className="font-bold text-foreground">
@@ -613,19 +524,14 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">Cant: {item.quantity || 1}</span>
-                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                item.item_type === 'servicio' 
-                                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                                  : 'bg-green-100 text-green-800 border border-green-300'
-                              }`}>
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium ${item.item_type === 'servicio' ? 'bg-blue-100 text-blue-800 border border-blue-300' : 'bg-green-100 text-green-800 border border-green-300'}`}>
                                 {item.item_type === 'servicio' ? '🔧 Servicio' : '📦 Producto'}
                               </span>
                             </div>
                             <span className="text-xs text-muted-foreground">Total c/IVA</span>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>
                 </CardContent>
               </Card>
@@ -661,8 +567,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
               </Card>
 
               {/* Estimated Delivery */}
-              {deliveryInfo && (
-                <Card>
+              {deliveryInfo && <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center text-base">
                       <Clock className="h-4 w-4 mr-2 text-blue-600" />
@@ -685,8 +590,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       </div>
                     </div>
                   </CardContent>
-                </Card>
-              )}
+                </Card>}
             </div>
 
             {/* Signature Section - At the end of content */}
@@ -700,106 +604,42 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
               <CardContent className="pt-0">
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    {authorizationType === 'initial_approval' 
-                      ? 'Para autorizar esta orden, proporcione su firma:'
-                      : 'Para aprobar las modificaciones, proporcione su firma:'
-                    }
+                    {authorizationType === 'initial_approval' ? 'Para autorizar esta orden, proporcione su firma:' : 'Para aprobar las modificaciones, proporcione su firma:'}
                   </p>
 
                   <div className="border-2 border-dashed border-border rounded-lg p-2 bg-white">
-                    <SignatureCanvas
-                      ref={signatureRef}
-                      canvasProps={{
-                        className: 'signature-canvas w-full h-32 bg-white rounded touch-action-none'
-                      }}
-                      backgroundColor="white"
-                      penColor="black"
-                      minWidth={1}
-                      maxWidth={2}
-                    />
+                    <SignatureCanvas ref={signatureRef} canvasProps={{
+                    className: 'signature-canvas w-full h-32 bg-white rounded touch-action-none'
+                  }} backgroundColor="white" penColor="black" minWidth={1} maxWidth={2} />
                   </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={clearSignature}
-                    disabled={loading}
-                    size="sm"
-                    className="w-full"
-                  >
+                  <Button type="button" variant="outline" onClick={clearSignature} disabled={loading} size="sm" className="w-full">
                     Limpiar Firma
                   </Button>
 
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-2 pt-2">
-                    {isOrderUpdate && (
-                      <Button
-                        onClick={handleReject}
-                        disabled={loading}
-                        variant="destructive"
-                        className="h-11"
-                      >
-                        {loading ? (
-                          <div className="flex items-center gap-2">
+                    {isOrderUpdate && <Button onClick={handleReject} disabled={loading} variant="destructive" className="h-11">
+                        {loading ? <div className="flex items-center gap-2">
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                             Procesando...
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2">
+                          </div> : <div className="flex items-center gap-2">
                             <AlertTriangle className="h-4 w-4" />
                             Rechazar Modificación
-                          </div>
-                        )}
-                      </Button>
-                    )}
+                          </div>}
+                      </Button>}
                     
-                    <Button
-                      onClick={handleApproval}
-                      disabled={loading}
-                      className="h-11 bg-green-600 hover:bg-green-700"
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
+                    <Button onClick={handleApproval} disabled={loading} className="h-11 bg-green-600 hover:bg-green-700">
+                      {loading ? <div className="flex items-center gap-2">
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Procesando...
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
+                        </div> : <div className="flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4" />
                           {authorizationType === 'initial_approval' ? 'Autorizar Orden' : 'Aprobar Modificaciones'}
-                        </div>
-                      )}
+                        </div>}
                     </Button>
                     
-                    <Button
-                      onClick={handleOrderRejection}
-                      disabled={loading}
-                      variant="destructive"
-                      className="h-11"
-                    >
-                      {loading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Rechazando...
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4" />
-                          {authorizationType === 'initial_approval' ? 'Rechazar Orden' : 'Rechazar Modificaciones'}
-                        </div>
-                      )}
-                    </Button>
                     
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={onBack}
-                      disabled={loading}
-                      className="h-11"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Cancelar
-                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -807,6 +647,5 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 }
