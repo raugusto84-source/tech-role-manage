@@ -104,17 +104,21 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     
     let total = orderItems.reduce((sum, item) => {
       const itemTotal = calculateItemCorrectPrice(item);
-      const roundedItemTotal = ceilToTen(itemTotal);
+      
+      // Solo redondear si NO tiene pricing_locked
+      const finalItemTotal = (item.pricing_locked && item.total_amount) 
+        ? itemTotal  // Ya es el precio final correcto
+        : ceilToTen(itemTotal);  // Redondear solo precios calculados
       
       // Calcular subtotal y IVA para cada item
       const salesVatRate = (item.vat_rate ?? 16);
-      const subtotal = roundedItemTotal / (1 + salesVatRate / 100);
-      const vatAmount = roundedItemTotal - subtotal;
+      const subtotal = finalItemTotal / (1 + salesVatRate / 100);
+      const vatAmount = finalItemTotal - subtotal;
       
       subtotalSum += subtotal;
       vatSum += vatAmount;
       
-      return sum + roundedItemTotal;
+      return sum + finalItemTotal;
     }, 0);
     
     // Aplicar cashback al total final si está configurado
