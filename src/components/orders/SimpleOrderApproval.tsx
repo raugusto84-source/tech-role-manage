@@ -119,51 +119,55 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     return ceilToTen(gross);
   };
 
-  // Preferir SIEMPRE el total guardado del item; NO recalcular precios de cotización
+  // Usar SIEMPRE los valores almacenados del item, mantener precios originales
   const getItemDisplayPrice = (item: any): number => {
-    // Para servicios y productos: SIEMPRE usar total_amount guardado (precio fijo de cotización)
+    // PRIORIDAD 1: Usar total_amount almacenado (precio definitivo del item)
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
       return Number(item.total_amount);
     }
-    // Solo como fallback para datos muy antiguos
+    
+    // PRIORIDAD 2: Si no hay total_amount, usar subtotal + vat_amount
+    if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
+        typeof item.vat_amount === 'number' && item.vat_amount >= 0) {
+      return Number(item.subtotal) + Number(item.vat_amount);
+    }
+    
+    // PRIORIDAD 3: Solo como último recurso, calcular
     return calculateItemCorrectPrice(item);
   };
 
   const calculateTotals = () => {
-    // Usar los precios ya redondeados de cada item individual
     let subtotalSum = 0;
     let vatSum = 0;
     let totalSum = 0;
 
     orderItems.forEach((item) => {
+      // PRIORIDADE: Usar SIEMPRE los valores almacenados si existen
+      if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
+          typeof item.vat_amount === 'number' && item.vat_amount >= 0 &&
+          typeof item.total_amount === 'number' && item.total_amount > 0) {
+        // Usar directamente los valores almacenados - NO calcular nada
+        subtotalSum += Number(item.subtotal);
+        vatSum += Number(item.vat_amount);
+        totalSum += Number(item.total_amount);
+        return;
+      }
+      
+      // Solo si no hay valores almacenados, calcular (fallback)
       const displayPrice = getItemDisplayPrice(item);
       const salesVatRate = item.vat_rate ?? 16;
-      
-      // Usar valores almacenados si están disponibles, sino calcular
-      let itemSubtotal = 0;
-      let itemVat = 0;
-      
-      if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
-          typeof item.vat_amount === 'number' && item.vat_amount >= 0) {
-        // Usar valores almacenados directamente
-        itemSubtotal = item.subtotal;
-        itemVat = item.vat_amount;
-        totalSum += displayPrice;
-      } else {
-        // Calcular desde el precio de display (solo como fallback)
-        itemSubtotal = displayPrice / (1 + salesVatRate / 100);
-        itemVat = displayPrice - itemSubtotal;
-        totalSum += displayPrice;
-      }
+      const itemSubtotal = displayPrice / (1 + salesVatRate / 100);
+      const itemVat = displayPrice - itemSubtotal;
       
       subtotalSum += itemSubtotal;
       vatSum += itemVat;
+      totalSum += displayPrice;
     });
 
     return {
       subtotal: subtotalSum,
       vatTotal: vatSum,
-      total: totalSum, // usar suma directa de items redondeados
+      total: totalSum,
     };
   };
 
