@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, User, Calendar, DollarSign, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package } from 'lucide-react';
+import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { getItemTypeInfo } from '@/utils/itemTypeUtils';
@@ -99,31 +99,10 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [salesperson, setSalesperson] = useState<string>('');
   
-  // Cashback state
-  const [availableCashback, setAvailableCashback] = useState(0);
-  const [applyCashback, setApplyCashback] = useState(false);
-  const [cashbackAmount, setCashbackAmount] = useState(0);
-  const [cashbackLoading, setCashbackLoading] = useState(false);
-
   // Load quote items and salesperson information
   useEffect(() => {
     const loadQuoteDetails = async () => {
       try {
-        // Load quote details with cashback information
-        const { data: quoteData, error: quoteError } = await supabase
-          .from('quotes')
-          .select('cashback_applied, cashback_amount_used')
-          .eq('id', quote.id)
-          .single();
-
-        if (quoteError) {
-          console.error('Error loading quote cashback details:', quoteError);
-        } else if (quoteData) {
-          // Initialize cashback state from database
-          setApplyCashback(quoteData.cashback_applied || false);
-          setCashbackAmount(quoteData.cashback_amount_used || 0);
-        }
-
         // Load quote items with service type images and pricing info
         const { data: items, error: itemsError } = await supabase
           .from('quote_items')
@@ -211,44 +190,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     loadQuoteDetails();
   }, [quote.id, quote.assigned_to, quote.created_by]);
 
-  // Load available cashback for the client
-  useEffect(() => {
-    const loadCashback = async () => {
-      setCashbackLoading(true);
-      try {
-        // Find client by email
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('id, email')
-          .eq('email', quote.client_email)
-          .single();
-        
-        if (clientData) {
-          // Get client rewards
-          const { data: rewardsData } = await supabase
-            .from('client_rewards')
-            .select('total_cashback')
-            .eq('client_id', clientData.id)
-            .single();
-
-          if (rewardsData) {
-            setAvailableCashback(rewardsData.total_cashback || 0);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading cashback:', error);
-      } finally {
-        setCashbackLoading(false);
-      }
-    };
-
-    if (quote.client_email) {
-      loadCashback();
-    }
-  }, [quote.client_email]);
-
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
-  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO', {
@@ -445,48 +387,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     }
   };
 
-  // Handle cashback toggle
-  const handleCashbackToggle = async (checked: boolean) => {
-    if (loading) return;
-    
-    try {
-      setLoading(true);
-      
-      // Only update the quote with total amount
-      const { error } = await supabase
-        .from('quotes')
-        .update({
-          estimated_amount: total
-        })
-        .eq('id', quote.id);
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: `Error al actualizar cashback: ${error.message}`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Update local state
-      toast({
-        title: "Cotización actualizada",
-        description: "Los cambios han sido guardados correctamente"
-      });
-
-    } catch (error) {
-      console.error('Error handling cashback toggle:', error);
-      toast({
-        title: "Error",
-        description: "Error inesperado al procesar cashback",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Function to determine if an item is a product
   const isProduct = (item: QuoteItem): boolean => {
     return item.item_type === 'articulo' || (item.profit_margin_rate && item.profit_margin_rate > 0);
@@ -541,9 +441,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   };
 
   const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();
-  
-  // Calculate final total with optional cashback discount (no rounding when applied)
-  const finalTotal = applyCashback ? total - cashbackAmount : total;
 
   const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
   const StatusIcon = getStatusIcon(quote.status);
@@ -686,28 +583,22 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                       <div className="w-64 space-y-2">
                         <div className="flex justify-between">
                           <span>Subtotal:</span>
-                          <span>{formatCashbackExact(subtotal)}</span>
+                          <span>{formatCurrency(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>IVA Total:</span>
-                          <span>{formatCashbackExact(totalVat)}</span>
+                          <span>{formatCurrency(totalVat)}</span>
                         </div>
-                        {cashbackAmount > 0 && (
-                          <div className="flex justify-between text-orange-600">
-                            <span>- Cashback:</span>
-                            <span>-{formatCashbackExact(cashbackAmount)}</span>
-                          </div>
-                        )}
                         {totalWithholdings > 0 && (
                           <div className="flex justify-between text-red-600">
                             <span>Retenciones:</span>
-                            <span>-{formatCashbackExact(totalWithholdings)}</span>
+                            <span>-{formatCurrency(totalWithholdings)}</span>
                           </div>
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                           <span>Total:</span>
-                          <span>{applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(finalTotal)}</span>
+                          <span>{formatCurrency(total)}</span>
                         </div>
                       </div>
                     </div>
@@ -758,14 +649,14 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
               <Separator />
 
               <div className="flex items-center gap-3">
-                <DollarSign className="h-4 w-4 text-green-600" />
+                <FileText className="h-4 w-4 text-green-600" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Valor Total</p>
                   <p className="text-xl font-bold text-green-600">
                     {total > 0
-                      ? (applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(finalTotal))
+                      ? formatCurrency(total)
                       : quote.estimated_amount
-                        ? (applyCashback ? formatCashbackExact(quote.estimated_amount) : formatCurrency(quote.estimated_amount))
+                        ? formatCurrency(quote.estimated_amount)
                         : 'Por definir'}
                   </p>
                 </div>
@@ -794,58 +685,6 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             </CardContent>
           </Card>
 
-          {/* Cashback Section */}
-          {availableCashback > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                  Cashback Disponible
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-green-600">
-                    {formatCashbackExact(availableCashback)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Disponible para usar
-                  </p>
-                </div>
-
-                {availableCashback > 0 && canManageQuotes && (
-                  <div className="space-y-3">
-                    <Separator />
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="apply-cashback"
-                        checked={applyCashback}
-                        onCheckedChange={handleCashbackToggle}
-                        disabled={loading || cashbackLoading}
-                      />
-                      <label 
-                        htmlFor="apply-cashback" 
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Usar cashback
-                      </label>
-                    </div>
-                    
-                    {applyCashback && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <p className="text-sm text-green-800">
-                          {/* Removed cashback display - cashback system eliminated */}
-                        </p>
-                        <p className="text-xs text-green-700 mt-1">
-                          Se aplicará cuando la cotización sea aceptada
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
           {/* Acciones */}
           {canManageQuotes && (

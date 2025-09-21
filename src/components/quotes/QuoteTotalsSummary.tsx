@@ -36,83 +36,12 @@ interface QuoteTotalsSummaryProps {
   selectedItems: QuoteItem[];
   clientId?: string;
   clientEmail?: string;
-  onCashbackChange?: (applied: boolean, amount: number) => void;
 }
 
-export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail = '', onCashbackChange }: QuoteTotalsSummaryProps) {
-  const [availableCashback, setAvailableCashback] = useState(0);
-  const [applyCashback, setApplyCashback] = useState(false);
-  const [cashbackLoading, setCashbackLoading] = useState(false);
+export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail = '' }: QuoteTotalsSummaryProps) {
   // Removed useRewardSettings - cashback system eliminated
   
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
-  const formatCashback = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
-
-  // Load available cashback for the client
-  useEffect(() => {
-    const loadCashback = async () => {
-      if (!clientEmail && !clientId) return;
-      
-      setCashbackLoading(true);
-      try {
-        // First try to find client by email, then by id
-        let clientQuery = supabase
-          .from('clients')
-          .select('id, email');
-
-        if (clientEmail) {
-          clientQuery = clientQuery.eq('email', clientEmail);
-        } else if (clientId) {
-          clientQuery = clientQuery.eq('id', clientId);
-        }
-
-        const { data: clientData } = await clientQuery.single();
-        
-        if (clientData) {
-          // Calcular cashback actual real desde el historial de transacciones
-          let actualCashback = 0;
-
-          // Cashback ganado (no expirado)
-          const { data: earnedTransactions } = await supabase
-            .from('reward_transactions')
-            .select('amount')
-            .eq('client_id', clientData.id)
-            .in('transaction_type', ['earned', 'cashback_earned', 'referral_bonus'])
-            .or('expires_at.is.null,expires_at.gt.now()'); // No expiradas
-
-          const totalEarned = earnedTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
-
-          // Cashback usado
-          const { data: usedTransactions } = await supabase
-            .from('reward_transactions')
-            .select('amount')
-            .eq('client_id', clientData.id)
-            .in('transaction_type', ['used', 'redeemed', 'cashback_used']);
-
-          const totalUsed = usedTransactions?.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0) || 0;
-
-          // Calcular saldo actual
-          actualCashback = Math.max(0, totalEarned - totalUsed);
-
-          setAvailableCashback(actualCashback);
-        }
-      } catch (error) {
-        console.error('Error loading cashback:', error);
-      } finally {
-        setCashbackLoading(false);
-      }
-    };
-
-    loadCashback();
-  }, [clientEmail, clientId]);
-
-  // Handle cashback toggle
-  const handleCashbackToggle = (checked: boolean) => {
-    setApplyCashback(checked);
-    const cashbackAmount = checked ? Math.min(availableCashback, totalFinal) : 0;
-    onCashbackChange?.(checked, cashbackAmount);
-  };
 
   // Calculate totals from selectedItems with proper VAT breakdown
   console.log('QuoteTotalsSummary - Calculating totals for items:', selectedItems);
@@ -137,8 +66,6 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
 
   // Use the calculated total from the function
   const totalFinal = totalWithVAT;
-  const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
-  const finalTotal = totalFinal - cashbackAmount;
 
   return (
     <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
@@ -154,42 +81,13 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         </div>
       )}
       
-      {/* Cashback Usage Section */}
-      {availableCashback > 0 && (clientEmail || clientId) && (
-        <div className="border-t pt-2">
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="use-cashback"
-                checked={applyCashback}
-                onCheckedChange={handleCashbackToggle}
-                disabled={cashbackLoading}
-              />
-              <Label 
-                htmlFor="use-cashback" 
-                className="text-sm font-medium cursor-pointer"
-              >
-                Usar cashback disponible
-              </Label>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Disponible: {formatCashbackExact(availableCashback)}
-              {applyCashback && (
-                <span className="text-green-600 font-medium ml-2">
-                  → Aplicando: {formatCashbackExact(cashbackAmount)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Cashback Earning Section - Removed cashback system */}
       
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total:</span>
-          <span>{applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(totalFinal)}</span>
+          <span>{formatCurrency(totalFinal)}</span>
         </div>
       </div>
     </div>

@@ -69,16 +69,6 @@ export function QuoteWizard({
     sale_type: 'servicio' as const
   });
 
-  // Cashback state
-  const [cashbackApplied, setCashbackApplied] = useState(false);
-  const [cashbackAmount, setCashbackAmount] = useState(0);
-
-  // Handle cashback change callback
-  const handleCashbackChange = (applied: boolean, amount: number) => {
-    setCashbackApplied(applied);
-    setCashbackAmount(amount);
-  };
-
   // Cargar clientes
   useEffect(() => {
     loadClients();
@@ -224,7 +214,7 @@ export function QuoteWizard({
         client_email: selectedClient.email,
         client_phone: selectedClient.phone,
         service_description: quoteItems.length > 0 ? `Cotización para ${quoteItems.map(item => item.name).join(', ')}` : 'Cotización personalizada',
-        estimated_amount: calculateTotal() - cashbackAmount,
+        estimated_amount: calculateTotal(),
         notes: quoteDetails.notes,
         marketing_channel: quoteDetails.marketing_channel,
         sale_type: quoteDetails.sale_type,
@@ -278,30 +268,7 @@ export function QuoteWizard({
         }
       }
 
-      // Process cashback transaction if cashback was applied
-      if (cashbackApplied && cashbackAmount > 0 && selectedClient) {
-        try {
-          const {
-            error: transactionError
-          } = await supabase.from('reward_transactions').insert({
-            client_id: selectedClient.id,
-            transaction_type: 'redeemed',
-            amount: -cashbackAmount,
-            description: `Cashback aplicado en cotización ${quoteResult?.id}`,
-            related_quote_id: quoteResult?.id
-          });
-          if (!transactionError) {
-            // Update client total cashback
-            const {
-              error: updateError
-            } = await supabase.from('client_rewards').update({
-              total_cashback: Math.max(0, (await supabase.from('client_rewards').select('total_cashback').eq('client_id', selectedClient.id).single()).data?.total_cashback || 0) - cashbackAmount
-            }).eq('client_id', selectedClient.id);
-          }
-        } catch (error) {
-          console.error('Error processing cashback transaction:', error);
-        }
-      }
+      
       const successMessage = profile?.role === 'cliente' ? "Cotización enviada y pendiente de aprobación" : "Cotización creada exitosamente";
       toast({
         title: "Éxito",
@@ -605,7 +572,6 @@ export function QuoteWizard({
                     selectedItems={quoteItems}
                     clientId={selectedClient.id}
                     clientEmail={selectedClient.email}
-                    onCashbackChange={handleCashbackChange}
                   />
                 </CardContent>
               </Card>

@@ -482,11 +482,10 @@ export function CategoryServiceSelection({
           <div className="mt-6">
             <Card>
               <CardContent className="p-4">
-                <QuoteTotalsSummary
+                <QuoteTotalsSummary 
                   selectedItems={selectedItems}
                   clientId={clientId}
                   clientEmail={clientEmail}
-                  onCashbackChange={() => {}}
                 />
               </CardContent>
             </Card>
