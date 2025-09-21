@@ -560,9 +560,11 @@ export function OrderServicesList({
                   
                   {/* Description - Mobile Friendly */}
                   {item.service_description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {item.service_description}
-                    </p>
+                    <div className="overflow-hidden">
+                      <p className="text-xs text-muted-foreground line-clamp-2 break-words whitespace-pre-wrap">
+                        {item.service_description}
+                      </p>
+                    </div>
                   )}
                   
                   {/* Item Details - Mobile Stack Layout */}
