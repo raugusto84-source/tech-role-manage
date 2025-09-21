@@ -317,8 +317,23 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return 0;
     }
     
+    // MISMA LÓGICA QUE LAS TARJETAS: preferir siempre el total estimado de la orden si existe
+    if (order.estimated_cost && order.estimated_cost > 0) {
+      return order.estimated_cost;
+    }
+    
     if (orderItems && orderItems.length > 0) {
-      // Preferir totales guardados por item; si no existen, redondear el item y sumar
+      // Para órdenes pendientes de aprobación, NO aplicar redondeo
+      if (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') {
+        return orderItems.reduce((sum, item) => {
+          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+          if (hasStoredTotal) return sum + Number(item.total_amount);
+          // SIN redondeo para órdenes pendientes
+          return sum + calculateItemDisplayPrice(item);
+        }, 0);
+      }
+      
+      // Para otras órdenes, usar lógica normal con redondeo por item
       return orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
         if (hasStoredTotal) return sum + Number(item.total_amount);
@@ -326,15 +341,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       }, 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items
-    // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
-    if (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') {
-      return order.estimated_cost || 0; // SIN redondeo para órdenes pendientes
-    }
-    // En otros casos, aplicar IVA por defecto
-    const defaultVatRate = 16;
-    const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100); // SIN redondeo en el total final
+    // Si no hay items, devolver 0
+    return 0;
   };
   
   // Calculate payment summary after total calculation
