@@ -15,6 +15,8 @@ interface SimpleOrderApprovalProps {
     order_number: string;
     assigned_technician?: string;
     status: string;
+    cashback_applied?: boolean;
+    cashback_amount_used?: number;
     clients?: {
       name: string;
       email: string;
@@ -576,18 +578,18 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <span className="text-muted-foreground">IVA Total:</span>
                       <span className="font-medium">{formatCOPExact(vatTotal)}</span>
                     </div>
-                    {rewardSettings?.general_cashback_percent > 0 && (
+                    {order.cashback_applied && order.cashback_amount_used && order.cashback_amount_used > 0 && (
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-orange-600">- Cashback:</span>
-                        <span className="font-medium text-orange-600">-{formatCOPExact(total * (rewardSettings.general_cashback_percent / 100))}</span>
+                        <span className="font-medium text-orange-600">-{formatCOPExact(order.cashback_amount_used)}</span>
                       </div>
                     )}
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatCOPExact(rewardSettings?.general_cashback_percent > 0 
-                            ? total - (total * (rewardSettings.general_cashback_percent / 100))
+                          {formatCOPExact(order.cashback_applied && order.cashback_amount_used 
+                            ? total - order.cashback_amount_used
                             : total)}
                         </span>
                       </div>
