@@ -4,14 +4,13 @@ import { es } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink, RotateCcw } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // Removed cashback-related imports - cashback system eliminated
 import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
-import { PaymentRevertDialog } from './PaymentRevertDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
@@ -60,7 +59,6 @@ export function OrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [showRevertDialog, setShowRevertDialog] = useState(false);
   // Removed rewardSettings - no longer needed without cashback
 
   const loadOrderItems = async () => {
@@ -197,7 +195,8 @@ export function OrderCard({
   const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
   const {
     paymentSummary,
-    loading: paymentsLoading
+    loading: paymentsLoading,
+    refreshPayments
   } = useOrderPayments(order.id, ceilToTen(totalAmount));
   // Removed orderCashback - cashback system eliminated
 
@@ -309,14 +308,12 @@ export function OrderCard({
         {/* Botón de cobrar para órdenes finalizadas */}
         {(() => {
         const shouldShowButton = showCollectButton && paymentSummary.remainingBalance > 0;
-        const shouldShowRevert = paymentSummary.totalPaid > 0;
         console.log('OrderCard collect button debug:', {
           showCollectButton,
           remainingBalance: paymentSummary.remainingBalance,
           orderStatus: order.status,
           orderNumber: order.order_number,
-          shouldShow: shouldShowButton,
-          shouldShowRevert: shouldShowRevert
+          shouldShow: shouldShowButton
         });
         return (
           <div className="flex gap-2 flex-wrap">
@@ -329,33 +326,11 @@ export function OrderCard({
                 Restante por cobrar: {formatMXNInt(paymentSummary.remainingBalance)}
               </Button>
             )}
-            {shouldShowRevert && (
-              <Button 
-                size="sm" 
-                variant="outline"
-                className="border-amber-600 text-amber-600 hover:bg-amber-50 font-semibold"
-                onClick={e => {
-                  e.stopPropagation();
-                  setShowRevertDialog(true);
-                }}
-              >
-                <RotateCcw className="h-4 w-4 mr-1" />
-                Revertir
-              </Button>
-            )}
           </div>
         );
       })()}
       </CardContent>
 
       <PaymentCollectionDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} order={order} totalAmount={calculateCorrectTotal()} />
-      
-      <PaymentRevertDialog
-        open={showRevertDialog}
-        onOpenChange={setShowRevertDialog}
-        orderId={order.id}
-        orderNumber={order.order_number}
-        onSuccess={loadOrderItems}
-      />
     </Card>;
 }

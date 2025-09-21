@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard, RotateCcw } from 'lucide-react';
+import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
@@ -10,7 +10,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatCOPCeilToTen, formatMXNExact, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
-import { PaymentRevertDialog } from './PaymentRevertDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
@@ -74,7 +73,6 @@ export function SimpleOrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [showRevertDialog, setShowRevertDialog] = useState(false);
   // Removed useRewardSettings and useOrderCashback - cashback system eliminated
 
   const loadOrderItems = async () => {
@@ -170,7 +168,7 @@ const calculateCorrectTotal = () => {
 const totalAmount = calculateCorrectTotal();
 const hasStoredTotals = (orderItems?.some((i) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
 const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
-const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPayments(order.id, totalAmount);
 // Removed useOrderCashback - cashback system eliminated
 
   const formatDate = (dateString: string) => {
@@ -361,20 +359,6 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
                 Cobrar
               </Button>
             )}
-            {paymentSummary.totalPaid > 0 && (
-              <Button 
-                size="sm" 
-                variant="outline"
-                className="border-amber-600 text-amber-600 hover:bg-amber-50 font-semibold"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRevertDialog(true);
-                }}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Revertir
-              </Button>
-            )}
             <Button 
               variant="outline" 
               size="sm" 
@@ -395,14 +379,6 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
         onOpenChange={setShowPaymentDialog}
         order={order}
         totalAmount={totalAmount}
-      />
-      
-      <PaymentRevertDialog
-        open={showRevertDialog}
-        onOpenChange={setShowRevertDialog}
-        orderId={order.id}
-        orderNumber={order.order_number}
-        onSuccess={loadOrderItems}
       />
     </Card>
   );
