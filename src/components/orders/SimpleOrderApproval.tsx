@@ -162,6 +162,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   const hasPendingMods = order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion';
   const baseTotal = hasPendingMods ? total : ((order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total);
   const finalTotal = baseTotal;
+  // Valores para mostrar en tarjeta de modificación
+  const prevTotalForDisplay = Number((modifications && modifications[0]?.previous_total) ?? order.estimated_cost ?? 0);
+  const currentTotalForDisplay = total;
+  const diffFromPrev = currentTotalForDisplay - prevTotalForDisplay;
+  const isIncrease = diffFromPrev > 0;
 
   useEffect(() => {
     if (order.assigned_technician && orderItems.length > 0) {
@@ -497,23 +502,34 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                           {modifications[0].previous_total && modifications[0].new_total && (
                             <div>
                               <span className="font-medium text-gray-700">Cambio de costo:</span>
-                              <div className="space-y-1 mt-1">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Anterior:</span>
-                                  <span className="text-red-600">{formatCOPExact(Number(modifications[0].previous_total))}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Nuevo:</span>
-                                  <span className="text-green-600">{formatCOPExact(Number(modifications[0].new_total))}</span>
-                                </div>
-                                <div className="flex justify-between border-t pt-1">
-                                  <span className="font-medium text-gray-700">Diferencia:</span>
-                                  <span className={`font-semibold ${Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? 'text-red-600' : 'text-green-600'}`}>
-                                    {Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? '+' : ''}{formatCOPExact(Number(modifications[0].new_total) - Number(modifications[0].previous_total))}
-                                  </span>
+                                <div className="space-y-1 mt-1">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Anterior:</span>
+                                    <span className="text-red-600">
+                                      {formatCOPCeilToTen(Number(modifications[0].previous_total ?? order.estimated_cost ?? 0))}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Nuevo:</span>
+                                    <span className="text-green-600">
+                                      {formatCOPCeilToTen(total)}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between border-t pt-1">
+                                    <span className="font-medium text-gray-700">Diferencia:</span>
+                                    {(() => {
+                                      const prev = Number(modifications[0].previous_total ?? order.estimated_cost ?? 0);
+                                      const diff = total - prev;
+                                      const isIncrease = diff > 0;
+                                      return (
+                                        <span className={`font-semibold ${isIncrease ? 'text-red-600' : 'text-green-600'}`}>
+                                          {isIncrease ? '+' : ''}{formatCOPCeilToTen(Math.abs(diff))}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
                           )}
                         </div>
                       </div>
