@@ -557,7 +557,45 @@ export function QuoteWizard({
               </Card>
             )}
 
-            {/* Selected Items Summary - REMOVED */}
+            {/* Selected Items Summary */}
+            {quoteItems.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="font-semibold mb-4 flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Servicios seleccionados ({quoteItems.length})
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    {quoteItems.map((item, index) => (
+                      <div key={item.id || index} className="border rounded-lg p-3 bg-card/50">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm mb-1">{item.name}</h4>
+                            {item.description && (
+                              <p className="text-xs text-muted-foreground mb-2">
+                                {item.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span>Cantidad: {item.quantity}</span>
+                              <span>•</span>
+                              <span>Precio unitario: {formatCurrency(item.unit_price)}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right flex-shrink-0">
+                            <div className="font-semibold text-sm">
+                              {formatCurrency(item.total)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quote Totals Summary with Cashback Options */}
             {quoteItems.length > 0 && selectedClient && (
