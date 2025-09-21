@@ -169,13 +169,14 @@ export function OrderCard({
     return base * (1 + defaultVatRate / 100); // SIN redondeo en el total final
   };
 
-  // Calculate payments after total calculation
-  const totalAmount = calculateCorrectTotal();
-  const {
-    paymentSummary,
-    loading: paymentsLoading
-  } = useOrderPayments(order.id, totalAmount);
-  const { cashback: orderCashback } = useOrderCashback(order.id);
+// Calculate payments after total calculation
+const totalAmount = calculateCorrectTotal();
+const hasStoredTotals = (orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
+const {
+  paymentSummary,
+  loading: paymentsLoading
+} = useOrderPayments(order.id, totalAmount);
+const { cashback: orderCashback } = useOrderCashback(order.id);
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', {
@@ -294,7 +295,7 @@ export function OrderCard({
             <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-1">
               {itemsLoading ? <Skeleton className="h-4 w-20 rounded" /> : <span className="text-sm font-bold text-primary">
-                  {order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' 
+                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || hasStoredTotals)
                     ? formatMXNExact(totalAmount)
                     : formatCOPCeilToTen(ceilToTen(totalAmount))
                   }

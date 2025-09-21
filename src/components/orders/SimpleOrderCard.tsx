@@ -173,10 +173,11 @@ export function SimpleOrderCard({
     return base * (1 + defaultVatRate / 100); // SIN redondeo en el total final
   };
 
-  // Calculate payments after total calculation
-  const totalAmount = calculateCorrectTotal();
-  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
-  const { cashback } = useOrderCashback(order.id);
+// Calculate payments after total calculation
+const totalAmount = calculateCorrectTotal();
+const hasStoredTotals = (orderItems?.some((i) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
+const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+const { cashback } = useOrderCashback(order.id);
 
   const formatDate = (dateString: string) => {
     try {
@@ -309,7 +310,7 @@ export function SimpleOrderCard({
                 <Skeleton className="h-6 w-24 rounded" />
               ) : (
                 <span className="text-xl font-bold text-primary">
-                  {order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion'
+                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || hasStoredTotals)
                     ? formatMXNExact(totalAmount)
                     : formatCOPCeilToTen(totalAmount)
                   }
