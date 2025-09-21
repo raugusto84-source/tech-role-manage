@@ -82,6 +82,8 @@ export function OrderDetails({
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
   const [authorizationSignatures, setAuthorizationSignatures] = useState<any[]>([]);
   const [signaturesLoading, setSignaturesLoading] = useState(false);
+  const [deliverySignature, setDeliverySignature] = useState<any>(null);
+  const [deliverySignatureLoading, setDeliverySignatureLoading] = useState(false);
   const [orderEquipment, setOrderEquipment] = useState<any[]>([]);
   const [equipmentLoading, setEquipmentLoading] = useState(false);
   const [expandedSections, setExpandedSections] = useState({
@@ -98,6 +100,7 @@ export function OrderDetails({
     loadAssignedTechnician();
     checkExistingAuthorization();
     loadAuthorizationSignatures();
+    loadDeliverySignature();
 
     // Suscribirse a cambios en tiempo real en la orden
     const channel = supabase.channel('order-changes').on('postgres_changes', {
@@ -133,6 +136,23 @@ export function OrderDetails({
       console.error('Error loading authorization signatures:', error);
     } finally {
       setSignaturesLoading(false);
+    }
+  };
+
+  const loadDeliverySignature = async () => {
+    try {
+      setDeliverySignatureLoading(true);
+      const {
+        data,
+        error
+      } = await supabase.from('delivery_signatures').select('*').eq('order_id', order.id).limit(1).maybeSingle();
+
+      if (error) throw error;
+      setDeliverySignature(data);
+    } catch (error) {
+      console.error('Error loading delivery signature:', error);
+    } finally {
+      setDeliverySignatureLoading(false);
     }
   };
   const checkExistingAuthorization = async () => {
@@ -560,6 +580,36 @@ export function OrderDetails({
               </CardContent>
             </Card>}
 
+          {/* Firma de Entrega */}
+          {deliverySignature && <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Signature className="h-5 w-5 text-primary" />
+                  <span className="font-medium">Firma de Entrega</span>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">{deliverySignature.client_name}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-muted-foreground">{formatDateTime(deliverySignature.delivery_date)}</span>
+                  </div>
+                  
+                  {deliverySignature.observations && <div className="text-sm text-muted-foreground">
+                      <span className="font-medium">Observaciones:</span> {deliverySignature.observations}
+                    </div>}
+                  
+                  <div className="border rounded p-2 bg-muted/10">
+                    <p className="text-xs text-muted-foreground mb-2">Firma digital:</p>
+                    <div className="bg-white rounded border" style={{height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                      <img src={deliverySignature.client_signature_data} alt="Firma de entrega" style={{maxWidth: '100%', maxHeight: '100%'}} />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>}
+
         </div>
       </div>
 
@@ -627,6 +677,7 @@ export function OrderDetails({
       {showDeliverySignature && <DeliverySignature order={order} onClose={() => setShowDeliverySignature(false)} onComplete={() => {
       setShowDeliverySignature(false);
       loadAuthorizationSignatures(); // Recargar firmas después de firmar entrega
+      loadDeliverySignature(); // Recargar firma de entrega
       // If client, redirect to client dashboard, otherwise just update
       if (isClient) {
         navigate('/client');
