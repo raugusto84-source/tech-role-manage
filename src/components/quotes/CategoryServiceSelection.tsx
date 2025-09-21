@@ -299,6 +299,21 @@ export function CategoryServiceSelection({
     });
   };
 
+  // Calculate consistent totals using the same logic as QuoteTotalsSummary
+  const calculateTotals = () => {
+    // Use unit_price * quantity (same as QuoteTotalsSummary)
+    const totalWithVAT = selectedItems.reduce((sum, item) => {
+      return sum + (item.unit_price || 0) * (item.quantity || 1);
+    }, 0);
+    
+    // Extract VAT from the total - unit_price already includes VAT
+    const vatRate = 16; // Standard VAT rate
+    const subtotalBeforeVat = totalWithVAT / (1 + vatRate / 100);
+    const totalVAT = totalWithVAT - subtotalBeforeVat;
+    
+    return { subtotalBeforeVat, totalVAT, totalWithVAT };
+  };
+
   // Handle cashback changes from QuoteTotalsSummary
   const handleCashbackChange = (applied: boolean, amount: number) => {
     setCashbackApplied(applied);
@@ -527,29 +542,33 @@ export function CategoryServiceSelection({
                 <Separator className="my-4" />
                 
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>IVA:</span>
-                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.vat_amount, 0))}</span>
-                  </div>
-                  {cashbackApplied && cashbackAmount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>Descuento Cashback:</span>
-                      <span>-{formatCurrency(cashbackAmount)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-medium">
-                    <span>Total:</span>
-                    <span>
-                      {formatCurrency(
-                        selectedItems.reduce((sum, item) => sum + item.total, 0) - 
-                        (cashbackApplied ? cashbackAmount : 0)
-                      )}
-                    </span>
-                  </div>
+                  {(() => {
+                    const { subtotalBeforeVat, totalVAT, totalWithVAT } = calculateTotals();
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span>Subtotal:</span>
+                          <span>{formatCurrency(subtotalBeforeVat)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>IVA:</span>
+                          <span>{formatCurrency(totalVAT)}</span>
+                        </div>
+                        {cashbackApplied && cashbackAmount > 0 && (
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>Descuento Cashback:</span>
+                            <span>-{formatCurrency(cashbackAmount)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-medium">
+                          <span>Total:</span>
+                          <span>
+                            {formatCurrency(totalWithVAT - (cashbackApplied ? cashbackAmount : 0))}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>
