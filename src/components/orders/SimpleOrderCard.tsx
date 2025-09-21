@@ -302,10 +302,7 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
                 <Skeleton className="h-6 w-24 rounded" />
               ) : (
                 <span className="text-xl font-bold text-primary">
-                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
-                    ? formatMXNExact(totalAmount)
-                    : formatCOPCeilToTen(totalAmount)
-                  }
+                  {formatCOPCeilToTen(totalAmount)}
                 </span>
               )}
             </div>

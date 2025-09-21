@@ -112,10 +112,11 @@ export function OrderServicesList({
     const salesVatRate = item.vat_rate || 16;
     // Removed cashback calculation - cashback system eliminated
 
+    let basePrice = 0;
     if (item.item_type === 'servicio') {
-      const basePrice = (item.unit_base_price || 0) * quantity;
+      basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
+      return ceilToTen(afterSalesVat); // Aplicar redondeo a cada item
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -123,7 +124,7 @@ export function OrderServicesList({
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      return afterSalesVat;
+      return ceilToTen(afterSalesVat); // Aplicar redondeo a cada item
     }
   };
 

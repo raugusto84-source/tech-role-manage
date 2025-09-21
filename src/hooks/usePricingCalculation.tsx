@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSalesPricingCalculation } from './useSalesPricingCalculation';
+import { ceilToTen } from '@/utils/currency';
 
 interface OrderItem {
   subtotal: number;
@@ -67,17 +68,30 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     };
 
     const quantity = item.quantity || 1;
-    const totalPrice = getSalesPrice(serviceForPricing, quantity);
-    
-    // Calculate VAT component - don't apply ceiling rounding here
     const salesVatRate = item.vat_rate ?? 16;
-    const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
-    const vatAmount = totalPrice - subtotalWithoutVat;
+    
+    let totalPrice = 0;
+    if (item.item_type === 'servicio') {
+      const basePrice = (item.base_price || 0) * quantity;
+      totalPrice = basePrice * (1 + salesVatRate / 100);
+    } else {
+      const purchaseVatRate = 16;
+      const baseCost = (item.cost_price || 0) * quantity;
+      const profitMargin = item.profit_margin_rate || 20;
+      const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
+      const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
+      totalPrice = afterMargin * (1 + salesVatRate / 100);
+    }
+    
+    // Aplicar redondeo a cada item individualmente
+    const roundedTotal = ceilToTen(totalPrice);
+    const subtotalWithoutVat = roundedTotal / (1 + salesVatRate / 100);
+    const vatAmount = roundedTotal - subtotalWithoutVat;
     
     return {
       subtotal: subtotalWithoutVat,
       vat_amount: vatAmount,
-      total: totalPrice
+      total: roundedTotal
     };
   };
 

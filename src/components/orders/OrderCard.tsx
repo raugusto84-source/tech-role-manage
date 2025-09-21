@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // Removed cashback-related imports - cashback system eliminated
-import { formatMXNExact, formatMXNInt } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
@@ -248,12 +248,11 @@ export function OrderCard({
                     usingEstimated,
                     estimatedCost: order.estimated_cost,
                     totalAmount,
-                    formattedEstimated: usingEstimated ? formatMXNExact(order.estimated_cost!) : 'N/A',
+                    formattedEstimated: usingEstimated ? formatCOPCeilToTen(order.estimated_cost!) : 'N/A',
                     formattedTotal: formatMXNInt(totalAmount)
                   });
                   
-                  return usingEstimated ? formatMXNExact(order.estimated_cost!) 
-                    : formatMXNInt(totalAmount);
+                  return formatCOPCeilToTen(totalAmount);
                 })()}
               </div>
             )}

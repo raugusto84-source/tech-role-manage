@@ -290,10 +290,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
 
+    let basePrice = 0;
     if (item.item_type === 'servicio') {
-      const basePrice = (item.unit_base_price || 0) * quantity;
+      basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
+      return ceilToTen(afterSalesVat); // Aplicar redondeo a cada item
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -301,7 +302,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      return afterSalesVat;
+      return ceilToTen(afterSalesVat); // Aplicar redondeo a cada item
     }
   };
 
@@ -318,20 +319,12 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Para órdenes pendientes de aprobación/actualización, SIEMPRE sumar items actuales (sin redondeo)
-      if (isPending) {
-        return orderItems.reduce((sum, item) => {
-          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-          if (hasStoredTotal) return sum + Number(item.total_amount);
-          return sum + calculateItemDisplayPrice(item);
-        }, 0);
-      }
-      
-      // Para otras órdenes, usar lógica normal con redondeo por item
+      // Sumar items individuales ya redondeados
       return orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
         if (hasStoredTotal) return sum + Number(item.total_amount);
-        return sum + ceilToTen(calculateItemDisplayPrice(item));
+        // Cada item ya viene redondeado de calculateItemDisplayPrice
+        return sum + calculateItemDisplayPrice(item);
       }, 0);
     }
     
@@ -450,9 +443,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     {itemsLoading ? (
                       <Skeleton className="h-4 w-16 rounded" />
                     ) : (
-                      (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
-                        ? formatMXNExact(totalAmount)
-                        : formatCOPCeilToTen(totalAmount)
+                       formatCOPCeilToTen(totalAmount)
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -577,11 +568,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                             {itemsLoading ? (
                               <Skeleton className="h-6 w-24 rounded" />
                             ) : (
-                              <span className="text-lg font-bold text-primary">
-                                {(orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
-                                  ? formatMXNExact(totalAmount)
-                                  : formatCOPCeilToTen(totalAmount)}
-                              </span>
+                               <span className="text-lg font-bold text-primary">
+                                 {formatCOPCeilToTen(totalAmount)}
+                               </span>
                             )}
                         </div>
                       </div>

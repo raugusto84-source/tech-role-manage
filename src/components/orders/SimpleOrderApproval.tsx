@@ -7,7 +7,7 @@ import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTria
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 // Removed useRewardSettings import - cashback system eliminated
-import { ceilToTen, formatMXNInt, formatMXNExact } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -585,17 +585,17 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <span className="font-medium">{formatMXNExact(subtotal)}</span>
+                      <span className="font-medium">{formatCOPCeilToTen(subtotal)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">IVA Total:</span>
-                      <span className="font-medium">{formatMXNExact(vatTotal)}</span>
+                      <span className="font-medium">{formatCOPCeilToTen(vatTotal)}</span>
                     </div>
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatMXNExact(finalTotal)}
+                          {formatCOPCeilToTen(finalTotal)}
                         </span>
                       </div>
                     </div>
