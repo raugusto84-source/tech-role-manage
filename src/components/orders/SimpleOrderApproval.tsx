@@ -121,9 +121,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
         // Item tiene total_amount guardado (viene de cotización) - usar EXACTAMENTE este valor
         finalItemTotal = item.total_amount;
       } else {
-        // Item calculado dinámicamente - aplicar lógica normal con redondeo
+        // Item calculado dinámicamente - SIN redondeo en aprobación
         const itemTotal = calculateItemCorrectPrice(item);
-        finalItemTotal = ceilToTen(itemTotal);
+        finalItemTotal = itemTotal;
       }
       
       // Calcular subtotal y IVA para cada item
