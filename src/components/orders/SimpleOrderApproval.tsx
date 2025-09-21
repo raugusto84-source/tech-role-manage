@@ -125,7 +125,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   // Preferir SIEMPRE el total guardado del item; NO recalcular precios de cotización
-  const getItemStoredTotal = (item: any): number => {
+  const getItemDisplayPrice = (item: any): number => {
     // Para servicios y productos: SIEMPRE usar total_amount guardado (precio fijo de cotización)
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
       return Number(item.total_amount);
@@ -135,24 +135,28 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const calculateTotals = () => {
-    // Sumar usando SIEMPRE el total guardado cuando exista (sin modificar precios)
+    // Calcular subtotal (base sin IVA) e IVA por separado para mostrar formato de cotización
     let subtotalSum = 0;
     let vatSum = 0;
 
-    const total = orderItems.reduce((sum, item) => {
-      const finalItemTotal = getItemStoredTotal(item);
+    orderItems.forEach((item) => {
+      const displayPrice = getItemDisplayPrice(item);
       const salesVatRate = item.vat_rate ?? 16;
-      const itemSubtotal = finalItemTotal / (1 + salesVatRate / 100);
-      const itemVat = finalItemTotal - itemSubtotal;
+      
+      // Extraer el subtotal base (sin IVA) del precio de display
+      const itemSubtotal = displayPrice / (1 + salesVatRate / 100);
+      const itemVat = displayPrice - itemSubtotal;
+      
       subtotalSum += itemSubtotal;
       vatSum += itemVat;
-      return sum + finalItemTotal;
-    }, 0);
+    });
+
+    const totalBeforeCashback = subtotalSum + vatSum;
 
     return {
       subtotal: subtotalSum,
       vatTotal: vatSum,
-      total,
+      total: totalBeforeCashback,
     };
   };
 
@@ -566,9 +570,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                               )}
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <p className="font-bold text-foreground">
-                                {formatMXNInt(getItemStoredTotal(item))}
-                              </p>
+                               <p className="font-bold text-foreground">
+                                 {formatMXNInt(getItemDisplayPrice(item))}
+                               </p>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
@@ -610,12 +614,12 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <span className="font-medium">{formatMXNExact(vatTotal)}</span>
                     </div>
                     {/* Cashback line always visible, shows 0 cuando no aplica */}
-                    <div className="flex justify-between items-center text-sm">
-                      <span className={cashbackValue > 0 ? "text-orange-600" : "text-muted-foreground"}>- Cashback:</span>
-                      <span className={cashbackValue > 0 ? "font-medium text-orange-600" : "font-medium text-muted-foreground"}>
-                        -{formatMXNExact(cashbackValue)}
-                      </span>
-                    </div>
+                     <div className="flex justify-between items-center text-sm">
+                       <span className={cashbackValue > 0 ? "text-red-600" : "text-muted-foreground"}>- Cashback:</span>
+                       <span className={cashbackValue > 0 ? "font-medium text-red-600" : "font-medium text-muted-foreground"}>
+                         -{formatMXNExact(cashbackValue)}
+                       </span>
+                     </div>
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
