@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
+import { OrderProgressBar } from './OrderProgressBar';
 
 interface SimpleOrderCardProps {
   order: {
@@ -277,6 +278,11 @@ export function SimpleOrderCard({
           <p className="text-sm text-muted-foreground line-clamp-2">
             {order.failure_description}
           </p>
+        </div>
+
+        {/* Barra de progreso */}
+        <div className="pt-2">
+          <OrderProgressBar status={order.status} showLabels={true} />
         </div>
 
         {/* Total con IVA y estado de pagos */}

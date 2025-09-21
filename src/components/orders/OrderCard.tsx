@@ -14,6 +14,7 @@ import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
+import { OrderProgressBar } from './OrderProgressBar';
 interface OrderCardProps {
   order: {
     id: string;
@@ -267,6 +268,11 @@ export function OrderCard({
               {order.failure_description}
             </p>
           </div>
+        </div>
+
+        {/* Barra de progreso */}
+        <div className="mt-1">
+          <OrderProgressBar status={order.status} />
         </div>
 
         {/* Total con IVA y estado de pagos */}
