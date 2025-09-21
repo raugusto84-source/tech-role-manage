@@ -38,13 +38,7 @@ export const formatMXNExact = (amount: number): string => {
   }).format(amount);
 };
 
-// Format cashback without rounding - for reward amounts
+// Format cashback - REMOVED: cashback system eliminated
 export const formatMXNCashback = (amount: number): string => {
-  if (!isFinite(amount)) return '$0.00';
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
+  return formatMXNExact(0); // Always return 0 since cashback is eliminated
 };

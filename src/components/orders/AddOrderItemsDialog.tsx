@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Minus, ShoppingCart, CheckCircle2, Search, Shield, Monitor, Package, X } from 'lucide-react';
 interface AddOrderItemsDialogProps {
@@ -56,9 +56,6 @@ export function AddOrderItemsDialog({
   const {
     toast
   } = useToast();
-  const {
-    settings: rewardSettings
-  } = useRewardSettings();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [newItems, setNewItems] = useState<NewItem[]>([]);
@@ -105,23 +102,20 @@ export function AddOrderItemsDialog({
   };
 
   // Usar la misma lógica de cálculo de precios que en ventas
+  // Simplified price calculation without cashback
   const calculateDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
     const salesVatRate = service.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? rewardSettings.general_cashback_percent || 0 : 0;
+
     if (service.item_type === 'servicio') {
       const basePrice = (service.base_price || 0) * quantity;
-      const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return Math.ceil(finalWithCashback / 10) * 10; // Redondear hacia arriba a decenas
+      return basePrice * (1 + salesVatRate / 100);
     } else {
       const purchaseVatRate = 16;
       const baseCost = (service.cost_price || 0) * quantity;
-      const marginPercent = service.profit_margin_tiers && service.profit_margin_tiers.length > 0 ? service.profit_margin_tiers[0].margin || 30 : 30;
+      const marginPercent = service.profit_margin_tiers?.[0]?.margin || 30;
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-      const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return Math.ceil(finalWithCashback / 10) * 10; // Redondear hacia arriba a decenas
+      return afterMargin * (1 + salesVatRate / 100);
     }
   };
 

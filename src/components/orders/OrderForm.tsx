@@ -24,7 +24,7 @@ import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTi
 import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
 import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
-import { CashbackApplicationDialog } from './CashbackApplicationDialog';
+// Removed CashbackApplicationDialog import - cashback system eliminated
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
 import { formatCOPCeilToTen } from '@/utils/currency';

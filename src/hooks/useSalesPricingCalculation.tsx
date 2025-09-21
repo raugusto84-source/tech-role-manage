@@ -1,4 +1,3 @@
-import { useRewardSettings } from './useRewardSettings';
 import { ceilToTen } from '@/utils/currency';
 
 interface ServiceType {
@@ -22,8 +21,6 @@ interface ServiceType {
 }
 
 export function useSalesPricingCalculation() {
-  const { settings: rewardSettings } = useRewardSettings();
-
   // Helper function to determine if item is a product
   const isProduct = (service: ServiceType): boolean => {
     const hasTiers = Array.isArray(service.profit_margin_tiers) && service.profit_margin_tiers.length > 0;
@@ -42,31 +39,17 @@ export function useSalesPricingCalculation() {
     return 30; // Default margin
   };
 
-  // Main pricing calculation function - matches Sales.tsx exactly
+  // Main pricing calculation function - simplified without cashback
   const getDisplayPrice = (service: ServiceType, quantity: number = 1): number => {
     const salesVatRate = service.vat_rate ?? 16; // Use ?? to preserve 0% VAT
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-
-    console.log(`Calculando precio para ${service.name}:`, {
-      salesVatRate,
-      cashbackPercent,
-      apply_cashback_to_items: rewardSettings?.apply_cashback_to_items,
-      general_cashback_percent: rewardSettings?.general_cashback_percent,
-      quantity
-    });
 
     if (!isProduct(service)) {
-      // Para servicios: precio base + IVA + cashback
+      // Para servicios: precio base + IVA
       const basePrice = (service.base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      
-      console.log(`Servicio ${service.name}: base=${basePrice}, afterVAT=${afterSalesVat}, final=${finalWithCashback}`);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para artículos: costo base + IVA compra + margen + IVA venta
       const purchaseVatRate = 16; // IVA de compra fijo 16%
       const baseCost = (service.cost_price || 0) * quantity;
       const profitMargin = marginFromTiers(service); // Usar margen real del producto
@@ -74,22 +57,12 @@ export function useSalesPricingCalculation() {
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      console.log(`Producto ${service.name}:`, {
-        baseCost,
-        afterPurchaseVat,
-        profitMargin,
-        afterMargin,
-        afterSalesVat,
-        cashbackPercent,
-        finalWithCashback
-      });
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 
-  // Format currency using the same logic as Sales.tsx
+  // Format currency
   const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -103,7 +76,6 @@ export function useSalesPricingCalculation() {
     getDisplayPrice,
     formatCurrency,
     isProduct,
-    marginFromTiers,
-    rewardSettings
+    marginFromTiers
   };
 }

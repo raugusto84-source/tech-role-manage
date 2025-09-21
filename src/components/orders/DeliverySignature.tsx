@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenTool, CheckCircle2, ArrowLeft, X } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { triggerOrderFollowUp } from '@/utils/followUp';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { ceilToTen } from '@/utils/currency';
 interface DeliverySignatureProps {
   order: {
@@ -25,7 +25,7 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
   const { toast } = useToast();
   const signatureRef = useRef<SignatureCanvas>(null);
   const [loading, setLoading] = useState(false);
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed rewardSettings - cashback system eliminated
 
   const clearSignature = () => {
     signatureRef.current?.clear();
@@ -115,21 +115,14 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
         console.error('⚠️ Error getting order details:', orderDetailsError);
       } else if (orderDetails) {
         console.log('✅ Detalles de orden obtenidos, generando cobranza...');
-        // Calcular totales (incluyendo cashback si aplica)
-        const cashbackPercent = rewardSettings?.apply_cashback_to_items
-          ? (rewardSettings.general_cashback_percent || 0)
-          : 0;
-
         const items = orderDetails.order_items || [];
         let totalAmount = 0;
         let vatAmount = 0;
 
         if (items.length > 0) {
-          // Sumar como se muestra en la UI: redondear cada ítem a 10 primero
-          const itemsTotal = items.reduce((sum: number, item: any) => sum + ceilToTen(item.total_amount || 0), 0);
-          // Aplicar cashback sobre el total con IVA
-          totalAmount = itemsTotal * (1 + cashbackPercent / 100);
-          // Mantener IVA sumado de items (el cashback no es IVA)
+          // Sumar totales sin cashback
+          const itemsTotal = items.reduce((sum: number, item: any) => sum + (item.total_amount || 0), 0);
+          totalAmount = itemsTotal;
           vatAmount = items.reduce((sum: number, item: any) => sum + (item.vat_amount || 0), 0);
         } else {
           // Si no hay items, usar el estimado ya calculado

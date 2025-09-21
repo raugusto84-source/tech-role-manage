@@ -17,8 +17,7 @@ import { DeliverySignature } from './DeliverySignature';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { useOrderCashback } from '@/hooks/useOrderCashback';
+// Removed useRewardSettings and useOrderCashback imports - cashback system eliminated
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { formatCOPCeilToTen, ceilToTen, formatMXNExact } from '@/utils/currency';
 import { SignatureViewer } from './SignatureViewer';
@@ -67,9 +66,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { settings: rewardSettings } = useRewardSettings();
-  const { getDisplayPrice } = useSalesPricingCalculation();
-  const { cashback: orderCashback } = useOrderCashback(order.id);
+  // Removed rewardSettings and orderCashback - cashback system eliminated
   const [loading, setLoading] = useState(false);
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
@@ -294,13 +291,11 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     // Solo recalcular cuando NO hay total guardado (datos muy antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
 
     if (item.item_type === 'servicio') {
       const basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -308,8 +303,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 

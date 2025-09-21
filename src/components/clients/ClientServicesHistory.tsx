@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { formatMXNInt } from '@/utils/currency';
 import { Search, ShoppingCart, Calendar, DollarSign, User, Wrench, Eye } from 'lucide-react';
 
@@ -47,7 +47,7 @@ export function ClientServicesHistory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { toast } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed rewardSettings - cashback system eliminated
 
   useEffect(() => {
     loadOrders();
