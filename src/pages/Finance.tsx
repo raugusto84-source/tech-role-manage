@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { revertPaymentByIncomeId } from "@/utils/paymentRevert";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1227,38 +1228,23 @@ export default function Finance() {
   const handleRevertIncome = async (row: any) => {
     if (!isAdmin) return;
     try {
-      // First, check if this income is related to any order payments and remove them
-      // This will make the orders appear back in pending collections
-      const {
-        data: relatedPayments,
-        error: paymentsQueryError
-      } = await supabase.from('order_payments').select('id, order_id, order_number').eq('income_id', row.id);
-      if (paymentsQueryError) throw paymentsQueryError;
-
-      // Remove related order payments to return orders to pending collections
-      if (relatedPayments && relatedPayments.length > 0) {
-        const {
-          error: deletePaymentsError
-        } = await supabase.from('order_payments').delete().eq('income_id', row.id);
-        if (deletePaymentsError) throw deletePaymentsError;
+      const result = await revertPaymentByIncomeId(row.id);
+      
+      if (result.success) {
+        toast({
+          title: 'Ingreso revertido',
+          description: result.message
+        });
+        incomesQuery.refetch();
+        expensesQuery.refetch();
+        financialHistoryQuery.refetch();
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          variant: 'destructive'
+        });
       }
-
-      // Log the reversal operation before deleting
-      await logFinancialOperation('reverse', 'incomes', row.id, row, `Reverso de ingreso ${row.income_number || ''} - ${row.description || ''}`.trim(), row.amount, row.account_type, row.income_date);
-
-      // Delete the original income (no expense counterpart needed)
-      const {
-        error: delErr
-      } = await supabase.from('incomes').delete().eq('id', row.id);
-      if (delErr) throw delErr;
-      const orderNumbers = relatedPayments?.map(p => p.order_number).join(', ') || '';
-      toast({
-        title: 'Ingreso revertido',
-        description: relatedPayments && relatedPayments.length > 0 ? `Las órdenes ${orderNumbers} han sido revertidas` : undefined
-      });
-      incomesQuery.refetch();
-      expensesQuery.refetch();
-      financialHistoryQuery.refetch();
     } catch (e: any) {
       toast({
         title: 'Error',
@@ -1623,11 +1609,11 @@ export default function Finance() {
                            <TableCell>{r.category}</TableCell>
                            <TableCell>{r.payment_method}</TableCell>
                            <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {isAdmin && <>
-                                    
-                                    <AlertDialog>
+                             <TableCell>
+                               <div className="flex items-center gap-2">
+                                 {isAdmin && <>
+                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
                                           <X className="h-4 w-4" />

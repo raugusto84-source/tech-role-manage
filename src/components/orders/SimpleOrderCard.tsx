@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard } from 'lucide-react';
+import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard, RotateCcw } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatCOPCeilToTen, formatMXNExact, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
+import { PaymentRevertDialog } from './PaymentRevertDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
@@ -73,6 +74,7 @@ export function SimpleOrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showRevertDialog, setShowRevertDialog] = useState(false);
   // Removed useRewardSettings and useOrderCashback - cashback system eliminated
 
   const loadOrderItems = async () => {
@@ -343,7 +345,7 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
         {/* Botones de acción */}
         <div className="flex justify-between items-center gap-2 pt-2">
           <OrderModificationsBadge orderId={order.id} onChanged={loadOrderItems} />
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {showCollectButton && paymentSummary.remainingBalance > 0 && (
               <Button 
                 size="sm" 
@@ -357,6 +359,20 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
               >
                 <CreditCard className="h-4 w-4 mr-2" />
                 Cobrar
+              </Button>
+            )}
+            {paymentSummary.totalPaid > 0 && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                className="border-amber-600 text-amber-600 hover:bg-amber-50 font-semibold"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRevertDialog(true);
+                }}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Revertir
               </Button>
             )}
             <Button 
@@ -379,6 +395,14 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
         onOpenChange={setShowPaymentDialog}
         order={order}
         totalAmount={totalAmount}
+      />
+      
+      <PaymentRevertDialog
+        open={showRevertDialog}
+        onOpenChange={setShowRevertDialog}
+        orderId={order.id}
+        orderNumber={order.order_number}
+        onSuccess={loadOrderItems}
       />
     </Card>
   );
