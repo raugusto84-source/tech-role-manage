@@ -525,14 +525,18 @@ export default function ClientDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Cashback</p>
-                  <p className="text-lg font-bold text-yellow-700">
-                    {new Intl.NumberFormat('es-MX', {
-                      style: 'currency',
-                      currency: 'MXN',
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    }).format(rewards.totalCashback)}
-                  </p>
+                   <p className="text-lg font-bold text-yellow-700">
+                     {rewardsLoading ? (
+                       '$0.00'
+                     ) : (
+                       new Intl.NumberFormat('es-MX', {
+                         style: 'currency',
+                         currency: 'MXN',
+                         minimumFractionDigits: 2,
+                         maximumFractionDigits: 2
+                       }).format(rewards?.totalCashback || 0)
+                     )}
+                   </p>
                 </div>
               </div>
               <Button 
