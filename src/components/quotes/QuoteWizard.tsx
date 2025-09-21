@@ -549,7 +549,7 @@ export function QuoteWizard({
                   <div className="bg-white rounded-lg p-3 border border-green-200 mb-3">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-700 mb-1">
-                        {formatCurrency(calculateTotal() - cashbackAmount)}
+                        {formatCurrency(calculateTotal())}
                       </div>
                       <div className="text-xs text-green-600">
                         {quoteItems.length} servicio{quoteItems.length !== 1 ? 's' : ''} incluido{quoteItems.length !== 1 ? 's' : ''}

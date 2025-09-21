@@ -72,13 +72,7 @@ export default function Quotes() {
       
       let query = supabase
         .from('quotes')
-        .select(`
-          *,
-          quote_items (
-            unit_price,
-            quantity
-          )
-        `);
+        .select('*');
 
       // Filtrar por cliente si el usuario es un cliente
       if (profile?.role === 'cliente') {
@@ -97,19 +91,7 @@ export default function Quotes() {
         return;
       }
 
-      // Calculate actual totals from quote_items
-      const quotesWithActualTotals = (data || []).map(quote => {
-        const actualTotal = quote.quote_items?.reduce((sum: number, item: any) => {
-          return sum + (item.unit_price * item.quantity);
-        }, 0) || quote.estimated_amount || 0;
-        
-        return {
-          ...quote,
-          estimated_amount: actualTotal
-        };
-      });
-
-      setQuotes(quotesWithActualTotals);
+      setQuotes(data || []);
     } catch (error) {
       console.error('Unexpected error loading quotes:', error);
       toast({
