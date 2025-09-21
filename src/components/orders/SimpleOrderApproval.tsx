@@ -123,23 +123,21 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     return ceilToTen(gross);
   };
 
-  // Precio a mostrar como en la cotización: aplicar cashback por ítem (si está configurado) y redondear a múltiplos de 10
-  const getDisplayItemTotal = (item: any): number => {
-    const base = calculateItemCorrectPrice(item); // total con IVA, sin cashback
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
-    const withCashback = base * (cashbackPercent > 0 ? (1 + cashbackPercent / 100) : 1);
-    return ceilToTen(withCashback);
+  // Preferir SIEMPRE el total guardado del item; solo recalcular si no existe
+  const getItemStoredTotal = (item: any): number => {
+    if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+      return Number(item.total_amount);
+    }
+    return calculateItemCorrectPrice(item);
   };
 
   const calculateTotals = () => {
-    // Sumar SIEMPRE los ítems como se muestran (pre-cashback y con redondeo por ítem)
+    // Sumar usando SIEMPRE el total guardado cuando exista (sin modificar precios)
     let subtotalSum = 0;
     let vatSum = 0;
 
     const total = orderItems.reduce((sum, item) => {
-      const finalItemTotal = calculateItemCorrectPrice(item);
+      const finalItemTotal = getItemStoredTotal(item);
       const salesVatRate = item.vat_rate ?? 16;
       const itemSubtotal = finalItemTotal / (1 + salesVatRate / 100);
       const itemVat = finalItemTotal - itemSubtotal;
@@ -562,7 +560,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="font-bold text-foreground">
-                                {formatMXNInt(calculateItemCorrectPrice(item))}
+                                {formatMXNInt(getItemStoredTotal(item))}
                               </p>
                             </div>
                           </div>
