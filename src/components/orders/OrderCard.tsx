@@ -64,6 +64,8 @@ export function OrderCard({
 
   const loadOrderItems = async () => {
     setItemsLoading(true);
+    console.log('Loading order items for order:', order.id, order.order_number);
+    
     try {
       const {
         data,
@@ -78,6 +80,9 @@ export function OrderCard({
             pricing_locked,
             total_amount
           `).eq('order_id', order.id);
+      
+      console.log('Order items loaded:', { orderId: order.id, data, error });
+      
       if (error) throw error;
       setOrderItems(data || []);
     } catch (error) {
@@ -121,34 +126,60 @@ export function OrderCard({
 
   // Total de la tarjeta - usar totales guardados cuando existan
   const calculateCorrectTotal = () => {
+    console.log('OrderCard calculateCorrectTotal debug:', {
+      orderId: order.id,
+      orderNumber: order.order_number,
+      itemsLoading,
+      estimatedCost: order.estimated_cost,
+      orderItemsLength: orderItems?.length || 0,
+      orderItems: orderItems,
+      orderStatus: order.status
+    });
+
     if (itemsLoading) {
       return 0; // No mostrar nada mientras carga
     }
 
     // Preferir siempre el total estimado de la orden si existe (refleja descuentos globales)
     if (order.estimated_cost && order.estimated_cost > 0) {
+      console.log('Using order.estimated_cost:', order.estimated_cost);
       return order.estimated_cost;
     }
 
     if (orderItems && orderItems.length > 0) {
+      console.log('Calculating from order items:', orderItems);
+      
       // Para órdenes pendientes de aprobación, NO aplicar redondeo
       if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-        return orderItems.reduce((sum, item) => {
+        const total = orderItems.reduce((sum, item) => {
           const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+          console.log('Item calculation:', { item, hasStoredTotal, itemTotal: item.total_amount });
+          
           if (hasStoredTotal) return sum + Number(item.total_amount);
           // SIN redondeo para órdenes pendientes
-          return sum + calculateItemDisplayPrice(item);
+          const calculatedPrice = calculateItemDisplayPrice(item);
+          console.log('Calculated item price:', calculatedPrice);
+          return sum + calculatedPrice;
         }, 0);
+        console.log('Total calculated (pending orders):', total);
+        return total;
       }
 
       // Para otras órdenes, usar precios directos sin redondeo adicional
-      return orderItems.reduce((sum, item) => {
+      const total = orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+        console.log('Item calculation (other orders):', { item, hasStoredTotal, itemTotal: item.total_amount });
+        
         if (hasStoredTotal) return sum + Number(item.total_amount);
-        return sum + calculateItemDisplayPrice(item);
+        const calculatedPrice = calculateItemDisplayPrice(item);
+        console.log('Calculated item price (other orders):', calculatedPrice);
+        return sum + calculatedPrice;
       }, 0);
+      console.log('Total calculated (other orders):', total);
+      return total;
     }
 
+    console.log('No items found, returning 0');
     return 0;
   };
 
@@ -211,8 +242,19 @@ export function OrderCard({
               <Skeleton className="h-6 w-20" />
             ) : (
               <div className="text-lg font-bold text-primary">
-                {usingEstimated ? formatMXNExact(order.estimated_cost!) 
-                  : formatMXNInt(totalAmount)}
+                {(() => {
+                  console.log('OrderCard display total debug:', {
+                    orderId: order.id,
+                    usingEstimated,
+                    estimatedCost: order.estimated_cost,
+                    totalAmount,
+                    formattedEstimated: usingEstimated ? formatMXNExact(order.estimated_cost!) : 'N/A',
+                    formattedTotal: formatMXNInt(totalAmount)
+                  });
+                  
+                  return usingEstimated ? formatMXNExact(order.estimated_cost!) 
+                    : formatMXNInt(totalAmount);
+                })()}
               </div>
             )}
           </div>

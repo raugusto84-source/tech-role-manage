@@ -85,16 +85,30 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
   };
 
   const calculatePricing = async () => {
+    console.log('usePricingCalculation - calculatePricing called with:', {
+      orderItems: orderItems,
+      clientId: clientId,
+      orderItemsLength: orderItems.length
+    });
+
     let totalCostPrice = 0;
     let totalVATAmount = 0;
     let hasCashbackAdjustment = false;
     let isNewClient = false;
 
     // Calculate totals using correct pricing logic for each item
-    orderItems.forEach(item => {
+    orderItems.forEach((item, index) => {
+      console.log(`Processing item ${index}:`, item);
       const itemPricing = calculateItemCorrectPrice(item);
+      console.log(`Item ${index} pricing:`, itemPricing);
       totalCostPrice += itemPricing.subtotal;
       totalVATAmount += itemPricing.vat_amount;
+    });
+
+    console.log('Final pricing calculation:', {
+      totalCostPrice,
+      totalVATAmount,
+      totalAmount: totalCostPrice + totalVATAmount
     });
 
     // Check if client is new (removed cashback logic)
