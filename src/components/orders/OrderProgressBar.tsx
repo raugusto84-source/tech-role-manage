@@ -36,9 +36,15 @@ export function OrderProgressBar({ status, className = '', showLabels = false }:
           className="h-2 bg-muted"
         />
         <div 
-          className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-300 ${color}`}
+          className={`absolute top-0 left-0 h-2 rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${progress}%` }}
         />
+        {/* Mostrar porcentaje en el centro de la barra */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-xs font-semibold text-white drop-shadow-sm">
+            {progress}%
+          </span>
+        </div>
       </div>
       {showLabels && (
         <div className="flex justify-between text-xs text-muted-foreground">
@@ -46,7 +52,7 @@ export function OrderProgressBar({ status, className = '', showLabels = false }:
           <span className={`font-medium ${progress === 100 ? 'text-green-600' : 'text-primary'}`}>
             {label}
           </span>
-          <span>Entregado</span>
+          <span>Completado</span>
         </div>
       )}
     </div>
