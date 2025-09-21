@@ -158,11 +158,7 @@ export function OrderCard({
       }
     }
 
-    // Preferir siempre el total estimado de la orden si existe (refleja descuentos globales)
-    if (order.estimated_cost && order.estimated_cost > 0) {
-      console.log('Using order.estimated_cost:', order.estimated_cost);
-      return order.estimated_cost;
-    }
+    // Priorizar cálculo de items cuando estén disponibles
     if (orderItems && orderItems.length > 0) {
       console.log('Calculating from order items:', orderItems);
 
@@ -180,9 +176,16 @@ export function OrderCard({
         console.log('Calculated item price:', calculatedPrice);
         return sum + calculatedPrice;
       }, 0);
-      console.log('Total calculated:', total);
+      console.log('Total calculated from items:', total);
       return total;
     }
+
+    // Usar el total estimado solo cuando no hay items
+    if (order.estimated_cost && order.estimated_cost > 0) {
+      console.log('Using order.estimated_cost (fallback):', order.estimated_cost);
+      return order.estimated_cost;
+    }
+
     console.log('No items found, returning 0');
     return 0;
   };
