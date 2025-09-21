@@ -8,7 +8,7 @@ import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, ceilToTen, formatMXNCashback } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNExact, ceilToTen, formatMXNCashback } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
@@ -294,7 +294,10 @@ export function OrderCard({
             <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-1">
               {itemsLoading ? <Skeleton className="h-4 w-20 rounded" /> : <span className="text-sm font-bold text-primary">
-                  {formatCOPCeilToTen(ceilToTen(totalAmount))}
+                  {order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' 
+                    ? formatMXNExact(totalAmount)
+                    : formatCOPCeilToTen(ceilToTen(totalAmount))
+                  }
                 </span>}
             </div>
           </div>

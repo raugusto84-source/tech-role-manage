@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNExact, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
@@ -309,7 +309,10 @@ export function SimpleOrderCard({
                 <Skeleton className="h-6 w-24 rounded" />
               ) : (
                 <span className="text-xl font-bold text-primary">
-                  {formatCOPCeilToTen(totalAmount)}
+                  {order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion'
+                    ? formatMXNExact(totalAmount)
+                    : formatCOPCeilToTen(totalAmount)
+                  }
                 </span>
               )}
             </div>
