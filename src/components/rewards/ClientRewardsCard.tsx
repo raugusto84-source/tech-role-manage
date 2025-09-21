@@ -84,9 +84,9 @@ export function ClientRewardsCard() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'COP',
+      currency: 'MXN',
       minimumFractionDigits: 0
     }).format(amount);
   };
@@ -154,7 +154,7 @@ export function ClientRewardsCard() {
                   <div>
                     <p className="text-sm font-medium">{transaction.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(transaction.created_at).toLocaleDateString('es-CO')}
+                      {new Date(transaction.created_at).toLocaleDateString('es-MX')}
                     </p>
                   </div>
                   <div className="text-right">
@@ -168,7 +168,7 @@ export function ClientRewardsCard() {
                     </span>
                     {transaction.expires_at && (
                       <p className="text-xs text-muted-foreground">
-                        Exp: {new Date(transaction.expires_at).toLocaleDateString('es-CO')}
+                        Exp: {new Date(transaction.expires_at).toLocaleDateString('es-MX')}
                       </p>
                     )}
                   </div>

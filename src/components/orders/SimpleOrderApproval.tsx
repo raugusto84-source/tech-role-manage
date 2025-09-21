@@ -44,9 +44,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
   // Formateo exacto sin redondear a múltiplos de 10 (para mostrar cashback exacto)
   const formatCOPExact = (amount: number) =>
-    new Intl.NumberFormat('es-CO', {
+    new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'COP',
+      currency: 'MXN',
       minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
       maximumFractionDigits: 2,
     }).format(amount);

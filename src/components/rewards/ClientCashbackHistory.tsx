@@ -62,9 +62,9 @@ export function ClientCashbackHistory({
     }
   };
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'COP',
+      currency: 'MXN',
       minimumFractionDigits: 0
     }).format(amount);
   };

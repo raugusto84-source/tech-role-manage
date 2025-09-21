@@ -64,9 +64,9 @@ const isProduct = (service: Service) => {
   return hasTiers || service.item_type === 'articulo';
 };
 const marginFromTiers = (service: Service): number => service.profit_margin_tiers?.[0]?.margin ?? 30;
-const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-CO', {
+const formatCurrency = (amount: number): string => new Intl.NumberFormat('es-MX', {
   style: 'currency',
-  currency: 'COP',
+  currency: 'MXN',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0
 }).format(ceilToTen(amount));

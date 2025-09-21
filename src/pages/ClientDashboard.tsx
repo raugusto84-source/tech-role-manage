@@ -584,9 +584,9 @@ export default function ClientDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Cashback</p>
                   <p className="text-lg font-bold text-yellow-700">
-                    {new Intl.NumberFormat('es-CO', {
+                    {new Intl.NumberFormat('es-MX', {
                       style: 'currency',
-                      currency: 'COP',
+                      currency: 'MXN',
                       minimumFractionDigits: 0
                     }).format(rewards.totalCashback)}
                   </p>

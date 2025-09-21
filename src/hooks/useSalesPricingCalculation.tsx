@@ -91,9 +91,9 @@ export function useSalesPricingCalculation() {
 
   // Format currency using the same logic as Sales.tsx
   const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'COP',
+      currency: 'MXN',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(ceilToTen(amount));

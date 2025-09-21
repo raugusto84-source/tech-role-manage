@@ -222,9 +222,9 @@ export function ClientsList() {
   );
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'COP'
+      currency: 'MXN'
     }).format(amount);
   };
 
