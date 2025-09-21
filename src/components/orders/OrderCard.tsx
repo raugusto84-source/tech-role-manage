@@ -195,7 +195,7 @@ export function OrderCard({
   const {
     paymentSummary,
     loading: paymentsLoading
-  } = useOrderPayments(order.id, totalAmount);
+  } = useOrderPayments(order.id, ceilToTen(totalAmount));
   // Removed orderCashback - cashback system eliminated
 
   const formatDate = (dateString: string) => {
