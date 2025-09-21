@@ -318,7 +318,7 @@ export function OrderCard({
           setShowPaymentDialog(true);
         }}>
               <DollarSign className="h-4 w-4 mr-1" />
-              Cobrar {formatMXNInt(totalAmount)}
+              Cobrar {formatMXNInt(paymentSummary.remainingBalance)}
             </Button> : null;
       })()}
       </CardContent>
