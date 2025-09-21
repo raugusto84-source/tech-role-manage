@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
+import { useOrderCashback } from '@/hooks/useOrderCashback';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
 interface OrderCardProps {
@@ -164,6 +165,7 @@ export function OrderCard({
     paymentSummary,
     loading: paymentsLoading
   } = useOrderPayments(order.id, totalAmount);
+  const { cashback: orderCashback } = useOrderCashback(order.id);
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy', {
@@ -309,6 +311,16 @@ export function OrderCard({
                     {paymentSummary.isFullyPaid ? 'Pagado' : 'Pendiente'}
                   </span>
                 </div>}
+              
+              {/* Mostrar cashback ganado cuando la orden esté completamente pagada */}
+              {paymentSummary.isFullyPaid && paymentSummary.remainingBalance === 0 && orderCashback && (
+                <div className="flex justify-between items-center pt-1 border-t border-green-200 bg-green-50/50 -mx-2 px-2 rounded-sm">
+                  <span className="text-xs text-green-700 font-medium">💰 Cashback ganado:</span>
+                  <span className="text-xs font-bold text-green-700">
+                    {formatCOPCeilToTen(orderCashback.amount)}
+                  </span>
+                </div>
+              )}
             </div>}
           
           {/* Botón de cobrar para órdenes finalizadas */}

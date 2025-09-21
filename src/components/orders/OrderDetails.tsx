@@ -18,6 +18,8 @@ import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
+import { useOrderCashback } from '@/hooks/useOrderCashback';
+import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
@@ -67,6 +69,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const navigate = useNavigate();
   const { settings: rewardSettings } = useRewardSettings();
   const { getDisplayPrice } = useSalesPricingCalculation();
+  const { cashback: orderCashback } = useOrderCashback(order.id);
   const [loading, setLoading] = useState(false);
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
@@ -334,6 +337,10 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     const base = order.estimated_cost || 0;
     return ceilToTen(base * (1 + defaultVatRate / 100));
   };
+  
+  // Calculate payment summary after total calculation
+  const totalAmount = calculateCorrectTotal();
+  const { paymentSummary } = useOrderPayments(order.id, totalAmount);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-warning/10 text-warning border-warning/20';
@@ -447,6 +454,34 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                   <div className="text-xs text-muted-foreground">
                     {getEstimatedHours()}h est.
                   </div>
+                  
+                  {/* Payment summary when payments exist */}
+                  {paymentSummary.paymentCount > 0 && (
+                    <div className="text-xs space-y-1 mt-2 border-t border-border pt-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Cobrado:</span>
+                        <span className={paymentSummary.isFullyPaid ? 'text-green-600 font-medium' : 'text-orange-600 font-medium'}>
+                          {formatCOPCeilToTen(paymentSummary.totalPaid)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Restante:</span>
+                        <span className={paymentSummary.isFullyPaid ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                          {formatCOPCeilToTen(paymentSummary.remainingBalance)}
+                        </span>
+                      </div>
+                      
+                      {/* Show earned cashback when fully paid */}
+                      {paymentSummary.isFullyPaid && paymentSummary.remainingBalance === 0 && orderCashback && (
+                        <div className="flex justify-between pt-1 border-t border-green-200 bg-green-50 -mx-2 px-2 py-1 rounded-sm">
+                          <span className="text-green-700 font-medium">💰 Cashback ganado:</span>
+                          <span className="font-bold text-green-700">
+                            {formatCOPCeilToTen(orderCashback.amount)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
