@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, formatMXNExact, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNExact, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
@@ -137,45 +137,40 @@ export function SimpleOrderCard({
     }
   };
 
-  // Total con IVA - usar totales guardados cuando existan
-  const calculateCorrectTotal = () => {
-    if (itemsLoading) {
-      return 0;
-    }
-    
-    if (orderItems && orderItems.length > 0) {
-      // Para órdenes pendientes de aprobación, NO aplicar redondeo
-      if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-        return orderItems.reduce((sum, item) => {
-          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-          if (hasStoredTotal) return sum + Number(item.total_amount);
-          // SIN redondeo para órdenes pendientes
-          return sum + calculateItemDisplayPrice(item);
-        }, 0);
-      }
-      
-      // Para otras órdenes, usar lógica normal con redondeo por item
+// Total con IVA - usar totales guardados cuando existan
+const calculateCorrectTotal = () => {
+  if (itemsLoading) return 0;
+
+  // Preferir siempre el total estimado de la orden si existe (refleja descuentos globales)
+  if (order.estimated_cost && order.estimated_cost > 0) {
+    return order.estimated_cost;
+  }
+  
+  if (orderItems && orderItems.length > 0) {
+    // Para órdenes pendientes de aprobación, NO aplicar redondeo
+    if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
       return orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
         if (hasStoredTotal) return sum + Number(item.total_amount);
-        return sum + ceilToTen(calculateItemDisplayPrice(item));
+        // SIN redondeo para órdenes pendientes
+        return sum + calculateItemDisplayPrice(item);
       }, 0);
     }
     
-    // Solo usar estimated_cost como último recurso si no hay items
-    // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
-    if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-      return order.estimated_cost || 0; // SIN redondeo para órdenes pendientes
-    }
-    // En otros casos, aplicar IVA por defecto
-    const defaultVatRate = 16;
-    const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100); // SIN redondeo en el total final
-  };
-
-// Calculate payments after total calculation
+    // Para otras órdenes, usar lógica normal con redondeo por item
+    return orderItems.reduce((sum, item) => {
+      const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+      if (hasStoredTotal) return sum + Number(item.total_amount);
+      return sum + ceilToTen(calculateItemDisplayPrice(item));
+    }, 0);
+  }
+  
+  // Si no hay items, usar el estimado (por compatibilidad)
+  return order.estimated_cost || 0;
+};
 const totalAmount = calculateCorrectTotal();
 const hasStoredTotals = (orderItems?.some((i) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
+const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
 const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
 const { cashback } = useOrderCashback(order.id);
 
@@ -310,9 +305,11 @@ const { cashback } = useOrderCashback(order.id);
                 <Skeleton className="h-6 w-24 rounded" />
               ) : (
                 <span className="text-xl font-bold text-primary">
-                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || hasStoredTotals)
+                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion')
                     ? formatMXNExact(totalAmount)
-                    : formatCOPCeilToTen(totalAmount)
+                    : (usingEstimated || hasStoredTotals)
+                      ? formatMXNInt(totalAmount)
+                      : formatCOPCeilToTen(totalAmount)
                   }
                 </span>
               )}

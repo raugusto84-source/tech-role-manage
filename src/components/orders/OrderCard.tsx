@@ -8,7 +8,7 @@ import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, formatMXNExact, ceilToTen, formatMXNCashback } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNExact, formatMXNInt, ceilToTen, formatMXNCashback } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
@@ -134,44 +134,44 @@ export function OrderCard({
     }
   };
 
-  // Total de la tarjeta - usar totales guardados cuando existan
-  const calculateCorrectTotal = () => {
-    if (itemsLoading) {
-      return 0; // No mostrar nada mientras carga
-    }
-    if (orderItems && orderItems.length > 0) {
-      // Para órdenes pendientes de aprobación, NO aplicar redondeo
-      if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-        return orderItems.reduce((sum, item) => {
-          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-          if (hasStoredTotal) return sum + Number(item.total_amount);
-          // SIN redondeo para órdenes pendientes
-          return sum + calculateItemDisplayPrice(item);
-        }, 0);
-      }
-      
-      // Para otras órdenes, usar lógica normal con redondeo por item
+// Total de la tarjeta - usar totales guardados cuando existan
+const calculateCorrectTotal = () => {
+  if (itemsLoading) {
+    return 0; // No mostrar nada mientras carga
+  }
+
+  // Preferir siempre el total estimado de la orden si existe (refleja descuentos globales)
+  if (order.estimated_cost && order.estimated_cost > 0) {
+    return order.estimated_cost;
+  }
+
+  if (orderItems && orderItems.length > 0) {
+    // Para órdenes pendientes de aprobación, NO aplicar redondeo
+    if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
       return orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
         if (hasStoredTotal) return sum + Number(item.total_amount);
-        return sum + ceilToTen(calculateItemDisplayPrice(item));
+        // SIN redondeo para órdenes pendientes
+        return sum + calculateItemDisplayPrice(item);
       }, 0);
     }
+    
+    // Para otras órdenes, usar lógica normal con redondeo por item
+    return orderItems.reduce((sum, item) => {
+      const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+      if (hasStoredTotal) return sum + Number(item.total_amount);
+      return sum + ceilToTen(calculateItemDisplayPrice(item));
+    }, 0);
+  }
 
-    // Solo usar estimated_cost como último recurso si no hay items
-    // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
-    if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-      return order.estimated_cost || 0; // SIN redondeo para órdenes pendientes
-    }
-    // En otros casos, aplicar IVA por defecto
-    const defaultVatRate = 16;
-    const base = order.estimated_cost || 0;
-    return base * (1 + defaultVatRate / 100); // SIN redondeo en el total final
-  };
+  // Si no hay items, usar el estimado (por compatibilidad)
+  return order.estimated_cost || 0;
+};
 
 // Calculate payments after total calculation
 const totalAmount = calculateCorrectTotal();
 const hasStoredTotals = (orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
+const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
 const {
   paymentSummary,
   loading: paymentsLoading
@@ -295,9 +295,11 @@ const { cashback: orderCashback } = useOrderCashback(order.id);
             <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-1">
               {itemsLoading ? <Skeleton className="h-4 w-20 rounded" /> : <span className="text-sm font-bold text-primary">
-                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || hasStoredTotals)
+                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion')
                     ? formatMXNExact(totalAmount)
-                    : formatCOPCeilToTen(ceilToTen(totalAmount))
+                    : usingEstimated
+                      ? formatMXNInt(totalAmount)
+                      : formatCOPCeilToTen(ceilToTen(totalAmount))
                   }
                 </span>}
             </div>

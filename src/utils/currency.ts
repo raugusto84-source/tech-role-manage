@@ -16,6 +16,17 @@ export const formatCOPCeilToTen = (amount: number): string => {
   }).format(rounded);
 };
 
+// Format 0-decimal amount without business rounding (standard rounding)
+export const formatMXNInt = (amount: number): string => {
+  if (!isFinite(amount)) return '$0';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
 // Format exact amount without rounding - for precise totals
 export const formatMXNExact = (amount: number): string => {
   if (!isFinite(amount)) return '$0.00';

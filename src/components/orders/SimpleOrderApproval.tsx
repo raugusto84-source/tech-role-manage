@@ -82,19 +82,17 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
 
     // Determinar si es producto
     const isProduct = item.item_type === 'articulo' || item.item_type === 'producto';
 
     if (!isProduct) {
-      // Para servicios: precio base + IVA + cashback
+      // Para servicios: precio base + IVA (SIN aplicar cashback por ítem)
       const basePrice = (item.unit_base_price || item.base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
-      // Para productos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para productos: costo base + IVA compra + margen + IVA venta (SIN cashback por ítem)
       const purchaseVatRate = 16; // IVA de compra fijo 16%
       const baseCost = (item.unit_cost_price || item.cost_price || 0) * quantity;
       const profitMargin = item.profit_margin_rate || 30;
@@ -102,9 +100,8 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
       
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 
