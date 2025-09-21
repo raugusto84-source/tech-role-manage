@@ -27,6 +27,7 @@ export function ClientRewardsCard() {
   const { toast } = useToast();
   const [rewards, setRewards] = useState<ClientRewards | null>(null);
   const [transactions, setTransactions] = useState<RewardTransaction[]>([]);
+  const [availableCashback, setAvailableCashback] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -65,16 +66,24 @@ export function ClientRewardsCard() {
 
       setRewards(rewardsData);
 
-      // Get transaction history (exclude referral transactions)
+      // Get transaction history (exclude referral transactions in list, but compute full balance)
       const { data: transactionsData } = await supabase
         .from('reward_transactions')
-        .select('*')
+        .select('id, transaction_type, amount, description, created_at, expires_at')
         .eq('client_id', client.id)
-        .neq('transaction_type', 'referral_bonus')
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
 
-      setTransactions(transactionsData || []);
+      setTransactions((transactionsData || []).filter(t => t.transaction_type !== 'referral_bonus'));
+
+      // Calculate available cashback: earned/referrals (not expired) minus redeemed/used
+      const nowDate = new Date();
+      const earnedActive = (transactionsData || [])
+        .filter(t => (t.transaction_type === 'earned' || t.transaction_type === 'referral_bonus') && (!t.expires_at || new Date(t.expires_at) > nowDate))
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+      const redeemedSum = (transactionsData || [])
+        .filter(t => t.transaction_type === 'redeemed' || t.transaction_type === 'used')
+        .reduce((sum, t) => sum + Math.abs(t.amount || 0), 0);
+      setAvailableCashback(Math.max(0, earnedActive - redeemedSum));
 
     } catch (error) {
       console.error('Error loading rewards data:', error);
@@ -120,10 +129,9 @@ export function ClientRewardsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4 p-4">
-        {/* Cashback Balance */}
         <div className="text-center p-4 bg-gradient-to-br from-success/10 to-success/20 rounded-lg border border-success/30">
           <div className="text-2xl font-bold text-success mb-1">
-            {formatCurrency(rewards?.total_cashback || 0)}
+            {formatCurrency(availableCashback)}
           </div>
           <p className="text-xs text-success-foreground font-medium">Cashback disponible</p>
         </div>
