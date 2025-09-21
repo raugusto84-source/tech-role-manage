@@ -169,7 +169,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       )}
 
       {/* Cashback Earning Section */}
-      {(clientEmail || clientId) && rewardSettings?.general_cashback_percent && rewardSettings.general_cashback_percent > 0 && (
+      {(clientEmail || clientId) && rewardSettings?.general_cashback_percent && rewardSettings.general_cashback_percent > 0 && !applyCashback && (
         <div className="border-t pt-2">
           <div className="space-y-2">
             <div className="text-sm text-green-600 font-medium">
