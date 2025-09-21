@@ -124,11 +124,13 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     return ceilToTen(gross);
   };
 
-  // Preferir SIEMPRE el total guardado del item; solo recalcular si no existe
+  // Preferir SIEMPRE el total guardado del item; NO recalcular precios de cotización
   const getItemStoredTotal = (item: any): number => {
+    // Para servicios y productos: SIEMPRE usar total_amount guardado (precio fijo de cotización)
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
       return Number(item.total_amount);
     }
+    // Solo como fallback para datos muy antiguos
     return calculateItemCorrectPrice(item);
   };
 
@@ -156,7 +158,10 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
   const { subtotal, vatTotal, total } = calculateTotals();
   const cashbackValue = Number(cashbackAmount ?? 0) || 0;
-  const displayTotal = (order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total;
+  // Total final: usar estimated_cost si existe, sino calcular de items
+  const baseTotal = (order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total;
+  // Aplicar cashback al total final (no por item)
+  const finalTotal = cashbackApplied && cashbackValue > 0 ? baseTotal - cashbackValue : baseTotal;
 
   useEffect(() => {
     // Refrescar cashback desde la orden por si no vino en props
@@ -615,7 +620,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatMXNExact(displayTotal)}
+                          {formatMXNExact(finalTotal)}
                         </span>
                       </div>
                     </div>
