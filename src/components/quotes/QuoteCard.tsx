@@ -14,8 +14,6 @@ interface Quote {
   request_date: string;
   created_at: string;
   salesperson_name?: string;
-  cashback_applied?: boolean;
-  cashback_amount_used?: number;
 }
 
 interface QuoteCardProps {
@@ -82,11 +80,7 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
             <DollarSign className="h-3 w-3 text-green-600" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">
-                {quote.estimated_amount ? 
-                  (quote.cashback_applied ? 
-                    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quote.estimated_amount) 
-                    : formatCurrency(quote.estimated_amount)
-                  ) : 'Por definir'}
+                {quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'}
               </p>
             </div>
           </div>

@@ -285,32 +285,22 @@ export function QuoteWizard({
       // Process cashback transaction if cashback was applied
       if (cashbackApplied && cashbackAmount > 0 && selectedClient) {
         try {
-          // Check if transaction already exists for this quote to prevent duplicates
-          const { data: existingTransaction } = await supabase
-            .from('reward_transactions')
-            .select('id')
-            .eq('related_quote_id', quoteResult?.id)
-            .eq('transaction_type', 'redeemed')
-            .single();
-
-          if (!existingTransaction) {
+          const {
+            error: transactionError
+          } = await supabase.from('reward_transactions').insert({
+            client_id: selectedClient.id,
+            transaction_type: 'redeemed',
+            amount: -cashbackAmount,
+            description: `Cashback aplicado en cotización ${quoteResult?.id}`,
+            related_quote_id: quoteResult?.id
+          });
+          if (!transactionError) {
+            // Update client total cashback
             const {
-              error: transactionError
-            } = await supabase.from('reward_transactions').insert({
-              client_id: selectedClient.id,
-              transaction_type: 'redeemed',
-              amount: -cashbackAmount,
-              description: `Cashback aplicado en cotización ${quoteResult?.id}`,
-              related_quote_id: quoteResult?.id
-            });
-            if (!transactionError) {
-              // Update client total cashback
-              const {
-                error: updateError
-              } = await supabase.from('client_rewards').update({
-                total_cashback: Math.max(0, (await supabase.from('client_rewards').select('total_cashback').eq('client_id', selectedClient.id).single()).data?.total_cashback || 0) - cashbackAmount
-              }).eq('client_id', selectedClient.id);
-            }
+              error: updateError
+            } = await supabase.from('client_rewards').update({
+              total_cashback: Math.max(0, (await supabase.from('client_rewards').select('total_cashback').eq('client_id', selectedClient.id).single()).data?.total_cashback || 0) - cashbackAmount
+            }).eq('client_id', selectedClient.id);
           }
         } catch (error) {
           console.error('Error processing cashback transaction:', error);

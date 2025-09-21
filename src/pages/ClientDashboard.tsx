@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useClientRewards } from "@/hooks/useClientRewards";
 import { ClientCashbackHistory } from "@/components/rewards/ClientCashbackHistory";
 import { 
   Plus, 
@@ -27,7 +26,6 @@ import {
 } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
-import { Checkbox } from "@/components/ui/checkbox";
 
 // Tipos locales
 interface Order {
@@ -72,9 +70,11 @@ export default function ClientDashboard() {
   const [pendingUpdateOrders, setPendingUpdateOrders] = useState<Order[]>([]);
   const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
   const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
-  
-  // Use custom hook for rewards
-  const { rewards, loading: rewardsLoading } = useClientRewards(profile);
+  const [rewards, setRewards] = useState({
+    totalCashback: 0,
+    referralCode: "",
+    isNewClient: true
+  });
 
   // SEO y metadatos
   useEffect(() => {
@@ -133,6 +133,62 @@ export default function ClientDashboard() {
     } else {
       console.log('Pending approval quotes loaded:', data);
       setPendingApprovalQuotes(data || []);
+    }
+  };
+
+  const loadRewards = async () => {
+    if (!profile?.email) return;
+    try {
+      const { data: client } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile.email)
+        .single();
+      
+      if (!client) {
+        setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
+        return;
+      }
+
+      // Try to get existing rewards data
+      let { data: rewardsData, error: rewardsError } = await supabase
+        .from('client_rewards')
+        .select('*')
+        .eq('client_id', client.id)
+        .single();
+
+      // If no rewards record exists, create one
+      if (rewardsError && rewardsError.code === 'PGRST116') {
+        const { data: newRewardsData, error: createError } = await supabase
+          .from('client_rewards')
+          .insert({
+            client_id: client.id,
+            total_cashback: 0,
+            is_new_client: true,
+            new_client_discount_used: false
+          })
+          .select()
+          .single();
+
+        if (!createError) {
+          rewardsData = newRewardsData;
+        }
+      }
+
+      const { data: referralData } = await supabase
+        .from('client_referrals')
+        .select('referral_code')
+        .eq('referrer_client_id', client.id)
+        .single();
+
+      setRewards({
+        totalCashback: rewardsData?.total_cashback || 0,
+        referralCode: referralData?.referral_code || "",
+        isNewClient: rewardsData?.is_new_client || true
+      });
+    } catch (error) {
+      console.error('Error loading rewards:', error);
+      setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
     }
   };
 
@@ -252,7 +308,8 @@ export default function ClientDashboard() {
       await Promise.all([
         loadOrders(), 
         loadQuotes(), 
-        loadPendingApprovalQuotes()
+        loadPendingApprovalQuotes(),
+        loadRewards()
       ]);
       if (mounted) setLoading(false);
     })();
@@ -527,16 +584,12 @@ export default function ClientDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Cashback</p>
                   <p className="text-lg font-bold text-yellow-700">
-                    {rewardsLoading ? (
-                      '$0.00'
-                    ) : (
-                      new Intl.NumberFormat('es-MX', {
-                        style: 'currency',
-                        currency: 'MXN',
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      }).format(rewards?.totalCashback || 0)
-                    )}
+                    {new Intl.NumberFormat('es-MX', {
+                      style: 'currency',
+                      currency: 'MXN',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    }).format(rewards.totalCashback)}
                   </p>
                 </div>
               </div>

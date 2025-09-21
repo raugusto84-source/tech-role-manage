@@ -25,8 +25,6 @@ interface Quote {
   assigned_to?: string;
   created_at: string;
   salesperson_name?: string;
-  cashback_applied?: boolean;
-  cashback_amount_used?: number;
 }
 
 /**
@@ -74,11 +72,7 @@ export default function Quotes() {
       
       let query = supabase
         .from('quotes')
-        .select(`
-          *,
-          cashback_applied,
-          cashback_amount_used
-        `);
+        .select('*');
 
       // Filtrar por cliente si el usuario es un cliente
       if (profile?.role === 'cliente') {

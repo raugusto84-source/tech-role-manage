@@ -4038,9 +4038,7 @@ export type Database = {
       quotes: {
         Row: {
           account_type: Database["public"]["Enums"]["account_type"]
-          apply_cashback: boolean | null
           assigned_to: string | null
-          cashback_amount: number | null
           cashback_amount_used: number | null
           cashback_applied: boolean | null
           client_company: string | null
@@ -4068,9 +4066,7 @@ export type Database = {
         }
         Insert: {
           account_type?: Database["public"]["Enums"]["account_type"]
-          apply_cashback?: boolean | null
           assigned_to?: string | null
-          cashback_amount?: number | null
           cashback_amount_used?: number | null
           cashback_applied?: boolean | null
           client_company?: string | null
@@ -4098,9 +4094,7 @@ export type Database = {
         }
         Update: {
           account_type?: Database["public"]["Enums"]["account_type"]
-          apply_cashback?: boolean | null
           assigned_to?: string | null
-          cashback_amount?: number | null
           cashback_amount_used?: number | null
           cashback_applied?: boolean | null
           client_company?: string | null
