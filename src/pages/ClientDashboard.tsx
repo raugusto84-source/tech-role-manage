@@ -190,6 +190,14 @@ export default function ClientDashboard() {
       // Calcular saldo actual
       actualCashback = totalEarned - totalUsed;
 
+      console.log('Cashback calculation for client:', clientId, {
+        earnedTransactions: earnedTransactions?.length || 0,
+        totalEarned,
+        usedTransactions: usedTransactions?.length || 0,
+        totalUsed,
+        actualCashback
+      });
+
       // 4) Obtener/crear registro de client_rewards para otros datos
       let { data: rewardsData, error: rewardsError } = await supabase
         .from('client_rewards')
