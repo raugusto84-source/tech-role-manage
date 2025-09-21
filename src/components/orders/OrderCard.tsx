@@ -104,19 +104,15 @@ export function OrderCard({
     loadOrderItems();
   }, [order.id]);
 
-  // Calcula el precio correcto por item - MISMA LÓGICA QUE OrderDetails y SimpleOrderCard
+  // Calcula el precio correcto por item - preferir total guardado
   const calculateItemDisplayPrice = (item: any): number => {
-    // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
+    // Si existe total_amount en BD, es la fuente de verdad
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-    const isLocked = Boolean(item.pricing_locked);
-    const missingKeyData = (item.item_type === 'servicio')
-      ? (!item.unit_base_price || item.unit_base_price <= 0)
-      : (!item.unit_cost_price || item.unit_cost_price <= 0);
-
-    if (hasStoredTotal && (isLocked || missingKeyData)) {
+    if (hasStoredTotal) {
       return Number(item.total_amount);
     }
 
+    // Recalcular solo cuando no hay total guardado
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
@@ -144,18 +140,12 @@ export function OrderCard({
       return 0; // No mostrar nada mientras carga
     }
     if (orderItems && orderItems.length > 0) {
-      // Si TODOS los items están bloqueados (pricing_locked=true), sumar directamente sin redondear el total
-      const allItemsLocked = orderItems.every(item => Boolean(item.pricing_locked));
-      
-      if (allItemsLocked) {
-        // Para items con pricing_locked, usar totales exactos (ya incluyen descuentos aplicados)
-        return orderItems.reduce((sum, item) => {
-          return sum + (Number(item.total_amount) || calculateItemDisplayPrice(item));
-        }, 0); // SIN redondeo en el total final
-      }
-      
-      // Para items no bloqueados, redondear cada ítem individualmente y sumar
-      return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
+      // Preferir totales guardados por item; si no existen, redondear el item y sumar
+      return orderItems.reduce((sum, item) => {
+        const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+        if (hasStoredTotal) return sum + Number(item.total_amount);
+        return sum + ceilToTen(calculateItemDisplayPrice(item));
+      }, 0);
     }
 
     // Solo usar estimated_cost como último recurso si no hay items
@@ -359,6 +349,6 @@ export function OrderCard({
         </div>
       </CardContent>
       
-      <PaymentCollectionDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} order={order} totalAmount={ceilToTen(calculateCorrectTotal())} />
+      <PaymentCollectionDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} order={order} totalAmount={calculateCorrectTotal()} />
     </Card>;
 }
