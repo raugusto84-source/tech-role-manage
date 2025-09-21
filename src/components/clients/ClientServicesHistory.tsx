@@ -155,18 +155,15 @@ export function ClientServicesHistory() {
 
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
 
-  // Calcular total por ítem con la MISMA lógica que OrderCard/OrderDetails
+  // SIEMPRE usar precio guardado de cotización - NO recalcular nunca
   const calculateItemDisplayPrice = (item: OrderItem): number => {
-    const hasStoredTotal = typeof item.total_amount === 'number' && (item.total_amount || 0) > 0;
-    const isLocked = Boolean(item.pricing_locked);
-    const missingKeyData = (item.item_type === 'servicio')
-      ? (!item.unit_base_price || item.unit_base_price <= 0)
-      : (!item.unit_cost_price || item.unit_cost_price <= 0);
-
-    if (hasStoredTotal && (isLocked || missingKeyData)) {
+    // Si existe total_amount en BD, es la fuente de verdad SIEMPRE
+    const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+    if (hasStoredTotal) {
       return Number(item.total_amount);
     }
 
+    // Solo recalcular cuando NO hay total guardado (datos muy antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = (item.vat_rate ?? 16);
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;

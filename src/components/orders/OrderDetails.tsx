@@ -283,14 +283,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     return totalHours > 0 ? totalHours : (order.average_service_time || 4);
   };
 
-  // Calcula el precio correcto por item - preferir total guardado
+  // SIEMPRE usar precio guardado de cotización - NO recalcular nunca
   const calculateItemDisplayPrice = (item: any): number => {
-    // Si existe total_amount en BD, es la fuente de verdad
+    // Si existe total_amount en BD, es la fuente de verdad SIEMPRE
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
     if (hasStoredTotal) {
       return Number(item.total_amount);
     }
 
+    // Solo recalcular cuando NO hay total guardado (datos muy antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
