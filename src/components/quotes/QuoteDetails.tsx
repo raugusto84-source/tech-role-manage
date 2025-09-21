@@ -831,7 +831,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         htmlFor="apply-cashback" 
                         className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                       >
-                        Ganarás cashback con esta cotización
+                        Usar cashback
                       </label>
                     </div>
                     
