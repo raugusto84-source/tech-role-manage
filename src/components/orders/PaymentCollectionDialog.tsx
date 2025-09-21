@@ -244,21 +244,22 @@ export function PaymentCollectionDialog({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="amount">Monto a cobrar</Label>
+            <Label htmlFor="amount">Monto a cobrar (Restante: {formatCOPCeilToTen(paymentSummary.remainingBalance)})</Label>
             <Input
               id="amount"
               type="number"
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00"
+              placeholder={paymentSummary.remainingBalance.toString()}
               required
+              className="text-lg font-semibold"
             />
             <div className="text-sm text-muted-foreground space-y-1">
-              <p>Restante por cobrar: {formatCOPCeilToTen(paymentSummary.remainingBalance)}</p>
               {paymentSummary.totalPaid > 0 && (
                 <p>Ya cobrado: {formatCOPCeilToTen(paymentSummary.totalPaid)}</p>
               )}
+              <p className="text-green-600 font-medium">Monto restante por cobrar: {formatCOPCeilToTen(paymentSummary.remainingBalance)}</p>
               
               {/* Mostrar cálculo de retención ISR */}
               {accountType === 'fiscal' && hasISRWithholding && amount && !isNaN(parseFloat(amount)) && (
