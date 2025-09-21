@@ -562,8 +562,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   const { subtotal, totalVat, totalWithholdings, total } = calculateTotals();
   
-  // Calculate final total (no more cashback discount)
-  const finalTotal = total;
+  // Calculate final total with optional cashback discount (no rounding when applied)
+  const finalTotal = applyCashback ? total - cashbackAmount : total;
 
   const canManageQuotes = profile?.role === 'administrador' || profile?.role === 'vendedor';
   const StatusIcon = getStatusIcon(quote.status);
@@ -715,7 +715,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                           <span>Total:</span>
-                          <span>{formatCurrency(finalTotal)}</span>
+                          <span>{applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(finalTotal)}</span>
                         </div>
                       </div>
                     </div>
@@ -769,8 +769,11 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                 <div className="flex-1">
                   <p className="text-sm font-medium">Valor Total</p>
                   <p className="text-xl font-bold text-green-600">
-                    {total > 0 ? formatCurrency(total) : 
-                     quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'}
+                    {total > 0
+                      ? (applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(finalTotal))
+                      : quote.estimated_amount
+                        ? (applyCashback ? formatCashbackExact(quote.estimated_amount) : formatCurrency(quote.estimated_amount))
+                        : 'Por definir'}
                   </p>
                 </div>
               </div>
