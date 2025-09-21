@@ -15,3 +15,14 @@ export const formatCOPCeilToTen = (amount: number): string => {
     maximumFractionDigits: 0,
   }).format(rounded);
 };
+
+// Format cashback without rounding - for reward amounts
+export const formatMXNCashback = (amount: number): string => {
+  if (!isFinite(amount)) return '$0.00';
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
