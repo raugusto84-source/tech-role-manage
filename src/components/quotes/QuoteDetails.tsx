@@ -451,15 +451,11 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     try {
       setLoading(true);
       
-      const cashbackAmountToUse = checked ? Math.min(availableCashback, total) : 0;
-      
-      // Only update the quote with cashback information - NO CLIENT BALANCE CHANGES YET
+      // Only update the quote with total amount
       const { error } = await supabase
         .from('quotes')
         .update({
-          cashback_applied: checked,
-          cashback_amount_used: cashbackAmountToUse,
-          estimated_amount: total - cashbackAmountToUse
+          estimated_amount: total
         })
         .eq('id', quote.id);
 
@@ -472,21 +468,11 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         return;
       }
 
-      // Update local state only (no client balance changes yet)
-      setApplyCashback(checked);
-      setCashbackAmount(cashbackAmountToUse);
-      
-      if (checked && cashbackAmountToUse > 0) {
-        toast({
-          title: "Cashback marcado para aplicar",
-          description: `Descuento de ${formatCashbackExact(cashbackAmountToUse)} se aplicará cuando la cotización sea aceptada`,
-        });
-      } else {
-        toast({
-          title: "Cashback removido",
-          description: "El descuento ha sido removido de la cotización",
-        });
-      }
+      // Update local state
+      toast({
+        title: "Cotización actualizada",
+        description: "Los cambios han sido guardados correctamente"
+      });
 
     } catch (error) {
       console.error('Error handling cashback toggle:', error);

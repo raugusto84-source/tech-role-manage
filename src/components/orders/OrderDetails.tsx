@@ -44,8 +44,6 @@ interface OrderDetailsProps {
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
-    cashback_applied?: boolean;
-    cashback_amount_used?: number;
     service_types?: {
       name: string;
       description?: string;
@@ -593,12 +591,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                 </div>
               )}
               
-              {/* Cashback aplicado */}
-              {order.cashback_applied && order.cashback_amount_used && (
-                <div className="mt-3 p-2 bg-success/10 border border-success/20 rounded text-xs text-success">
-                  Descuento: -{formatCOPCeilToTen(order.cashback_amount_used)}
-                </div>
-              )}
             </CardContent>
           </Card>
 

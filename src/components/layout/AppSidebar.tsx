@@ -65,7 +65,6 @@ export function AppSidebar() {
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
           { title: 'Clientes', url: '/clientes', icon: UserCheck },
-          { title: 'Recompensas', url: '/recompensas', icon: Gift },
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
@@ -81,7 +80,6 @@ export function AppSidebar() {
       case 'vendedor':
         return [
           ...commonItems,
-          { title: 'Recompensas', url: '/recompensas', icon: Gift },
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
@@ -92,7 +90,7 @@ export function AppSidebar() {
         return [
           ...commonItems,
           { title: 'Usuarios', url: '/users', icon: Users },
-          { title: 'Recompensas', url: '/recompensas', icon: Gift },
+          
           { title: 'Pólizas', url: '/polizas', icon: Shield },
           { title: 'Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
@@ -113,7 +111,7 @@ export function AppSidebar() {
           { title: 'Panel Cliente', url: '/client', icon: Home },
           { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
           { title: 'Mis Cotizaciones', url: '/quotes', icon: FileText },
-          { title: 'Mis Recompensas', url: '/recompensas', icon: Gift },
+          
         ];
       case 'visor_tecnico':
         return [

@@ -16,9 +16,6 @@ interface SimpleOrderApprovalProps {
     assigned_technician?: string;
     status: string;
     estimated_cost?: number; // total estimado de la orden
-    cashback_applied?: boolean;
-    cashback_amount_used?: number;
-    cashback_amount?: number; // fallback desde cotización
     clients?: {
       name: string;
       email: string;
@@ -42,8 +39,6 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   } | null>(null);
   const [modifications, setModifications] = useState<any[]>([]);
   const [authorizationType, setAuthorizationType] = useState<'initial_approval' | 'modification_approval'>('initial_approval');
-  const [cashbackApplied, setCashbackApplied] = useState<boolean>(!!order.cashback_applied);
-  const [cashbackAmount, setCashbackAmount] = useState<number>(order.cashback_amount_used ?? 0);
 
   const isOrderUpdate = order.status === 'pendiente_actualizacion';
   const isInitialApproval = order.status === 'pendiente_aprobacion';
@@ -161,28 +156,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const { subtotal, vatTotal, total } = calculateTotals();
-  const cashbackValue = Number(cashbackAmount ?? 0) || 0;
   // Total final: usar estimated_cost si existe, sino calcular de items
   const baseTotal = (order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total;
-  // Aplicar cashback al total final (no por item)
-  const finalTotal = cashbackApplied && cashbackValue > 0 ? baseTotal - cashbackValue : baseTotal;
+  const finalTotal = baseTotal;
 
   useEffect(() => {
-    // Refrescar cashback desde la orden por si no vino en props
-    const fetchCashback = async () => {
-      const { data, error } = await supabase
-        .from('orders')
-        .select('cashback_applied, cashback_amount_used')
-        .eq('id', order.id)
-        .single();
-      if (!error && data) {
-        setCashbackApplied(!!data.cashback_applied);
-        setCashbackAmount(Number(data.cashback_amount_used || 0));
-      }
-    };
-
-    fetchCashback();
-
     if (order.assigned_technician && orderItems.length > 0) {
       calculateDeliveryTime();
     }
@@ -613,13 +591,6 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <span className="text-muted-foreground">IVA Total:</span>
                       <span className="font-medium">{formatMXNExact(vatTotal)}</span>
                     </div>
-                    {/* Cashback line always visible, shows 0 cuando no aplica */}
-                     <div className="flex justify-between items-center text-sm">
-                       <span className={cashbackValue > 0 ? "text-red-600" : "text-muted-foreground"}>- Cashback:</span>
-                       <span className={cashbackValue > 0 ? "font-medium text-red-600" : "font-medium text-muted-foreground"}>
-                         -{formatMXNExact(cashbackValue)}
-                       </span>
-                     </div>
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>

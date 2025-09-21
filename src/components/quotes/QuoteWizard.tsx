@@ -230,9 +230,7 @@ export function QuoteWizard({
         sale_type: quoteDetails.sale_type,
         status: initialStatus,
         created_by: (profile as any).user_id || undefined,
-        assigned_to: (profile as any).user_id || undefined,
-        cashback_applied: cashbackApplied,
-        cashback_amount_used: cashbackAmount
+        assigned_to: (profile as any).user_id || undefined
       };
       const {
         data: quoteResult,

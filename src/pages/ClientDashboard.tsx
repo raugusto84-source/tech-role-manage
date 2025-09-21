@@ -7,8 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { ClientCashbackHistory } from "@/components/rewards/ClientCashbackHistory";
-import { 
+import {
   Plus, 
   FileText, 
   ClipboardList, 
@@ -61,7 +60,6 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
-  const [showCashbackHistory, setShowCashbackHistory] = useState(false);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -70,11 +68,6 @@ export default function ClientDashboard() {
   const [pendingUpdateOrders, setPendingUpdateOrders] = useState<Order[]>([]);
   const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
   const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
-  const [rewards, setRewards] = useState({
-    totalCashback: 0,
-    referralCode: "",
-    isNewClient: true
-  });
 
   // SEO y metadatos
   useEffect(() => {
@@ -359,8 +352,7 @@ export default function ClientDashboard() {
       await Promise.all([
         loadOrders(), 
         loadQuotes(), 
-        loadPendingApprovalQuotes(),
-        loadRewards()
+        loadPendingApprovalQuotes()
       ]);
       if (mounted) setLoading(false);
     })();
@@ -949,11 +941,6 @@ export default function ClientDashboard() {
         />
       )}
 
-      {/* Cashback History Modal */}
-      <ClientCashbackHistory 
-        open={showCashbackHistory} 
-        onOpenChange={setShowCashbackHistory} 
-      />
     </AppLayout>
   );
 }

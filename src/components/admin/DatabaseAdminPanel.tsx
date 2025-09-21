@@ -28,8 +28,6 @@ const DATABASE_MODULES = [
   { id: 'technician_skills', name: 'Habilidades Técnicas', description: 'Habilidades de técnicos', critical: false },
   { id: 'time_records', name: 'Registros de Tiempo', description: 'Control de tiempo de empleados', critical: false },
   { id: 'employee_payments', name: 'Pagos a Empleados', description: 'Comisiones y bonos pagados', critical: false },
-  { id: 'client_rewards', name: 'Recompensas de Clientes', description: 'Sistema de recompensas', critical: false },
-  { id: 'reward_transactions', name: 'Transacciones de Recompensas', description: 'Historial de recompensas', critical: false },
   { id: 'vehicles', name: 'Vehículos', description: 'Flota de vehículos', critical: false },
   { id: 'insurance_policies', name: 'Pólizas de Seguro', description: 'Pólizas de seguros', critical: false },
   { id: 'satisfaction_surveys', name: 'Encuestas de Satisfacción', description: 'Encuestas completadas por clientes', critical: false },

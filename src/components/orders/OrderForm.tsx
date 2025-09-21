@@ -122,12 +122,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [selectedFleetName, setSelectedFleetName] = useState('');
   const [fleetSuggestionReason, setFleetSuggestionReason] = useState('');
   
-  // Estados para cashback
-  const [availableCashback, setAvailableCashback] = useState(0);
-  const [appliedCashback, setAppliedCashback] = useState(0);
-  const [showCashbackDialog, setShowCashbackDialog] = useState(false);
-
-  // Hook for pricing calculation with cashback adjustment
+  // Hook for pricing calculation
   const pricing = usePricingCalculation(orderItems, formData.client_id);
 
   // Función para cargar equipos de la orden (para edición)
@@ -236,7 +231,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     } else if (profile?.role === 'cliente') {
       loadCurrentClient();
       loadTechnicians();
-      loadClientCashback();
     }
   }, [profile?.role, profile?.email, formData.service_category]); // Recargar cuando cambie la categoría
 
@@ -441,40 +435,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  const loadClientCashback = async () => {
-    try {
-      // Only load for clients
-      if (profile?.role !== 'cliente') return;
-
-      // Get client data using email from profile
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (!profileData?.email) return;
-
-      const { data: client } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', profileData.email)
-        .single();
-
-      if (!client) return;
-
-      // Get available cashback
-      const { data: rewardsData } = await supabase
-        .from('client_rewards')
-        .select('total_cashback')
-        .eq('client_id', client.id)
-        .single();
-
-      setAvailableCashback(rewardsData?.total_cashback || 0);
-    } catch (error) {
-      console.error('Error loading client cashback:', error);
-    }
-  };
 
   // Use sales pricing calculation for consistent pricing
   const calculateExactDisplayPrice = (service: ServiceType, quantity: number = 1) => {
@@ -593,10 +553,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   };
 
   // Removed calculateTotalsWithCashbackAdjustment - cashback system eliminated
-  
-  const handleApplyCashback = (amount: number) => {
-    // Removed handleApplyCashback - cashback system eliminated
-  };
 
   const recalculateDeliveryAndSuggestSupport = () => {
     const totalHours = calculateTotalHours();
@@ -1028,17 +984,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Apply cashback discount if any
-    if (appliedCashback > 0) {
-      if (appliedCashback > pricing.totalAmount) {
-        toast({
-          title: "Error",
-          description: "El descuento no puede ser mayor al total de la orden",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
     setLoading(true);
 
     try {
@@ -1061,9 +1006,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         return;
       }
 
-
       // Calcular totales de todos los items
-      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0) - appliedCashback;
+      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
       const totalHours = calculateTotalHours();
       
       // All orders start as pending authorization

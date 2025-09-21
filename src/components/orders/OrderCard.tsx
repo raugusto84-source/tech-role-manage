@@ -41,8 +41,6 @@ interface OrderCardProps {
     delivery_address?: string;
     priority?: string;
     average_service_time?: number;
-    cashback_applied?: boolean;
-    cashback_amount_used?: number;
   };
   onClick?: () => void;
   onDelete?: (orderId: string) => void;

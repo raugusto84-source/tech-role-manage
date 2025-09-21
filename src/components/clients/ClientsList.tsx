@@ -17,13 +17,6 @@ interface Client {
   orders_count?: number;
   quotes_count?: number;
   total_spent?: number;
-  // Recompensas
-  total_cashback?: number;
-  is_new_client?: boolean;
-  new_client_discount_used?: boolean;
-  referral_code?: string;
-  referral_count?: number;
-  active_rewards?: number;
 }
 
 /**
@@ -99,126 +92,52 @@ export function ClientsList() {
         }
       }
 
-      // Calcular estadísticas para cada cliente
-      const clientsWithStats = await Promise.all(
-        allClients.map(async (client) => {
-          let orders_count = 0;
-          let totalSpent = 0;
-          let quotes_count = 0;
+          // Calculate statistics for each client
+          const clientsWithStats = await Promise.all(
+            allClients.map(async (client) => {
+              let orders_count = 0;
+              let totalSpent = 0;
+              let quotes_count = 0;
 
-          // Contar órdenes por client_id si existe
-          if (client.client_id) {
-            const { data: ordersData } = await supabase
-              .from('orders')
-              .select('estimated_cost')
-              .eq('client_id', client.client_id);
+              // Count orders by client_id if exists
+              if (client.client_id) {
+                const { data: ordersData } = await supabase
+                  .from('orders')
+                  .select('estimated_cost')
+                  .eq('client_id', client.client_id);
 
-            orders_count = ordersData?.length || 0;
-            totalSpent = ordersData?.reduce((sum, order) => sum + (order.estimated_cost || 0), 0) || 0;
-          }
+                orders_count = ordersData?.length || 0;
+                totalSpent = ordersData?.reduce((sum, order) => sum + (order.estimated_cost || 0), 0) || 0;
+              }
 
-          // Contar cotizaciones por user_id
-          if (client.user_id) {
-            const { data: quotesData } = await supabase
-              .from('quotes')
-              .select('id')
-              .eq('user_id', client.user_id);
+              // Count quotes by user_id
+              if (client.user_id) {
+                const { data: quotesData } = await supabase
+                  .from('quotes')
+                  .select('id')
+                  .eq('user_id', client.user_id);
 
-            quotes_count = quotesData?.length || 0;
-          }
+                quotes_count = quotesData?.length || 0;
+              }
 
-          // También buscar cotizaciones por email si no hay user_id
-          if (!quotes_count && client.email) {
-            const { data: quotesDataByEmail } = await supabase
-              .from('quotes')
-              .select('id')
-              .eq('client_email', client.email);
+              // Also search quotes by email if no user_id
+              if (!quotes_count && client.email) {
+                const { data: quotesDataByEmail } = await supabase
+                  .from('quotes')
+                  .select('id')
+                  .eq('client_email', client.email);
 
-            quotes_count = quotesDataByEmail?.length || 0;
-          }
+                quotes_count = quotesDataByEmail?.length || 0;
+              }
 
-          // Cargar datos de recompensas si tiene client_id
-          let rewardsData = {
-            total_cashback: 0,
-            is_new_client: false,
-            new_client_discount_used: false,
-            referral_code: null,
-            referral_count: 0,
-            active_rewards: 0
-          };
-
-          if (client.client_id) {
-            // Calcular cashback actual real desde el historial de transacciones
-            let actualCashback = 0;
-
-            // Cashback ganado (no expirado)
-            const { data: earnedTransactions } = await supabase
-              .from('reward_transactions')
-              .select('amount')
-              .eq('client_id', client.client_id)
-              .in('transaction_type', ['earned', 'cashback_earned', 'referral_bonus'])
-              .or('expires_at.is.null,expires_at.gt.now()'); // No expiradas
-
-            const totalEarned = earnedTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
-
-            // Cashback usado
-            const { data: usedTransactions } = await supabase
-              .from('reward_transactions')
-              .select('amount')
-              .eq('client_id', client.client_id)
-              .in('transaction_type', ['used', 'redeemed', 'cashback_used']);
-
-            const totalUsed = usedTransactions?.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0) || 0;
-
-            // Calcular saldo actual
-            actualCashback = Math.max(0, totalEarned - totalUsed);
-
-            // Datos de client_rewards para otros campos
-            const { data: clientRewards } = await supabase
-              .from('client_rewards')
-              .select('is_new_client, new_client_discount_used')
-              .eq('client_id', client.client_id)
-              .maybeSingle();
-
-            if (clientRewards) {
-              rewardsData.is_new_client = clientRewards.is_new_client || false;
-              rewardsData.new_client_discount_used = clientRewards.new_client_discount_used || false;
-            }
-
-            // Usar cashback calculado en lugar del campo de la tabla
-            rewardsData.total_cashback = actualCashback;
-            rewardsData.active_rewards = actualCashback; // El disponible es el mismo que el total actual
-
-            // Datos de referidos
-            const { data: referralData } = await supabase
-              .from('client_referrals')
-              .select('referral_code')
-              .eq('referrer_client_id', client.client_id)
-              .maybeSingle();
-
-            if (referralData) {
-              rewardsData.referral_code = referralData.referral_code;
-            }
-
-            // Contar referidos activos
-            const { data: referredClients } = await supabase
-              .from('client_referrals')
-              .select('id')
-              .eq('referrer_client_id', client.client_id)
-              .eq('status', 'active');
-
-            rewardsData.referral_count = referredClients?.length || 0;
-          }
-
-          return {
-            ...client,
-            orders_count,
-            quotes_count,
-            total_spent: totalSpent,
-            ...rewardsData
-          };
-        })
-      );
+              return {
+                ...client,
+                orders_count,
+                quotes_count,
+                total_spent: totalSpent
+              };
+            })
+          );
 
       setClients(clientsWithStats);
     } catch (error: any) {
@@ -286,12 +205,6 @@ export function ClientsList() {
                     <Badge variant="outline">
                       Cliente desde {client.created_at ? new Date(client.created_at).toLocaleDateString() : 'Fecha no disponible'}
                     </Badge>
-                    {client.is_new_client && !client.new_client_discount_used && (
-                      <Badge className="bg-green-100 text-green-800">
-                        <Gift className="h-3 w-3 mr-1" />
-                        Nuevo cliente
-                      </Badge>
-                    )}
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -309,69 +222,6 @@ export function ClientsList() {
                     )}
                   </div>
 
-                  {/* Sección de Recompensas */}
-                  {client.client_id && (
-                    <div className="mt-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border">
-                      <h4 className="font-medium text-sm text-purple-800 mb-2 flex items-center gap-1">
-                        <Gift className="h-4 w-4" />
-                        Programa de Recompensas
-                      </h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        <div className="text-center">
-                          <div className="font-bold text-green-600 text-lg">
-                            {formatCurrency(client.total_cashback || 0)}
-                          </div>
-                          <div className="text-green-700">Cashback Total</div>
-                        </div>
-                        
-                        <div className="text-center">
-                          <div className="font-bold text-blue-600 text-lg">
-                            {formatCurrency(client.active_rewards || 0)}
-                          </div>
-                          <div className="text-blue-700">Disponible</div>
-                        </div>
-                        
-                        <div className="text-center">
-                          <div className="font-bold text-orange-600 text-lg">
-                            {client.referral_count || 0}
-                          </div>
-                          <div className="text-orange-700">Referidos</div>
-                        </div>
-                        
-                        <div className="text-center">
-                          <div className="flex items-center justify-center">
-                            {client.referral_code ? (
-                              <Badge variant="outline" className="text-xs">
-                                {client.referral_code}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">Sin código</span>
-                            )}
-                          </div>
-                          <div className="text-gray-700">Cód. Referido</div>
-                        </div>
-                      </div>
-
-                      {/* Beneficios activos */}
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {client.is_new_client && !client.new_client_discount_used && (
-                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-                            10% Descuento nuevo cliente
-                          </Badge>
-                        )}
-                        {(client.total_cashback || 0) > 0 && (
-                          <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                            Cashback 2% en servicios
-                          </Badge>
-                        )}
-                        {(client.referral_count || 0) > 0 && (
-                          <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700">
-                            Bono 5% por referidos
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
                 
                 <div className="text-right space-y-2">
