@@ -469,7 +469,7 @@ export function OrderServicesList({
                   {/* Header with title and badges - Mobile First */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-sm truncate mb-2">{item.service_name}</h4>
+                      <h4 className="font-medium text-sm break-words leading-tight mb-2">{item.service_name}</h4>
                       <div className="flex flex-wrap gap-1 mb-2">
                         <Badge variant="secondary" className={`${statusConfig[item.status]?.color} text-xs`}>
                           <StatusIcon className="w-3 h-3 mr-1" />
@@ -492,7 +492,7 @@ export function OrderServicesList({
                     {/* Price and Status Controls - Mobile Friendly */}
                     <div className="text-right flex-shrink-0">
                       <div className="flex items-center gap-2 justify-end mb-1">
-                        <div className="text-sm font-medium text-primary">
+                        <div className="text-sm font-medium text-primary break-words text-right">
                           {formatCurrency(calculateItemCorrectPrice(item))}
                         </div>
                         {/* Delete button for all items in any state */}
@@ -569,11 +569,11 @@ export function OrderServicesList({
                   
                   {/* Item Details - Mobile Stack Layout */}
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <div>
+                    <div className="overflow-hidden">
                       <span className="font-medium">Cantidad:</span> {item.quantity}
                     </div>
-                    <div className="text-right">
-                      <span className="font-medium">Unit:</span> {formatCurrency(calculateItemCorrectPrice(item) / (item.quantity || 1))}
+                    <div className="text-right overflow-hidden">
+                      <span className="font-medium">Unit:</span> <span className="break-words">{formatCurrency(calculateItemCorrectPrice(item) / (item.quantity || 1))}</span>
                     </div>
                   </div>
 
