@@ -122,17 +122,35 @@ export function PaymentCollectionDialog({
       const vatRate = accountType === 'fiscal' ? 16 : 0;
       const isrWithholdingRate = accountType === 'fiscal' && hasISRWithholding ? 1.25 : 0;
       
-      // Calcular montos
-      let finalPaymentAmount = paymentAmount;
+      // Calcular montos: ISR se descuenta del precio antes de IVA
+      let baseAmount = paymentAmount;
       let isrWithholdingAmount = 0;
+      let taxableAmount = 0;
+      let vatAmount = 0;
+      let finalPaymentAmount = paymentAmount;
       
-      if (accountType === 'fiscal' && hasISRWithholding) {
-        isrWithholdingAmount = paymentAmount * (isrWithholdingRate / 100);
-        finalPaymentAmount = paymentAmount - isrWithholdingAmount;
+      if (accountType === 'fiscal') {
+        // Para cuentas fiscales, el monto incluye IVA, hay que separarlo
+        baseAmount = paymentAmount / (1 + vatRate / 100);
+        
+        if (hasISRWithholding) {
+          // ISR se calcula sobre el monto base (antes de IVA)
+          isrWithholdingAmount = baseAmount * (isrWithholdingRate / 100);
+          // El monto gravable es el base menos la retención ISR
+          taxableAmount = baseAmount - isrWithholdingAmount;
+        } else {
+          taxableAmount = baseAmount;
+        }
+        
+        // IVA se calcula sobre el monto gravable (después de ISR)
+        vatAmount = taxableAmount * (vatRate / 100);
+        finalPaymentAmount = taxableAmount + vatAmount;
+      } else {
+        // Para cuentas no fiscales
+        taxableAmount = paymentAmount;
+        vatAmount = 0;
+        finalPaymentAmount = paymentAmount;
       }
-      
-      const taxableAmount = accountType === 'fiscal' ? finalPaymentAmount / (1 + vatRate / 100) : finalPaymentAmount;
-      const vatAmount = accountType === 'fiscal' ? finalPaymentAmount - taxableAmount : 0;
       
       // Generar número de ingreso (simple y único por timestamp)
       const incomeNumber = `ING-${Date.now()}`;
@@ -271,10 +289,13 @@ export function PaymentCollectionDialog({
                     Cálculo con retención ISR (1.25%)
                   </div>
                   <div className="text-xs space-y-1">
-                    <p>Monto factura: {formatCOPCeilToTen(parseFloat(amount))}</p>
-                    <p>Retención ISR: -{formatCOPCeilToTen(parseFloat(amount) * 0.0125)}</p>
+                    <p>Monto total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
+                    <p>Base (sin IVA): {formatCOPCeilToTen(parseFloat(amount) / 1.16)}</p>
+                    <p>Retención ISR: -{formatCOPCeilToTen((parseFloat(amount) / 1.16) * 0.0125)}</p>
+                    <p>Base gravable: {formatCOPCeilToTen((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125))}</p>
+                    <p>IVA (16%): {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 0.16)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Monto neto: {formatCOPCeilToTen(parseFloat(amount) - (parseFloat(amount) * 0.0125))}
+                      Monto neto: {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 1.16)}
                     </p>
                   </div>
                 </div>
