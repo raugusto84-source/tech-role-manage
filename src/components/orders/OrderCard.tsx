@@ -314,7 +314,7 @@ export function OrderCard({
           orderNumber: order.order_number,
           shouldShow: shouldShowButton
         });
-        return shouldShowButton ? <Button variant="outline" size="sm" className="w-full" onClick={e => {
+        return shouldShowButton ? <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg font-semibold" onClick={e => {
           e.stopPropagation();
           setShowPaymentDialog(true);
         }}>

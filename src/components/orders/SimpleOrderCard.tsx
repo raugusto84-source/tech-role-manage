@@ -346,8 +346,8 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
           <div className="flex gap-2">
             {showCollectButton && paymentSummary.remainingBalance > 0 && (
               <Button 
-                variant="default"
                 size="sm" 
+                className="bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg font-semibold"
                 onClick={(e) => {
                   console.log('Cobrar button clicked for order:', order.order_number);
                   e.stopPropagation();
