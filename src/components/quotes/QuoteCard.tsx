@@ -2,7 +2,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, Trash2, Calendar, DollarSign, User } from 'lucide-react';
-import { formatMXNCashback } from '@/utils/currency';
+import { formatCOPCeilToTen } from '@/utils/currency';
 interface Quote {
   id: string;
   quote_number: string;
@@ -30,7 +30,15 @@ interface QuoteCardProps {
  * Componente reutilizable para listas de cotizaciones
  */
 export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canManage }: QuoteCardProps) {
-  const formatCurrency = (amount: number) => formatMXNCashback(amount);
+  const formatCurrency = (amount: number) => {
+    console.log('QuoteCard formatCurrency debug:', { 
+      amount, 
+      quoteId: quote.id,
+      quoteNumber: quote.quote_number,
+      estimatedAmount: quote.estimated_amount 
+    });
+    return formatCOPCeilToTen(amount);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO', {
@@ -80,7 +88,17 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
             <DollarSign className="h-3 w-3 text-green-600" />
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">
-                {quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'}
+                {(() => {
+                  console.log('QuoteCard amount display debug:', {
+                    quoteId: quote.id,
+                    estimatedAmount: quote.estimated_amount,
+                    hasAmount: !!quote.estimated_amount,
+                    amountType: typeof quote.estimated_amount,
+                    formatted: quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir'
+                  });
+                  
+                  return quote.estimated_amount ? formatCurrency(quote.estimated_amount) : 'Por definir';
+                })()}
               </p>
             </div>
           </div>
