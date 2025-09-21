@@ -124,7 +124,7 @@ export function SimpleOrderApproval({
   const getItemDisplayPrice = (item: any): number => {
     // Para servicios y productos: SIEMPRE usar total_amount guardado (precio fijo de cotización)
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
-      return Number(item.total_amount);
+      return ceilToTen(Number(item.total_amount)); // Apply rounding for display consistency
     }
     // Solo como fallback para datos muy antiguos
     return calculateItemCorrectPrice(item);
@@ -517,7 +517,7 @@ export function SimpleOrderApproval({
                             </div>
                             <div className="text-right flex-shrink-0">
                                <p className="font-bold text-foreground">
-                                 {formatMXNInt(getItemDisplayPrice(item))}
+                                 {formatCOPCeilToTen(getItemDisplayPrice(item))}
                                </p>
                             </div>
                           </div>
