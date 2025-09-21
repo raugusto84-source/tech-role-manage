@@ -135,8 +135,6 @@ export default function ClientDashboard() {
     }
   };
 
-  };
-
   const loadOrders = async () => {
     if (!profile?.user_id) return;
     console.log('Loading orders for user:', profile.user_id, 'email:', profile.email);
