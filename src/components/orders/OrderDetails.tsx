@@ -356,7 +356,7 @@ export function OrderDetails({
 
   // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
   const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
-  const canSignDelivery = isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus);
+  const canSignDelivery = !deliverySignature && (isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
 
   // Si es cliente y la orden está pendiente de aprobación/actualización sin autorización
   if (isClient && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') && !hasAuthorization) {
@@ -617,7 +617,7 @@ export function OrderDetails({
       {(() => {
       const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
       const canFinishOrder = !isClient && allItemsCompleted && ['en_proceso', 'pendiente'].includes(orderStatus);
-      const canSignDelivery = isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus);
+      const canSignDelivery = !deliverySignature && (isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
       if (canFinishOrder || canSignDelivery) {
         return <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-20">
               <div className="max-w-md mx-auto space-y-3">
