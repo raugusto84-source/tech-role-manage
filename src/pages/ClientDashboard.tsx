@@ -626,6 +626,7 @@ export default function ClientDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Cashback</p>
+                  <p className="text-xs text-yellow-600 mb-1">Actual</p>
                   <p className="text-lg font-bold text-yellow-700">
                     {new Intl.NumberFormat('es-MX', {
                       style: 'currency',
