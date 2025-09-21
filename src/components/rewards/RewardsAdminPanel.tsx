@@ -156,10 +156,11 @@ export function RewardsAdminPanel() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
+    return new Intl.NumberFormat('es-MX', {
       style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
+      currency: 'MXN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
     }).format(amount);
   };
 

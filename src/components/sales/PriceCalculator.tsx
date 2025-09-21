@@ -255,6 +255,7 @@ export function PriceCalculator() {
    * Formatea números como moneda con redondeo correcto
    */
   const formatCurrency = formatCOPCeilToTen;
+  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   /**
    * Obtiene el servicio seleccionado

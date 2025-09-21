@@ -353,6 +353,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
 
   /** Moneda */
   const formatCurrency = formatCOPCeilToTen;
+  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   /** Margen automático por rangos */
   useEffect(() => {
@@ -1065,7 +1066,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                         {rewardSettings?.apply_cashback_to_items && (
                           <div className="flex justify-between text-primary">
                             <span>+ Cashback general ({rewardSettings.general_cashback_percent}%):</span>
-                            <span>{formatCurrency((watchedBasePrice * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
+                            <span>{formatCashbackExact((watchedBasePrice * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
                           </div>
                         )}
                       </>
@@ -1090,7 +1091,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                         {rewardSettings?.apply_cashback_to_items && (
                           <div className="flex justify-between text-primary">
                             <span>+ Cashback general ({rewardSettings.general_cashback_percent}%):</span>
-                            <span>{formatCurrency((((watchedCostPrice * 1.16) * (1 + watchedProfitMargin / 100)) * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
+                            <span>{formatCashbackExact((((watchedCostPrice * 1.16) * (1 + watchedProfitMargin / 100)) * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
                           </div>
                         )}
                       </>

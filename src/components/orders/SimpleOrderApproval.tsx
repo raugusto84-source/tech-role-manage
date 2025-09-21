@@ -47,7 +47,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN',
-      minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
 
