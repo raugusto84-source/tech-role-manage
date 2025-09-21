@@ -41,6 +41,8 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   } | null>(null);
   const [modifications, setModifications] = useState<any[]>([]);
   const [authorizationType, setAuthorizationType] = useState<'initial_approval' | 'modification_approval'>('initial_approval');
+  const [cashbackApplied, setCashbackApplied] = useState<boolean>(!!order.cashback_applied);
+  const [cashbackAmount, setCashbackAmount] = useState<number>(order.cashback_amount_used ?? 0);
 
   const isOrderUpdate = order.status === 'pendiente_actualizacion';
   const isInitialApproval = order.status === 'pendiente_aprobacion';
@@ -154,17 +156,31 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const { subtotal, vatTotal, total } = calculateTotals();
-  const cashbackValue = Number(order.cashback_amount_used ?? order.cashback_amount ?? 0) || 0;
+  const cashbackValue = Number(cashbackAmount ?? 0) || 0;
 
   useEffect(() => {
+    // Refrescar cashback desde la orden por si no vino en props
+    const fetchCashback = async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('cashback_applied, cashback_amount_used')
+        .eq('id', order.id)
+        .single();
+      if (!error && data) {
+        setCashbackApplied(!!data.cashback_applied);
+        setCashbackAmount(Number(data.cashback_amount_used || 0));
+      }
+    };
+
+    fetchCashback();
+
     if (order.assigned_technician && orderItems.length > 0) {
       calculateDeliveryTime();
     }
-    
     if (isOrderUpdate) {
       loadOrderModifications();
     }
-  }, [order.assigned_technician, orderItems, isOrderUpdate]);
+  }, [order.id, order.assigned_technician, orderItems, isOrderUpdate]);
 
   const loadOrderModifications = async () => {
     console.log('Loading modifications for order:', order.id);
@@ -599,7 +615,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatMXNExact(order.cashback_applied && cashbackValue > 0 ? total - cashbackValue : total)}
+                          {formatMXNExact(cashbackApplied && cashbackValue > 0 ? total - cashbackValue : total)}
                         </span>
                       </div>
                     </div>
