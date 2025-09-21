@@ -136,7 +136,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
         .from('order_authorization_signatures')
         .select('*')
         .eq('order_id', order.id)
-        .order('signed_at', { ascending: false });
+        .order('signed_at', { ascending: true }); // Cambiar a ascendente para que la primera firma sea #1
 
       if (error) throw error;
       setAuthorizationSignatures(data || []);
