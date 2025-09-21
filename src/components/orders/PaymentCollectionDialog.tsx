@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatCOPCeilToTen } from '@/utils/currency';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Calculator } from 'lucide-react';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 
 interface PaymentCollectionDialogProps {
@@ -35,6 +36,7 @@ export function PaymentCollectionDialog({
   const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [hasISRWithholding, setHasISRWithholding] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Set remaining balance as default amount when dialog opens
@@ -114,10 +116,21 @@ export function PaymentCollectionDialog({
 
       // Usar trigger handle_new_income() para generar income_number automáticamente
 
-      // Calcular IVA si es cuenta fiscal
+      // Calcular IVA y retención de ISR si es cuenta fiscal
       const vatRate = accountType === 'fiscal' ? 19 : 0;
-      const taxableAmount = accountType === 'fiscal' ? paymentAmount / (1 + vatRate / 100) : paymentAmount;
-      const vatAmount = accountType === 'fiscal' ? paymentAmount - taxableAmount : 0;
+      const isrWithholdingRate = accountType === 'fiscal' && hasISRWithholding ? 1.25 : 0;
+      
+      // Calcular montos
+      let finalPaymentAmount = paymentAmount;
+      let isrWithholdingAmount = 0;
+      
+      if (accountType === 'fiscal' && hasISRWithholding) {
+        isrWithholdingAmount = paymentAmount * (isrWithholdingRate / 100);
+        finalPaymentAmount = paymentAmount - isrWithholdingAmount;
+      }
+      
+      const taxableAmount = accountType === 'fiscal' ? finalPaymentAmount / (1 + vatRate / 100) : finalPaymentAmount;
+      const vatAmount = accountType === 'fiscal' ? finalPaymentAmount - taxableAmount : 0;
       
       // Generar número de ingreso (simple y único por timestamp)
       const incomeNumber = `ING-${Date.now()}`;
@@ -134,16 +147,20 @@ export function PaymentCollectionDialog({
         .insert({
           income_number: incomeNumber,
           income_date: new Date().toISOString().split('T')[0],
-          amount: paymentAmount,
+          amount: finalPaymentAmount,
           account_type: accountType,
           category: 'cobranza',
-          description: `Cobro orden ${order.order_number} - ${order.clients?.name || 'Cliente'}`,
+          description: `Cobro orden ${order.order_number} - ${order.clients?.name || 'Cliente'}${hasISRWithholding ? ' (con retención ISR)' : ''}`,
           payment_method: paymentMethod,
           status: 'recibido',
           vat_rate: vatRate,
           vat_amount: vatAmount,
           taxable_amount: taxableAmount,
-          ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() })
+          ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() }),
+          ...(hasISRWithholding && { 
+            isr_withholding_rate: isrWithholdingRate,
+            isr_withholding_amount: isrWithholdingAmount
+          })
         })
         .select('id')
         .maybeSingle();
@@ -166,8 +183,12 @@ export function PaymentCollectionDialog({
           payment_date: new Date().toISOString().split('T')[0],
           payment_method: paymentMethod,
           account_type: accountType,
-          description: `Cobro orden ${order.order_number}`,
-          income_id: incomeInsert?.id || null
+          description: `Cobro orden ${order.order_number}${hasISRWithholding ? ' (con retención ISR)' : ''}`,
+          income_id: incomeInsert?.id || null,
+          ...(hasISRWithholding && {
+            isr_withholding_applied: true,
+            isr_withholding_amount: isrWithholdingAmount
+          })
         });
 
       if (paymentError) {
@@ -179,7 +200,7 @@ export function PaymentCollectionDialog({
 
       toast({
         title: "Pago registrado",
-        description: `Se registró el cobro de ${formatCOPCeilToTen(paymentAmount)} para la orden ${order.order_number}`,
+        description: `Se registró el cobro de ${formatCOPCeilToTen(paymentAmount)} para la orden ${order.order_number}${hasISRWithholding ? ' (con retención ISR aplicada)' : ''}`,
       });
 
       console.log('Closing dialog and refreshing parent component...');
@@ -190,6 +211,7 @@ export function PaymentCollectionDialog({
       setAccountType('no_fiscal');
       setPaymentMethod('');
       setInvoiceNumber('');
+      setHasISRWithholding(false);
 
       // Trigger a small delay to ensure the dialog closes properly before potential refresh
       setTimeout(() => {
@@ -237,6 +259,23 @@ export function PaymentCollectionDialog({
               {paymentSummary.totalPaid > 0 && (
                 <p>Ya cobrado: {formatCOPCeilToTen(paymentSummary.totalPaid)}</p>
               )}
+              
+              {/* Mostrar cálculo de retención ISR */}
+              {accountType === 'fiscal' && hasISRWithholding && amount && !isNaN(parseFloat(amount)) && (
+                <div className="bg-amber-50/80 border border-amber-200/60 p-3 rounded-lg space-y-1">
+                  <div className="flex items-center gap-1 text-amber-800 font-medium">
+                    <Calculator className="h-4 w-4" />
+                    Cálculo con retención ISR (1.25%)
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <p>Monto factura: {formatCOPCeilToTen(parseFloat(amount))}</p>
+                    <p>Retención ISR: -{formatCOPCeilToTen(parseFloat(amount) * 0.0125)}</p>
+                    <p className="font-semibold border-t border-amber-200 pt-1">
+                      Monto neto: {formatCOPCeilToTen(parseFloat(amount) - (parseFloat(amount) * 0.0125))}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -281,16 +320,32 @@ export function PaymentCollectionDialog({
           </div>
 
           {accountType === 'fiscal' && (
-            <div className="space-y-2">
-              <Label htmlFor="invoice-number">Número de factura *</Label>
-              <Input
-                id="invoice-number"
-                type="text"
-                value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-                placeholder="Número de factura"
-                required
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="invoice-number">Número de factura *</Label>
+                <Input
+                  id="invoice-number"
+                  type="text"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  placeholder="Número de factura"
+                  required
+                />
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isr-withholding"
+                  checked={hasISRWithholding}
+                  onCheckedChange={(checked) => setHasISRWithholding(checked as boolean)}
+                />
+                <Label 
+                  htmlFor="isr-withholding" 
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Aplicar retención de ISR (1.25%)
+                </Label>
+              </div>
             </div>
           )}
 
