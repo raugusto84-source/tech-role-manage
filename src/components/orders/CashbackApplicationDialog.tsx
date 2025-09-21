@@ -26,6 +26,7 @@ export function CashbackApplicationDialog({
   const [amountToUse, setAmountToUse] = useState("");
 
   const formatCurrency = formatCOPCeilToTen;
+  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   const maxUsableAmount = Math.min(availableCashback, orderTotal);
 
@@ -86,7 +87,7 @@ export function CashbackApplicationDialog({
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <span className="text-gray-600">Cashback disponible:</span>
-                <div className="font-bold text-green-600">{formatCurrency(availableCashback)}</div>
+                <div className="font-bold text-green-600">{formatCashbackExact(availableCashback)}</div>
               </div>
               <div>
                 <span className="text-gray-600">Total de la orden:</span>

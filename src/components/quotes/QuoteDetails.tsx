@@ -247,6 +247,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   }, [quote.client_email]);
 
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
+  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO', {
@@ -809,7 +810,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
               <CardContent className="space-y-4">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-green-600">
-                    {formatCurrency(availableCashback)}
+                    {formatCashbackExact(availableCashback)}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Disponible para usar
