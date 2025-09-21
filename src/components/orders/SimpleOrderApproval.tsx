@@ -573,23 +573,25 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <span className="font-medium">{formatCOPExact(subtotal)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">IVA (16%):</span>
+                      <span className="text-muted-foreground">IVA Total:</span>
                       <span className="font-medium">{formatCOPExact(vatTotal)}</span>
                     </div>
+                    {rewardSettings?.general_cashback_percent > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-orange-600">- Cashback:</span>
+                        <span className="font-medium text-orange-600">-{formatCOPExact(total * (rewardSettings.general_cashback_percent / 100))}</span>
+                      </div>
+                    )}
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
-                        <span className="text-lg font-bold text-primary">{formatCOPExact(total)}</span>
+                        <span className="text-lg font-bold text-primary">
+                          {formatCOPExact(rewardSettings?.general_cashback_percent > 0 
+                            ? total - (total * (rewardSettings.general_cashback_percent / 100))
+                            : total)}
+                        </span>
                       </div>
                     </div>
-                    
-                    {rewardSettings?.general_cashback_percent > 0 && (
-                      <div className="bg-green-50 p-2 rounded-lg mt-3">
-                        <p className="text-xs text-green-800">
-                          🎉 <strong>Ganarás {formatCOPExact(total * (rewardSettings.general_cashback_percent / 100))} en cashback</strong> al completar este servicio.
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
