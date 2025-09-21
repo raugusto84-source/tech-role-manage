@@ -68,16 +68,20 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
-  // Calcular precio correcto para un item individual usando exactamente la misma lógica que useSalesPricingCalculation
+  // Calcular precio correcto para un item individual - SIEMPRE respetar total_amount cuando existe
   const calculateItemCorrectPrice = (item: any): number => {
-    const quantity = item.quantity || 1;
-    const salesVatRate = item.vat_rate ?? 16;
+    // CRÍTICO: Si el item tiene total_amount (viene de cotización convertida), usarlo SIEMPRE
+    if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+      return item.total_amount;
+    }
 
     // Si tiene pricing_locked, usar el total_amount directamente
     if (item.pricing_locked && item.total_amount) {
       return item.total_amount;
     }
 
+    const quantity = item.quantity || 1;
+    const salesVatRate = item.vat_rate ?? 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
 
     // Determinar si es producto
