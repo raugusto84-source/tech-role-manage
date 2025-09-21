@@ -312,8 +312,8 @@ export function OrderCard({
                   </span>
                 </div>}
               
-              {/* Mostrar cashback ganado cuando la orden esté completamente pagada */}
-              {paymentSummary.isFullyPaid && paymentSummary.remainingBalance === 0 && orderCashback && (
+              {/* Mostrar cashback ganado */}
+              {orderCashback && orderCashback.amount > 0 && (
                 <div className="flex justify-between items-center pt-1 border-t border-green-200 bg-green-50/50 -mx-2 px-2 rounded-sm">
                   <span className="text-xs text-green-700 font-medium">💰 Cashback ganado:</span>
                   <span className="text-xs font-bold text-green-700">

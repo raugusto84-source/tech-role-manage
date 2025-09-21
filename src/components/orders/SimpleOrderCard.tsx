@@ -11,8 +11,10 @@ import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
+import { useOrderCashback } from '@/hooks/useOrderCashback';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
+import { formatMXNCashback } from '@/utils/currency';
 
 interface SimpleOrderCardProps {
   order: {
@@ -164,6 +166,7 @@ export function SimpleOrderCard({
   // Calculate payments after total calculation
   const totalAmount = calculateCorrectTotal();
   const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+  const { cashback } = useOrderCashback(order.id);
 
   const formatDate = (dateString: string) => {
     try {
@@ -329,6 +332,16 @@ export function SimpleOrderCard({
                   </span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Cashback ganado */}
+          {cashback && cashback.amount > 0 && (
+            <div className="flex justify-between items-center pt-2 border-t">
+              <span className="text-sm text-muted-foreground">Cashback ganado:</span>
+              <span className="text-sm font-semibold text-green-600">
+                {formatMXNCashback(cashback.amount)}
+              </span>
             </div>
           )}
         </div>
