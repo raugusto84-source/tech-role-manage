@@ -66,9 +66,11 @@ export function ClientQuoteItemsSummary({
   };
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
   const calculateTotals = () => {
+    // Sumar directamente usando los totales guardados en cada quote item
+    const total = quoteItems.reduce((sum, item) => sum + (item.total || 0), 0);
     const subtotal = quoteItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
     const vatTotal = quoteItems.reduce((sum, item) => sum + (item.vat_amount || 0), 0);
-    const total = subtotal + vatTotal;
+    
     return {
       subtotal,
       vatTotal,

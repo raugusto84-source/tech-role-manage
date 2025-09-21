@@ -39,21 +39,18 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
 
   // Calculate correct price for an item using the same logic as Sales page
   const calculateItemCorrectPrice = (item: OrderItem): { subtotal: number; vat_amount: number; total: number } => {
-    // CRITICAL: Si el item tiene pricing_locked=true, usar el total_amount guardado
+    // CRITICAL: Si el item tiene pricing_locked=true, usar los valores guardados directamente
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+    const hasStoredSubtotal = typeof item.subtotal === 'number' && item.subtotal > 0;
+    const hasStoredVat = typeof item.vat_amount === 'number' && item.vat_amount >= 0;
     const isLocked = Boolean(item.pricing_locked);
     
-    if (hasStoredTotal && isLocked) {
-      // Para items bloqueados, usar el total guardado y calcular componentes proporcionalmente
-      const totalPrice = Number(item.total_amount);
-      const salesVatRate = item.vat_rate || 16;
-      const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
-      const vatAmount = totalPrice - subtotalWithoutVat;
-      
+    if (isLocked && hasStoredTotal && hasStoredSubtotal && hasStoredVat) {
+      // Para items bloqueados, usar directamente los valores guardados
       return {
-        subtotal: subtotalWithoutVat,
-        vat_amount: vatAmount,
-        total: totalPrice
+        subtotal: Number(item.subtotal),
+        vat_amount: Number(item.vat_amount),
+        total: Number(item.total_amount)
       };
     }
 
@@ -97,18 +94,20 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
     let isNewClient = false;
 
     // Calculate totals using correct pricing logic for each item
+    let totalAmount = 0;
     orderItems.forEach((item, index) => {
       console.log(`Processing item ${index}:`, item);
       const itemPricing = calculateItemCorrectPrice(item);
       console.log(`Item ${index} pricing:`, itemPricing);
       totalCostPrice += itemPricing.subtotal;
       totalVATAmount += itemPricing.vat_amount;
+      totalAmount += itemPricing.total;
     });
 
     console.log('Final pricing calculation:', {
       totalCostPrice,
       totalVATAmount,
-      totalAmount: totalCostPrice + totalVATAmount
+      totalAmount
     });
 
     // Check if client is new (removed cashback logic)
@@ -129,7 +128,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
       setPricing({
         totalCostPrice,
         totalVATAmount,
-        totalAmount: totalCostPrice + totalVATAmount, // SIN redondeo en el total final
+        totalAmount, // Usar el total calculado directamente de los items
         hasCashbackAdjustment,
         isNewClient
       });
