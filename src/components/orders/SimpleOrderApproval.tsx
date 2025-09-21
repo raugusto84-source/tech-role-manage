@@ -130,15 +130,19 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const calculateTotals = () => {
-    // Calcular subtotal (base sin IVA) e IVA por separado para mostrar formato de cotización
+    // Usar los precios ya redondeados de cada item individual
     let subtotalSum = 0;
     let vatSum = 0;
+    let totalSum = 0;
 
     orderItems.forEach((item) => {
       const displayPrice = getItemDisplayPrice(item);
       const salesVatRate = item.vat_rate ?? 16;
       
-      // Extraer el subtotal base (sin IVA) del precio de display
+      // Cada item ya viene redondeado, usar el precio completo
+      totalSum += displayPrice;
+      
+      // Extraer el subtotal base (sin IVA) del precio ya redondeado
       const itemSubtotal = displayPrice / (1 + salesVatRate / 100);
       const itemVat = displayPrice - itemSubtotal;
       
@@ -146,12 +150,10 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       vatSum += itemVat;
     });
 
-    const totalBeforeCashback = subtotalSum + vatSum;
-
     return {
       subtotal: subtotalSum,
       vatTotal: vatSum,
-      total: totalBeforeCashback,
+      total: totalSum, // usar suma directa de items redondeados
     };
   };
 
