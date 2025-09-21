@@ -182,7 +182,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       {cashbackAmount > 0 && (
         <div className="flex justify-between items-center text-orange-600">
           <span>Descuento por cashback:</span>
-          <span>-{formatCurrency(cashbackAmount)}</span>
+          <span>-{formatCashbackExact(cashbackAmount)}</span>
         </div>
       )}
       
