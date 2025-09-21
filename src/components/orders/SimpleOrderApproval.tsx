@@ -119,20 +119,20 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     return ceilToTen(gross);
   };
 
-  // Usar SIEMPRE los valores almacenados del item, mantener precios originales
+  // Mostrar SIEMPRE precios redondeados al múltiplo de 10 para el cliente
   const getItemDisplayPrice = (item: any): number => {
-    // PRIORIDAD 1: Usar total_amount almacenado (precio definitivo del item)
+    // PRIORIDAD 1: Si existe total_amount, redondear para mostrar
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
-      return Number(item.total_amount);
+      return ceilToTen(Number(item.total_amount));
     }
     
-    // PRIORIDAD 2: Si no hay total_amount, usar subtotal + vat_amount
+    // PRIORIDAD 2: Si no hay total_amount, usar subtotal + IVA y redondear
     if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
         typeof item.vat_amount === 'number' && item.vat_amount >= 0) {
-      return Number(item.subtotal) + Number(item.vat_amount);
+      return ceilToTen(Number(item.subtotal) + Number(item.vat_amount));
     }
     
-    // PRIORIDAD 3: Solo como último recurso, calcular
+    // PRIORIDAD 3: Cálculo completo (ya incluye redondeo interno)
     return calculateItemCorrectPrice(item);
   };
 
@@ -142,18 +142,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     let totalSum = 0;
 
     orderItems.forEach((item) => {
-      // PRIORIDADE: Usar SIEMPRE los valores almacenados si existen
-      if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
-          typeof item.vat_amount === 'number' && item.vat_amount >= 0 &&
-          typeof item.total_amount === 'number' && item.total_amount > 0) {
-        // Usar directamente los valores almacenados - NO calcular nada
-        subtotalSum += Number(item.subtotal);
-        vatSum += Number(item.vat_amount);
-        totalSum += Number(item.total_amount);
-        return;
-      }
-      
-      // Solo si no hay valores almacenados, calcular (fallback)
+      // Calcular SIEMPRE desde el precio de display redondeado para consistencia visual
       const displayPrice = getItemDisplayPrice(item);
       const salesVatRate = item.vat_rate ?? 16;
       const itemSubtotal = displayPrice / (1 + salesVatRate / 100);
