@@ -99,19 +99,15 @@ export function OrderServicesList({
     orderItemsCount: orderItems.length
   });
 
-  // Calcular precio correcto para un item - MISMA LÓGICA QUE OrderCard y OrderDetails
+  // Calcular precio correcto para un item - usar SIEMPRE el total guardado cuando exista
   const calculateItemCorrectPrice = (item: OrderItem): number => {
-    // Fallback para órdenes antiguas: usar total guardado si está bloqueado o faltan datos
+    // Si existe total_amount en BD, es la fuente de verdad SIEMPRE
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-    const isLocked = Boolean(item.pricing_locked);
-    const missingKeyData = (item.item_type === 'servicio')
-      ? (!item.unit_base_price || item.unit_base_price <= 0)
-      : (!item.unit_cost_price || item.unit_cost_price <= 0);
-
-    if (hasStoredTotal && (isLocked || missingKeyData)) {
+    if (hasStoredTotal) {
       return Number(item.total_amount);
     }
 
+    // Recalcular solo cuando no hay total guardado (compatibilidad con datos antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
