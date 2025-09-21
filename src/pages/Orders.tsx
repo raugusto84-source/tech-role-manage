@@ -336,6 +336,7 @@ export default function Orders() {
     if (!date) return [];
     
     return filteredOrders.filter(order => {
+      // Usar SOLO la categoría original del service_type principal
       const serviceCategory = order.service_types?.service_category || 'sistemas';
       const deliveryDate = order.estimated_delivery_date || order.delivery_date;
       
@@ -350,6 +351,7 @@ export default function Orders() {
     
     filteredOrders
       .filter(order => {
+        // Usar SOLO la categoría original del service_type principal
         const serviceCategory = order.service_types?.service_category || 'sistemas';
         return serviceCategory === category;
       })
@@ -559,14 +561,7 @@ export default function Orders() {
                         {sistemasInfo.icon} {sistemasInfo.label}
                      <Badge variant="secondary" className="ml-auto">
                       {filteredOrders.filter(order => {
-                        // Determinar categoría basándose en los items de la orden
-                        if (order.order_items && order.order_items.length > 0) {
-                          const hasSeguridad = order.order_items.some(item => 
-                            item.service_types?.service_category === "seguridad"
-                          );
-                          return !hasSeguridad; // Es sistemas si NO tiene items de seguridad
-                        }
-                        // Fallback al service_type principal de la orden
+                        // Usar SOLO la categoría original del service_type principal
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "sistemas";
                       }).length}
@@ -577,14 +572,7 @@ export default function Orders() {
                   <div className="space-y-2">
                      {Object.entries(groupedOrders).map(([status, orders]) => {
                       const sistemasOrders = orders.filter(order => {
-                        // Determinar categoría basándose en los items de la orden
-                        if (order.order_items && order.order_items.length > 0) {
-                          const hasSeguridad = order.order_items.some(item => 
-                            item.service_types?.service_category === "seguridad"
-                          );
-                          return !hasSeguridad; // Es sistemas si NO tiene items de seguridad
-                        }
-                        // Fallback al service_type principal de la orden
+                        // Usar SOLO la categoría original del service_type principal
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "sistemas";
                       });
@@ -633,13 +621,7 @@ export default function Orders() {
                         {seguridadInfo.icon} {seguridadInfo.label}
                      <Badge variant="secondary" className="ml-auto">
                       {filteredOrders.filter(order => {
-                        // Determinar categoría basándose en los items de la orden
-                        if (order.order_items && order.order_items.length > 0) {
-                          return order.order_items.some(item => 
-                            item.service_types?.service_category === "seguridad"
-                          );
-                        }
-                        // Fallback al service_type principal de la orden
+                        // Usar SOLO la categoría original del service_type principal
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "seguridad";
                       }).length}
@@ -650,13 +632,7 @@ export default function Orders() {
                   <div className="space-y-2">
                      {Object.entries(groupedOrders).map(([status, orders]) => {
                       const seguridadOrders = orders.filter(order => {
-                        // Determinar categoría basándose en los items de la orden
-                        if (order.order_items && order.order_items.length > 0) {
-                          return order.order_items.some(item => 
-                            item.service_types?.service_category === "seguridad"
-                          );
-                        }
-                        // Fallback al service_type principal de la orden
+                        // Usar SOLO la categoría original del service_type principal
                         const serviceCategory = order.service_types?.service_category || "sistemas";
                         return serviceCategory === "seguridad";
                       });
