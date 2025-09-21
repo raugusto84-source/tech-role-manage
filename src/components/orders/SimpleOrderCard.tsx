@@ -144,7 +144,17 @@ export function SimpleOrderCard({
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Preferir totales guardados por item; si no existen, redondear el item y sumar
+      // Para órdenes pendientes de aprobación, NO aplicar redondeo
+      if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
+        return orderItems.reduce((sum, item) => {
+          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+          if (hasStoredTotal) return sum + Number(item.total_amount);
+          // SIN redondeo para órdenes pendientes
+          return sum + calculateItemDisplayPrice(item);
+        }, 0);
+      }
+      
+      // Para otras órdenes, usar lógica normal con redondeo por item
       return orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
         if (hasStoredTotal) return sum + Number(item.total_amount);
