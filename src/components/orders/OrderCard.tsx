@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // Removed cashback-related imports - cashback system eliminated
-import { formatCOPCeilToTen, formatMXNInt } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
@@ -109,10 +109,11 @@ export function OrderCard({
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
 
+    let basePrice = 0;
     if (item.item_type === 'servicio') {
-      const basePrice = (item.unit_base_price || 0) * quantity;
+      basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      return afterSalesVat;
+      return ceilToTen(afterSalesVat); // Aplicar redondeo a cada item
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -120,7 +121,7 @@ export function OrderCard({
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      return afterSalesVat;
+      return ceilToTen(afterSalesVat); // Aplicar redondeo a cada item
     }
   };
 
@@ -149,33 +150,18 @@ export function OrderCard({
     if (orderItems && orderItems.length > 0) {
       console.log('Calculating from order items:', orderItems);
       
-      // Para órdenes pendientes de aprobación, NO aplicar redondeo
-      if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-        const total = orderItems.reduce((sum, item) => {
-          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-          console.log('Item calculation:', { item, hasStoredTotal, itemTotal: item.total_amount });
-          
-          if (hasStoredTotal) return sum + Number(item.total_amount);
-          // SIN redondeo para órdenes pendientes
-          const calculatedPrice = calculateItemDisplayPrice(item);
-          console.log('Calculated item price:', calculatedPrice);
-          return sum + calculatedPrice;
-        }, 0);
-        console.log('Total calculated (pending orders):', total);
-        return total;
-      }
-
-      // Para otras órdenes, usar precios directos sin redondeo adicional
+      // Sumar items individuales ya redondeados
       const total = orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-        console.log('Item calculation (other orders):', { item, hasStoredTotal, itemTotal: item.total_amount });
+        console.log('Item calculation:', { item, hasStoredTotal, itemTotal: item.total_amount });
         
         if (hasStoredTotal) return sum + Number(item.total_amount);
+        // Cada item ya viene redondeado de calculateItemDisplayPrice
         const calculatedPrice = calculateItemDisplayPrice(item);
-        console.log('Calculated item price (other orders):', calculatedPrice);
+        console.log('Calculated item price:', calculatedPrice);
         return sum + calculatedPrice;
       }, 0);
-      console.log('Total calculated (other orders):', total);
+      console.log('Total calculated:', total);
       return total;
     }
 
