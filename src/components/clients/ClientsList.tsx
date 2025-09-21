@@ -148,25 +148,53 @@ export function ClientsList() {
           };
 
           if (client.client_id) {
-            // Datos de client_rewards
+            // Calcular cashback actual real desde el historial de transacciones
+            let actualCashback = 0;
+
+            // Cashback ganado (no expirado)
+            const { data: earnedTransactions } = await supabase
+              .from('reward_transactions')
+              .select('amount')
+              .eq('client_id', client.client_id)
+              .eq('transaction_type', 'cashback_earned')
+              .or('expires_at.is.null,expires_at.gt.now()'); // No expiradas
+
+            const totalEarned = earnedTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+            // Cashback usado
+            const { data: usedTransactions } = await supabase
+              .from('reward_transactions')
+              .select('amount')
+              .eq('client_id', client.client_id)
+              .eq('transaction_type', 'cashback_used');
+
+            const totalUsed = usedTransactions?.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0) || 0;
+
+            // Calcular saldo actual
+            actualCashback = Math.max(0, totalEarned - totalUsed);
+
+            // Datos de client_rewards para otros campos
             const { data: clientRewards } = await supabase
               .from('client_rewards')
-              .select('total_cashback, is_new_client, new_client_discount_used')
+              .select('is_new_client, new_client_discount_used')
               .eq('client_id', client.client_id)
-              .single();
+              .maybeSingle();
 
             if (clientRewards) {
-              rewardsData.total_cashback = clientRewards.total_cashback || 0;
               rewardsData.is_new_client = clientRewards.is_new_client || false;
               rewardsData.new_client_discount_used = clientRewards.new_client_discount_used || false;
             }
+
+            // Usar cashback calculado en lugar del campo de la tabla
+            rewardsData.total_cashback = actualCashback;
+            rewardsData.active_rewards = actualCashback; // El disponible es el mismo que el total actual
 
             // Datos de referidos
             const { data: referralData } = await supabase
               .from('client_referrals')
               .select('referral_code')
               .eq('referrer_client_id', client.client_id)
-              .single();
+              .maybeSingle();
 
             if (referralData) {
               rewardsData.referral_code = referralData.referral_code;
@@ -180,16 +208,6 @@ export function ClientsList() {
               .eq('status', 'active');
 
             rewardsData.referral_count = referredClients?.length || 0;
-
-            // Contar transacciones de recompensas activas (no expiradas)
-            const { data: activeTransactions } = await supabase
-              .from('reward_transactions')
-              .select('amount')
-              .eq('client_id', client.client_id)
-              .in('transaction_type', ['earned', 'referral_bonus'])
-              .or('expires_at.is.null,expires_at.gt.now()');
-
-            rewardsData.active_rewards = activeTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
           }
 
           return {
