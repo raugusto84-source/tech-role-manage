@@ -147,6 +147,34 @@ export function AddOrderItemsDialog({
     return serviceTypes.filter(service => categoryNames.includes(service.category || '') && service.item_type === itemType && (searchTerm === '' || service.name.toLowerCase().includes(searchTerm.toLowerCase()) || service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase())));
   };
   const addServiceToItems = (service: ServiceType) => {
+    // Verificar si el servicio ya existe en la lista
+    const existingItemIndex = newItems.findIndex(item => item.service_type_id === service.id);
+    
+    if (existingItemIndex !== -1) {
+      // Si existe, aumentar la cantidad en 1
+      const updatedItems = [...newItems];
+      const existingItem = updatedItems[existingItemIndex];
+      const newQuantity = existingItem.quantity + 1;
+      
+      // Recalcular totales con la nueva cantidad
+      const unitBaseSale = existingItem.unit_base_price;
+      const subtotal = unitBaseSale * newQuantity;
+      const vatAmount = subtotal * existingItem.vat_rate / 100;
+      const totalAmount = calculateDisplayPrice(service, newQuantity);
+      
+      updatedItems[existingItemIndex] = {
+        ...existingItem,
+        quantity: newQuantity,
+        subtotal,
+        vat_amount: vatAmount,
+        total_amount: totalAmount
+      };
+      
+      setNewItems(updatedItems);
+      return;
+    }
+
+    // Si no existe, crear nuevo item
     const calculatedPrice = calculateDisplayPrice(service);
     const vatRate = service.vat_rate || 16;
 
@@ -343,24 +371,55 @@ export function AddOrderItemsDialog({
         throw modificationError;
       }
       for (const item of newItems) {
-        const {
-          error: itemError
-        } = await supabase.from('order_items').insert({
-          order_id: orderId,
-          service_type_id: item.service_type_id,
-          service_name: item.service_name,
-          quantity: item.quantity,
-          unit_cost_price: item.unit_cost_price,
-          unit_base_price: item.unit_base_price,
-          subtotal: item.subtotal,
-          vat_rate: item.vat_rate,
-          vat_amount: item.vat_amount,
-          total_amount: calculateItemCorrectPrice(item),
-          item_type: item.item_type,
-          profit_margin_rate: item.profit_margin_rate,
-          status: 'pendiente' as const
-        });
-        if (itemError) throw itemError;
+        // Verificar si el item ya existe en la orden
+        const { data: existingItem, error: checkError } = await supabase
+          .from('order_items')
+          .select('*')
+          .eq('order_id', orderId)
+          .eq('service_type_id', item.service_type_id)
+          .maybeSingle();
+          
+        if (checkError) throw checkError;
+        
+        if (existingItem) {
+          // Si existe, actualizar la cantidad y totales
+          const newQuantity = existingItem.quantity + item.quantity;
+          const newSubtotal = item.unit_base_price * newQuantity;
+          const newVatAmount = newSubtotal * item.vat_rate / 100;
+          const newTotalAmount = calculateItemCorrectPrice({...item, quantity: newQuantity});
+          
+          const { error: updateError } = await supabase
+            .from('order_items')
+            .update({
+              quantity: newQuantity,
+              subtotal: newSubtotal,
+              vat_amount: newVatAmount,
+              total_amount: newTotalAmount,
+              pricing_locked: true
+            })
+            .eq('id', existingItem.id);
+            
+          if (updateError) throw updateError;
+        } else {
+          // Si no existe, insertar nuevo item
+          const { error: itemError } = await supabase.from('order_items').insert({
+            order_id: orderId,
+            service_type_id: item.service_type_id,
+            service_name: item.service_name,
+            quantity: item.quantity,
+            unit_cost_price: item.unit_cost_price,
+            unit_base_price: item.unit_base_price,
+            subtotal: item.subtotal,
+            vat_rate: item.vat_rate,
+            vat_amount: item.vat_amount,
+            total_amount: calculateItemCorrectPrice(item),
+            item_type: item.item_type,
+            profit_margin_rate: item.profit_margin_rate,
+            status: 'pendiente' as const,
+            pricing_locked: true
+          });
+          if (itemError) throw itemError;
+        }
       }
 
       // No actualizar estimated_cost aquí - solo se actualiza al aprobar
