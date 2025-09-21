@@ -885,9 +885,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
           onComplete={() => {
             setShowDeliverySignature(false);
             loadAuthorizationSignatures(); // Recargar firmas después de firmar entrega
-            // If client, redirect to orders list, otherwise just update
+            // If client, redirect to client dashboard, otherwise just update
             if (isClient) {
-              navigate('/orders');
+              navigate('/client');
             } else {
               onUpdate();
             }

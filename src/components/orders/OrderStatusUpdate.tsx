@@ -298,6 +298,8 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
             setShowDeliverySignature(false);
             onUpdate();
             onClose();
+            // Redirect to client dashboard after delivery signature
+            window.location.href = '/client';
           }}
         />
       )}
