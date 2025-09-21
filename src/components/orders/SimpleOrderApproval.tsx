@@ -71,50 +71,34 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
-  // Calcular precio de visualización del ítem (pre-cashback) 
+  // Calcular precio de visualización del ítem (pre-cashback)
+  // Regla para SERVICIOS: redondear el subtotal a múltiplos de 10 ANTES del IVA, luego aplicar IVA y redondear nuevamente a múltiplos de 10
+  // Regla para PRODUCTOS: mantener lógica actual (costo + IVA compra + margen + IVA venta) sin cashback por ítem
   const calculateItemCorrectPrice = (item: any): number => {
-    console.log('calculateItemCorrectPrice for:', item.service_name, {
-      total_amount: item.total_amount,
-      pricing_locked: item.pricing_locked,
-      original_subtotal: item.original_subtotal,
-      subtotal: item.subtotal,
-      unit_base_price: item.unit_base_price,
-      base_price: item.base_price,
-      item_type: item.item_type
-    });
-
-    // PRIORIDAD 1: Si viene de la cotización convertida y tenemos el total guardado, úsalo SIEMPRE
-    if (typeof item.total_amount === 'number' && item.total_amount > 0) {
-      console.log('Usando total_amount:', item.total_amount);
-      return item.total_amount;
-    }
-    
-    // PRIORIDAD 2: Si el precio está bloqueado, respeta el total_amount almacenado
-    if (item.pricing_locked && typeof item.total_amount === 'number' && item.total_amount > 0) {
-      console.log('Usando total_amount (pricing_locked):', item.total_amount);
-      return item.total_amount;
-    }
-
-    // PRIORIDAD 3: Usar original_subtotal de la cotización si existe
-    if (typeof item.original_subtotal === 'number' && item.original_subtotal > 0) {
-      const salesVatRate = item.vat_rate ?? 16;
-      const total = item.original_subtotal * (1 + salesVatRate / 100);
-      console.log('Usando original_subtotal:', item.original_subtotal, 'total:', total);
-      return total;
-    }
-
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
 
-    // PRIORIDAD 4: Calcular desde cero basado en tipo de item
+    // SERVICIOS: no usar total_amount almacenado; se debe mostrar como en cotización/ventas
+    if (item.item_type === 'servicio') {
+      // Subtotal base del servicio
+      const unit = item.unit_base_price ?? item.base_price ?? item.subtotal ?? 0;
+      const rawSubtotal = unit * quantity;
+      const roundedSubtotal = ceilToTen(rawSubtotal); // redondeo antes del IVA
+      const gross = roundedSubtotal * (1 + salesVatRate / 100);
+      return ceilToTen(gross); // redondeo después del IVA
+    }
+
+    // PRODUCTOS
+    // Si viene de la cotización convertida y tenemos el total guardado, usarlo
+    if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+      return ceilToTen(item.total_amount); // asegurar regla de visualización
+    }
+
+    // Calcular desde cero
     let baseSubtotal = 0;
 
     if (typeof item.subtotal === 'number' && item.subtotal > 0) {
-      baseSubtotal = item.subtotal; // subtotal almacenado (sin cashback)
-    } else if (item.item_type === 'servicio') {
-      // Servicios: precio base unitario * cantidad
-      const unit = item.unit_base_price ?? item.base_price ?? 0;
-      baseSubtotal = unit * quantity;
+      baseSubtotal = item.subtotal; // subtotal antes de IVA de venta
     } else {
       // Productos: costo + IVA compra + margen (sin IVA venta todavía)
       const purchaseVatRate = 16; // IVA de compra
@@ -127,17 +111,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
     // Total con IVA de venta
     const gross = baseSubtotal * (1 + salesVatRate / 100);
-    
-    console.log('Calculado desde cero:', {
-      baseSubtotal,
-      salesVatRate,
-      gross,
-      rounded: ceilToTen(gross)
-    });
-
-    // Para órdenes convertidas desde cotizaciones, NO redondear para mantener precios exactos
-    // Solo redondear si es una orden creada directamente
-    return gross; // Sin redondeo para mantener exactitud de cotización
+    return ceilToTen(gross);
   };
 
   // Precio a mostrar como en la cotización: aplicar cashback por ítem (si está configurado) y redondear a múltiplos de 10
@@ -564,7 +538,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="font-bold text-foreground">
-                                {formatMXNInt(getDisplayItemTotal(item))}
+                                {formatMXNInt(calculateItemCorrectPrice(item))}
                               </p>
                             </div>
                           </div>
