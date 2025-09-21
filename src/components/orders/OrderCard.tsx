@@ -8,7 +8,7 @@ import { calculateAdvancedDeliveryDate } from '@/utils/workScheduleCalculator';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen, formatMXNCashback } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
@@ -317,7 +317,7 @@ export function OrderCard({
                 <div className="flex justify-between items-center pt-1 border-t border-green-200 bg-green-50/50 -mx-2 px-2 rounded-sm">
                   <span className="text-xs text-green-700 font-medium">💰 Cashback ganado:</span>
                   <span className="text-xs font-bold text-green-700">
-                    {formatCOPCeilToTen(orderCashback.amount)}
+                    {formatMXNCashback(orderCashback.amount)}
                   </span>
                 </div>
               )}
