@@ -165,10 +165,35 @@ export default function ClientDashboard() {
         return;
       }
 
-      // 3) Obtener/crear registro de recompensas del cliente
+      // 3) Calcular cashback actual real desde el historial de transacciones
+      let actualCashback = 0;
+
+      // Cashback ganado (no expirado)
+      const { data: earnedTransactions } = await supabase
+        .from('reward_transactions')
+        .select('amount')
+        .eq('client_id', clientId)
+        .eq('transaction_type', 'cashback_earned')
+        .or('expires_at.is.null,expires_at.gt.now()'); // No expiradas
+
+      const totalEarned = earnedTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+      // Cashback usado
+      const { data: usedTransactions } = await supabase
+        .from('reward_transactions')
+        .select('amount')
+        .eq('client_id', clientId)
+        .eq('transaction_type', 'cashback_used');
+
+      const totalUsed = usedTransactions?.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0) || 0;
+
+      // Calcular saldo actual
+      actualCashback = totalEarned - totalUsed;
+
+      // 4) Obtener/crear registro de client_rewards para otros datos
       let { data: rewardsData, error: rewardsError } = await supabase
         .from('client_rewards')
-        .select('*')
+        .select('is_new_client, new_client_discount_used')
         .eq('client_id', clientId)
         .maybeSingle();
 
@@ -185,12 +210,12 @@ export default function ClientDashboard() {
             is_new_client: true,
             new_client_discount_used: false,
           })
-          .select()
+          .select('is_new_client, new_client_discount_used')
           .single();
         if (!createError) rewardsData = newRewardsData || null;
       }
 
-      // 4) Código de referido (opcional)
+      // 5) Código de referido (opcional)
       let referralCode = '';
       const { data: referralData } = await supabase
         .from('client_referrals')
@@ -200,7 +225,7 @@ export default function ClientDashboard() {
       if (referralData?.referral_code) referralCode = referralData.referral_code;
 
       setRewards({
-        totalCashback: rewardsData?.total_cashback || 0,
+        totalCashback: Math.max(0, actualCashback), // No permitir valores negativos
         referralCode,
         isNewClient: rewardsData?.is_new_client ?? true,
       });
