@@ -7,12 +7,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, Star, CheckCircle, PenTool, Monitor } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
-import { SatisfactionSurvey } from './SatisfactionSurvey';
 import { SimpleOrderApproval } from './SimpleOrderApproval';
 import { DeliverySignature } from './DeliverySignature';
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
@@ -69,9 +68,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   const { settings: rewardSettings } = useRewardSettings();
   const { getDisplayPrice } = useSalesPricingCalculation();
   const [loading, setLoading] = useState(false);
-  const [showSurvey, setShowSurvey] = useState(false);
-  const [surveyCompleted, setSurveyCompleted] = useState(false);
-  const [surveyData, setSurveyData] = useState<any>(null);
   const [assignedTechnician, setAssignedTechnician] = useState<any>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
@@ -98,7 +94,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     loadOrderEquipment();
     loadAssignedTechnician();
     checkExistingAuthorization();
-    checkSurveyStatus();
     loadAuthorizationSignatures();
     
     // Suscribirse a cambios en tiempo real en la orden
@@ -125,7 +120,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   }, [order.id]);
 
   useEffect(() => {
-    checkSurveyStatus();
     checkExistingAuthorization();
   }, [orderStatus]);
 
@@ -262,23 +256,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
   };
 
-  const checkSurveyStatus = async () => {
-    if (profile?.role === 'cliente' && orderStatus === 'finalizada') {
-      const { data } = await supabase
-        .from('order_satisfaction_surveys')
-        .select('*')
-        .eq('order_id', order.id)
-        .eq('client_id', user?.id)
-        .maybeSingle();
-      
-      setSurveyCompleted(!!data);
-      setSurveyData(data);
-      
-      if (!data && orderStatus === 'finalizada') {
-        setShowSurvey(true);
-      }
-    }
-  };
 
   const formatDate = (dateString: string) => {
     try {
@@ -735,46 +712,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
             </Card>
           )}
 
-          {/* Encuesta de Satisfacción */}
-          {surveyData && (
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Star className="h-5 w-5 text-primary" />
-                  <span className="font-medium">Evaluación</span>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Conocimientos:</span>
-                    <span className="font-medium">{surveyData.technician_knowledge || 0}/5</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Atención:</span>
-                    <span className="font-medium">{surveyData.technician_customer_service || 0}/5</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Actitud:</span>
-                    <span className="font-medium">{surveyData.technician_attitude || 0}/5</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Recomendación:</span>
-                    <span className="font-medium">{surveyData.overall_recommendation || 0}/5</span>
-                  </div>
-                </div>
-                
-                {(surveyData.technician_comments || surveyData.general_comments) && (
-                  <div className="mt-3 p-2 bg-muted/50 rounded text-xs">
-                    {surveyData.technician_comments && (
-                      <div>Técnico: {surveyData.technician_comments}</div>
-                    )}
-                    {surveyData.general_comments && (
-                      <div>General: {surveyData.general_comments}</div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
@@ -848,18 +785,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       {/* Espacio para botones fijos */}
       <div className="h-20"></div>
 
-      {/* Encuesta de Satisfacción */}
-      {isClient && orderStatus === 'finalizada' && !surveyCompleted && showSurvey && (
-        <SatisfactionSurvey
-          orderId={order.id}
-          onComplete={() => {
-            setSurveyCompleted(true);
-            setShowSurvey(false);
-            checkSurveyStatus();
-          }}
-          onCancel={() => setShowSurvey(false)}
-        />
-      )}
 
       {/* Modal para agregar items */}
       {showAddItemsDialog && (
