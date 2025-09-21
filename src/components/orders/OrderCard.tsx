@@ -225,8 +225,8 @@ export function OrderCard({
     };
     return labels[serviceType] || `🔧 ${serviceType}`;
   };
-  return <Card className="hover:shadow-md transition-shadow cursor-pointer">
-      <CardHeader className="pb-2" onClick={onClick}>
+  return <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer border-border/40 bg-card/80 backdrop-blur-sm hover:bg-card/95">
+      <CardHeader className="pb-2 bg-muted/30 rounded-t-lg" onClick={onClick}>
         <div className="flex justify-between items-start">
           <div className="space-y-1">
             <CardTitle className="text-base font-semibold">
@@ -281,21 +281,21 @@ export function OrderCard({
           </div>
         </div>
 
-        {order.failure_description && <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
-            <FileText className="h-4 w-4 inline mr-1" />
+        {order.failure_description && <div className="text-sm text-muted-foreground bg-accent/20 border border-accent/30 p-3 rounded-md">
+            <FileText className="h-4 w-4 inline mr-2 text-accent" />
             {order.failure_description}
           </div>}
 
-        {!paymentsLoading && paymentSummary && paymentSummary.totalPaid > 0 && <div className="bg-green-50 p-2 rounded text-sm">
+        {!paymentsLoading && paymentSummary && paymentSummary.totalPaid > 0 && <div className="bg-emerald-50/80 border border-emerald-200/60 p-3 rounded-lg text-sm">
             <div className="flex justify-between">
-              <span>Cobrado:</span>
-              <span className="font-medium text-green-700">
+              <span className="text-emerald-700">Cobrado:</span>
+              <span className="font-medium text-emerald-800">
                 {formatMXNInt(paymentSummary.totalPaid)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Restante:</span>
-              <span className="font-medium text-orange-700">
+              <span className="text-amber-700">Restante:</span>
+              <span className="font-medium text-amber-800">
                 {formatMXNInt(paymentSummary.remainingBalance)}
               </span>
             </div>
