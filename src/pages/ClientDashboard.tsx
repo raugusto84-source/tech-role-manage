@@ -137,58 +137,76 @@ export default function ClientDashboard() {
   };
 
   const loadRewards = async () => {
-    if (!profile?.email) return;
+    if (!profile?.user_id && !profile?.email) return;
     try {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', profile.email)
-        .single();
-      
-      if (!client) {
-        setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
+      // 1) Buscar cliente por user_id primero (más confiable)
+      let clientId: string | null = null;
+      if (profile?.user_id) {
+        const { data: clientByUserId, error: clientByUserErr } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', profile.user_id)
+          .maybeSingle();
+        if (!clientByUserErr && clientByUserId?.id) clientId = clientByUserId.id;
+      }
+
+      // 2) Si no se encontró, intentar por email como fallback
+      if (!clientId && profile?.email) {
+        const { data: clientByEmail, error: clientByEmailErr } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('email', profile.email)
+          .maybeSingle();
+        if (!clientByEmailErr && clientByEmail?.id) clientId = clientByEmail.id;
+      }
+
+      if (!clientId) {
+        setRewards({ totalCashback: 0, referralCode: '', isNewClient: true });
         return;
       }
 
-      // Try to get existing rewards data
+      // 3) Obtener/crear registro de recompensas del cliente
       let { data: rewardsData, error: rewardsError } = await supabase
         .from('client_rewards')
         .select('*')
-        .eq('client_id', client.id)
-        .single();
+        .eq('client_id', clientId)
+        .maybeSingle();
 
-      // If no rewards record exists, create one
-      if (rewardsError && rewardsError.code === 'PGRST116') {
+      if (rewardsError && rewardsError.code !== 'PGRST116') {
+        console.error('Error loading rewardsData:', rewardsError);
+      }
+
+      if (!rewardsData) {
         const { data: newRewardsData, error: createError } = await supabase
           .from('client_rewards')
           .insert({
-            client_id: client.id,
+            client_id: clientId,
             total_cashback: 0,
             is_new_client: true,
-            new_client_discount_used: false
+            new_client_discount_used: false,
           })
           .select()
           .single();
-
-        if (!createError) {
-          rewardsData = newRewardsData;
-        }
+        if (!createError) rewardsData = newRewardsData || null;
       }
 
+      // 4) Código de referido (opcional)
+      let referralCode = '';
       const { data: referralData } = await supabase
         .from('client_referrals')
         .select('referral_code')
-        .eq('referrer_client_id', client.id)
-        .single();
+        .eq('referrer_client_id', clientId)
+        .maybeSingle();
+      if (referralData?.referral_code) referralCode = referralData.referral_code;
 
       setRewards({
         totalCashback: rewardsData?.total_cashback || 0,
-        referralCode: referralData?.referral_code || "",
-        isNewClient: rewardsData?.is_new_client || true
+        referralCode,
+        isNewClient: rewardsData?.is_new_client ?? true,
       });
     } catch (error) {
       console.error('Error loading rewards:', error);
-      setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
+      setRewards({ totalCashback: 0, referralCode: '', isNewClient: true });
     }
   };
 
