@@ -34,7 +34,7 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
 
     const orderNumbers = relatedPayments?.map(p => p.order_number) || [];
 
-    // 3. Eliminar los pagos de órdenes (esto hace que las órdenes vuelvan a estar pendientes de cobro)
+    // 3. Eliminar los pagos de órdenes y actualizar el estado de las órdenes
     if (relatedPayments && relatedPayments.length > 0) {
       const { error: deletePaymentsError } = await supabase
         .from('order_payments')
@@ -42,6 +42,16 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
         .eq('income_id', incomeId);
 
       if (deletePaymentsError) throw deletePaymentsError;
+
+      // 3.1. Actualizar las órdenes para que muestren la deuda restaurada
+      for (const payment of relatedPayments) {
+        await supabase
+          .from('orders')
+          .update({ 
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', payment.order_id);
+      }
     }
 
     // 4. Registrar la operación de reverso en el historial financiero
