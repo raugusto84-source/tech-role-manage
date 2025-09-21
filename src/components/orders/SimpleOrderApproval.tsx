@@ -140,6 +140,16 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     return gross; // Sin redondeo para mantener exactitud de cotización
   };
 
+  // Precio a mostrar como en la cotización: aplicar cashback por ítem (si está configurado) y redondear a múltiplos de 10
+  const getDisplayItemTotal = (item: any): number => {
+    const base = calculateItemCorrectPrice(item); // total con IVA, sin cashback
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items
+      ? (rewardSettings.general_cashback_percent || 0)
+      : 0;
+    const withCashback = base * (cashbackPercent > 0 ? (1 + cashbackPercent / 100) : 1);
+    return ceilToTen(withCashback);
+  };
+
   const calculateTotals = () => {
     // Sumar SIEMPRE los ítems como se muestran (pre-cashback y con redondeo por ítem)
     let subtotalSum = 0;
@@ -554,7 +564,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="font-bold text-foreground">
-                                {formatMXNInt(calculateItemCorrectPrice(item))}
+                                {formatMXNInt(getDisplayItemTotal(item))}
                               </p>
                             </div>
                           </div>
