@@ -146,9 +146,16 @@ export function useClientRewards(userProfile: any) {
         .from('reward_transactions')
         .select('amount')
         .eq('client_id', client.id)
-        .eq('transaction_type', 'cashback_earned');
+        .eq('transaction_type', 'earned');
 
       const actualCashback = cashbackTransactions?.reduce((total, t) => total + (t.amount || 0), 0) || 0;
+      
+      console.log('Cashback calculation:', { 
+        clientId: client.id, 
+        email: userProfile.email,
+        transactions: cashbackTransactions, 
+        actualCashback 
+      });
 
       // Update rewards record if cashback amount is different
       if (rewardsData && rewardsData.total_cashback !== actualCashback) {
@@ -181,6 +188,31 @@ export function useClientRewards(userProfile: any) {
       initialize();
     }
   }, [userProfile?.email, userProfile?.user_id]);
+
+  // Set up real-time updates for reward transactions
+  useEffect(() => {
+    if (!userProfile?.email) return;
+
+    const channel = supabase
+      .channel('reward-transactions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reward_transactions'
+        },
+        () => {
+          console.log('Reward transaction changed, reloading rewards...');
+          loadRewards();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.email]);
 
   return {
     rewards,
