@@ -150,11 +150,30 @@ export default function ClientDashboard() {
         return;
       }
 
-      const { data: rewardsData } = await supabase
+      // Try to get existing rewards data
+      let { data: rewardsData, error: rewardsError } = await supabase
         .from('client_rewards')
         .select('*')
         .eq('client_id', client.id)
         .single();
+
+      // If no rewards record exists, create one
+      if (rewardsError && rewardsError.code === 'PGRST116') {
+        const { data: newRewardsData, error: createError } = await supabase
+          .from('client_rewards')
+          .insert({
+            client_id: client.id,
+            total_cashback: 0,
+            is_new_client: true,
+            new_client_discount_used: false
+          })
+          .select()
+          .single();
+
+        if (!createError) {
+          rewardsData = newRewardsData;
+        }
+      }
 
       const { data: referralData } = await supabase
         .from('client_referrals')
@@ -564,7 +583,13 @@ export default function ClientDashboard() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-yellow-800">Cashback</p>
-                  <p className="text-lg font-bold text-yellow-700">${rewards.totalCashback.toFixed(2)}</p>
+                  <p className="text-lg font-bold text-yellow-700">
+                    {new Intl.NumberFormat('es-CO', {
+                      style: 'currency',
+                      currency: 'COP',
+                      minimumFractionDigits: 0
+                    }).format(rewards.totalCashback)}
+                  </p>
                 </div>
               </div>
               <Button 
