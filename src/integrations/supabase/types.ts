@@ -1871,6 +1871,8 @@ export type Database = {
           income_number: string
           invoice_number: string | null
           is_reversed: boolean | null
+          isr_withholding_amount: number | null
+          isr_withholding_rate: number | null
           payment_method: string | null
           project_id: string | null
           reversal_reason: string | null
@@ -1896,6 +1898,8 @@ export type Database = {
           income_number: string
           invoice_number?: string | null
           is_reversed?: boolean | null
+          isr_withholding_amount?: number | null
+          isr_withholding_rate?: number | null
           payment_method?: string | null
           project_id?: string | null
           reversal_reason?: string | null
@@ -1921,6 +1925,8 @@ export type Database = {
           income_number?: string
           invoice_number?: string | null
           is_reversed?: boolean | null
+          isr_withholding_amount?: number | null
+          isr_withholding_rate?: number | null
           payment_method?: string | null
           project_id?: string | null
           reversal_reason?: string | null
@@ -2598,6 +2604,8 @@ export type Database = {
           description: string | null
           id: string
           income_id: string | null
+          isr_withholding_amount: number | null
+          isr_withholding_applied: boolean | null
           order_id: string
           order_number: string
           payment_amount: number
@@ -2613,6 +2621,8 @@ export type Database = {
           description?: string | null
           id?: string
           income_id?: string | null
+          isr_withholding_amount?: number | null
+          isr_withholding_applied?: boolean | null
           order_id: string
           order_number: string
           payment_amount: number
@@ -2628,6 +2638,8 @@ export type Database = {
           description?: string | null
           id?: string
           income_id?: string | null
+          isr_withholding_amount?: number | null
+          isr_withholding_applied?: boolean | null
           order_id?: string
           order_number?: string
           payment_amount?: number
