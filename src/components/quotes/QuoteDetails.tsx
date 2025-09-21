@@ -521,42 +521,35 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   // Calculate totals using correct pricing and reward settings
   const calculateTotals = () => {
-    let subtotal = 0;
-    let totalVat = 0;
-    let totalWithholdings = 0;
-    let total = 0;
+    let totalAmount = 0;
 
+    // First calculate the total amount using unit_price * quantity
     quoteItems.forEach(item => {
       const unitPrice = item.unit_price || 0;
       const quantity = item.quantity || 1;
-      const vatRate = item.vat_rate || 0;
-      
-      // If there's VAT rate, extract the base price from unit_price that includes VAT
-      let basePricePerUnit = unitPrice;
-      let vatPerUnit = 0;
-      
-      if (vatRate > 0) {
-        // unit_price includes VAT, so extract base price
-        basePricePerUnit = unitPrice / (1 + vatRate / 100);
-        vatPerUnit = unitPrice - basePricePerUnit;
-      }
-      
-      const itemSubtotal = basePricePerUnit * quantity;
-      const itemVat = vatPerUnit * quantity;
-      const itemWithholding = (item.withholding_amount || 0) * quantity;
       const itemTotal = unitPrice * quantity;
-      
-      subtotal += itemSubtotal;
-      totalVat += itemVat;
+      totalAmount += itemTotal;
+    });
+
+    // Extract subtotal and VAT from the total amount
+    // Assuming unit_price already includes VAT at 16%
+    const vatRate = 16;
+    const subtotalBeforeVat = totalAmount / (1 + vatRate / 100);
+    const totalVAT = totalAmount - subtotalBeforeVat;
+    
+    // Calculate withholdings separately if needed
+    let totalWithholdings = 0;
+    quoteItems.forEach(item => {
+      const quantity = item.quantity || 1;
+      const itemWithholding = (item.withholding_amount || 0) * quantity;
       totalWithholdings += itemWithholding;
-      total += itemTotal;
     });
 
     return { 
-      subtotal: subtotal,
-      totalVat: totalVat,
+      subtotal: subtotalBeforeVat,
+      totalVat: totalVAT,
       totalWithholdings: totalWithholdings, 
-      total: total
+      total: totalAmount
     };
   };
 

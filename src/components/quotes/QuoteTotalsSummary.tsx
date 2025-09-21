@@ -103,26 +103,26 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   
   // Calculate totals using unit_price * quantity, then extract VAT
   const calculateCorrectPricing = () => {
-    // Sum all items using their unit_price (which now includes proper rounding)
-    const sumWithVAT = selectedItems.reduce((sum, item) => {
+    // Sum all items using their unit_price (which is the final total including VAT)
+    const totalWithVAT = selectedItems.reduce((sum, item) => {
       return sum + (item.unit_price || 0) * (item.quantity || 1);
     }, 0);
     
-    // Extract VAT from the total (assuming 16% VAT rate)
-    const vatRate = 16;
-    const subtotalBeforeVat = sumWithVAT / (1 + vatRate / 100);
-    const totalVAT = sumWithVAT - subtotalBeforeVat;
+    // Extract VAT from the total - unit_price already includes VAT
+    const vatRate = 16; // Standard VAT rate
+    const subtotalBeforeVat = totalWithVAT / (1 + vatRate / 100);
+    const totalVAT = totalWithVAT - subtotalBeforeVat;
     
-    console.log('Sum with VAT:', sumWithVAT, 'Subtotal before VAT:', subtotalBeforeVat, 'Total VAT:', totalVAT);
-    return { subtotalBeforeVat, totalVAT };
+    console.log('Total with VAT:', totalWithVAT, 'Subtotal before VAT:', subtotalBeforeVat, 'Total VAT:', totalVAT);
+    return { subtotalBeforeVat, totalVAT, totalWithVAT };
   };
 
-  const { subtotalBeforeVat, totalVAT } = calculateCorrectPricing();
+  const { subtotalBeforeVat, totalVAT, totalWithVAT } = calculateCorrectPricing();
 
-  const totalFinal = subtotalBeforeVat + totalVAT;
+  // Use the calculated total from the function
+  const totalFinal = totalWithVAT;
   const cashbackAmount = applyCashback ? Math.min(availableCashback, totalFinal) : 0;
   const finalTotal = totalFinal - cashbackAmount;
-  const displayTotal = Math.ceil(finalTotal / 10) * 10; // Redondear solo el total final
 
   return (
     <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
@@ -173,7 +173,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         <div className="border-t pt-2">
           <div className="space-y-2">
             <div className="text-sm text-green-600 font-medium">
-              🎉 Ganarás {formatCashback(displayTotal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
+              🎉 Ganarás {formatCashback(totalFinal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
             </div>
           </div>
         </div>
@@ -182,7 +182,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total:</span>
-          <span>{applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(displayTotal)}</span>
+          <span>{applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(totalFinal)}</span>
         </div>
       </div>
     </div>
