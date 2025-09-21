@@ -156,7 +156,7 @@ export function ClientsList() {
               .from('reward_transactions')
               .select('amount')
               .eq('client_id', client.client_id)
-              .eq('transaction_type', 'cashback_earned')
+              .in('transaction_type', ['earned', 'cashback_earned', 'referral_bonus'])
               .or('expires_at.is.null,expires_at.gt.now()'); // No expiradas
 
             const totalEarned = earnedTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
@@ -166,7 +166,7 @@ export function ClientsList() {
               .from('reward_transactions')
               .select('amount')
               .eq('client_id', client.client_id)
-              .eq('transaction_type', 'cashback_used');
+              .in('transaction_type', ['used', 'redeemed', 'cashback_used']);
 
             const totalUsed = usedTransactions?.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0) || 0;
 
