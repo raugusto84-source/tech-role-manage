@@ -160,7 +160,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
               Disponible: {formatCashbackExact(availableCashback)}
               {applyCashback && (
                 <span className="text-green-600 font-medium ml-2">
-                  → Aplicando: {formatCurrency(cashbackAmount)}
+                  → Aplicando: {formatCashbackExact(cashbackAmount)}
                 </span>
               )}
             </div>
