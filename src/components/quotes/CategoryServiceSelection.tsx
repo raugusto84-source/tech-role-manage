@@ -482,58 +482,7 @@ export function CategoryServiceSelection({
           {renderMainCategoryView()}
         </TabsContent>
 
-        {/* Selected Items Display */}
-        {selectedItems.length > 0 && (
-          <div className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Servicios y Productos Seleccionados</span>
-                  <Badge variant="outline">{selectedItems.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {selectedItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium text-sm">{item.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          Cantidad: {item.quantity} | {formatCurrency(item.total)}
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => removeItem(item.id)}
-                        className="h-7 w-7 p-0"
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                
-                <Separator className="my-4" />
-                
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.subtotal, 0))}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>IVA:</span>
-                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.vat_amount, 0))}</span>
-                  </div>
-                  <div className="flex justify-between font-medium">
-                    <span>Total:</span>
-                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.total, 0))}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Selected Items Display - REMOVED */}
 
         {/* Totals Summary - Solo mostrar si no es vista simplificada y hay items */}
         {!simplifiedView && selectedItems.length > 0 && clientId && (
