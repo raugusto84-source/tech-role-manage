@@ -282,7 +282,7 @@ export function SimpleOrderCard({
 
         {/* Barra de progreso */}
         <div className="pt-2">
-          <OrderProgressBar status={order.status} showLabels={true} />
+          <OrderProgressBar orderId={order.id} status={order.status} showLabels={true} />
         </div>
 
         {/* Total con IVA y estado de pagos */}

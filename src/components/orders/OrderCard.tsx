@@ -272,7 +272,7 @@ export function OrderCard({
 
         {/* Barra de progreso */}
         <div className="mt-1">
-          <OrderProgressBar status={order.status} />
+          <OrderProgressBar orderId={order.id} status={order.status} />
         </div>
 
         {/* Total con IVA y estado de pagos */}
