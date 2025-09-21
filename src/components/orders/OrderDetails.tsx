@@ -20,7 +20,7 @@ import { AddOrderItemsDialog } from './AddOrderItemsDialog';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
 import { useOrderCashback } from '@/hooks/useOrderCashback';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
-import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen, formatMXNExact } from '@/utils/currency';
 import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
@@ -339,6 +339,8 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
   
   // Calculate payment summary after total calculation
   const totalAmount = calculateCorrectTotal();
+  const hasStoredTotals = (orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
+  const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
   const { paymentSummary } = useOrderPayments(order.id, totalAmount);
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -447,7 +449,9 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                     {itemsLoading ? (
                       <Skeleton className="h-4 w-16 rounded" />
                     ) : (
-                      formatCOPCeilToTen(calculateCorrectTotal())
+                      (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
+                        ? formatMXNExact(totalAmount)
+                        : formatCOPCeilToTen(totalAmount)
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -577,13 +581,15 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                         <span className="text-sm font-semibold text-muted-foreground">Total General:</span>
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-primary" />
-                          {itemsLoading ? (
-                            <Skeleton className="h-6 w-24 rounded" />
-                          ) : (
-                            <span className="text-lg font-bold text-primary">
-                              {formatCOPCeilToTen(calculateCorrectTotal())}
-                            </span>
-                          )}
+                            {itemsLoading ? (
+                              <Skeleton className="h-6 w-24 rounded" />
+                            ) : (
+                              <span className="text-lg font-bold text-primary">
+                                {(orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
+                                  ? formatMXNExact(totalAmount)
+                                  : formatCOPCeilToTen(totalAmount)}
+                              </span>
+                            )}
                         </div>
                       </div>
                     </div>

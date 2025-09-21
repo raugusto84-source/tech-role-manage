@@ -258,7 +258,13 @@ const { cashback: orderCashback } = useOrderCashback(order.id);
           
           <div className="flex items-center gap-2">
             <DollarSign className="h-3 w-3 text-primary" />
-            {itemsLoading ? <Skeleton className="h-3 w-14 rounded" /> : <span className="font-medium">{formatCOPCeilToTen(calculateCorrectTotal())}</span>}
+            {itemsLoading ? <Skeleton className="h-3 w-14 rounded" /> : (
+              <span className="font-medium">
+                {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
+                  ? formatMXNExact(totalAmount)
+                  : formatCOPCeilToTen(totalAmount)}
+              </span>
+            )}
             {order.average_service_time && <>
                 <Clock className="h-3 w-3 text-primary ml-1" />
                 <span>{formatTime(order.average_service_time)}</span>
@@ -295,11 +301,9 @@ const { cashback: orderCashback } = useOrderCashback(order.id);
             <span className="text-xs font-medium text-muted-foreground">Total con IVA:</span>
             <div className="flex items-center gap-1">
               {itemsLoading ? <Skeleton className="h-4 w-20 rounded" /> : <span className="text-sm font-bold text-primary">
-                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion')
+                  {(order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion' || usingEstimated || hasStoredTotals)
                     ? formatMXNExact(totalAmount)
-                    : usingEstimated
-                      ? formatMXNInt(totalAmount)
-                      : formatCOPCeilToTen(ceilToTen(totalAmount))
+                    : formatCOPCeilToTen(totalAmount)
                   }
                 </span>}
             </div>
