@@ -24,7 +24,7 @@ interface PricingTotals {
 }
 
 export function usePricingCalculation(orderItems: OrderItem[], clientId: string) {
-  const { getDisplayPrice: getSalesPrice, rewardSettings } = useSalesPricingCalculation();
+  const { getDisplayPrice: getSalesPrice } = useSalesPricingCalculation();
   const [pricing, setPricing] = useState<PricingTotals>({
     totalCostPrice: 0,
     totalVATAmount: 0,
@@ -35,7 +35,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
 
   useEffect(() => {
     calculatePricing();
-  }, [orderItems, clientId, rewardSettings]);
+  }, [orderItems, clientId]);
 
   // Calculate correct price for an item using the same logic as Sales page
   const calculateItemCorrectPrice = (item: OrderItem): { subtotal: number; vat_amount: number; total: number } => {
@@ -97,21 +97,20 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
       totalVATAmount += itemPricing.vat_amount;
     });
 
-    // Check if client is new
-    if (rewardSettings?.apply_cashback_to_items && clientId) {
-      try {
-        const { data: clientOrders } = await supabase
-          .from('orders')
-          .select('id')
-          .eq('client_id', clientId)
-          .eq('status', 'finalizada');
-        
-        isNewClient = !clientOrders || clientOrders.length === 0;
-        hasCashbackAdjustment = rewardSettings.general_cashback_percent > 0;
-      } catch (error) {
-        console.error('Error checking client status:', error);
-      }
-    }
+    // Check if client is new (removed cashback logic)
+    // if (clientId) {
+    //   try {
+    //     const { data: clientOrders } = await supabase
+    //       .from('orders')
+    //       .select('id')
+    //       .eq('client_id', clientId)
+    //       .eq('status', 'finalizada');
+    //     
+    //     isNewClient = !clientOrders || clientOrders.length === 0;
+    //   } catch (error) {
+    //     console.error('Error checking client status:', error);
+    //   }
+    // }
 
       setPricing({
         totalCostPrice,

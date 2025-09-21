@@ -1,5 +1,5 @@
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -43,7 +43,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const [availableCashback, setAvailableCashback] = useState(0);
   const [applyCashback, setApplyCashback] = useState(false);
   const [cashbackLoading, setCashbackLoading] = useState(false);
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
   const formatCashback = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);

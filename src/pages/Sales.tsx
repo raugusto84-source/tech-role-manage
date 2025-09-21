@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Package, Settings, Workflow } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { ceilToTen } from '@/utils/currency';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { useAuth } from '@/hooks/useAuth';
@@ -89,9 +89,9 @@ export default function Sales() {
   const {
     profile
   } = useAuth();
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
 
-  // Function to calculate display price with cashback and proper rounding
+  // Function to calculate display price with proper rounding
   const getDisplayPrice = (service: Service): number => {
     const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
     const cashbackPercent = rewardSettings?.apply_cashback_to_items

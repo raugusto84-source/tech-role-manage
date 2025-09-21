@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowRight, ArrowLeft, CheckCircle, Package, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 interface Category {
   id: string;
   name: string;
@@ -105,9 +105,7 @@ export function SimpleDiagnosticFlow({
   const {
     toast
   } = useToast();
-  const {
-    settings: rewardSettings
-  } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   const [categories, setCategories] = useState<Category[]>([]);
   const [flows, setFlows] = useState<DiagnosticFlow[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');

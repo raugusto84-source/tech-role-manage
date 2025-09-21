@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { ceilToTen, formatMXNInt, formatMXNExact } from '@/utils/currency';
 
 interface SimpleOrderApprovalProps {
@@ -31,7 +31,7 @@ interface SimpleOrderApprovalProps {
 
 export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalComplete }: SimpleOrderApprovalProps) {
   const { toast } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   const signatureRef = useRef<SignatureCanvas>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [loading, setLoading] = useState(false);

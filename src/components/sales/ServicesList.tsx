@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Pencil, Trash2, Search, Package, Clock, Camera, Monitor, Computer, Zap, ShieldCheck, Key, Home, Wrench, Settings, Phone, Wifi, Lock, Users, Building, Car } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 /** ============================
@@ -76,7 +76,7 @@ const marginFromTiers = (service: Service): number =>
  */
 export function ServicesList({ onEdit, onRefresh }: ServicesListProps) {
   const { toast } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

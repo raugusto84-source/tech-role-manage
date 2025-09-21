@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X, Trash2 } from 'lucide-react';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { ceilToTen } from '@/utils/currency';
 import { useEffect } from 'react';
 interface OrderItem {
@@ -81,7 +81,7 @@ export function OrderServicesList({
   const [itemModificationNumbers, setItemModificationNumbers] = useState<Map<string, number>>(new Map());
   const [itemToDelete, setItemToDelete] = useState<{ id: string; name: string } | null>(null);
   const { toast } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   const { profile } = useAuth();
   
   // Check if user is a client - clients have restricted permissions
@@ -110,13 +110,12 @@ export function OrderServicesList({
     // Recalcular solo cuando no hay total guardado (compatibilidad con datos antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+    // Removed cashback calculation - cashback system eliminated
 
     if (item.item_type === 'servicio') {
       const basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -124,8 +123,7 @@ export function OrderServicesList({
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 

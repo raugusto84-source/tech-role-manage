@@ -124,11 +124,9 @@ export function AddOrderItemsDialog({
     const quantity = item.quantity || 1;
     const unitPrice = item.unit_base_price || 0;
     const vatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? rewardSettings.general_cashback_percent || 0 : 0;
     const subtotal = unitPrice * quantity;
     const withVat = subtotal * (1 + vatRate / 100);
-    const withCashback = withVat * (1 + cashbackPercent / 100);
-    return Math.ceil(withCashback / 10) * 10;
+    return Math.ceil(withVat / 10) * 10;
   };
 
   // Group categories into main categories

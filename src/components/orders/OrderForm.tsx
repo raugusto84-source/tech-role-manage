@@ -91,7 +91,7 @@ interface SupportTechnicianEntry {
 export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const { getDisplayPrice, formatCurrency, rewardSettings } = useSalesPricingCalculation();
+  const { getDisplayPrice, formatCurrency } = useSalesPricingCalculation();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -592,55 +592,10 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     };
   };
 
-  const calculateTotalsWithCashbackAdjustment = async () => {
-    let totalCostPrice = orderItems.reduce((sum, item) => sum + item.subtotal, 0);
-    let totalVATAmount = orderItems.reduce((sum, item) => sum + item.vat_amount, 0);
-    
-    // Only apply cashback percentage to items for GENERAL cashback (not new client)
-    // and only if the setting is enabled
-    if (rewardSettings?.apply_cashback_to_items && formData.client_id) {
-      try {
-        // Check if client is new (hasn't made any completed orders)
-        const { data: clientOrders } = await supabase
-          .from('orders')
-          .select('id')
-          .eq('client_id', formData.client_id)
-          .eq('status', 'finalizada');
-        
-        const isNewClient = !clientOrders || clientOrders.length === 0;
-        
-        // Only apply to price if NOT a new client (use general cashback)
-        if (!isNewClient) {
-          const cashbackPercent = rewardSettings.general_cashback_percent;
-          const cashbackAmount = totalCostPrice * (cashbackPercent / 100);
-          totalCostPrice += cashbackAmount;
-          // Recalculate VAT on the new total
-          totalVATAmount = orderItems.reduce((sum, item) => {
-            const itemCashback = item.subtotal * (cashbackPercent / 100);
-            const newItemSubtotal = item.subtotal + itemCashback;
-            return sum + (newItemSubtotal * item.vat_rate / 100);
-          }, 0);
-        }
-        // If it's a new client, don't modify the price - cashback will be given as reward later
-      } catch (error) {
-        console.error('Error checking client status:', error);
-      }
-    }
-    
-    const totalAmount = totalCostPrice + totalVATAmount;
-    return {
-      totalCostPrice,
-      totalVATAmount,
-      totalAmount
-    };
-  };
-
+  // Removed calculateTotalsWithCashbackAdjustment - cashback system eliminated
+  
   const handleApplyCashback = (amount: number) => {
-    setAppliedCashback(amount);
-    toast({
-      title: "Cashback aplicado",
-      description: `Se aplicaron ${formatCOPCeilToTen(amount)} como descuento`,
-    });
+    // Removed handleApplyCashback - cashback system eliminated
   };
 
   const recalculateDeliveryAndSuggestSupport = () => {
@@ -1724,14 +1679,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           </CardContent>
         </Card>
 
-        {/* Cashback Application Dialog */}
-        <CashbackApplicationDialog
-          open={showCashbackDialog}
-          onOpenChange={setShowCashbackDialog}
-          availableCashback={availableCashback}
-          orderTotal={pricing.totalAmount}
-          onApply={handleApplyCashback}
-        />
       </div>
     </div>
   );

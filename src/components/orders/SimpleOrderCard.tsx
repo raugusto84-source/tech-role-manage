@@ -6,12 +6,11 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings and useOrderCashback imports - cashback system eliminated
 import { formatCOPCeilToTen, formatMXNExact, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
-import { useOrderCashback } from '@/hooks/useOrderCashback';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
 import { formatMXNCashback } from '@/utils/currency';
@@ -74,7 +73,7 @@ export function SimpleOrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings and useOrderCashback - cashback system eliminated
 
   const loadOrderItems = async () => {
     setItemsLoading(true);
@@ -118,13 +117,12 @@ export function SimpleOrderCard({
     // Solo recalcular cuando NO hay total guardado (datos muy antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+    // Removed cashback calculation - cashback system eliminated
 
     if (item.item_type === 'servicio') {
       const basePrice = (item.unit_base_price || 0) * quantity;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
       const purchaseVatRate = 16;
       const baseCost = (item.unit_cost_price || 0) * quantity;
@@ -132,8 +130,7 @@ export function SimpleOrderCard({
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 
@@ -172,7 +169,7 @@ const totalAmount = calculateCorrectTotal();
 const hasStoredTotals = (orderItems?.some((i) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
 const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
 const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
-const { cashback } = useOrderCashback(order.id);
+// Removed useOrderCashback - cashback system eliminated
 
   const formatDate = (dateString: string) => {
     try {
@@ -344,15 +341,6 @@ const { cashback } = useOrderCashback(order.id);
             </div>
           )}
 
-          {/* Cashback ganado */}
-          {cashback && cashback.amount > 0 && (
-            <div className="flex justify-between items-center pt-2 border-t">
-              <span className="text-sm text-muted-foreground">Cashback ganado:</span>
-              <span className="text-sm font-semibold text-green-600">
-                {formatMXNCashback(cashback.amount)}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Botones de acción */}

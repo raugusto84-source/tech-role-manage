@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calculator, DollarSign, Package, TrendingUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 
 /**
@@ -61,7 +61,7 @@ interface PriceCalculation {
  */
 export function PriceCalculator() {
   const { toast } = useToast();
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   const [services, setServices] = useState<Service[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);

@@ -225,8 +225,6 @@ export function OrderCard({
       <CardContent className="pt-0 space-y-3" onClick={onClick}>
         <OrderProgressBar 
           status={order.status} 
-          clientApproval={order.client_approval}
-          onStatusUpdate={() => {}}
           orderId={order.id}
         />
 

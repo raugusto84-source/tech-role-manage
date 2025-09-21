@@ -477,15 +477,7 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
                         </span>
                       </div>
                       
-                      {/* Show earned cashback when fully paid */}
-                      {paymentSummary.isFullyPaid && paymentSummary.remainingBalance === 0 && orderCashback && (
-                        <div className="flex justify-between pt-1 border-t border-green-200 bg-green-50 -mx-2 px-2 py-1 rounded-sm">
-                          <span className="text-green-700 font-medium">💰 Cashback ganado:</span>
-                          <span className="font-bold text-green-700">
-                            {formatCOPCeilToTen(orderCashback.amount)}
-                          </span>
-                        </div>
-                      )}
+                      {/* Payment summary removed cashback display */}
                     </div>
                   )}
                 </div>

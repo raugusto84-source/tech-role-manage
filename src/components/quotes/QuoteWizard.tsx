@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useRewardSettings } from '@/hooks/useRewardSettings';
+// Removed useRewardSettings import - cashback system eliminated
 import { CategoryServiceSelection } from './CategoryServiceSelection';
 import { SimpleDiagnosticFlow } from './SimpleDiagnosticFlow';
 import { QuoteTotalsSummary } from './QuoteTotalsSummary';
@@ -50,9 +50,7 @@ export function QuoteWizard({
   const {
     profile
   } = useAuth();
-  const {
-    settings: rewardSettings
-  } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
   const [currentStep, setCurrentStep] = useState<WizardStep>('approach');
   const [loading, setLoading] = useState(false);
   const [showServiceSelection, setShowServiceSelection] = useState(false);
