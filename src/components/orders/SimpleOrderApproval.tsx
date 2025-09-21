@@ -561,11 +561,11 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <span className="font-medium">{formatCOPCeilToTen(subtotal)}</span>
+                      <span className="font-medium">{formatCOPExact(subtotal)}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-muted-foreground">IVA (16%):</span>
-                      <span className="font-medium">{formatCOPCeilToTen(vatTotal)}</span>
+                      <span className="font-medium">{formatCOPExact(vatTotal)}</span>
                     </div>
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
