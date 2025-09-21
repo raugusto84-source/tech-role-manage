@@ -141,6 +141,25 @@ export function OrderCard({
       return 0; // No mostrar nada mientras carga
     }
 
+    // Si hay modificaciones pendientes, calcular desde items (no usar estimated_cost)
+    if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
+      if (orderItems && orderItems.length > 0) {
+        console.log('Calculating from order items (pending modifications):', orderItems);
+        
+        const total = orderItems.reduce((sum, item) => {
+          const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
+          console.log('Item calculation:', { item, hasStoredTotal, itemTotal: item.total_amount });
+          
+          if (hasStoredTotal) return sum + Number(item.total_amount);
+          const calculatedPrice = calculateItemDisplayPrice(item);
+          console.log('Calculated item price:', calculatedPrice);
+          return sum + calculatedPrice;
+        }, 0);
+        console.log('Total calculated (pending modifications):', total);
+        return total;
+      }
+    }
+
     // Preferir siempre el total estimado de la orden si existe (refleja descuentos globales)
     if (order.estimated_cost && order.estimated_cost > 0) {
       console.log('Using order.estimated_cost:', order.estimated_cost);
