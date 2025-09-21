@@ -148,30 +148,29 @@ export function SimpleOrderCard({
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Si TODOS los items están bloqueados (pricing_locked=true), sumar directamente sin redondear individualmente
+      // Si TODOS los items están bloqueados (pricing_locked=true), sumar directamente sin redondear el total
       const allItemsLocked = orderItems.every(item => Boolean(item.pricing_locked));
       
       if (allItemsLocked) {
         // Para items con pricing_locked, usar totales exactos (ya incluyen descuentos aplicados)
-        const exactTotal = orderItems.reduce((sum, item) => {
+        return orderItems.reduce((sum, item) => {
           return sum + (Number(item.total_amount) || calculateItemDisplayPrice(item));
-        }, 0);
-        return ceilToTen(exactTotal); // Solo redondear el total final
+        }, 0); // SIN redondeo en el total final
       }
       
-      // Para items no bloqueados, redondear cada ítem individualmente (comportamiento anterior)
+      // Para items no bloqueados, redondear cada ítem individualmente y sumar
       return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
     // Solo usar estimated_cost como último recurso si no hay items
     // Si la orden está pendiente de aprobación/actualización, NO volver a aplicar IVA
     if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
-      return ceilToTen(order.estimated_cost || 0);
+      return order.estimated_cost || 0; // SIN redondeo para órdenes pendientes
     }
     // En otros casos, aplicar IVA por defecto
     const defaultVatRate = 16;
     const base = order.estimated_cost || 0;
-    return ceilToTen(base * (1 + defaultVatRate / 100));
+    return base * (1 + defaultVatRate / 100); // SIN redondeo en el total final
   };
 
   // Calculate payments after total calculation

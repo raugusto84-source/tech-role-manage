@@ -113,13 +113,13 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
       }
     }
 
-    setPricing({
-      totalCostPrice,
-      totalVATAmount,
-      totalAmount: Math.ceil((totalCostPrice + totalVATAmount) / 10) * 10, // Apply rounding only to final total
-      hasCashbackAdjustment,
-      isNewClient
-    });
+      setPricing({
+        totalCostPrice,
+        totalVATAmount,
+        totalAmount: totalCostPrice + totalVATAmount, // SIN redondeo en el total final
+        hasCashbackAdjustment,
+        isNewClient
+      });
   };
 
   return pricing;
