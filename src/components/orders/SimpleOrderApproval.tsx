@@ -72,20 +72,27 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   }, [isOrderUpdate, isInitialApproval]);
 
   // Calcular precio de visualización del ítem (pre-cashback)
-  // Regla para SERVICIOS: redondear el subtotal a múltiplos de 10 ANTES del IVA, luego aplicar IVA y redondear nuevamente a múltiplos de 10
-  // Regla para PRODUCTOS: mantener lógica actual (costo + IVA compra + margen + IVA venta) sin cashback por ítem
+  // Regla SERVICIOS: NO redondear antes del IVA; solo redondeo final al múltiplo de 10 del total con IVA
+  // Regla PRODUCTOS: mantener lógica actual (costo + IVA compra + margen + IVA venta) sin cashback por ítem
   const calculateItemCorrectPrice = (item: any): number => {
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
 
-    // SERVICIOS: no usar total_amount almacenado; se debe mostrar como en cotización/ventas
+    // SERVICIOS: priorizar cálculo como en cotización/ventas
     if (item.item_type === 'servicio') {
-      // Subtotal base del servicio
-      const unit = item.unit_base_price ?? item.base_price ?? item.subtotal ?? 0;
-      const rawSubtotal = unit * quantity;
-      const roundedSubtotal = ceilToTen(rawSubtotal); // redondeo antes del IVA
-      const gross = roundedSubtotal * (1 + salesVatRate / 100);
-      return ceilToTen(gross); // redondeo después del IVA
+      // Subtotal base del servicio (sin IVA)
+      let baseSubtotal = 0;
+      if (typeof item.unit_base_price === 'number') {
+        baseSubtotal = (item.unit_base_price || 0) * quantity;
+      } else if (typeof item.subtotal === 'number' && item.subtotal > 0) {
+        baseSubtotal = item.subtotal;
+      } else if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+        baseSubtotal = item.total_amount / (1 + salesVatRate / 100);
+      } else if (typeof item.base_price === 'number') {
+        baseSubtotal = (item.base_price || 0) * quantity;
+      }
+      const gross = baseSubtotal * (1 + salesVatRate / 100);
+      return ceilToTen(gross); // redondeo SOLO al final
     }
 
     // PRODUCTOS
