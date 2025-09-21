@@ -14,7 +14,6 @@ import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { OrderProgressBar } from './OrderProgressBar';
-
 interface OrderCardProps {
   order: {
     id: string;
@@ -28,7 +27,7 @@ interface OrderCardProps {
     status: string;
     client_approval?: boolean;
     assigned_technician?: string;
-    clients?: {
+    client?: {
       name: string;
       email: string;
       phone?: string;
@@ -48,7 +47,6 @@ interface OrderCardProps {
   getStatusColor: (status: string) => string;
   showCollectButton?: boolean;
 }
-
 export function OrderCard({
   order,
   onClick,
@@ -65,7 +63,6 @@ export function OrderCard({
   const loadOrderItems = async () => {
     setItemsLoading(true);
     console.log('Loading order items for order:', order.id, order.order_number);
-    
     try {
       const {
         data,
@@ -80,9 +77,11 @@ export function OrderCard({
             pricing_locked,
             total_amount
           `).eq('order_id', order.id);
-      
-      console.log('Order items loaded:', { orderId: order.id, data, error });
-      
+      console.log('Order items loaded:', {
+        orderId: order.id,
+        data,
+        error
+      });
       if (error) throw error;
       setOrderItems(data || []);
     } catch (error) {
@@ -92,7 +91,6 @@ export function OrderCard({
       setItemsLoading(false);
     }
   };
-
   useEffect(() => {
     loadOrderItems();
   }, [order.id]);
@@ -108,7 +106,6 @@ export function OrderCard({
     // Solo recalcular cuando NO hay total guardado (datos muy antiguos)
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate || 16;
-
     let basePrice = 0;
     if (item.item_type === 'servicio') {
       basePrice = (item.unit_base_price || 0) * quantity;
@@ -136,7 +133,6 @@ export function OrderCard({
       orderItems: orderItems,
       orderStatus: order.status
     });
-
     if (itemsLoading) {
       return 0; // No mostrar nada mientras carga
     }
@@ -145,11 +141,13 @@ export function OrderCard({
     if (order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion') {
       if (orderItems && orderItems.length > 0) {
         console.log('Calculating from order items (pending modifications):', orderItems);
-        
         const total = orderItems.reduce((sum, item) => {
           const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-          console.log('Item calculation:', { item, hasStoredTotal, itemTotal: item.total_amount });
-          
+          console.log('Item calculation:', {
+            item,
+            hasStoredTotal,
+            itemTotal: item.total_amount
+          });
           if (hasStoredTotal) return sum + Number(item.total_amount);
           const calculatedPrice = calculateItemDisplayPrice(item);
           console.log('Calculated item price:', calculatedPrice);
@@ -165,15 +163,17 @@ export function OrderCard({
       console.log('Using order.estimated_cost:', order.estimated_cost);
       return order.estimated_cost;
     }
-
     if (orderItems && orderItems.length > 0) {
       console.log('Calculating from order items:', orderItems);
-      
+
       // Sumar items individuales ya redondeados
       const total = orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
-        console.log('Item calculation:', { item, hasStoredTotal, itemTotal: item.total_amount });
-        
+        console.log('Item calculation:', {
+          item,
+          hasStoredTotal,
+          itemTotal: item.total_amount
+        });
         if (hasStoredTotal) return sum + Number(item.total_amount);
         // Cada item ya viene redondeado de calculateItemDisplayPrice
         const calculatedPrice = calculateItemDisplayPrice(item);
@@ -183,13 +183,11 @@ export function OrderCard({
       console.log('Total calculated:', total);
       return total;
     }
-
     console.log('No items found, returning 0');
     return 0;
   };
-
   const totalAmount = calculateCorrectTotal();
-  const hasStoredTotals = (orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);
+  const hasStoredTotals = orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false;
   const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
   const {
     paymentSummary,
@@ -206,7 +204,6 @@ export function OrderCard({
       return dateString;
     }
   };
-
   const formatDateTime = (dateString: string) => {
     try {
       return format(new Date(dateString), 'dd/MM/yyyy HH:mm', {
@@ -216,7 +213,6 @@ export function OrderCard({
       return dateString;
     }
   };
-
   const getServiceLabel = (serviceType: string) => {
     const labels: Record<string, string> = {
       formateo: '💻 Formateo',
@@ -226,9 +222,7 @@ export function OrderCard({
     };
     return labels[serviceType] || `🔧 ${serviceType}`;
   };
-
-  return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer">
+  return <Card className="hover:shadow-md transition-shadow cursor-pointer">
       <CardHeader className="pb-2" onClick={onClick}>
         <div className="flex justify-between items-start">
           <div className="space-y-1">
@@ -243,44 +237,33 @@ export function OrderCard({
             </div>
           </div>
           <div className="text-right">
-            {itemsLoading || paymentsLoading ? (
-              <Skeleton className="h-6 w-20" />
-            ) : (
-              <div className="text-lg font-bold text-primary">
+            {itemsLoading || paymentsLoading ? <Skeleton className="h-6 w-20" /> : <div className="text-lg font-bold text-primary">
                 {(() => {
-                  console.log('OrderCard display total debug:', {
-                    orderId: order.id,
-                    usingEstimated,
-                    estimatedCost: order.estimated_cost,
-                    totalAmount,
-                    formattedEstimated: usingEstimated ? formatCOPCeilToTen(order.estimated_cost!) : 'N/A',
-                    formattedTotal: formatMXNInt(totalAmount)
-                  });
-                  
-                  return formatCOPCeilToTen(totalAmount);
-                })()}
-              </div>
-            )}
+              console.log('OrderCard display total debug:', {
+                orderId: order.id,
+                usingEstimated,
+                estimatedCost: order.estimated_cost,
+                totalAmount,
+                formattedEstimated: usingEstimated ? formatCOPCeilToTen(order.estimated_cost!) : 'N/A',
+                formattedTotal: formatMXNInt(totalAmount)
+              });
+              return formatCOPCeilToTen(totalAmount);
+            })()}
+              </div>}
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="pt-0 space-y-3" onClick={onClick}>
-        <OrderProgressBar 
-          status={order.status} 
-          orderId={order.id}
-        />
+        <OrderProgressBar status={order.status} orderId={order.id} />
 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{order.clients?.name || 'Cliente'}</span>
+              <span className="font-medium">{order.client?.name || 'Cliente'}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Wrench className="h-4 w-4 text-muted-foreground" />
-              <span>{getServiceLabel(order.service_type)}</span>
-            </div>
+            
           </div>
           
           <div className="space-y-2">
@@ -288,24 +271,19 @@ export function OrderCard({
               <Clock className="h-4 w-4 text-muted-foreground" />
               <span>{formatDate(order.created_at)}</span>
             </div>
-            {order.estimated_delivery_date && (
-              <div className="flex items-center gap-2">
+            {order.estimated_delivery_date && <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />
                 <span>Entrega: {formatDate(order.estimated_delivery_date)}</span>
-              </div>
-            )}
+              </div>}
           </div>
         </div>
 
-        {order.failure_description && (
-          <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
+        {order.failure_description && <div className="text-sm text-muted-foreground bg-muted/50 p-2 rounded">
             <FileText className="h-4 w-4 inline mr-1" />
             {order.failure_description}
-          </div>
-        )}
+          </div>}
 
-        {!paymentsLoading && paymentSummary && paymentSummary.totalPaid > 0 && (
-          <div className="bg-green-50 p-2 rounded text-sm">
+        {!paymentsLoading && paymentSummary && paymentSummary.totalPaid > 0 && <div className="bg-green-50 p-2 rounded text-sm">
             <div className="flex justify-between">
               <span>Cobrado:</span>
               <span className="font-medium text-green-700">
@@ -318,45 +296,30 @@ export function OrderCard({
                 {formatMXNInt(paymentSummary.remainingBalance)}
               </span>
             </div>
-          </div>
-        )}
+          </div>}
 
         {/* Removed cashback display - cashback system eliminated */}
 
         {/* Botón de cobrar para órdenes finalizadas */}
         {(() => {
-          const shouldShowButton = showCollectButton && paymentSummary.remainingBalance > 0;
-          console.log('OrderCard collect button debug:', {
-            showCollectButton,
-            remainingBalance: paymentSummary.remainingBalance,
-            orderStatus: order.status,
-            orderNumber: order.order_number,
-            shouldShow: shouldShowButton
-          });
-          
-          return shouldShowButton ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowPaymentDialog(true);
-              }}
-            >
+        const shouldShowButton = showCollectButton && paymentSummary.remainingBalance > 0;
+        console.log('OrderCard collect button debug:', {
+          showCollectButton,
+          remainingBalance: paymentSummary.remainingBalance,
+          orderStatus: order.status,
+          orderNumber: order.order_number,
+          shouldShow: shouldShowButton
+        });
+        return shouldShowButton ? <Button variant="outline" size="sm" className="w-full" onClick={e => {
+          e.stopPropagation();
+          setShowPaymentDialog(true);
+        }}>
               <DollarSign className="h-4 w-4 mr-1" />
               Cobrar {formatMXNInt(paymentSummary.remainingBalance)}
-            </Button>
-          ) : null;
-        })()}
+            </Button> : null;
+      })()}
       </CardContent>
 
-      <PaymentCollectionDialog 
-        open={showPaymentDialog} 
-        onOpenChange={setShowPaymentDialog} 
-        order={order} 
-        totalAmount={calculateCorrectTotal()} 
-      />
-    </Card>
-  );
+      <PaymentCollectionDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} order={order} totalAmount={calculateCorrectTotal()} />
+    </Card>;
 }
