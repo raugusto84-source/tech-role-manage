@@ -14,6 +14,7 @@ import { ArrowLeft, User, Calendar, DollarSign, FileText, ShoppingCart, Send, Ch
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { getItemTypeInfo } from '@/utils/itemTypeUtils';
+import { ClientQuoteItemsSummary } from './ClientQuoteItemsSummary';
 
 interface QuoteItem {
   id: string;
@@ -601,15 +602,21 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             </CardContent>
           </Card>
 
-          {/* Artículos cotizados */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Artículos y Servicios Cotizados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+          {/* Artículos cotizados - Vista especial para clientes */}
+          {profile?.role === 'cliente' ? (
+            <ClientQuoteItemsSummary 
+              quoteId={quote.id}
+              estimatedAmount={quote.estimated_amount}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Artículos y Servicios Cotizados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
               {quoteItems.length > 0 ? (
                 <div className="space-y-4">
                   <Table>
@@ -707,16 +714,17 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No hay artículos en esta cotización</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Descripción general: {quote.service_description}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="text-center py-8">
+                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No hay artículos en esta cotización</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Descripción general: {quote.service_description}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Notas adicionales */}
           {quote.notes && (
