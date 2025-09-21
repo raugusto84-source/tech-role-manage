@@ -90,10 +90,15 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       itemPrice = baseCost * (1 + margin / 100);
     }
     
-    // Aplicar IVA
+    // Aplicar IVA de venta
     itemPrice = itemPrice * (1 + salesVatRate / 100);
     
-    // NO aplicar cashback aquí - se aplica al total final
+    // Aplicar cashback por ítem (coincidir con AddOrderItemsDialog), NO en el total
+    const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
+    if (cashbackPercent > 0) {
+      itemPrice = itemPrice * (1 + cashbackPercent / 100);
+    }
+    
     return itemPrice;
   };
 
