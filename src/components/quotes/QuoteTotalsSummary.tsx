@@ -70,16 +70,32 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         const { data: clientData } = await clientQuery.single();
         
         if (clientData) {
-          // Get client rewards
-          const { data: rewardsData } = await supabase
-            .from('client_rewards')
-            .select('total_cashback')
-            .eq('client_id', clientData.id)
-            .single();
+          // Calcular cashback actual real desde el historial de transacciones
+          let actualCashback = 0;
 
-          if (rewardsData) {
-            setAvailableCashback(rewardsData.total_cashback || 0);
-          }
+          // Cashback ganado (no expirado)
+          const { data: earnedTransactions } = await supabase
+            .from('reward_transactions')
+            .select('amount')
+            .eq('client_id', clientData.id)
+            .in('transaction_type', ['earned', 'cashback_earned', 'referral_bonus'])
+            .or('expires_at.is.null,expires_at.gt.now()'); // No expiradas
+
+          const totalEarned = earnedTransactions?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+          // Cashback usado
+          const { data: usedTransactions } = await supabase
+            .from('reward_transactions')
+            .select('amount')
+            .eq('client_id', clientData.id)
+            .in('transaction_type', ['used', 'redeemed', 'cashback_used']);
+
+          const totalUsed = usedTransactions?.reduce((sum, t) => sum + Math.abs(t.amount || 0), 0) || 0;
+
+          // Calcular saldo actual
+          actualCashback = Math.max(0, totalEarned - totalUsed);
+
+          setAvailableCashback(actualCashback);
         }
       } catch (error) {
         console.error('Error loading cashback:', error);
