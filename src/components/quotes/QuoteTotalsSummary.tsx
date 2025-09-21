@@ -189,7 +189,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total Final:</span>
-          <span>{formatCurrency(displayTotal)}</span>
+          <span>{formatCurrency(cashbackAmount > 0 ? finalTotal : displayTotal)}</span>
         </div>
       </div>
     </div>
