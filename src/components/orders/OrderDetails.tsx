@@ -323,7 +323,18 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Sumar cada tarjeta como se muestra: redondear cada ítem a 10 y luego sumar
+      // Si TODOS los items están bloqueados (pricing_locked=true), sumar directamente sin redondear individualmente
+      const allItemsLocked = orderItems.every(item => Boolean(item.pricing_locked));
+      
+      if (allItemsLocked) {
+        // Para items con pricing_locked, usar totales exactos (ya incluyen descuentos aplicados)
+        const exactTotal = orderItems.reduce((sum, item) => {
+          return sum + (Number(item.total_amount) || calculateItemDisplayPrice(item));
+        }, 0);
+        return ceilToTen(exactTotal); // Solo redondear el total final
+      }
+      
+      // Para items no bloqueados, redondear cada ítem individualmente (comportamiento anterior)
       return orderItems.reduce((sum, item) => sum + ceilToTen(calculateItemDisplayPrice(item)), 0);
     }
     
