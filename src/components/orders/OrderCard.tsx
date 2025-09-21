@@ -28,7 +28,7 @@ interface OrderCardProps {
     status: string;
     client_approval?: boolean;
     assigned_technician?: string;
-    client?: {
+    clients?: {
       name: string;
       email: string;
       phone?: string;
@@ -275,7 +275,7 @@ export function OrderCard({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{order.client?.name || 'Cliente'}</span>
+              <span className="font-medium">{order.clients?.name || 'Cliente'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Wrench className="h-4 w-4 text-muted-foreground" />
