@@ -71,26 +71,45 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
-  // Calcular precio de visualización del ítem (pre-cashback) REDONDEADO a múltiplos de 10
+  // Calcular precio de visualización del ítem (pre-cashback) 
   const calculateItemCorrectPrice = (item: any): number => {
-    // Si viene de la cotización convertida y tenemos el total guardado, úsalo SIEMPRE
+    console.log('calculateItemCorrectPrice for:', item.service_name, {
+      total_amount: item.total_amount,
+      pricing_locked: item.pricing_locked,
+      original_subtotal: item.original_subtotal,
+      subtotal: item.subtotal,
+      unit_base_price: item.unit_base_price,
+      base_price: item.base_price,
+      item_type: item.item_type
+    });
+
+    // PRIORIDAD 1: Si viene de la cotización convertida y tenemos el total guardado, úsalo SIEMPRE
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+      console.log('Usando total_amount:', item.total_amount);
       return item.total_amount;
     }
-    // Si el precio está bloqueado, respeta el total_amount almacenado
+    
+    // PRIORIDAD 2: Si el precio está bloqueado, respeta el total_amount almacenado
     if (item.pricing_locked && typeof item.total_amount === 'number' && item.total_amount > 0) {
+      console.log('Usando total_amount (pricing_locked):', item.total_amount);
       return item.total_amount;
+    }
+
+    // PRIORIDAD 3: Usar original_subtotal de la cotización si existe
+    if (typeof item.original_subtotal === 'number' && item.original_subtotal > 0) {
+      const salesVatRate = item.vat_rate ?? 16;
+      const total = item.original_subtotal * (1 + salesVatRate / 100);
+      console.log('Usando original_subtotal:', item.original_subtotal, 'total:', total);
+      return total;
     }
 
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
 
-    // Subtotal base SIN cashback (priorizar valores originales si existen)
+    // PRIORIDAD 4: Calcular desde cero basado en tipo de item
     let baseSubtotal = 0;
 
-    if (typeof item.original_subtotal === 'number' && item.original_subtotal > 0) {
-      baseSubtotal = item.original_subtotal; // viene desde la cotización original
-    } else if (typeof item.subtotal === 'number' && item.subtotal > 0) {
+    if (typeof item.subtotal === 'number' && item.subtotal > 0) {
       baseSubtotal = item.subtotal; // subtotal almacenado (sin cashback)
     } else if (item.item_type === 'servicio') {
       // Servicios: precio base unitario * cantidad
@@ -108,9 +127,17 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
     // Total con IVA de venta
     const gross = baseSubtotal * (1 + salesVatRate / 100);
+    
+    console.log('Calculado desde cero:', {
+      baseSubtotal,
+      salesVatRate,
+      gross,
+      rounded: ceilToTen(gross)
+    });
 
-    // Regla de negocio: redondear SIEMPRE cada ítem hacia arriba a múltiplos de 10
-    return ceilToTen(gross);
+    // Para órdenes convertidas desde cotizaciones, NO redondear para mantener precios exactos
+    // Solo redondear si es una orden creada directamente
+    return gross; // Sin redondeo para mantener exactitud de cotización
   };
 
   const calculateTotals = () => {
