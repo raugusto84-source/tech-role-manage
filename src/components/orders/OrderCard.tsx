@@ -264,7 +264,7 @@ export function OrderCard({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="font-medium">{order.client?.name || 'Cliente'}</span>
+              <span className="font-medium break-words leading-tight">{order.client?.name || 'Cliente'}</span>
             </div>
             
           </div>

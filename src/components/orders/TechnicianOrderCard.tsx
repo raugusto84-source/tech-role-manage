@@ -171,7 +171,7 @@ export function TechnicianOrderCard({
         <div className="space-y-2 mb-3">
           <div className="flex items-center text-sm">
             <User className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-            <span className="font-medium truncate">
+            <span className="font-medium break-words leading-tight">
               {order.clients?.name || 'Cliente no especificado'}
             </span>
           </div>

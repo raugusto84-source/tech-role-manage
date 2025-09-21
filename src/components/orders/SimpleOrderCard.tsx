@@ -218,7 +218,7 @@ const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, 
             </CardTitle>
             <div className="flex items-center gap-2 mt-1">
               <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-muted-foreground break-words leading-tight">
                 {order.clients?.name || "Cliente no especificado"}
               </span>
               {order.clients?.client_number && (
