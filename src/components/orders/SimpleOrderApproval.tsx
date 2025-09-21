@@ -147,6 +147,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const { subtotal, vatTotal, total } = calculateTotals();
+  const cashbackValue = Number(order.cashback_amount_used ?? order.cashback_amount ?? 0) || 0;
 
   useEffect(() => {
     if (order.assigned_technician && orderItems.length > 0) {
@@ -580,19 +581,18 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <span className="text-muted-foreground">IVA Total:</span>
                       <span className="font-medium">{formatMXNExact(vatTotal)}</span>
                     </div>
-                    {order.cashback_applied && (order.cashback_amount_used ?? order.cashback_amount ?? 0) > 0 && (
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-orange-600">- Cashback:</span>
-                        <span className="font-medium text-orange-600">-{formatMXNExact((order.cashback_amount_used ?? order.cashback_amount) as number)}</span>
-                      </div>
-                    )}
+                    {/* Cashback line always visible, shows 0 cuando no aplica */}
+                    <div className="flex justify-between items-center text-sm">
+                      <span className={cashbackValue > 0 ? "text-orange-600" : "text-muted-foreground"}>- Cashback:</span>
+                      <span className={cashbackValue > 0 ? "font-medium text-orange-600" : "font-medium text-muted-foreground"}>
+                        -{formatMXNExact(cashbackValue)}
+                      </span>
+                    </div>
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatMXNExact(order.cashback_applied && (order.cashback_amount_used ?? order.cashback_amount ?? 0) > 0
-                            ? total - (order.cashback_amount_used ?? order.cashback_amount ?? 0)
-                            : total)}
+                          {formatMXNExact(order.cashback_applied && cashbackValue > 0 ? total - cashbackValue : total)}
                         </span>
                       </div>
                     </div>
