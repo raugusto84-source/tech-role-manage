@@ -158,8 +158,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   };
 
   const { subtotal, vatTotal, total } = calculateTotals();
-  // Total final: usar estimated_cost si existe, sino calcular de items
-  const baseTotal = (order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total;
+  // Total final: si hay modificaciones pendientes, usar suma de items; si no, usar estimated_cost si existe
+  const hasPendingMods = order.status === 'pendiente_aprobacion' || order.status === 'pendiente_actualizacion';
+  const baseTotal = hasPendingMods ? total : ((order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total);
   const finalTotal = baseTotal;
 
   useEffect(() => {
