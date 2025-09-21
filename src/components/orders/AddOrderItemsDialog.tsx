@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 // Removed useRewardSettings import - cashback system eliminated
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Minus, ShoppingCart, CheckCircle2, Search, Shield, Monitor, Package, X } from 'lucide-react';
+import { ceilToTen } from '@/utils/currency';
 interface AddOrderItemsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -108,14 +109,16 @@ export function AddOrderItemsDialog({
 
     if (service.item_type === 'servicio') {
       const basePrice = (service.base_price || 0) * quantity;
-      return basePrice * (1 + salesVatRate / 100);
+      const withVat = basePrice * (1 + salesVatRate / 100);
+      return ceilToTen(withVat); // Aplicar redondeo
     } else {
       const purchaseVatRate = 16;
       const baseCost = (service.cost_price || 0) * quantity;
       const marginPercent = service.profit_margin_tiers?.[0]?.margin || 30;
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + marginPercent / 100);
-      return afterMargin * (1 + salesVatRate / 100);
+      const withSalesVat = afterMargin * (1 + salesVatRate / 100);
+      return ceilToTen(withSalesVat); // Aplicar redondeo
     }
   };
 
@@ -126,7 +129,7 @@ export function AddOrderItemsDialog({
     const vatRate = item.vat_rate || 16;
     const subtotal = unitPrice * quantity;
     const withVat = subtotal * (1 + vatRate / 100);
-    return Math.ceil(withVat / 10) * 10;
+    return ceilToTen(withVat); // Usar ceilToTen consistentemente
   };
 
   // Group categories into main categories
@@ -285,7 +288,7 @@ export function AddOrderItemsDialog({
                     </p>}
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">
-                      ${calculateDisplayPrice(service).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                      ${Math.round(calculateDisplayPrice(service)).toLocaleString('es-MX')}
                     </span>
                     <Button size="sm" onClick={() => addServiceToItems(service)} className="h-7 px-2">
                       <Plus className="h-3 w-3" />
