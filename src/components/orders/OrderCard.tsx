@@ -36,7 +36,6 @@ interface OrderCardProps {
     };
     technician_profile?: {
       full_name: string;
-      email: string;
     };
     estimated_delivery_date?: string;
     delivery_address?: string;

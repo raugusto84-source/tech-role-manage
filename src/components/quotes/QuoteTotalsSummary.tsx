@@ -184,16 +184,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         </div>
       )}
 
-      {/* Cashback Earning Section */}
-      {(clientEmail || clientId) && rewardSettings?.general_cashback_percent && rewardSettings.general_cashback_percent > 0 && !applyCashback && (
-        <div className="border-t pt-2">
-          <div className="space-y-2">
-            <div className="text-sm text-green-600 font-medium">
-              🎉 Ganarás {formatCashback(totalFinal * (rewardSettings.general_cashback_percent / 100))} en cashback con esta cotización
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Cashback Earning Section - Removed cashback system */}
       
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">

@@ -92,24 +92,18 @@ export function PriceCalculator() {
       const basePriceWithVAT = priceWithMargin + salesVAT;
       
       // Apply cashback if settings are available and cashback is enabled for items
-      let cashback = 0;
-      if (rewardSettings?.apply_cashback_to_items) {
-        cashback = basePriceWithVAT * (rewardSettings.general_cashback_percent / 100);
-      }
+      // Removed cashback calculation - cashback system eliminated
       
-      return ceilToTen(basePriceWithVAT + cashback);
+      return ceilToTen(basePriceWithVAT);
     } else {
       // For services: base price + VAT + cashback
       const vat = basePrice * (service.vat_rate / 100);
       const basePriceWithVAT = basePrice + vat;
       
       // Apply cashback if settings are available
-      let cashback = 0;
-      if (rewardSettings) {
-        cashback = basePriceWithVAT * (rewardSettings.general_cashback_percent / 100);
-      }
+      // Removed cashback calculation - cashback system eliminated
       
-      return ceilToTen(basePriceWithVAT + cashback);
+      return ceilToTen(basePriceWithVAT);
     }
   };
   /**

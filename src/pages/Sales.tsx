@@ -94,18 +94,15 @@ export default function Sales() {
   // Function to calculate display price with proper rounding
   const getDisplayPrice = (service: Service): number => {
     const salesVatRate = service.vat_rate || 16; // IVA de venta (configurable, por defecto 16%)
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
+    // Removed cashback calculation - cashback system eliminated
 
     if (!isProduct(service)) {
-      // Para servicios: precio base + IVA + cashback
+      // Para servicios: precio base + IVA
       const basePrice = service.base_price || 0;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return ceilToTen(finalWithCashback);
+      return ceilToTen(afterSalesVat);
     } else {
-      // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
+      // Para artículos: costo base + IVA compra + margen + IVA venta
       const purchaseVatRate = 16; // IVA de compra fijo 16%
       const baseCost = service.cost_price || 0;
       const profitMargin = marginFromTiers(service); // Usar margen real del producto
@@ -113,8 +110,7 @@ export default function Sales() {
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + profitMargin / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return ceilToTen(finalWithCashback);
+      return ceilToTen(afterSalesVat);
     }
   };
   const [activeTab, setActiveTab] = useState<'list' | 'form' | 'margins' | 'diagnostics' | 'categories' | 'subcategories'>('list');

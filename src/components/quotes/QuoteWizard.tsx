@@ -494,12 +494,9 @@ export function QuoteWizard({
                   const baseTotal = basePrice + vatAmount;
                   
                   // Add cashback for services (matching CategoryServiceSelection logic)
-                  let cashback = 0;
-                  if (!isProduct(srv) && rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
-                    cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
-                  }
+                  // Removed cashback calculation - cashback system eliminated
                   
-                  const finalPrice = baseTotal + cashback;
+                  const finalPrice = baseTotal;
                   
                   return { unitPrice: finalPrice, subtotal: basePrice, vatAmount, total: finalPrice };
                 };

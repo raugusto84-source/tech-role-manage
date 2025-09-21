@@ -122,7 +122,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const watchedProfitMargin = form.watch('profit_margin');
   const watchedVatRate = form.watch('vat_rate');
   const watchedMainCategory = form.watch('main_category');
-  const { settings: rewardSettings } = useRewardSettings();
+  // Removed useRewardSettings - cashback system eliminated
 
   /** Si la categoría principal cambia, limpiar subcategoría */
   useEffect(() => {
@@ -273,16 +273,13 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   /** Preview de precio */
   const calculatePreviewPrice = (): number => {
     const salesVatRate = watchedVatRate || 16; // IVA de venta (configurable, por defecto 16%)
-    const cashbackPercent = rewardSettings?.apply_cashback_to_items
-      ? (rewardSettings.general_cashback_percent || 0)
-      : 0;
+    // Removed cashback calculation - cashback system eliminated
 
     if (watchedKind === 'servicio') {
-      // Para servicios: precio base + IVA + cashback
+      // Para servicios: precio base + IVA
       const basePrice = watchedBasePrice || 0;
       const afterSalesVat = basePrice * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     } else {
       // Para artículos: costo base + IVA compra + margen + IVA venta + cashback
       const purchaseVatRate = 16; // IVA de compra fijo 16%
@@ -290,8 +287,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
       const afterPurchaseVat = baseCost * (1 + purchaseVatRate / 100);
       const afterMargin = afterPurchaseVat * (1 + (watchedProfitMargin || 0) / 100);
       const afterSalesVat = afterMargin * (1 + salesVatRate / 100);
-      const finalWithCashback = afterSalesVat * (1 + cashbackPercent / 100);
-      return finalWithCashback;
+      return afterSalesVat;
     }
   };
 
@@ -1063,12 +1059,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           <span>+ IVA ({watchedVatRate}%):</span>
                           <span>{formatCurrency(watchedBasePrice * (watchedVatRate / 100))}</span>
                         </div>
-                        {rewardSettings?.apply_cashback_to_items && (
-                          <div className="flex justify-between text-primary">
-                            <span>+ Cashback general ({rewardSettings.general_cashback_percent}%):</span>
-                            <span>{formatCashbackExact((watchedBasePrice * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
-                          </div>
-                        )}
+                        {/* Removed cashback display - cashback system eliminated */}
                       </>
                     ) : (
                       <>
@@ -1088,12 +1079,7 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
                           <span>+ IVA de venta ({watchedVatRate}%):</span>
                           <span>{formatCurrency(((watchedCostPrice * 1.16) * (1 + watchedProfitMargin / 100)) * (watchedVatRate / 100))}</span>
                         </div>
-                        {rewardSettings?.apply_cashback_to_items && (
-                          <div className="flex justify-between text-primary">
-                            <span>+ Cashback general ({rewardSettings.general_cashback_percent}%):</span>
-                            <span>{formatCashbackExact((((watchedCostPrice * 1.16) * (1 + watchedProfitMargin / 100)) * (1 + watchedVatRate / 100)) * (rewardSettings.general_cashback_percent / 100))}</span>
-                          </div>
-                        )}
+                        {/* Removed cashback display - cashback system eliminated */}
                       </>
                     )}
                     <hr />

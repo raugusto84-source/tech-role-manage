@@ -840,9 +840,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                     {applyCashback && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                         <p className="text-sm text-green-800">
-                          Cashback que ganarás: <span className="font-medium">
-                            +{formatCurrency(finalTotal * ((rewardSettings?.general_cashback_percent || 0) / 100))}
-                          </span>
+                          {/* Removed cashback display - cashback system eliminated */}
                         </p>
                         <p className="text-xs text-green-700 mt-1">
                           Se aplicará cuando la cotización sea aceptada

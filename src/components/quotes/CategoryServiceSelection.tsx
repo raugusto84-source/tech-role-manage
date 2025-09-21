@@ -191,12 +191,9 @@ export function CategoryServiceSelection({
       const baseTotal = priceWithMargin + salesVAT;
       
       // Apply cashback if settings are available and cashback is enabled for items
-      let cashback = 0;
-      if (rewardSettings?.apply_cashback_to_items) {
-        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
-      }
+      // Removed cashback calculation - cashback system eliminated
       
-      return baseTotal + cashback;
+      return baseTotal;
     } else {
       // For services: use base_price first, then cost_price as fallback
       const basePrice = service.base_price || service.cost_price || 0;
@@ -210,17 +207,13 @@ export function CategoryServiceSelection({
       const baseTotal = basePrice + vat;
       
       // Apply cashback if settings are available and cashback is enabled for items
-      let cashback = 0;
-      if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
-        cashback = baseTotal * (rewardSettings.general_cashback_percent / 100);
-      }
+      // Removed cashback calculation - cashback system eliminated
       
-      const finalPrice = baseTotal + cashback;
+      const finalPrice = baseTotal;
       console.log('Service price calculation result:', {
         basePrice,
         vat,
         baseTotal,
-        cashback,
         finalPrice
       });
       return finalPrice;
