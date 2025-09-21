@@ -699,10 +699,16 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                           <span>IVA Total:</span>
                           <span>{formatCashbackExact(totalVat)}</span>
                         </div>
+                        {cashbackAmount > 0 && (
+                          <div className="flex justify-between text-orange-600">
+                            <span>- Cashback:</span>
+                            <span>-{formatCashbackExact(cashbackAmount)}</span>
+                          </div>
+                        )}
                         {totalWithholdings > 0 && (
                           <div className="flex justify-between text-red-600">
                             <span>Retenciones:</span>
-                            <span>-{formatCurrency(totalWithholdings)}</span>
+                            <span>-{formatCashbackExact(totalWithholdings)}</span>
                           </div>
                         )}
                         <Separator />
