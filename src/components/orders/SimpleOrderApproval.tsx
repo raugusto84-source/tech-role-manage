@@ -70,7 +70,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     }
   }, [isOrderUpdate, isInitialApproval]);
 
-  // Calcular precio correcto para un item individual - SIEMPRE respetar total_amount cuando existe
+  // Calcular precio correcto para un item individual - SIN aplicar cashback por ítem
   const calculateItemCorrectPrice = (item: any): number => {
     // CRÍTICO: Si el item tiene total_amount (viene de cotización convertida), usarlo SIEMPRE
     if (typeof item.total_amount === 'number' && item.total_amount > 0) {
