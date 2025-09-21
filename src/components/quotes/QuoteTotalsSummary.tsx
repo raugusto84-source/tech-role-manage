@@ -179,17 +179,10 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
         </div>
       )}
       
-      {cashbackAmount > 0 && (
-        <div className="flex justify-between items-center text-orange-600">
-          <span>Descuento por cashback:</span>
-          <span>-{formatCashbackExact(cashbackAmount)}</span>
-        </div>
-      )}
-      
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
-          <span>Total Final:</span>
-          <span>{cashbackAmount > 0 ? formatCashbackExact(finalTotal) : formatCurrency(displayTotal)}</span>
+          <span>Total:</span>
+          <span>{applyCashback ? formatCashbackExact(finalTotal) : formatCurrency(displayTotal)}</span>
         </div>
       </div>
     </div>
