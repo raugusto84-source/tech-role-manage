@@ -387,6 +387,28 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       setLoading(true);
       console.log('Starting quote conversion for quote:', quote.id, quote.quote_number);
 
+      // Primero actualizar la cotización con el total final (con cashback si aplica)
+      const finalAmountToSave = applyCashback ? finalTotal : (total > 0 ? total : quote.estimated_amount);
+      
+      const { error: updateError } = await supabase
+        .from('quotes')
+        .update({ 
+          estimated_amount: finalAmountToSave,
+          apply_cashback: applyCashback,
+          cashback_amount: applyCashback ? cashbackAmount : 0
+        })
+        .eq('id', quote.id);
+
+      if (updateError) {
+        console.error('Error updating quote total:', updateError);
+        toast({
+          title: "Error",
+          description: `Error al actualizar cotización: ${updateError.message}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Llamar a la función de conversión
       const { data, error } = await supabase.rpc('convert_quote_to_order', {
         quote_id: quote.id
