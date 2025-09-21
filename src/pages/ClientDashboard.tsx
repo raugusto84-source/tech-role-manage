@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Tipos locales
 interface Order {
@@ -63,6 +64,7 @@ export default function ClientDashboard() {
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [showCashbackHistory, setShowCashbackHistory] = useState(false);
+  const [applyCashback, setApplyCashback] = useState(false);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -517,36 +519,55 @@ export default function ClientDashboard() {
         {/* Botones de acción principales */}
         <div className="grid grid-cols-2 gap-3">
           {/* Cashback Card - Moved here */}
-          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 h-24">
-            <CardContent className="p-3 h-full flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
-                  <Gift className="h-4 w-4 text-yellow-600" />
+          <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 h-auto">
+            <CardContent className="p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                    <Gift className="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-yellow-800">Cashback</p>
+                    <p className="text-lg font-bold text-yellow-700">
+                      {rewardsLoading ? (
+                        '$0.00'
+                      ) : (
+                        new Intl.NumberFormat('es-MX', {
+                          style: 'currency',
+                          currency: 'MXN',
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        }).format(rewards?.totalCashback || 0)
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-yellow-800">Cashback</p>
-                   <p className="text-lg font-bold text-yellow-700">
-                     {rewardsLoading ? (
-                       '$0.00'
-                     ) : (
-                       new Intl.NumberFormat('es-MX', {
-                         style: 'currency',
-                         currency: 'MXN',
-                         minimumFractionDigits: 2,
-                         maximumFractionDigits: 2
-                       }).format(rewards?.totalCashback || 0)
-                     )}
-                   </p>
-                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="border-yellow-300 text-yellow-700"
+                  onClick={() => setShowCashbackHistory(true)}
+                >
+                  <Star className="h-3 w-3" />
+                </Button>
               </div>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="border-yellow-300 text-yellow-700"
-                onClick={() => setShowCashbackHistory(true)}
-              >
-                <Star className="h-3 w-3" />
-              </Button>
+              
+              {/* Apply Cashback Checkbox */}
+              {!rewardsLoading && rewards?.totalCashback > 0 && (
+                <div className="flex items-center space-x-2 p-2 bg-yellow-100/50 rounded-md border border-yellow-200">
+                  <Checkbox 
+                    id="apply-cashback" 
+                    checked={applyCashback}
+                    onCheckedChange={(checked) => setApplyCashback(!!checked)}
+                  />
+                  <label 
+                    htmlFor="apply-cashback" 
+                    className="text-sm font-medium text-yellow-800 cursor-pointer"
+                  >
+                    Aplicar Cashback en próxima compra
+                  </label>
+                </div>
+              )}
             </CardContent>
           </Card>
           
