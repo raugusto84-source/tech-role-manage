@@ -13,7 +13,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
@@ -385,7 +384,6 @@ export default function Finance() {
   const [tempVatRate, setTempVatRate] = useState("16");
 
   // Estados removidos - ya no se necesitan gastos fiscales seleccionados
-
 
   // Función para registrar en historial financiero
   const logFinancialOperation = async (operationType: string, tableName: string, recordId: string, recordData: any, description: string, amount: number, accountType?: string, operationDate?: string) => {
@@ -1628,7 +1626,7 @@ export default function Finance() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 {isAdmin && <>
-                                    <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                    
                                     <AlertDialog>
                                       <AlertDialogTrigger asChild>
                                         <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
