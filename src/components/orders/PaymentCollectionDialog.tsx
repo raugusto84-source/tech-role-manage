@@ -122,32 +122,32 @@ export function PaymentCollectionDialog({
       const vatRate = accountType === 'fiscal' ? 16 : 0;
       const isrWithholdingRate = accountType === 'fiscal' && hasISRWithholding ? 1.25 : 0;
       
-      // Calcular montos: ISR se descuenta del precio antes de IVA
-      let baseAmount = paymentAmount;
+      // Calcular montos: ISR se calcula sobre el importe antes de IVA
+      let baseAmountBeforeVAT = paymentAmount;
       let isrWithholdingAmount = 0;
-      let taxableAmount = 0;
+      let baseAmountAfterISR = paymentAmount;
       let vatAmount = 0;
       let finalPaymentAmount = paymentAmount;
       
       if (accountType === 'fiscal') {
-        // Para cuentas fiscales, el monto incluye IVA, hay que separarlo
-        baseAmount = paymentAmount / (1 + vatRate / 100);
+        // 1. Primero desgloso el IVA del total
+        baseAmountBeforeVAT = paymentAmount / (1 + vatRate / 100);
         
         if (hasISRWithholding) {
-          // ISR se calcula sobre el monto base (antes de IVA)
-          isrWithholdingAmount = baseAmount * (isrWithholdingRate / 100);
-          // El monto gravable es el base menos la retención ISR
-          taxableAmount = baseAmount - isrWithholdingAmount;
+          // 2. ISR se calcula sobre el importe antes de IVA
+          isrWithholdingAmount = baseAmountBeforeVAT * (isrWithholdingRate / 100);
+          // 3. Base gravable después de ISR
+          baseAmountAfterISR = baseAmountBeforeVAT - isrWithholdingAmount;
         } else {
-          taxableAmount = baseAmount;
+          baseAmountAfterISR = baseAmountBeforeVAT;
         }
         
-        // IVA se calcula sobre el monto gravable (después de ISR)
-        vatAmount = taxableAmount * (vatRate / 100);
-        finalPaymentAmount = taxableAmount + vatAmount;
+        // 4. IVA se calcula sobre la base después de ISR
+        vatAmount = baseAmountAfterISR * (vatRate / 100);
+        finalPaymentAmount = baseAmountAfterISR + vatAmount;
       } else {
         // Para cuentas no fiscales
-        taxableAmount = paymentAmount;
+        baseAmountAfterISR = paymentAmount;
         vatAmount = 0;
         finalPaymentAmount = paymentAmount;
       }
@@ -175,7 +175,7 @@ export function PaymentCollectionDialog({
           status: 'recibido',
           vat_rate: vatRate,
           vat_amount: vatAmount,
-          taxable_amount: taxableAmount,
+          taxable_amount: baseAmountAfterISR,
           ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() }),
           ...(hasISRWithholding && { 
             isr_withholding_rate: isrWithholdingRate,
@@ -289,13 +289,13 @@ export function PaymentCollectionDialog({
                     Cálculo con retención ISR (1.25%)
                   </div>
                   <div className="text-xs space-y-1">
-                    <p>Monto total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
-                    <p>Base (sin IVA): {formatCOPCeilToTen(parseFloat(amount) / 1.16)}</p>
-                    <p>Retención ISR: -{formatCOPCeilToTen((parseFloat(amount) / 1.16) * 0.0125)}</p>
-                    <p>Base gravable: {formatCOPCeilToTen((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125))}</p>
-                    <p>IVA (16%): {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 0.16)}</p>
+                    <p>1. Monto total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
+                    <p>2. Base (sin IVA): {formatCOPCeilToTen(parseFloat(amount) / 1.16)}</p>
+                    <p>3. Retención ISR (1.25%): -{formatCOPCeilToTen((parseFloat(amount) / 1.16) * 0.0125)}</p>
+                    <p>4. Base gravable: {formatCOPCeilToTen((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125))}</p>
+                    <p>5. IVA (16%): {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 0.16)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Monto neto: {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 1.16)}
+                      Monto neto final: {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 1.16)}
                     </p>
                   </div>
                 </div>
