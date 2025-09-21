@@ -15,6 +15,7 @@ interface SimpleOrderApprovalProps {
     order_number: string;
     assigned_technician?: string;
     status: string;
+    estimated_cost?: number; // total estimado de la orden
     cashback_applied?: boolean;
     cashback_amount_used?: number;
     cashback_amount?: number; // fallback desde cotización
@@ -155,6 +156,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
 
   const { subtotal, vatTotal, total } = calculateTotals();
   const cashbackValue = Number(cashbackAmount ?? 0) || 0;
+  const displayTotal = (order.estimated_cost && order.estimated_cost > 0) ? order.estimated_cost : total;
 
   useEffect(() => {
     // Refrescar cashback desde la orden por si no vino en props
@@ -613,7 +615,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
                         <span className="text-lg font-bold text-primary">
-                          {formatMXNExact(cashbackApplied && cashbackValue > 0 ? total - cashbackValue : total)}
+                          {formatMXNExact(displayTotal)}
                         </span>
                       </div>
                     </div>
