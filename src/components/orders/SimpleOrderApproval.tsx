@@ -7,7 +7,7 @@ import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTria
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { useRewardSettings } from '@/hooks/useRewardSettings';
-import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { ceilToTen } from '@/utils/currency';
 
 interface SimpleOrderApprovalProps {
   order: {
@@ -485,16 +485,16 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                               <div className="space-y-1 mt-1">
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Anterior:</span>
-                                  <span className="text-red-600">{formatCOPCeilToTen(Number(modifications[0].previous_total))}</span>
+                                  <span className="text-red-600">{formatCOPExact(Number(modifications[0].previous_total))}</span>
                                 </div>
                                 <div className="flex justify-between">
                                   <span className="text-gray-600">Nuevo:</span>
-                                  <span className="text-green-600">{formatCOPCeilToTen(Number(modifications[0].new_total))}</span>
+                                  <span className="text-green-600">{formatCOPExact(Number(modifications[0].new_total))}</span>
                                 </div>
                                 <div className="flex justify-between border-t pt-1">
                                   <span className="font-medium text-gray-700">Diferencia:</span>
                                   <span className={`font-semibold ${Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? 'text-red-600' : 'text-green-600'}`}>
-                                    {Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? '+' : ''}{formatCOPCeilToTen(Number(modifications[0].new_total) - Number(modifications[0].previous_total))}
+                                    {Number(modifications[0].new_total) > Number(modifications[0].previous_total) ? '+' : ''}{formatCOPExact(Number(modifications[0].new_total) - Number(modifications[0].previous_total))}
                                   </span>
                                 </div>
                               </div>
@@ -537,7 +537,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                             </div>
                             <div className="text-right flex-shrink-0">
                               <p className="font-bold text-foreground">
-                                {formatCOPCeilToTen(calculateItemCorrectPrice(item))}
+                                {formatCOPExact(calculateItemCorrectPrice(item))}
                               </p>
                             </div>
                           </div>
@@ -582,7 +582,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
                     <div className="border-t pt-2">
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-foreground">Total:</span>
-                        <span className="text-lg font-bold text-primary">{formatCOPCeilToTen(total)}</span>
+                        <span className="text-lg font-bold text-primary">{formatCOPExact(total)}</span>
                       </div>
                     </div>
                     
