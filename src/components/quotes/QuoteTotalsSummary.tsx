@@ -52,10 +52,15 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   // Load available cashback for the client
   useEffect(() => {
     const loadCashback = async () => {
-      if (!clientEmail && !clientId) return;
+      if (!clientEmail && !clientId) {
+        console.log('QuoteTotalsSummary: No client email or ID provided');
+        return;
+      }
       
       setCashbackLoading(true);
       try {
+        console.log('QuoteTotalsSummary: Loading cashback for', { clientEmail, clientId });
+        
         // First try to find client by email, then by id
         let clientQuery = supabase
           .from('clients')
@@ -67,19 +72,26 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
           clientQuery = clientQuery.eq('id', clientId);
         }
 
-        const { data: clientData } = await clientQuery.single();
+        const { data: clientData, error: clientError } = await clientQuery.maybeSingle();
+        
+        console.log('QuoteTotalsSummary: Client data found', { clientData, clientError });
         
         if (clientData) {
-          // Get client rewards
-          const { data: rewardsData } = await supabase
-            .from('client_rewards')
-            .select('total_cashback')
+          // Get actual cashback from reward transactions (same logic as useClientRewards)
+          const { data: cashbackTransactions } = await supabase
+            .from('reward_transactions')
+            .select('amount')
             .eq('client_id', clientData.id)
-            .single();
+            .eq('transaction_type', 'earned');
 
-          if (rewardsData) {
-            setAvailableCashback(rewardsData.total_cashback || 0);
-          }
+          const actualCashback = cashbackTransactions?.reduce((total, t) => total + (t.amount || 0), 0) || 0;
+          
+          console.log('QuoteTotalsSummary: Cashback calculation', { 
+            transactions: cashbackTransactions, 
+            actualCashback 
+          });
+
+          setAvailableCashback(actualCashback);
         }
       } catch (error) {
         console.error('Error loading cashback:', error);
@@ -140,8 +152,8 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
       
       {/* Cashback Usage Section */}
       {availableCashback > 0 && (clientEmail || clientId) && (
-        <div className="border-t pt-2">
-          <div className="space-y-2">
+        <div className="border-t pt-3 mt-3">
+          <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="use-cashback"
@@ -153,18 +165,25 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
                 htmlFor="use-cashback" 
                 className="text-sm font-medium cursor-pointer"
               >
-                Usar cashback disponible
+                Aplicar cashback disponible
               </Label>
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground pl-6">
               Disponible: {formatCashbackExact(availableCashback)}
               {applyCashback && (
-                <span className="text-green-600 font-medium ml-2">
+                <div className="text-green-600 font-medium mt-1">
                   → Aplicando: {formatCashbackExact(cashbackAmount)}
-                </span>
+                </div>
               )}
             </div>
           </div>
+        </div>
+      )}
+      
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="border-t pt-2 mt-2 text-xs text-gray-500">
+          Debug: availableCashback={availableCashback}, clientEmail={clientEmail}, clientId={clientId}
         </div>
       )}
 
