@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { DollarSign, Calculator } from 'lucide-react';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 
@@ -31,7 +31,9 @@ export function PaymentCollectionDialog({
   order,
   totalAmount
 }: PaymentCollectionDialogProps) {
-  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
+  // Use same rounding logic as OrderCard for consistency
+  const roundedTotalAmount = ceilToTen(totalAmount);
+  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, roundedTotalAmount);
   const [amount, setAmount] = useState('');
   const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
   const [paymentMethod, setPaymentMethod] = useState('');
