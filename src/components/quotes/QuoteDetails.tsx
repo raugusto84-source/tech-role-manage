@@ -479,7 +479,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
       if (checked && cashbackAmountToUse > 0) {
         toast({
           title: "Cashback marcado para aplicar",
-          description: `Descuento de ${formatCurrency(cashbackAmountToUse)} se aplicará cuando la cotización sea aceptada`,
+          description: `Descuento de ${formatCashbackExact(cashbackAmountToUse)} se aplicará cuando la cotización sea aceptada`,
         });
       } else {
         toast({
