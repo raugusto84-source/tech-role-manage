@@ -122,34 +122,29 @@ export function PaymentCollectionDialog({
       const vatRate = accountType === 'fiscal' ? 16 : 0;
       const isrWithholdingRate = accountType === 'fiscal' && hasISRWithholding ? 1.25 : 0;
       
-      // Calcular montos: ISR se calcula sobre el importe antes de IVA
+      // Calcular montos: ISR se descuenta del total después de IVA
       let baseAmountBeforeVAT = paymentAmount;
       let isrWithholdingAmount = 0;
-      let baseAmountAfterISR = paymentAmount;
       let vatAmount = 0;
       let finalPaymentAmount = paymentAmount;
       
       if (accountType === 'fiscal') {
-        // 1. Primero desgloso el IVA del total
+        // 1. Sacar el IVA del total para obtener la base
         baseAmountBeforeVAT = paymentAmount / (1 + vatRate / 100);
+        vatAmount = paymentAmount - baseAmountBeforeVAT;
         
         if (hasISRWithholding) {
-          // 2. ISR se calcula sobre el importe antes de IVA
+          // 2. Calcular ISR sobre la base (sin IVA)
           isrWithholdingAmount = baseAmountBeforeVAT * (isrWithholdingRate / 100);
-          // 3. Base gravable después de ISR
-          baseAmountAfterISR = baseAmountBeforeVAT - isrWithholdingAmount;
+          // 3. Descontar ISR del total después de IVA
+          finalPaymentAmount = paymentAmount - isrWithholdingAmount;
         } else {
-          baseAmountAfterISR = baseAmountBeforeVAT;
+          finalPaymentAmount = paymentAmount;
         }
-        
-        // 4. IVA se calcula sobre la base después de ISR
-        vatAmount = baseAmountAfterISR * (vatRate / 100);
-        finalPaymentAmount = baseAmountAfterISR + vatAmount;
       } else {
         // Para cuentas no fiscales
-        baseAmountAfterISR = paymentAmount;
-        vatAmount = 0;
         finalPaymentAmount = paymentAmount;
+        vatAmount = 0;
       }
       
       // Generar número de ingreso (simple y único por timestamp)
@@ -175,7 +170,7 @@ export function PaymentCollectionDialog({
           status: 'recibido',
           vat_rate: vatRate,
           vat_amount: vatAmount,
-          taxable_amount: baseAmountAfterISR,
+          taxable_amount: baseAmountBeforeVAT,
           ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() }),
           ...(hasISRWithholding && { 
             isr_withholding_rate: isrWithholdingRate,
@@ -289,13 +284,11 @@ export function PaymentCollectionDialog({
                     Cálculo con retención ISR (1.25%)
                   </div>
                   <div className="text-xs space-y-1">
-                    <p>1. Monto total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
+                    <p>1. Total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
                     <p>2. Base (sin IVA): {formatCOPCeilToTen(parseFloat(amount) / 1.16)}</p>
-                    <p>3. Retención ISR (1.25%): -{formatCOPCeilToTen((parseFloat(amount) / 1.16) * 0.0125)}</p>
-                    <p>4. Base gravable: {formatCOPCeilToTen((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125))}</p>
-                    <p>5. IVA (16%): {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 0.16)}</p>
+                    <p>3. ISR sobre la base (1.25%): -{formatCOPCeilToTen((parseFloat(amount) / 1.16) * 0.0125)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Monto neto final: {formatCOPCeilToTen(((parseFloat(amount) / 1.16) - ((parseFloat(amount) / 1.16) * 0.0125)) * 1.16)}
+                      Total final (con IVA - ISR): {formatCOPCeilToTen(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
                     </p>
                   </div>
                 </div>
