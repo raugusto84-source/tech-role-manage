@@ -72,33 +72,39 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
   const calculateItemCorrectPrice = (item: any): number => {
     const quantity = item.quantity || 1;
     const salesVatRate = item.vat_rate ?? 16;
-    
+
     // Si tiene pricing_locked, usar el total_amount directamente
     if (item.pricing_locked && item.total_amount) {
       return item.total_amount;
     }
-    
-    let itemPrice = 0;
-    
-    if (item.item_type === 'servicio') {
-      // Servicios: usar base_price directamente
-      itemPrice = (item.unit_base_price || 0) * quantity;
-    } else {
-      // Productos: cost_price + margen
-      const baseCost = (item.unit_cost_price || 0) * quantity;
-      const margin = item.profit_margin_rate || 30;
-      itemPrice = baseCost * (1 + margin / 100);
+
+    // Usar unit_base_price si está disponible (ya incluye IVA de compra y margen para productos)
+    let unitBaseSale = item.unit_base_price as number | undefined;
+
+    if (typeof unitBaseSale !== 'number' || unitBaseSale <= 0) {
+      if (item.item_type === 'servicio') {
+        unitBaseSale = item.base_price || 0;
+      } else {
+        // Productos: costo + IVA de compra (16%) + margen
+        const purchaseVatRate = 16;
+        const cost = item.unit_cost_price || 0;
+        const margin = item.profit_margin_rate || 30;
+        const costWithPurchaseVat = cost * (1 + purchaseVatRate / 100);
+        unitBaseSale = costWithPurchaseVat * (1 + margin / 100);
+      }
     }
-    
+
+    let itemPrice = (unitBaseSale || 0) * quantity;
+
     // Aplicar IVA de venta
     itemPrice = itemPrice * (1 + salesVatRate / 100);
-    
+
     // Aplicar cashback por ítem (coincidir con AddOrderItemsDialog), NO en el total
     const cashbackPercent = rewardSettings?.apply_cashback_to_items ? (rewardSettings.general_cashback_percent || 0) : 0;
     if (cashbackPercent > 0) {
       itemPrice = itemPrice * (1 + cashbackPercent / 100);
     }
-    
+
     return itemPrice;
   };
 
