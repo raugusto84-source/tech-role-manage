@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useClientRewards } from "@/hooks/useClientRewards";
 import { ClientCashbackHistory } from "@/components/rewards/ClientCashbackHistory";
 import { 
   Plus, 
@@ -70,11 +71,9 @@ export default function ClientDashboard() {
   const [pendingUpdateOrders, setPendingUpdateOrders] = useState<Order[]>([]);
   const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
   const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
-  const [rewards, setRewards] = useState({
-    totalCashback: 0,
-    referralCode: "",
-    isNewClient: true
-  });
+  
+  // Use custom hook for rewards
+  const { rewards, loading: rewardsLoading } = useClientRewards(profile);
 
   // SEO y metadatos
   useEffect(() => {
@@ -136,60 +135,6 @@ export default function ClientDashboard() {
     }
   };
 
-  const loadRewards = async () => {
-    if (!profile?.email) return;
-    try {
-      const { data: client } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', profile.email)
-        .single();
-      
-      if (!client) {
-        setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
-        return;
-      }
-
-      // Try to get existing rewards data
-      let { data: rewardsData, error: rewardsError } = await supabase
-        .from('client_rewards')
-        .select('*')
-        .eq('client_id', client.id)
-        .single();
-
-      // If no rewards record exists, create one
-      if (rewardsError && rewardsError.code === 'PGRST116') {
-        const { data: newRewardsData, error: createError } = await supabase
-          .from('client_rewards')
-          .insert({
-            client_id: client.id,
-            total_cashback: 0,
-            is_new_client: true,
-            new_client_discount_used: false
-          })
-          .select()
-          .single();
-
-        if (!createError) {
-          rewardsData = newRewardsData;
-        }
-      }
-
-      const { data: referralData } = await supabase
-        .from('client_referrals')
-        .select('referral_code')
-        .eq('referrer_client_id', client.id)
-        .single();
-
-      setRewards({
-        totalCashback: rewardsData?.total_cashback || 0,
-        referralCode: referralData?.referral_code || "",
-        isNewClient: rewardsData?.is_new_client || true
-      });
-    } catch (error) {
-      console.error('Error loading rewards:', error);
-      setRewards({ totalCashback: 0, referralCode: "", isNewClient: true });
-    }
   };
 
   const loadOrders = async () => {
@@ -308,8 +253,7 @@ export default function ClientDashboard() {
       await Promise.all([
         loadOrders(), 
         loadQuotes(), 
-        loadPendingApprovalQuotes(),
-        loadRewards()
+        loadPendingApprovalQuotes()
       ]);
       if (mounted) setLoading(false);
     })();
