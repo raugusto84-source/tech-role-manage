@@ -5,7 +5,6 @@ import { CheckCircle, Package, ShoppingCart, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { getItemTypeInfo } from '@/utils/itemTypeUtils';
-
 interface QuoteItem {
   id: string;
   quote_id: string;
@@ -26,40 +25,38 @@ interface QuoteItem {
     item_type?: string;
   };
 }
-
 interface ClientQuoteItemsSummaryProps {
   quoteId: string;
   estimatedAmount: number;
 }
-
-export function ClientQuoteItemsSummary({ quoteId, estimatedAmount }: ClientQuoteItemsSummaryProps) {
+export function ClientQuoteItemsSummary({
+  quoteId,
+  estimatedAmount
+}: ClientQuoteItemsSummaryProps) {
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     loadQuoteItems();
   }, [quoteId]);
-
   const loadQuoteItems = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('quote_items')
-        .select(`
+      const {
+        data,
+        error
+      } = await supabase.from('quote_items').select(`
           *,
           service_types (
             image_url,
             item_type
           )
-        `)
-        .eq('quote_id', quoteId)
-        .order('created_at', { ascending: true });
-
+        `).eq('quote_id', quoteId).order('created_at', {
+        ascending: true
+      });
       if (error) {
         console.error('Error loading quote items:', error);
         return;
       }
-
       setQuoteItems(data || []);
     } catch (error) {
       console.error('Error loading quote items:', error);
@@ -67,31 +64,30 @@ export function ClientQuoteItemsSummary({ quoteId, estimatedAmount }: ClientQuot
       setLoading(false);
     }
   };
-
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
-
   const calculateTotals = () => {
     const subtotal = quoteItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
     const vatTotal = quoteItems.reduce((sum, item) => sum + (item.vat_amount || 0), 0);
     const total = subtotal + vatTotal;
-    
-    return { subtotal, vatTotal, total };
+    return {
+      subtotal,
+      vatTotal,
+      total
+    };
   };
-
-  const { subtotal, vatTotal, total } = calculateTotals();
-
+  const {
+    subtotal,
+    vatTotal,
+    total
+  } = calculateTotals();
   if (loading) {
-    return (
-      <div className="space-y-4">
+    return <div className="space-y-4">
         <div className="animate-pulse">
           <div className="h-24 bg-muted rounded-lg"></div>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-4">
+  return <div className="space-y-4">
       {/* Quote Ready Status Card with Expanded Details */}
       <Card className="border-2 border-green-200 bg-green-50/50">
         <CardContent className="p-4">
@@ -144,13 +140,10 @@ export function ClientQuoteItemsSummary({ quoteId, estimatedAmount }: ClientQuot
             Desglose detallado de servicios
           </h3>
           
-          {quoteItems.length > 0 ? (
-            <div className="space-y-3">
+          {quoteItems.length > 0 ? <div className="space-y-3">
               {quoteItems.map((item, index) => {
-                const itemTypeInfo = getItemTypeInfo(item.item_type || item.service_types?.item_type || 'servicio');
-                
-                return (
-                  <div key={item.id} className="border rounded-lg p-4 bg-card/50">
+            const itemTypeInfo = getItemTypeInfo(item.item_type || item.service_types?.item_type || 'servicio');
+            return <div key={item.id} className="border rounded-lg p-4 bg-card/50">
                     <div className="flex items-start gap-3">
                       <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                         <span className="text-sm font-bold text-primary">{index + 1}</span>
@@ -160,11 +153,9 @@ export function ClientQuoteItemsSummary({ quoteId, estimatedAmount }: ClientQuot
                         <div className="flex items-start justify-between gap-3 mb-3">
                           <div className="flex-1">
                             <h4 className="font-semibold text-base mb-1">{item.name}</h4>
-                            {item.description && (
-                              <p className="text-sm text-muted-foreground mb-2">
+                            {item.description && <p className="text-sm text-muted-foreground mb-2">
                                 {item.description}
-                              </p>
-                            )}
+                              </p>}
                             <Badge variant="outline" className="text-xs mb-2">
                               {itemTypeInfo.label}
                             </Badge>
@@ -178,45 +169,15 @@ export function ClientQuoteItemsSummary({ quoteId, estimatedAmount }: ClientQuot
                         </div>
 
                         {/* Detailed pricing breakdown for each item */}
-                        <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Cantidad:</span>
-                              <span className="font-medium">{item.quantity}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Precio unitario:</span>
-                              <span className="font-medium">{formatCurrency(item.unit_price || 0)}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-1 text-sm border-t pt-2">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Subtotal:</span>
-                              <span>{formatCurrency(item.subtotal || 0)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">IVA ({item.vat_rate}%):</span>
-                              <span>{formatCurrency(item.vat_amount || 0)}</span>
-                            </div>
-                            <div className="flex justify-between font-semibold border-t pt-1">
-                              <span>Total item:</span>
-                              <span>{formatCurrency(item.total || 0)}</span>
-                            </div>
-                          </div>
-                        </div>
+                        
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
+                  </div>;
+          })}
+            </div> : <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
               <p>No hay servicios agregados a esta cotización</p>
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
@@ -250,6 +211,5 @@ export function ClientQuoteItemsSummary({ quoteId, estimatedAmount }: ClientQuot
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 }
