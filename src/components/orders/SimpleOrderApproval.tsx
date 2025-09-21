@@ -121,10 +121,9 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       return sum + finalItemTotal;
     }, 0);
     
-    // Aplicar cashback al total final si está configurado
-    if (rewardSettings?.apply_cashback_to_items && rewardSettings.general_cashback_percent > 0) {
-      total = total * (1 + rewardSettings.general_cashback_percent / 100);
-    }
+    // NO aplicar cashback sobre el total: solo se informa al usuario
+    // El total debe ser la suma exacta de items
+    // total permanece sin modificar
     
     return { 
       subtotal: subtotalSum, 
