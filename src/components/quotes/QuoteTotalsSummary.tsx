@@ -46,7 +46,8 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
   const { settings: rewardSettings } = useRewardSettings();
   
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
-  const formatCashback = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(amount);
+  const formatCashback = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+  const formatCashbackExact = (amount: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
 
   // Load available cashback for the client
   useEffect(() => {
@@ -156,7 +157,7 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
               </Label>
             </div>
             <div className="text-sm text-muted-foreground">
-              Disponible: {formatCurrency(availableCashback)}
+              Disponible: {formatCashbackExact(availableCashback)}
               {applyCashback && (
                 <span className="text-green-600 font-medium ml-2">
                   → Aplicando: {formatCurrency(cashbackAmount)}
