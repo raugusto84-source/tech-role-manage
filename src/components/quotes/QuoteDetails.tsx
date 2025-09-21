@@ -693,11 +693,11 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                       <div className="w-64 space-y-2">
                         <div className="flex justify-between">
                           <span>Subtotal:</span>
-                          <span>{formatCurrency(subtotal)}</span>
+                          <span>{formatCashbackExact(subtotal)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>IVA Total:</span>
-                          <span>{formatCurrency(totalVat)}</span>
+                          <span>{formatCashbackExact(totalVat)}</span>
                         </div>
                         {totalWithholdings > 0 && (
                           <div className="flex justify-between text-red-600">
