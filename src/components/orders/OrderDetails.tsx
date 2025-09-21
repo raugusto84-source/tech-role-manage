@@ -310,18 +310,19 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
       return 0;
     }
     
-    // MISMA LÓGICA QUE LAS TARJETAS: preferir siempre el total estimado de la orden si existe
-    if (order.estimated_cost && order.estimated_cost > 0) {
+    const isPending = orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion';
+    
+    // Si NO está en estados pendientes y existe estimated_cost, úsalo
+    if (!isPending && order.estimated_cost && order.estimated_cost > 0) {
       return order.estimated_cost;
     }
     
     if (orderItems && orderItems.length > 0) {
-      // Para órdenes pendientes de aprobación, NO aplicar redondeo
-      if (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') {
+      // Para órdenes pendientes de aprobación/actualización, SIEMPRE sumar items actuales (sin redondeo)
+      if (isPending) {
         return orderItems.reduce((sum, item) => {
           const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
           if (hasStoredTotal) return sum + Number(item.total_amount);
-          // SIN redondeo para órdenes pendientes
           return sum + calculateItemDisplayPrice(item);
         }, 0);
       }
@@ -337,7 +338,6 @@ export function OrderDetails({ order, onBack, onUpdate }: OrderDetailsProps) {
     // Si no hay items, devolver 0
     return 0;
   };
-  
   // Calculate payment summary after total calculation
   const totalAmount = calculateCorrectTotal();
   const hasStoredTotals = (orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false);

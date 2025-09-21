@@ -164,7 +164,21 @@ export function OrderServicesList({
         // Process each modification to identify which items belong to which update
         modifications.forEach((modification, index) => {
           const updateNumber = index + 1; // Update numbers start from 1
-          const itemsData = modification.items_added as any[];
+          const raw = modification.items_added as any;
+          let itemsData: any[] = [];
+          try {
+            if (Array.isArray(raw)) {
+              itemsData = raw;
+            } else if (typeof raw === 'string') {
+              const parsed = JSON.parse(raw);
+              itemsData = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+            } else if (raw && typeof raw === 'object') {
+              itemsData = [raw];
+            }
+          } catch (e) {
+            console.warn('loadAddedItems: Failed to parse items_added', { raw, e });
+            itemsData = [];
+          }
           const modificationTime = new Date(modification.created_at);
           
           console.log(`loadAddedItems: Processing modification ${updateNumber}:`, {
