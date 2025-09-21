@@ -72,8 +72,12 @@ export function ClientCashbackHistory({
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'earned':
+      case 'cashback_earned':
+      case 'referral_bonus':
         return <TrendingUp className="h-4 w-4 text-success" />;
       case 'used':
+      case 'redeemed':
+      case 'cashback_used':
         return <TrendingDown className="h-4 w-4 text-destructive" />;
       case 'expired':
         return <XCircle className="h-4 w-4 text-muted-foreground" />;
@@ -84,8 +88,12 @@ export function ClientCashbackHistory({
   const getTransactionBadge = (type: string) => {
     switch (type) {
       case 'earned':
+      case 'cashback_earned':
+      case 'referral_bonus':
         return <Badge variant="secondary" className="bg-success/10 text-success border-success/20">Ganado</Badge>;
       case 'used':
+      case 'redeemed':
+      case 'cashback_used':
         return <Badge variant="secondary" className="bg-destructive/10 text-destructive border-destructive/20">Usado</Badge>;
       case 'expired':
         return <Badge variant="secondary" className="bg-muted text-muted-foreground">Expirado</Badge>;
@@ -100,9 +108,9 @@ export function ClientCashbackHistory({
     const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return daysUntilExpiry <= 30 && daysUntilExpiry > 0;
   };
-  const totalEarned = transactions.filter(t => t.transaction_type === 'earned').reduce((sum, t) => sum + t.amount, 0);
-  const totalUsed = transactions.filter(t => t.transaction_type === 'used').reduce((sum, t) => sum + t.amount, 0);
-  const totalExpired = transactions.filter(t => t.transaction_type === 'expired').reduce((sum, t) => sum + t.amount, 0);
+  const totalEarned = transactions.filter(t => ['earned', 'cashback_earned', 'referral_bonus'].includes(t.transaction_type)).reduce((sum, t) => sum + t.amount, 0);
+  const totalUsed = transactions.filter(t => ['used', 'redeemed', 'cashback_used'].includes(t.transaction_type)).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+  const totalExpired = transactions.filter(t => t.transaction_type === 'expired').reduce((sum, t) => sum + Math.abs(t.amount), 0);
   return <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl w-[95vw] sm:w-full flex flex-col max-h-[90svh] sm:max-h-[80vh]">
         <DialogHeader className="flex-shrink-0">
@@ -188,9 +196,13 @@ export function ClientCashbackHistory({
 
                           <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-start gap-2">
                             <div className="flex items-center gap-2">
-                              <span className={`text-base sm:text-lg font-bold ${transaction.transaction_type === 'earned' ? 'text-success' : transaction.transaction_type === 'used' ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                {transaction.transaction_type === 'earned' ? '+' : '-'}
-                                {formatCurrency(transaction.amount)}
+                              <span className={`text-base sm:text-lg font-bold ${
+                                ['earned', 'cashback_earned', 'referral_bonus'].includes(transaction.transaction_type) ? 'text-success' : 
+                                ['used', 'redeemed', 'cashback_used'].includes(transaction.transaction_type) ? 'text-destructive' : 
+                                'text-muted-foreground'
+                              }`}>
+                                {['earned', 'cashback_earned', 'referral_bonus'].includes(transaction.transaction_type) ? '+' : '-'}
+                                {formatCurrency(Math.abs(transaction.amount))}
                               </span>
                               {getTransactionBadge(transaction.transaction_type)}
                             </div>
