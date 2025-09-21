@@ -14,6 +14,8 @@ interface Quote {
   request_date: string;
   created_at: string;
   salesperson_name?: string;
+  cashback_applied?: boolean;
+  cashback_amount_used?: number;
 }
 
 interface QuoteCardProps {
