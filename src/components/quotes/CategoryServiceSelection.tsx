@@ -84,6 +84,10 @@ export function CategoryServiceSelection({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   
+  // Cashback state
+  const [cashbackApplied, setCashbackApplied] = useState(false);
+  const [cashbackAmount, setCashbackAmount] = useState(0);
+  
   // Custom item form
   const [customItem, setCustomItem] = useState({
     name: '',
@@ -293,6 +297,12 @@ export function CategoryServiceSelection({
       quantity: 1,
       unit_price: 0,
     });
+  };
+
+  // Handle cashback changes from QuoteTotalsSummary
+  const handleCashbackChange = (applied: boolean, amount: number) => {
+    setCashbackApplied(applied);
+    setCashbackAmount(amount);
   };
 
   const removeItem = (itemId: string) => {
@@ -525,9 +535,20 @@ export function CategoryServiceSelection({
                     <span>IVA:</span>
                     <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.vat_amount, 0))}</span>
                   </div>
+                  {cashbackApplied && cashbackAmount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Descuento Cashback:</span>
+                      <span>-{formatCurrency(cashbackAmount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-medium">
                     <span>Total:</span>
-                    <span>{formatCurrency(selectedItems.reduce((sum, item) => sum + item.total, 0))}</span>
+                    <span>
+                      {formatCurrency(
+                        selectedItems.reduce((sum, item) => sum + item.total, 0) - 
+                        (cashbackApplied ? cashbackAmount : 0)
+                      )}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -544,7 +565,7 @@ export function CategoryServiceSelection({
                   selectedItems={selectedItems}
                   clientId={clientId}
                   clientEmail={clientEmail}
-                  onCashbackChange={() => {}}
+                  onCashbackChange={handleCashbackChange}
                 />
               </CardContent>
             </Card>
