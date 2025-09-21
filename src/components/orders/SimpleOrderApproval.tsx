@@ -139,12 +139,22 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       const displayPrice = getItemDisplayPrice(item);
       const salesVatRate = item.vat_rate ?? 16;
       
-      // Cada item ya viene redondeado, usar el precio completo
-      totalSum += displayPrice;
+      // Usar valores almacenados si están disponibles, sino calcular
+      let itemSubtotal = 0;
+      let itemVat = 0;
       
-      // Extraer el subtotal base (sin IVA) del precio ya redondeado
-      const itemSubtotal = displayPrice / (1 + salesVatRate / 100);
-      const itemVat = displayPrice - itemSubtotal;
+      if (typeof item.subtotal === 'number' && item.subtotal > 0 && 
+          typeof item.vat_amount === 'number' && item.vat_amount >= 0) {
+        // Usar valores almacenados directamente
+        itemSubtotal = item.subtotal;
+        itemVat = item.vat_amount;
+        totalSum += displayPrice;
+      } else {
+        // Calcular desde el precio de display (solo como fallback)
+        itemSubtotal = displayPrice / (1 + salesVatRate / 100);
+        itemVat = displayPrice - itemSubtotal;
+        totalSum += displayPrice;
+      }
       
       subtotalSum += itemSubtotal;
       vatSum += itemVat;
