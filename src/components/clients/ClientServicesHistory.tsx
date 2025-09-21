@@ -130,10 +130,12 @@ export function ClientServicesHistory() {
       case 'pendiente_aprobacion':
         return 'bg-yellow-100 text-yellow-800';
       case 'en_proceso':
-        return 'bg-orange-100 text-orange-800';
-      case 'pendiente_actualizacion':
         return 'bg-blue-100 text-blue-800';
+      case 'pendiente_actualizacion':
+        return 'bg-yellow-100 text-yellow-800';
       case 'pendiente_entrega':
+        return 'bg-green-100 text-green-800';
+      case 'finalizada':
         return 'bg-green-100 text-green-800';
       case 'cancelada':
         return 'bg-red-100 text-red-800';

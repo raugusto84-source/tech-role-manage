@@ -332,23 +332,23 @@ export function OrderDetails({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion':
-        return 'bg-warning/10 text-warning border-warning/20';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'pendiente_actualizacion':
-        return 'bg-orange-100 text-orange-700 border-orange-300';
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'pendiente':
-        return 'bg-info/10 text-info border-info/20';
+        return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'en_proceso':
-        return 'bg-info/10 text-info border-info/20';
+        return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'en_camino':
-        return 'bg-info/10 text-info border-info/20';
+        return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'pendiente_entrega':
-        return 'bg-orange/10 text-orange border-orange/20';
+        return 'bg-green-100 text-green-800 border-green-300';
       case 'finalizada':
-        return 'bg-success/10 text-success border-success/20';
+        return 'bg-green-100 text-green-800 border-green-300';
       case 'cancelada':
-        return 'bg-destructive/10 text-destructive border-destructive/20';
+        return 'bg-red-100 text-red-800 border-red-300';
       default:
-        return 'bg-muted/10 text-muted-foreground border-muted/20';
+        return 'bg-gray-100 text-gray-800 border-gray-300';
     }
   };
   const isClient = profile?.role === 'cliente';

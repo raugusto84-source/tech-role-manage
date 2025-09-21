@@ -204,8 +204,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pendiente_aprobacion': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'solicitud': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'solicitud': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'enviada': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'aceptada': return 'bg-green-100 text-green-800 border-green-200';
       case 'rechazada': return 'bg-red-100 text-red-800 border-red-200';

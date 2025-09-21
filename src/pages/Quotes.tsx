@@ -157,8 +157,8 @@ export default function Quotes() {
       case 'solicitud': 
         return { 
           label: 'Nuevas', 
-          color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-          bgColor: 'bg-yellow-50',
+          color: 'bg-purple-100 text-purple-800 border-purple-200',
+          bgColor: 'bg-purple-50',
           icon: '📝'
         };
       case 'enviada': 

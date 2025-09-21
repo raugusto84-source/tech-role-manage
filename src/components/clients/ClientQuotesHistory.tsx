@@ -64,6 +64,8 @@ export function ClientQuotesHistory() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'solicitud':
+        return 'bg-purple-100 text-purple-800';
       case 'aceptada':
         return 'bg-green-100 text-green-800';
       case 'rechazada':
