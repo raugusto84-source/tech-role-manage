@@ -114,12 +114,17 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
     let vatSum = 0;
     
     let total = orderItems.reduce((sum, item) => {
-      const itemTotal = calculateItemCorrectPrice(item);
+      // CRÍTICO: Para items de cotizaciones convertidas, usar total_amount directamente
+      let finalItemTotal;
       
-      // Solo redondear si NO tiene pricing_locked
-      const finalItemTotal = (item.pricing_locked && item.total_amount) 
-        ? itemTotal  // Ya es el precio final correcto
-        : ceilToTen(itemTotal);  // Redondear solo precios calculados
+      if (typeof item.total_amount === 'number' && item.total_amount > 0) {
+        // Item tiene total_amount guardado (viene de cotización) - usar EXACTAMENTE este valor
+        finalItemTotal = item.total_amount;
+      } else {
+        // Item calculado dinámicamente - aplicar lógica normal con redondeo
+        const itemTotal = calculateItemCorrectPrice(item);
+        finalItemTotal = ceilToTen(itemTotal);
+      }
       
       // Calcular subtotal y IVA para cada item
       const salesVatRate = (item.vat_rate ?? 16);
@@ -132,10 +137,7 @@ export function SimpleOrderApproval({ order, orderItems, onBack, onApprovalCompl
       return sum + finalItemTotal;
     }, 0);
     
-    // NO aplicar cashback sobre el total: solo se informa al usuario
-    // El total debe ser la suma exacta de items
-    // total permanece sin modificar
-    
+    // El total es la suma exacta de los items (sin redondeo adicional)
     return { 
       subtotal: subtotalSum, 
       vatTotal: vatSum, 
