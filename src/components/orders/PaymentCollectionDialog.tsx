@@ -117,7 +117,7 @@ export function PaymentCollectionDialog({
       // Usar trigger handle_new_income() para generar income_number automáticamente
 
       // Calcular IVA y retención de ISR si es cuenta fiscal
-      const vatRate = accountType === 'fiscal' ? 19 : 0;
+      const vatRate = accountType === 'fiscal' ? 16 : 0;
       const isrWithholdingRate = accountType === 'fiscal' && hasISRWithholding ? 1.25 : 0;
       
       // Calcular montos
