@@ -136,9 +136,10 @@ export function PaymentCollectionDialog({
         if (hasISRWithholding) {
           // 2. Calcular ISR sobre la base (sin IVA)
           isrWithholdingAmount = baseAmountBeforeVAT * (isrWithholdingRate / 100);
-          // 3. Descontar ISR del total después de IVA
+          // 3. Con ISR, usar el monto exacto sin redondear
           finalPaymentAmount = paymentAmount - isrWithholdingAmount;
         } else {
+          // Sin ISR, usar el monto redondeado original
           finalPaymentAmount = paymentAmount;
         }
       } else {
@@ -288,10 +289,10 @@ export function PaymentCollectionDialog({
                     <p>2. Base (sin IVA): {formatMXNExact(parseFloat(amount) / 1.16)}</p>
                     <p>3. ISR sobre la base (1.25%): -{formatMXNExact((parseFloat(amount) / 1.16) * 0.0125)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Total final exacto: {formatMXNExact(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
+                      Total final exacto (a cobrar): {formatMXNExact(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
                     </p>
-                    <p className="font-semibold text-green-700">
-                      Total redondeado a cobrar: {formatCOPCeilToTen(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
+                    <p className="text-xs text-amber-700">
+                      ⚠️ Con ISR se cobra el monto exacto, sin redondear
                     </p>
                   </div>
                 </div>
