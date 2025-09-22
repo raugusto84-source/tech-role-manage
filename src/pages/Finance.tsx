@@ -3060,6 +3060,296 @@ export default function Finance() {
               </Button>
             </div>
 
+            {/* Reporte Consolidado - Tabla Unificada */}
+            <Card className="border-l-4 border-l-slate-500">
+              <CardHeader className="bg-slate-50/50 dark:bg-slate-950/20">
+                <CardTitle className="text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-slate-500 rounded-full"></div>
+                  Movimientos Fiscales Consolidados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Número</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>Base Gravable</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Método Pago</TableHead>
+                        <TableHead>Categoría</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fiscalIncomesQuery.isLoading || fiscalExpensesQuery.isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-4">Cargando...</TableCell>
+                        </TableRow>
+                      ) : (() => {
+                        const allTransactions = [
+                          ...(fiscalIncomesQuery.data ?? []).map(item => ({...item, type: 'INGRESO'})),
+                          ...(fiscalExpensesQuery.data ?? []).map(item => ({...item, type: 'EGRESO', income_date: item.expense_date, income_number: item.expense_number}))
+                        ].sort((a, b) => new Date(a.income_date).getTime() - new Date(b.income_date).getTime());
+                        
+                        return allTransactions.length > 0 ? allTransactions.map((transaction: any) => (
+                          <TableRow key={transaction.id} className={transaction.type === 'INGRESO' ? 'bg-green-50/30 hover:bg-green-50/50' : 'bg-red-50/30 hover:bg-red-50/50'}>
+                            <TableCell>
+                              <div className={`px-2 py-1 rounded-full text-xs font-medium text-center ${
+                                transaction.type === 'INGRESO' 
+                                  ? 'bg-green-100 text-green-700 border border-green-200' 
+                                  : 'bg-red-100 text-red-700 border border-red-200'
+                              }`}>
+                                {transaction.type}
+                              </div>
+                            </TableCell>
+                            <TableCell>{new Date(transaction.income_date).toLocaleDateString('es-MX')}</TableCell>
+                            <TableCell className="font-mono">{transaction.income_number}</TableCell>
+                            <TableCell className="max-w-[300px] truncate" title={transaction.description}>
+                              {transaction.description}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${Number(transaction.taxable_amount || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono ${transaction.type === 'INGRESO' ? 'text-green-600' : 'text-red-600'}`}>
+                              ${Number(transaction.vat_amount || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              ${Number(transaction.amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell>{transaction.payment_method}</TableCell>
+                            <TableCell>{transaction.category}</TableCell>
+                          </TableRow>
+                        )) : (
+                          <TableRow>
+                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                              No hay movimientos fiscales en el período seleccionado
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })()}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Resumen Consolidado de IVA e ISR */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Balance de IVA Mejorado */}
+              <Card className="border-l-4 border-l-purple-500">
+                <CardHeader className="bg-purple-50/50 dark:bg-purple-950/20">
+                  <CardTitle className="text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                    Balance de IVA del Período
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {currentVatSummaryQuery.isLoading ? (
+                    <div className="text-center py-4">Calculando balance de IVA...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="bg-green-50/80 border border-green-200/60 p-4 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <div className="text-green-700 font-medium">IVA Cobrado (Ingresos)</div>
+                            <div className="text-xl font-bold text-green-800">
+                              ${(currentVatSummaryQuery.data?.totalVatIncome || 0).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-red-50/80 border border-red-200/60 p-4 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <div className="text-red-700 font-medium">IVA Pagado (Egresos)</div>
+                            <div className="text-xl font-bold text-red-800">
+                              -${(currentVatSummaryQuery.data?.totalVatExpense || 0).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className={`${
+                          (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                            ? 'bg-orange-100/80 border-orange-300/60' 
+                            : 'bg-emerald-100/80 border-emerald-300/60'
+                        } border-2 p-6 rounded-lg`}>
+                          <div className="text-center">
+                            <div className={`font-bold text-lg ${
+                              (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                                ? 'text-orange-700' 
+                                : 'text-emerald-700'
+                            }`}>
+                              SALDO IVA
+                            </div>
+                            <div className={`text-3xl font-bold mt-2 ${
+                              (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                                ? 'text-orange-800' 
+                                : 'text-emerald-800'
+                            }`}>
+                              ${Math.abs(currentVatSummaryQuery.data?.vatBalance || 0).toFixed(2)}
+                            </div>
+                            <div className={`text-lg font-semibold mt-1 ${
+                              (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                                ? 'text-orange-600' 
+                                : 'text-emerald-600'
+                            }`}>
+                              {(currentVatSummaryQuery.data?.vatBalance || 0) > 0 ? 'A PAGAR' : 'A FAVOR'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50/80 border border-gray-200/60 p-4 rounded-lg">
+                        <div className="text-sm text-gray-700">
+                          <p className="font-medium mb-2">💡 Interpretación del Balance:</p>
+                          <ul className="space-y-1 text-xs">
+                            <li>• <strong>Saldo A PAGAR:</strong> Debe declarar y pagar este monto al SAT</li>
+                            <li>• <strong>Saldo A FAVOR:</strong> Puede solicitar devolución o aplicar a futuros pagos</li>
+                            <li>• <strong>Fecha límite:</strong> Debe presentar declaración antes del día 17 del mes siguiente</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Retenciones de ISR Mejorado */}
+              <Card className="border-l-4 border-l-yellow-500">
+                <CardHeader className="bg-yellow-50/50 dark:bg-yellow-950/20">
+                  <CardTitle className="text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    Retenciones de ISR del Período
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  {isrRetentionsQuery.isLoading ? (
+                    <div className="text-center py-4">Cargando retenciones de ISR...</div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 gap-4">
+                        <div className="bg-yellow-50/80 border border-yellow-200/60 p-4 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <div className="text-yellow-700 font-medium">Ingresos Sujetos a ISR</div>
+                            <div className="text-xl font-bold text-yellow-800">
+                              ${(isrRetentionsQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-yellow-100/80 border-2 border-yellow-300/60 p-6 rounded-lg">
+                          <div className="text-center">
+                            <div className="text-yellow-700 font-bold text-lg">
+                              TOTAL ISR RETENIDO
+                            </div>
+                            <div className="text-3xl font-bold text-yellow-800 mt-2">
+                              ${(isrRetentionsQuery.data?.reduce((sum, item) => sum + Number(item.isr_withholding_amount || 0), 0) || 0).toFixed(2)}
+                            </div>
+                            <div className="text-sm text-yellow-600 mt-1">
+                              {isrRetentionsQuery.data?.length || 0} retención(es)
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-blue-50/80 border border-blue-200/60 p-4 rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <div className="text-blue-700 font-medium">Ingreso Neto Recibido</div>
+                            <div className="text-xl font-bold text-blue-800">
+                              ${((isrRetentionsQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0) - 
+                                  (isrRetentionsQuery.data?.reduce((sum, item) => sum + Number(item.isr_withholding_amount || 0), 0) || 0)).toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-gray-50/80 border border-gray-200/60 p-4 rounded-lg">
+                        <div className="text-sm text-gray-700">
+                          <p className="font-medium mb-2">📋 Información sobre ISR:</p>
+                          <ul className="space-y-1 text-xs">
+                            <li>• <strong>ISR Retenido:</strong> Impuesto descontado por el cliente pagador</li>
+                            <li>• <strong>Acreditable:</strong> Se puede descontar del ISR anual a pagar</li>
+                            <li>• <strong>Constancia:</strong> El cliente debe entregar constancia de retención</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Tabla Detallada de ISR (si hay retenciones) */}
+            {(isrRetentionsQuery.data?.length || 0) > 0 && (
+              <Card className="border-l-4 border-l-amber-500">
+                <CardHeader className="flex flex-row items-center justify-between bg-amber-50/50 dark:bg-amber-950/20">
+                  <CardTitle className="text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                    <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                    Detalle de Retenciones ISR
+                  </CardTitle>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => {
+                      const isrData = (isrRetentionsQuery.data ?? []).map(item => ({
+                        fecha: item.income_date,
+                        concepto: item.description,
+                        monto_total: Number(item.amount).toFixed(2),
+                        tasa_retencion: `${item.isr_withholding_rate}%`,
+                        isr_retenido: Number(item.isr_withholding_amount).toFixed(2),
+                        monto_neto: (Number(item.amount) - Number(item.isr_withholding_amount)).toFixed(2)
+                      }));
+                      exportCsv(`retenciones_isr_detalle_${startDate}_${endDate}`, isrData);
+                    }}
+                  >
+                    Exportar Detalle ISR
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Fecha</TableHead>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead>Monto Total</TableHead>
+                          <TableHead>Tasa ISR</TableHead>
+                          <TableHead>ISR Retenido</TableHead>
+                          <TableHead>Monto Neto</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isrRetentionsQuery.data?.map((retention: any, index: number) => (
+                          <TableRow key={index} className="hover:bg-amber-50/30">
+                            <TableCell>{new Date(retention.income_date).toLocaleDateString('es-MX')}</TableCell>
+                            <TableCell className="max-w-[250px] truncate" title={retention.description}>
+                              {retention.description}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              ${Number(retention.amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
+                                {retention.isr_withholding_rate}%
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-amber-600 font-semibold">
+                              ${Number(retention.isr_withholding_amount).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              ${(Number(retention.amount) - Number(retention.isr_withholding_amount)).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Ingresos Fiscales */}
             <Card className="border-l-4 border-l-green-500">
               <CardHeader className="flex flex-row items-center justify-between bg-green-50/50 dark:bg-green-950/20">
