@@ -109,85 +109,90 @@ export function PurchaseHistoryPanel() {
                 </Badge>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {withdrawals.map((withdrawal) => (
-                  <Card key={withdrawal.id} className="border-l-4 border-l-yellow-400">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {withdrawals.map((withdrawal) => (
+                    <TableRow key={withdrawal.id} className="border-l-4 border-l-yellow-400">
+                      <TableCell>
                         <Badge 
                           variant="outline" 
                           className="bg-yellow-50 text-yellow-700 border-yellow-200"
                         >
                           Reactivado
                         </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(withdrawal.created_at).toLocaleDateString('es-MX')}
-                        </span>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Descripción</p>
-                        <p className="text-sm font-medium" title={withdrawal.description}>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(withdrawal.created_at).toLocaleDateString('es-MX')}
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium" title={withdrawal.description}>
                           {withdrawal.description}
                         </p>
-                      </div>
-                      
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Monto</p>
-                        <p className="text-2xl font-bold text-yellow-600">
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-bold text-yellow-600">
                           ${withdrawal.amount.toLocaleString('es-MX', { 
                             minimumFractionDigits: 2 
                           })}
-                        </p>
-                      </div>
-
-                      <div className="flex gap-2 pt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleReapply(withdrawal)}
-                          className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50"
-                        >
-                          <RotateCcw className="h-4 w-4 mr-1" />
-                          Aplicar
-                        </Button>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar retiro permanentemente?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción eliminará permanentemente el retiro fiscal de $
-                                {withdrawal.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}.
-                                Esta acción no se puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handlePermanentDelete(withdrawal.id)}
-                                className="bg-red-600 hover:bg-red-700"
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2 justify-center">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReapply(withdrawal)}
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            Aplicar
+                          </Button>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
-                                Eliminar permanentemente
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar retiro permanentemente?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción eliminará permanentemente el retiro fiscal de $
+                                  {withdrawal.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}.
+                                  Esta acción no se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handlePermanentDelete(withdrawal.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Eliminar permanentemente
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
