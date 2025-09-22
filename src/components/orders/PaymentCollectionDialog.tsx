@@ -45,7 +45,16 @@ export function PaymentCollectionDialog({
   useEffect(() => {
     console.log('PaymentCollectionDialog open state changed:', open);
     if (open && !paymentsLoading) {
-      const remainingAmount = paymentSummary.remainingBalance;
+      let remainingAmount = paymentSummary.remainingBalance;
+      
+      // Si hay ISR aplicado, recalcular el remaining balance con el monto exacto
+      if (accountType === 'fiscal' && hasISRWithholding) {
+        const baseAmount = roundedTotalAmount / 1.16; // Base sin IVA
+        const isrAmount = baseAmount * 0.0125; // ISR 1.25%
+        const exactFinalAmount = roundedTotalAmount - isrAmount; // Total exacto después de ISR
+        remainingAmount = Math.max(0, exactFinalAmount - paymentSummary.totalPaid);
+      }
+      
       console.log('Dialog opened for order:', order.order_number, 'remaining balance:', remainingAmount);
       setAmount(remainingAmount > 0 ? remainingAmount.toString() : '0');
       
@@ -54,7 +63,7 @@ export function PaymentCollectionDialog({
         setAccountType(paymentSummary.existingAccountType);
       }
     }
-  }, [open, order.order_number, paymentSummary.remainingBalance, paymentSummary.existingAccountType, paymentsLoading]);
+  }, [open, order.order_number, paymentSummary.remainingBalance, paymentSummary.totalPaid, paymentSummary.existingAccountType, paymentsLoading, accountType, hasISRWithholding, roundedTotalAmount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,11 +110,21 @@ export function PaymentCollectionDialog({
     }
 
     // Validate payment amount doesn't exceed remaining balance
-    if (paymentAmount > paymentSummary.remainingBalance) {
-      console.log('Validation failed - amount exceeds remaining balance:', paymentAmount, 'vs', paymentSummary.remainingBalance);
+    let maxAllowedAmount = paymentSummary.remainingBalance;
+    
+    // Si hay ISR aplicado, usar el remaining balance exacto
+    if (accountType === 'fiscal' && hasISRWithholding) {
+      const baseAmount = roundedTotalAmount / 1.16; // Base sin IVA
+      const isrAmount = baseAmount * 0.0125; // ISR 1.25%
+      const exactFinalAmount = roundedTotalAmount - isrAmount; // Total exacto después de ISR
+      maxAllowedAmount = Math.max(0, exactFinalAmount - paymentSummary.totalPaid);
+    }
+    
+    if (paymentAmount > maxAllowedAmount) {
+      console.log('Validation failed - amount exceeds remaining balance:', paymentAmount, 'vs', maxAllowedAmount);
       toast({
         title: "Error",
-        description: `El monto no puede ser mayor al restante por cobrar: ${formatCOPCeilToTen(paymentSummary.remainingBalance)}`,
+        description: `El monto no puede ser mayor al restante por cobrar: ${hasISRWithholding ? formatMXNExact(maxAllowedAmount) : formatCOPCeilToTen(maxAllowedAmount)}`,
         variant: "destructive"
       });
       return;
@@ -260,14 +279,24 @@ export function PaymentCollectionDialog({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="amount">Monto a cobrar (Restante: {formatCOPCeilToTen(paymentSummary.remainingBalance)})</Label>
+            <Label htmlFor="amount">
+              Monto a cobrar (Restante: {
+                accountType === 'fiscal' && hasISRWithholding 
+                  ? formatMXNExact(Math.max(0, (roundedTotalAmount - (roundedTotalAmount / 1.16) * 0.0125) - paymentSummary.totalPaid))
+                  : formatCOPCeilToTen(paymentSummary.remainingBalance)
+              })
+            </Label>
             <Input
               id="amount"
               type="number"
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              placeholder={paymentSummary.remainingBalance.toString()}
+              placeholder={
+                accountType === 'fiscal' && hasISRWithholding 
+                  ? (roundedTotalAmount - (roundedTotalAmount / 1.16) * 0.0125 - paymentSummary.totalPaid).toString()
+                  : paymentSummary.remainingBalance.toString()
+              }
               required
               className="text-lg font-semibold"
             />
@@ -275,7 +304,13 @@ export function PaymentCollectionDialog({
               {paymentSummary.totalPaid > 0 && (
                 <p>Ya cobrado: {formatCOPCeilToTen(paymentSummary.totalPaid)}</p>
               )}
-              <p className="text-green-600 font-medium">Monto restante por cobrar: {formatCOPCeilToTen(paymentSummary.remainingBalance)}</p>
+              <p className="text-green-600 font-medium">
+                Monto restante por cobrar: {
+                  accountType === 'fiscal' && hasISRWithholding 
+                    ? formatMXNExact(Math.max(0, (roundedTotalAmount - (roundedTotalAmount / 1.16) * 0.0125) - paymentSummary.totalPaid))
+                    : formatCOPCeilToTen(paymentSummary.remainingBalance)
+                }
+              </p>
               
               {/* Mostrar cálculo de retención ISR */}
               {accountType === 'fiscal' && hasISRWithholding && amount && !isNaN(parseFloat(amount)) && (
