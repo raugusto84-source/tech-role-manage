@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen, formatMXNExact } from '@/utils/currency';
 import { DollarSign, Calculator } from 'lucide-react';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 
@@ -285,10 +285,13 @@ export function PaymentCollectionDialog({
                   </div>
                   <div className="text-xs space-y-1">
                     <p>1. Total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
-                    <p>2. Base (sin IVA): {formatCOPCeilToTen(parseFloat(amount) / 1.16)}</p>
-                    <p>3. ISR sobre la base (1.25%): -{formatCOPCeilToTen((parseFloat(amount) / 1.16) * 0.0125)}</p>
+                    <p>2. Base (sin IVA): {formatMXNExact(parseFloat(amount) / 1.16)}</p>
+                    <p>3. ISR sobre la base (1.25%): -{formatMXNExact((parseFloat(amount) / 1.16) * 0.0125)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Total final (con IVA - ISR): {formatCOPCeilToTen(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
+                      Total final exacto: {formatMXNExact(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
+                    </p>
+                    <p className="font-semibold text-green-700">
+                      Total redondeado a cobrar: {formatCOPCeilToTen(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
                     </p>
                   </div>
                 </div>
