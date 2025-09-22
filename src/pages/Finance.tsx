@@ -3330,6 +3330,191 @@ export default function Finance() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Balance de IVA */}
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="bg-purple-50/50 dark:bg-purple-950/20">
+                <CardTitle className="text-purple-700 dark:text-purple-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                  Balance de IVA del Período
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                {currentVatSummaryQuery.isLoading ? (
+                  <div className="text-center py-4">Calculando balance de IVA...</div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-green-50/80 border border-green-200/60 p-4 rounded-lg text-center">
+                        <div className="text-green-700 font-medium text-sm">IVA Cobrado</div>
+                        <div className="text-xl font-bold text-green-800">
+                          ${(currentVatSummaryQuery.data?.totalVatIncome || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      
+                      <div className="bg-red-50/80 border border-red-200/60 p-4 rounded-lg text-center">
+                        <div className="text-red-700 font-medium text-sm">IVA Pagado</div>
+                        <div className="text-xl font-bold text-red-800">
+                          ${(currentVatSummaryQuery.data?.totalVatExpense || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      
+                      <div className={`${
+                        (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                          ? 'bg-orange-50/80 border-orange-200/60' 
+                          : 'bg-emerald-50/80 border-emerald-200/60'
+                      } border p-4 rounded-lg text-center`}>
+                        <div className={`font-medium text-sm ${
+                          (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                            ? 'text-orange-700' 
+                            : 'text-emerald-700'
+                        }`}>
+                          Saldo IVA
+                        </div>
+                        <div className={`text-xl font-bold ${
+                          (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                            ? 'text-orange-800' 
+                            : 'text-emerald-800'
+                        }`}>
+                          ${(currentVatSummaryQuery.data?.vatBalance || 0).toFixed(2)}
+                        </div>
+                        <div className={`text-xs mt-1 ${
+                          (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                            ? 'text-orange-600' 
+                            : 'text-emerald-600'
+                        }`}>
+                          {(currentVatSummaryQuery.data?.vatBalance || 0) > 0 ? 'A pagar' : 'A favor'}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-gray-50/80 border border-gray-200/60 p-4 rounded-lg">
+                      <div className="text-sm text-gray-700">
+                        <p className="font-medium mb-2">Interpretación del Balance:</p>
+                        <ul className="space-y-1 text-xs">
+                          <li>• <strong>Saldo positivo (A pagar):</strong> Se debe más IVA del que se pagó en compras</li>
+                          <li>• <strong>Saldo negativo (A favor):</strong> Se pagó más IVA en compras del que se cobró</li>
+                          <li>• <strong>Nota:</strong> Este balance debe reportarse en la declaración mensual de IVA</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Retenciones de ISR */}
+            <Card className="border-l-4 border-l-yellow-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-yellow-50/50 dark:bg-yellow-950/20">
+                <CardTitle className="text-yellow-700 dark:text-yellow-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  Retenciones de ISR del Período
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => {
+                    const isrData = (isrRetentionsQuery.data ?? []).map(item => ({
+                      fecha: item.income_date,
+                      concepto: item.description,
+                      monto_total: Number(item.amount).toFixed(2),
+                      tasa_retencion: `${item.isr_withholding_rate}%`,
+                      isr_retenido: Number(item.isr_withholding_amount).toFixed(2)
+                    }));
+                    exportCsv(`retenciones_isr_${startDate}_${endDate}`, isrData);
+                  }}
+                  disabled={!isrRetentionsQuery.data?.length}
+                >
+                  Exportar ISR
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {isrRetentionsQuery.isLoading ? (
+                  <div className="text-center py-4">Cargando retenciones de ISR...</div>
+                ) : (
+                  <>
+                    <div className="mb-4 p-4 bg-yellow-50/50 border border-yellow-200/50 rounded-lg">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                        <div>
+                          <div className="text-yellow-700 font-medium text-sm">Número de Retenciones</div>
+                          <div className="text-xl font-bold text-yellow-800">
+                            {isrRetentionsQuery.data?.length || 0}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-yellow-700 font-medium text-sm">Ingreso Total Sujeto</div>
+                          <div className="text-xl font-bold text-yellow-800">
+                            ${(isrRetentionsQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0).toFixed(2)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-yellow-700 font-medium text-sm">Total ISR Retenido</div>
+                          <div className="text-xl font-bold text-yellow-800">
+                            ${(isrRetentionsQuery.data?.reduce((sum, item) => sum + Number(item.isr_withholding_amount || 0), 0) || 0).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {(isrRetentionsQuery.data?.length || 0) > 0 ? (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fecha</TableHead>
+                              <TableHead>Concepto</TableHead>
+                              <TableHead>Monto Total</TableHead>
+                              <TableHead>Tasa ISR</TableHead>
+                              <TableHead>ISR Retenido</TableHead>
+                              <TableHead>Monto Neto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {isrRetentionsQuery.data?.map((retention: any, index: number) => (
+                              <TableRow key={index}>
+                                <TableCell>{new Date(retention.income_date).toLocaleDateString('es-MX')}</TableCell>
+                                <TableCell className="max-w-[250px] truncate" title={retention.description}>
+                                  {retention.description}
+                                </TableCell>
+                                <TableCell className="text-right font-mono">
+                                  ${Number(retention.amount).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  {retention.isr_withholding_rate}%
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-yellow-600">
+                                  ${Number(retention.isr_withholding_amount).toFixed(2)}
+                                </TableCell>
+                                <TableCell className="text-right font-mono font-semibold">
+                                  ${(Number(retention.amount) - Number(retention.isr_withholding_amount)).toFixed(2)}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <div className="text-4xl mb-2">🧾</div>
+                        <div className="font-medium">No hay retenciones de ISR</div>
+                        <div className="text-sm">No se encontraron retenciones de ISR en el período seleccionado</div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 bg-gray-50/80 border border-gray-200/60 p-4 rounded-lg">
+                      <div className="text-sm text-gray-700">
+                        <p className="font-medium mb-2">Información sobre ISR:</p>
+                        <ul className="space-y-1 text-xs">
+                          <li>• <strong>ISR Retenido:</strong> Impuesto que los clientes retuvieron al pagar facturas</li>
+                          <li>• <strong>Monto Neto:</strong> Cantidad realmente recibida después de la retención</li>
+                          <li>• <strong>Uso Contable:</strong> Las retenciones se pueden aplicar como pago a cuenta del ISR anual</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>
