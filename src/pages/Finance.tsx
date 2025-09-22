@@ -107,6 +107,8 @@ export default function Finance() {
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
       // Mostrar solo ingresos cobrados, no los pendientes de cobranza
       q = q.eq("status", "recibido");
+      // Excluir ingresos de referencia (dummy entries para retiros fiscales)
+      q = q.neq("category", "referencia");
       const {
         data,
         error
@@ -191,15 +193,26 @@ export default function Finance() {
     }
   });
 
-  // Query para gestión de IVA - ahora desde incomes y expenses
+  // Query para IVA - ahora desde incomes y expenses
   const vatDetailsQuery = useQuery({
     queryKey: ["vat_details", startDate, endDate],
     queryFn: async () => {
-      const [incomesData, expensesData] = await Promise.all([supabase.from("incomes").select("income_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").eq("status", "recibido").not("vat_amount", "is", null).gte("income_date", startDate).lte("income_date", endDate).order("income_date", {
-        ascending: false
-      }), supabase.from("expenses").select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount").eq("account_type", "fiscal").not("vat_amount", "is", null).gte("expense_date", startDate).lte("expense_date", endDate).order("expense_date", {
-        ascending: false
-      })]);
+      const [incomesData, expensesData] = await Promise.all([
+        supabase.from("incomes").select("income_date, description, amount, vat_rate, vat_amount, taxable_amount")
+          .eq("account_type", "fiscal")
+          .eq("status", "recibido")
+          .neq("category", "referencia") // Excluir referencias
+          .not("vat_amount", "is", null)
+          .gte("income_date", startDate)
+          .lte("income_date", endDate)
+          .order("income_date", { ascending: false }), 
+        supabase.from("expenses").select("expense_date, description, amount, vat_rate, vat_amount, taxable_amount")
+          .eq("account_type", "fiscal")
+          .not("vat_amount", "is", null)
+          .gte("expense_date", startDate)
+          .lte("expense_date", endDate)
+          .order("expense_date", { ascending: false })
+      ]);
       if (incomesData.error) throw incomesData.error;
       if (expensesData.error) throw expensesData.error;
       const combined = [...(incomesData.data || []).map(item => ({
@@ -237,6 +250,7 @@ export default function Finance() {
         .select("income_date, description, amount, isr_withholding_rate, isr_withholding_amount")
         .eq("account_type", "fiscal")
         .eq("status", "recibido")
+        .neq("category", "referencia") // Excluir referencias
         .not("isr_withholding_amount", "is", null)
         .gte("income_date", startDate)
         .lte("income_date", endDate)
@@ -257,6 +271,7 @@ export default function Finance() {
           .select("vat_amount")
           .eq("account_type", "fiscal")
           .eq("status", "recibido")
+          .neq("category", "referencia") // Excluir referencias
           .not("vat_amount", "is", null)
           .gte("income_date", startDate)
           .lte("income_date", endDate),
@@ -294,6 +309,7 @@ export default function Finance() {
         .select("*")
         .eq("account_type", "fiscal")
         .eq("status", "recibido")
+        .neq("category", "referencia") // Excluir referencias
         .gte("income_date", startDate)
         .lte("income_date", endDate)
         .order("income_date", { ascending: true });
