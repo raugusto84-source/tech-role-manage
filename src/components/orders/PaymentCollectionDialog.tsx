@@ -320,11 +320,11 @@ export function PaymentCollectionDialog({
                     Cálculo con retención ISR (1.25%)
                   </div>
                   <div className="text-xs space-y-1">
-                    <p>1. Total con IVA: {formatCOPCeilToTen(parseFloat(amount))}</p>
-                    <p>2. Base (sin IVA): {formatMXNExact(parseFloat(amount) / 1.16)}</p>
-                    <p>3. ISR sobre la base (1.25%): -{formatMXNExact((parseFloat(amount) / 1.16) * 0.0125)}</p>
+                    <p>1. Total con IVA: {formatCOPCeilToTen(roundedTotalAmount)}</p>
+                    <p>2. Base (sin IVA): {formatMXNExact(roundedTotalAmount / 1.16)}</p>
+                    <p>3. ISR sobre la base (1.25%): -{formatMXNExact((roundedTotalAmount / 1.16) * 0.0125)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Total final exacto (a cobrar): {formatMXNExact(parseFloat(amount) - ((parseFloat(amount) / 1.16) * 0.0125))}
+                      Total final exacto (a cobrar): {formatMXNExact(roundedTotalAmount - ((roundedTotalAmount / 1.16) * 0.0125))}
                     </p>
                     <p className="text-xs text-amber-700">
                       ⚠️ Con ISR se cobra el monto exacto, sin redondear
