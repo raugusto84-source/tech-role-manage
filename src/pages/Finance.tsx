@@ -3034,6 +3034,7 @@ export default function Finance() {
                       fecha: item.income_date,
                       numero: item.income_number,
                       concepto: item.description,
+                      numero_factura: item.invoice_number || '-',
                       base: Number(item.taxable_amount || 0).toFixed(2),
                       iva: Number(item.vat_amount || 0).toFixed(2),
                       total: Number(item.amount).toFixed(2),
@@ -3045,6 +3046,7 @@ export default function Finance() {
                       fecha: item.expense_date,
                       numero: item.expense_number,
                       concepto: item.description,
+                      numero_factura: item.invoice_number || '-',
                       base: Number(item.taxable_amount || 0).toFixed(2),
                       iva: Number(item.vat_amount || 0).toFixed(2),
                       total: Number(item.amount).toFixed(2),
@@ -3077,6 +3079,7 @@ export default function Finance() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Número</TableHead>
                         <TableHead>Concepto</TableHead>
+                        <TableHead># Factura</TableHead>
                         <TableHead>Base Gravable</TableHead>
                         <TableHead>IVA</TableHead>
                         <TableHead>Total</TableHead>
@@ -3087,7 +3090,7 @@ export default function Finance() {
                     <TableBody>
                       {fiscalIncomesQuery.isLoading || fiscalExpensesQuery.isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={9} className="text-center py-4">Cargando...</TableCell>
+                          <TableCell colSpan={10} className="text-center py-4">Cargando...</TableCell>
                         </TableRow>
                       ) : (() => {
                         const allTransactions = [
@@ -3111,6 +3114,9 @@ export default function Finance() {
                             <TableCell className="max-w-[300px] truncate" title={transaction.description}>
                               {transaction.description}
                             </TableCell>
+                            <TableCell className="font-mono text-sm">
+                              {transaction.invoice_number || '-'}
+                            </TableCell>
                             <TableCell className="text-right font-mono">
                               ${Number(transaction.taxable_amount || 0).toFixed(2)}
                             </TableCell>
@@ -3125,7 +3131,7 @@ export default function Finance() {
                           </TableRow>
                         )) : (
                           <TableRow>
-                            <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                            <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                               No hay movimientos fiscales en el período seleccionado
                             </TableCell>
                           </TableRow>
@@ -3374,6 +3380,7 @@ export default function Finance() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Número</TableHead>
                         <TableHead>Concepto</TableHead>
+                        <TableHead># Factura</TableHead>
                         <TableHead>Base Gravable</TableHead>
                         <TableHead>IVA</TableHead>
                         <TableHead>Total</TableHead>
@@ -3394,6 +3401,9 @@ export default function Finance() {
                           <TableCell className="max-w-[300px] truncate" title={income.description}>
                             {income.description}
                           </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {income.invoice_number || '-'}
+                          </TableCell>
                           <TableCell className="text-right font-mono">
                             ${Number(income.taxable_amount || 0).toFixed(2)}
                           </TableCell>
@@ -3409,7 +3419,7 @@ export default function Finance() {
                       ))}
                       {!fiscalIncomesQuery.isLoading && (!fiscalIncomesQuery.data || fiscalIncomesQuery.data.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                             No hay ingresos fiscales en el período seleccionado
                           </TableCell>
                         </TableRow>
@@ -3468,6 +3478,7 @@ export default function Finance() {
                         <TableHead>Fecha</TableHead>
                         <TableHead>Número</TableHead>
                         <TableHead>Concepto</TableHead>
+                        <TableHead># Factura</TableHead>
                         <TableHead>Base Gravable</TableHead>
                         <TableHead>IVA</TableHead>
                         <TableHead>Total</TableHead>
@@ -3476,52 +3487,55 @@ export default function Finance() {
                         <TableHead>Desglose</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      {fiscalExpensesQuery.isLoading && (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-4">Cargando...</TableCell>
-                        </TableRow>
-                      )}
-                      {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
-                        <TableRow key={expense.id}>
-                          <TableCell>{new Date(expense.expense_date).toLocaleDateString('es-MX')}</TableCell>
-                          <TableCell className="font-mono">{expense.expense_number}</TableCell>
-                          <TableCell className="max-w-[300px] truncate" title={expense.description}>
-                            {expense.description}
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            ${Number(expense.taxable_amount || 0).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-red-600">
-                            ${Number(expense.vat_amount || 0).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-semibold">
-                            ${Number(expense.amount).toFixed(2)}
-                          </TableCell>
-                          <TableCell>{expense.payment_method}</TableCell>
-                          <TableCell>{expense.category}</TableCell>
-                          <TableCell>
-                            {expense.description?.includes('Facturas:') ? (
-                              <div className="text-xs text-muted-foreground">
-                                {expense.description.split('Facturas:')[1]?.split(',').map((factura: string, index: number) => (
-                                  <div key={index} className="truncate max-w-[120px]" title={factura.trim()}>
-                                    • {factura.trim()}
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {!fiscalExpensesQuery.isLoading && (!fiscalExpensesQuery.data || fiscalExpensesQuery.data.length === 0) && (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                            No hay egresos fiscales en el período seleccionado
-                          </TableCell>
-                        </TableRow>
-                      )}
+                     <TableBody>
+                       {fiscalExpensesQuery.isLoading && (
+                         <TableRow>
+                           <TableCell colSpan={10} className="text-center py-4">Cargando...</TableCell>
+                         </TableRow>
+                       )}
+                       {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
+                         <TableRow key={expense.id}>
+                           <TableCell>{new Date(expense.expense_date).toLocaleDateString('es-MX')}</TableCell>
+                           <TableCell className="font-mono">{expense.expense_number}</TableCell>
+                           <TableCell className="max-w-[300px] truncate" title={expense.description}>
+                             {expense.description}
+                           </TableCell>
+                           <TableCell className="font-mono text-sm">
+                             {expense.invoice_number || '-'}
+                           </TableCell>
+                           <TableCell className="text-right font-mono">
+                             ${Number(expense.taxable_amount || 0).toFixed(2)}
+                           </TableCell>
+                           <TableCell className="text-right font-mono text-red-600">
+                             ${Number(expense.vat_amount || 0).toFixed(2)}
+                           </TableCell>
+                           <TableCell className="text-right font-mono font-semibold">
+                             ${Number(expense.amount).toFixed(2)}
+                           </TableCell>
+                           <TableCell>{expense.payment_method}</TableCell>
+                           <TableCell>{expense.category}</TableCell>
+                           <TableCell>
+                             {expense.description?.includes('Facturas:') ? (
+                               <div className="text-xs text-muted-foreground">
+                                 {expense.description.split('Facturas:')[1]?.split(',').map((factura: string, index: number) => (
+                                   <div key={index} className="truncate max-w-[120px]" title={factura.trim()}>
+                                     • {factura.trim()}
+                                   </div>
+                                 ))}
+                               </div>
+                             ) : (
+                               <span className="text-xs text-muted-foreground">-</span>
+                             )}
+                           </TableCell>
+                         </TableRow>
+                       ))}
+                       {!fiscalExpensesQuery.isLoading && (!fiscalExpensesQuery.data || fiscalExpensesQuery.data.length === 0) && (
+                         <TableRow>
+                           <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                             No hay egresos fiscales en el período seleccionado
+                           </TableCell>
+                         </TableRow>
+                       )}
                     </TableBody>
                   </Table>
                 </div>
