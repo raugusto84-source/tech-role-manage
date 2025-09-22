@@ -7,6 +7,8 @@ interface PaymentSummary {
   remainingBalance: number;
   isFullyPaid: boolean;
   existingAccountType?: 'fiscal' | 'no_fiscal';
+  hasISRApplied: boolean;
+  totalISRAmount: number;
 }
 
 export function useOrderPayments(orderId: string, totalAmount: number) {
@@ -15,7 +17,9 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
     paymentCount: 0,
     remainingBalance: 0,
     isFullyPaid: false,
-    existingAccountType: undefined
+    existingAccountType: undefined,
+    hasISRApplied: false,
+    totalISRAmount: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +30,9 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
         paymentCount: 0,
         remainingBalance: totalAmount,
         isFullyPaid: false,
-        existingAccountType: undefined
+        existingAccountType: undefined,
+        hasISRApplied: false,
+        totalISRAmount: 0
       });
       setLoading(false);
       return;
@@ -36,7 +42,7 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
       console.log('Fetching payments for order:', orderId);
       const { data, error } = await supabase
         .from('order_payments')
-        .select('payment_amount, account_type')
+        .select('payment_amount, account_type, isr_withholding_applied, isr_withholding_amount')
         .eq('order_id', orderId);
 
       if (error) throw error;
@@ -44,16 +50,34 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
       console.log('Payment data retrieved:', data);
       const totalPaid = data?.reduce((sum, payment) => sum + Number(payment.payment_amount), 0) || 0;
       const paymentCount = data?.length || 0;
-      const remainingBalance = Math.max(0, totalAmount - totalPaid);
-      const isFullyPaid = remainingBalance <= 0;
       const existingAccountType = data && data.length > 0 ? data[0].account_type : undefined;
+      
+      // Verificar si hay ISR aplicado
+      const hasISRApplied = data?.some(payment => payment.isr_withholding_applied) || false;
+      const totalISRAmount = data?.reduce((sum, payment) => sum + Number(payment.isr_withholding_amount || 0), 0) || 0;
+      
+      // Si hay ISR aplicado, calcular el remaining balance considerando el total exacto después de ISR
+      let remainingBalance = 0;
+      if (hasISRApplied) {
+        // Calcular el total exacto con ISR aplicado
+        const baseAmount = totalAmount / 1.16; // Base sin IVA
+        const isrAmount = baseAmount * 0.0125; // ISR 1.25%
+        const exactTotalWithISR = totalAmount - isrAmount;
+        remainingBalance = Math.max(0, exactTotalWithISR - totalPaid);
+      } else {
+        remainingBalance = Math.max(0, totalAmount - totalPaid);
+      }
+      
+      const isFullyPaid = remainingBalance <= 0;
 
       const summary = {
         totalPaid,
         paymentCount,
         remainingBalance,
         isFullyPaid,
-        existingAccountType
+        existingAccountType,
+        hasISRApplied,
+        totalISRAmount
       };
       
       console.log('Payment summary calculated:', summary);
@@ -65,7 +89,9 @@ export function useOrderPayments(orderId: string, totalAmount: number) {
         paymentCount: 0,
         remainingBalance: totalAmount,
         isFullyPaid: false,
-        existingAccountType: undefined
+        existingAccountType: undefined,
+        hasISRApplied: false,
+        totalISRAmount: 0
       });
     } finally {
       setLoading(false);

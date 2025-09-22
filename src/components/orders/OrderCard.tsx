@@ -239,6 +239,11 @@ export function OrderCard({
                 {order.status.replace('_', ' ').toUpperCase()}
               </Badge>
               <OrderModificationsBadge orderId={order.id} />
+              {paymentSummary.hasISRApplied && (
+                <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-200">
+                  ISR
+                </Badge>
+              )}
             </div>
           </div>
           <div className="text-right">
@@ -252,6 +257,15 @@ export function OrderCard({
                 formattedEstimated: usingEstimated ? formatCOPCeilToTen(order.estimated_cost!) : 'N/A',
                 formattedTotal: formatMXNInt(totalAmount)
               });
+              
+              // Si hay ISR aplicado, mostrar el total exacto después de ISR
+              if (paymentSummary.hasISRApplied) {
+                const baseAmount = totalAmount / 1.16; // Base sin IVA
+                const isrAmount = baseAmount * 0.0125; // ISR 1.25%
+                const exactTotalWithISR = totalAmount - isrAmount;
+                return formatMXNInt(exactTotalWithISR);
+              }
+              
               return formatCOPCeilToTen(totalAmount);
             })()}
               </div>}
@@ -298,9 +312,20 @@ export function OrderCard({
             <div className="flex justify-between">
               <span className="text-amber-700">Restante:</span>
               <span className="font-medium text-amber-800">
-                {formatMXNInt(paymentSummary.remainingBalance)}
+                {paymentSummary.hasISRApplied 
+                  ? formatMXNInt(paymentSummary.remainingBalance)
+                  : formatMXNInt(paymentSummary.remainingBalance)
+                }
               </span>
             </div>
+            {paymentSummary.hasISRApplied && paymentSummary.totalISRAmount > 0 && (
+              <div className="flex justify-between border-t border-emerald-200 pt-2 mt-2">
+                <span className="text-amber-600 text-xs">ISR retenido:</span>
+                <span className="font-medium text-amber-700 text-xs">
+                  -{formatMXNInt(paymentSummary.totalISRAmount)}
+                </span>
+              </div>
+            )}
           </div>}
 
         {/* Removed cashback display - cashback system eliminated */}
