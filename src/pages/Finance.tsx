@@ -227,6 +227,63 @@ export default function Finance() {
       return data ?? [];
     }
   });
+
+  // Query para ISR retenido de ingresos
+  const isrRetentionsQuery = useQuery({
+    queryKey: ["isr_retentions", startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("incomes")
+        .select("income_date, description, amount, isr_withholding_rate, isr_withholding_amount")
+        .eq("account_type", "fiscal")
+        .eq("status", "recibido")
+        .not("isr_withholding_amount", "is", null)
+        .gte("income_date", startDate)
+        .lte("income_date", endDate)
+        .order("income_date", { ascending: false });
+      
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  // Query para resumen de IVA del período actual
+  const currentVatSummaryQuery = useQuery({
+    queryKey: ["current_vat_summary", startDate, endDate],
+    queryFn: async () => {
+      const [incomesVat, expensesVat] = await Promise.all([
+        supabase
+          .from("incomes")
+          .select("vat_amount")
+          .eq("account_type", "fiscal")
+          .eq("status", "recibido")
+          .not("vat_amount", "is", null)
+          .gte("income_date", startDate)
+          .lte("income_date", endDate),
+        supabase
+          .from("expenses")
+          .select("vat_amount")
+          .eq("account_type", "fiscal")
+          .not("vat_amount", "is", null)
+          .gte("expense_date", startDate)
+          .lte("expense_date", endDate)
+      ]);
+
+      if (incomesVat.error) throw incomesVat.error;
+      if (expensesVat.error) throw expensesVat.error;
+
+      const totalVatIncome = (incomesVat.data ?? []).reduce((sum, item) => sum + (Number(item.vat_amount) || 0), 0);
+      const totalVatExpense = (expensesVat.data ?? []).reduce((sum, item) => sum + (Number(item.vat_amount) || 0), 0);
+      const vatBalance = totalVatIncome - totalVatExpense;
+
+      return {
+        totalVatIncome,
+        totalVatExpense,
+        vatBalance,
+        status: vatBalance > 0 ? 'a_pagar' : 'a_favor'
+      };
+    }
+  });
   const financialHistoryQuery = useQuery({
     queryKey: ["financial_history", startDate, endDate],
     queryFn: async () => {
@@ -1479,8 +1536,7 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          
-          
+          <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -2677,6 +2733,236 @@ export default function Finance() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="taxes">
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* IVA Summary Card */}
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  Resumen IVA ({new Date(startDate).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {currentVatSummaryQuery.isLoading ? (
+                  <div className="text-center py-4">Cargando datos de IVA...</div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="bg-green-50/80 border border-green-200/60 p-4 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700 font-medium">IVA Cobrado (Ingresos):</span>
+                          <span className="font-bold text-green-800">
+                            {(currentVatSummaryQuery.data?.totalVatIncome || 0).toLocaleString(undefined, {
+                              style: 'currency',
+                              currency: 'MXN'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="bg-orange-50/80 border border-orange-200/60 p-4 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-700 font-medium">IVA Pagado (Egresos):</span>
+                          <span className="font-bold text-orange-800">
+                            {(currentVatSummaryQuery.data?.totalVatExpense || 0).toLocaleString(undefined, {
+                              style: 'currency',
+                              currency: 'MXN'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={`${
+                        (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                          ? 'bg-red-50/80 border-red-200/60' 
+                          : 'bg-emerald-50/80 border-emerald-200/60'
+                      } border p-4 rounded-lg`}>
+                        <div className="flex justify-between items-center">
+                          <span className={`font-medium ${
+                            (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                              ? 'text-red-700' 
+                              : 'text-emerald-700'
+                          }`}>
+                            Saldo IVA:
+                          </span>
+                          <div className="text-right">
+                            <div className={`font-bold text-lg ${
+                              (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                                ? 'text-red-800' 
+                                : 'text-emerald-800'
+                            }`}>
+                              {(currentVatSummaryQuery.data?.vatBalance || 0).toLocaleString(undefined, {
+                                style: 'currency',
+                                currency: 'MXN'
+                              })}
+                            </div>
+                            <div className={`text-xs ${
+                              (currentVatSummaryQuery.data?.vatBalance || 0) > 0 
+                                ? 'text-red-600' 
+                                : 'text-emerald-600'
+                            }`}>
+                              {(currentVatSummaryQuery.data?.vatBalance || 0) > 0 ? 'A PAGAR' : 'A FAVOR'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ISR Summary Card */}
+            <Card className="border-l-4 border-l-amber-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-amber-50/50 dark:bg-amber-950/20">
+                <CardTitle className="text-amber-700 dark:text-amber-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                  Retenciones ISR ({new Date(startDate).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isrRetentionsQuery.isLoading ? (
+                  <div className="text-center py-4">Cargando datos de ISR...</div>
+                ) : (
+                  <>
+                    <div className="bg-amber-50/80 border border-amber-200/60 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-amber-700 font-medium">Total ISR Retenido:</span>
+                        <span className="font-bold text-amber-800 text-lg">
+                          {(isrRetentionsQuery.data?.reduce((sum, item) => sum + (Number(item.isr_withholding_amount) || 0), 0) || 0).toLocaleString(undefined, {
+                            style: 'currency',
+                            currency: 'MXN'
+                          })}
+                        </span>
+                      </div>
+                      <div className="text-xs text-amber-600">
+                        Retenciones aplicadas en {isrRetentionsQuery.data?.length || 0} operaciones
+                      </div>
+                    </div>
+
+                    {isrRetentionsQuery.data && isrRetentionsQuery.data.length > 0 && (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        <h4 className="font-medium text-sm text-muted-foreground">Detalle de retenciones:</h4>
+                        {isrRetentionsQuery.data.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center py-2 px-3 bg-muted/30 rounded text-sm">
+                            <div>
+                              <div className="font-medium">{new Date(item.income_date).toLocaleDateString('es-MX')}</div>
+                              <div className="text-xs text-muted-foreground truncate max-w-32">
+                                {item.description}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium text-amber-700">
+                                -{(Number(item.isr_withholding_amount) || 0).toLocaleString(undefined, {
+                                  style: 'currency',
+                                  currency: 'MXN'
+                                })}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {item.isr_withholding_rate}%
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(!isrRetentionsQuery.data || isrRetentionsQuery.data.length === 0) && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <div className="text-sm">No hay retenciones ISR en el período seleccionado</div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Detailed Tables */}
+          <div className="grid gap-4 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span>Detalle de IVA por Operación</span>
+                  <Button 
+                    size="sm" 
+                    onClick={() => exportCsv(`iva_detalle_${startDate}_${endDate}`, vatDetailsQuery.data as any)} 
+                    disabled={!vatDetailsQuery.data?.length}
+                  >
+                    Exportar CSV
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="text-right">Importe</TableHead>
+                        <TableHead className="text-right">Tasa IVA</TableHead>
+                        <TableHead className="text-right">IVA</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {vatDetailsQuery.isLoading && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center">Cargando...</TableCell>
+                        </TableRow>
+                      )}
+                      {vatDetailsQuery.data?.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{new Date(item.date).toLocaleDateString('es-MX')}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              item.type === 'ingresos' 
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-orange-100 text-orange-800'
+                            }`}>
+                              {item.type}
+                            </span>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{item.description}</TableCell>
+                          <TableCell className="text-right">
+                            {(Number(item.taxable_amount) || 0).toLocaleString(undefined, {
+                              style: 'currency',
+                              currency: 'MXN'
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right">{item.vat_rate}%</TableCell>
+                          <TableCell className="text-right">
+                            {(Number(item.vat_amount) || 0).toLocaleString(undefined, {
+                              style: 'currency',
+                              currency: 'MXN'
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {(Number(item.amount) || 0).toLocaleString(undefined, {
+                              style: 'currency',
+                              currency: 'MXN'
+                            })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!vatDetailsQuery.isLoading && (!vatDetailsQuery.data || vatDetailsQuery.data.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                            No hay operaciones con IVA en el período seleccionado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 
