@@ -284,6 +284,41 @@ export default function Finance() {
       };
     }
   });
+
+  // Query para reporte fiscal - ingresos fiscales detallados
+  const fiscalIncomesQuery = useQuery({
+    queryKey: ["fiscal_incomes", startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("incomes")
+        .select("*")
+        .eq("account_type", "fiscal")
+        .eq("status", "recibido")
+        .gte("income_date", startDate)
+        .lte("income_date", endDate)
+        .order("income_date", { ascending: true });
+      
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  // Query para reporte fiscal - egresos fiscales detallados
+  const fiscalExpensesQuery = useQuery({
+    queryKey: ["fiscal_expenses", startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("*")
+        .eq("account_type", "fiscal")
+        .gte("expense_date", startDate)
+        .lte("expense_date", endDate)
+        .order("expense_date", { ascending: true });
+      
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
   const financialHistoryQuery = useQuery({
     queryKey: ["financial_history", startDate, endDate],
     queryFn: async () => {
@@ -1537,6 +1572,7 @@ export default function Finance() {
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
+          <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -2959,6 +2995,322 @@ export default function Finance() {
                       )}
                     </TableBody>
                   </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="report">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Reporte Fiscal Detallado</h2>
+                <p className="text-sm text-muted-foreground">
+                  Consecutivo de cuenta para entrega al contador - Período: {new Date(startDate).toLocaleDateString('es-MX')} a {new Date(endDate).toLocaleDateString('es-MX')}
+                </p>
+              </div>
+              <Button 
+                onClick={() => {
+                  const allFiscalData = [
+                    ...(fiscalIncomesQuery.data ?? []).map(item => ({
+                      tipo: 'INGRESO',
+                      fecha: item.income_date,
+                      numero: item.income_number,
+                      concepto: item.description,
+                      base: Number(item.taxable_amount || 0).toFixed(2),
+                      iva: Number(item.vat_amount || 0).toFixed(2),
+                      total: Number(item.amount).toFixed(2),
+                      metodo_pago: item.payment_method,
+                      categoria: item.category
+                    })),
+                    ...(fiscalExpensesQuery.data ?? []).map(item => ({
+                      tipo: 'EGRESO',
+                      fecha: item.expense_date,
+                      numero: item.expense_number,
+                      concepto: item.description,
+                      base: Number(item.taxable_amount || 0).toFixed(2),
+                      iva: Number(item.vat_amount || 0).toFixed(2),
+                      total: Number(item.amount).toFixed(2),
+                      metodo_pago: item.payment_method,
+                      categoria: item.category
+                    }))
+                  ].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+                  exportCsv(`reporte_fiscal_${startDate}_${endDate}`, allFiscalData);
+                }}
+                disabled={!fiscalIncomesQuery.data?.length && !fiscalExpensesQuery.data?.length}
+              >
+                Exportar Reporte Completo
+              </Button>
+            </div>
+
+            {/* Ingresos Fiscales */}
+            <Card className="border-l-4 border-l-green-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-green-50/50 dark:bg-green-950/20">
+                <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  Ingresos Fiscales ({fiscalIncomesQuery.data?.length || 0})
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => exportCsv(`ingresos_fiscales_${startDate}_${endDate}`, fiscalIncomesQuery.data ?? [])}
+                  disabled={!fiscalIncomesQuery.data?.length}
+                >
+                  Exportar CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Número</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>Base Gravable</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Método Pago</TableHead>
+                        <TableHead>Categoría</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fiscalIncomesQuery.isLoading && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-4">Cargando...</TableCell>
+                        </TableRow>
+                      )}
+                      {!fiscalIncomesQuery.isLoading && (fiscalIncomesQuery.data ?? []).map((income: any) => (
+                        <TableRow key={income.id}>
+                          <TableCell>{new Date(income.income_date).toLocaleDateString('es-MX')}</TableCell>
+                          <TableCell className="font-mono">{income.income_number}</TableCell>
+                          <TableCell className="max-w-[300px] truncate" title={income.description}>
+                            {income.description}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ${Number(income.taxable_amount || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-green-600">
+                            ${Number(income.vat_amount || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold">
+                            ${Number(income.amount).toFixed(2)}
+                          </TableCell>
+                          <TableCell>{income.payment_method}</TableCell>
+                          <TableCell>{income.category}</TableCell>
+                        </TableRow>
+                      ))}
+                      {!fiscalIncomesQuery.isLoading && (!fiscalIncomesQuery.data || fiscalIncomesQuery.data.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                            No hay ingresos fiscales en el período seleccionado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {fiscalIncomesQuery.data && fiscalIncomesQuery.data.length > 0 && (
+                  <div className="mt-4 p-4 bg-green-50/50 border border-green-200/50 rounded-lg">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center">
+                        <div className="font-medium text-green-700">Base Total</div>
+                        <div className="text-lg font-bold text-green-800">
+                          ${(fiscalIncomesQuery.data?.reduce((sum, item) => sum + Number(item.taxable_amount || 0), 0) || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-medium text-green-700">IVA Total</div>
+                        <div className="text-lg font-bold text-green-800">
+                          ${(fiscalIncomesQuery.data?.reduce((sum, item) => sum + Number(item.vat_amount || 0), 0) || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-medium text-green-700">Total General</div>
+                        <div className="text-lg font-bold text-green-800">
+                          ${(fiscalIncomesQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Egresos Fiscales */}
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-red-50/50 dark:bg-red-950/20">
+                <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  Egresos Fiscales ({fiscalExpensesQuery.data?.length || 0})
+                </CardTitle>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => exportCsv(`egresos_fiscales_${startDate}_${endDate}`, fiscalExpensesQuery.data ?? [])}
+                  disabled={!fiscalExpensesQuery.data?.length}
+                >
+                  Exportar CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Fecha</TableHead>
+                        <TableHead>Número</TableHead>
+                        <TableHead>Concepto</TableHead>
+                        <TableHead>Base Gravable</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Método Pago</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Desglose</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fiscalExpensesQuery.isLoading && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-4">Cargando...</TableCell>
+                        </TableRow>
+                      )}
+                      {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
+                        <TableRow key={expense.id}>
+                          <TableCell>{new Date(expense.expense_date).toLocaleDateString('es-MX')}</TableCell>
+                          <TableCell className="font-mono">{expense.expense_number}</TableCell>
+                          <TableCell className="max-w-[300px] truncate" title={expense.description}>
+                            {expense.description}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            ${Number(expense.taxable_amount || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-red-600">
+                            ${Number(expense.vat_amount || 0).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold">
+                            ${Number(expense.amount).toFixed(2)}
+                          </TableCell>
+                          <TableCell>{expense.payment_method}</TableCell>
+                          <TableCell>{expense.category}</TableCell>
+                          <TableCell>
+                            {expense.description?.includes('Facturas:') ? (
+                              <div className="text-xs text-muted-foreground">
+                                {expense.description.split('Facturas:')[1]?.split(',').map((factura: string, index: number) => (
+                                  <div key={index} className="truncate max-w-[120px]" title={factura.trim()}>
+                                    • {factura.trim()}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {!fiscalExpensesQuery.isLoading && (!fiscalExpensesQuery.data || fiscalExpensesQuery.data.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                            No hay egresos fiscales en el período seleccionado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {fiscalExpensesQuery.data && fiscalExpensesQuery.data.length > 0 && (
+                  <div className="mt-4 p-4 bg-red-50/50 border border-red-200/50 rounded-lg">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center">
+                        <div className="font-medium text-red-700">Base Total</div>
+                        <div className="text-lg font-bold text-red-800">
+                          ${(fiscalExpensesQuery.data?.reduce((sum, item) => sum + Number(item.taxable_amount || 0), 0) || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-medium text-red-700">IVA Total</div>
+                        <div className="text-lg font-bold text-red-800">
+                          ${(fiscalExpensesQuery.data?.reduce((sum, item) => sum + Number(item.vat_amount || 0), 0) || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-medium text-red-700">Total General</div>
+                        <div className="text-lg font-bold text-red-800">
+                          ${(fiscalExpensesQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Resumen General del Reporte */}
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="bg-blue-50/50 dark:bg-blue-950/20">
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  Resumen General del Período
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="text-lg font-semibold text-green-700">Ingresos Fiscales</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span>Cantidad de registros:</span>
+                        <span className="font-medium">{fiscalIncomesQuery.data?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total sin IVA:</span>
+                        <span className="font-medium">
+                          ${(fiscalIncomesQuery.data?.reduce((sum, item) => sum + Number(item.taxable_amount || 0), 0) || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>IVA Cobrado:</span>
+                        <span className="font-medium text-green-600">
+                          ${(fiscalIncomesQuery.data?.reduce((sum, item) => sum + Number(item.vat_amount || 0), 0) || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="font-semibold">Total:</span>
+                        <span className="font-bold text-green-700">
+                          ${(fiscalIncomesQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="text-lg font-semibold text-red-700">Egresos Fiscales</div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span>Cantidad de registros:</span>
+                        <span className="font-medium">{fiscalExpensesQuery.data?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Total sin IVA:</span>
+                        <span className="font-medium">
+                          ${(fiscalExpensesQuery.data?.reduce((sum, item) => sum + Number(item.taxable_amount || 0), 0) || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>IVA Pagado:</span>
+                        <span className="font-medium text-red-600">
+                          ${(fiscalExpensesQuery.data?.reduce((sum, item) => sum + Number(item.vat_amount || 0), 0) || 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2">
+                        <span className="font-semibold">Total:</span>
+                        <span className="font-bold text-red-700">
+                          ${(fiscalExpensesQuery.data?.reduce((sum, item) => sum + Number(item.amount || 0), 0) || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
