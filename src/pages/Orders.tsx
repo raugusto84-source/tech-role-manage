@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History, Grid3X3, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +14,7 @@ import { OrderFormMinimal } from '@/components/orders/OrderFormMinimal';
 import { OrderCard } from '@/components/orders/OrderCard';
 import { SimpleOrderCard } from '@/components/orders/SimpleOrderCard';
 import { OrderDetails } from '@/components/orders/OrderDetails';
+import { OrderListItem } from '@/components/orders/OrderListItem';
 import { getServiceCategoryInfo } from '@/utils/serviceCategoryUtils';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { OrderHistoryPanel } from "@/components/orders/OrderHistoryPanel";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 /**
  * Página principal del módulo de órdenes
@@ -115,6 +117,7 @@ export default function Orders() {
   const [selectedDateSeguridad, setSelectedDateSeguridad] = useState<Date | undefined>();
   const [activeTab, setActiveTab] = useState('list');
   const [showMinimalForm, setShowMinimalForm] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
 
   const loadOrders = async () => {
     try {
@@ -533,6 +536,30 @@ export default function Orders() {
                 Nueva Orden
               </Button>
             )}
+            
+            {/* View Toggle for Admin */}
+            {profile?.role === 'administrador' && (
+              <div className="flex rounded-lg border p-1 bg-muted/50">
+                <Button
+                  variant={viewMode === 'card' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('card')}
+                  className="h-8 px-3"
+                >
+                  <Grid3X3 className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Tarjetas</span>
+                </Button>
+                <Button
+                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="h-8 px-3"
+                >
+                  <List className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">Lista</span>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -551,8 +578,42 @@ export default function Orders() {
             </p>
           </div>
         ) : (
-          // Vista original por categorías para otros roles
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+          // Check if admin wants list view
+          profile?.role === 'administrador' && viewMode === 'list' ? (
+            // List view for administrators
+            <div className="bg-background rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead># Orden</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Servicio</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Técnico</TableHead>
+                    <TableHead>Fecha Entrega</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((order) => (
+                    <OrderListItem
+                      key={order.id}
+                      order={order}
+                      onClick={() => setSelectedOrder(order)}
+                      onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
+                      canDelete={canDeleteOrder}
+                      getStatusColor={getStatusColor}
+                      showCollectButton={canCollectPayment}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            // Vista original por categorías para otros roles o vista de tarjetas
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* Sistemas Column */}
             <div className="space-y-2">
               {(() => {
@@ -672,7 +733,8 @@ export default function Orders() {
                 );
               })()}
             </div>
-          </div>
+            </div>
+          )
         )}
       </div>
 
