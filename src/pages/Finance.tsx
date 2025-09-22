@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
+import { PurchaseHistoryPanel } from "@/components/finance/PurchaseHistoryPanel";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1297,11 +1298,48 @@ export default function Finance() {
     if (!isAdmin) return;
     try {
       const today = new Date().toISOString().substring(0, 10);
+      
+      // Check if this is a fiscal withdrawal expense (retiros_fiscales category)
+      const isFiscalWithdrawal = row.category === 'retiros_fiscales' || row.category === 'retiro_fiscal';
+      
+      if (isFiscalWithdrawal && row.invoice_number) {
+        // For fiscal withdrawals, reactivate the corresponding withdrawal instead of creating income
+        const { error: reactivateError } = await supabase
+          .from('fiscal_withdrawals')
+          .update({ 
+            withdrawal_status: 'available',
+            withdrawn_at: null,
+            withdrawn_by: null
+          })
+          .eq('amount', row.amount)
+          .eq('withdrawal_status', 'processed')
+          .limit(1);
+          
+        if (reactivateError) {
+          console.error('Error reactivating fiscal withdrawal:', reactivateError);
+          // Fall back to regular reversion if can't find withdrawal
+        } else {
+          // Log the reactivation
+          await logFinancialOperation('reactivate', 'fiscal_withdrawals', row.id, row, `Retiro fiscal reactivado: ${row.description || ''}`.trim(), row.amount, row.account_type, row.expense_date);
+          
+          // Delete the original expense
+          const { error: delErr } = await supabase.from('expenses').delete().eq('id', row.id);
+          if (delErr) throw delErr;
+          
+          toast({
+            title: 'Egreso fiscal revertido',
+            description: 'El retiro fiscal ha sido reactivado y está disponible en el historial de compras'
+          });
+          
+          expensesQuery.refetch();
+          fiscalWithdrawalsQuery.refetch();
+          financialHistoryQuery.refetch();
+          return;
+        }
+      }
 
-      // Create a reversal income record (income_number will be auto-generated)
-      const {
-        error: insErr
-      } = await supabase.from('incomes').insert({
+      // Regular expense reversion (non-fiscal withdrawals)
+      const { error: insErr } = await supabase.from('incomes').insert({
         amount: row.amount,
         description: `Reverso egreso ${row.expense_number ?? ''} - ${row.description ?? ''}`.trim(),
         account_type: row.account_type,
@@ -1315,10 +1353,9 @@ export default function Finance() {
       await logFinancialOperation('reverse', 'expenses', row.id, row, `Reverso de egreso ${row.expense_number || ''} - ${row.description || ''}`.trim(), row.amount, row.account_type, row.expense_date);
 
       // Delete the original expense
-      const {
-        error: delErr
-      } = await supabase.from('expenses').delete().eq('id', row.id);
+      const { error: delErr } = await supabase.from('expenses').delete().eq('id', row.id);
       if (delErr) throw delErr;
+      
       toast({
         title: 'Egreso revertido'
       });
@@ -1587,6 +1624,7 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
+          <TabsTrigger value="purchase-history">Hist. Compras</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
@@ -2712,6 +2750,9 @@ export default function Finance() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="purchase-history">
+          <PurchaseHistoryPanel />
+        </TabsContent>
 
         <TabsContent value="history">
           <Card>
