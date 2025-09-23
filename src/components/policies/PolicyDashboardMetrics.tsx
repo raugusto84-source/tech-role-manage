@@ -286,51 +286,54 @@ export function PolicyDashboardMetrics({ onRefresh }: { onRefresh?: () => void }
         </Card>
       </div>
 
-      {/* Gráficos - Temporalmente deshabilitados */}
+      {/* Simplified Dashboard Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Resumen visual */}
+        {/* Weekly Summary */}
         <Card>
           <CardHeader>
-            <CardTitle>Tendencia Semanal</CardTitle>
-            <CardDescription>Resumen de actividad de los últimos 7 días</CardDescription>
+            <CardTitle>Resumen Ejecutivo</CardTitle>
+            <CardDescription>Métricas clave de la semana</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-primary/10 rounded-lg">
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
                   <div className="text-2xl font-bold text-primary">{chartData.reduce((sum, day) => sum + day.servicios, 0)}</div>
-                  <div className="text-sm text-muted-foreground">Servicios totales</div>
+                  <div className="text-sm text-muted-foreground">Servicios completados</div>
                 </div>
-                <div className="p-4 bg-warning/10 rounded-lg">
-                  <div className="text-2xl font-bold text-warning">{chartData.reduce((sum, day) => sum + day.pagos, 0)}</div>
+                <div className="p-4 bg-success/10 rounded-lg border border-success/20">
+                  <div className="text-2xl font-bold text-success">{chartData.reduce((sum, day) => sum + day.pagos, 0)}</div>
                   <div className="text-sm text-muted-foreground">Pagos procesados</div>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Los gráficos interactivos estarán disponibles próximamente
+              <div className="p-4 bg-warning/10 rounded-lg border border-warning/20">
+                <div className="text-xl font-bold text-warning">
+                  ${chartData.reduce((sum, day) => sum + day.ingresos, 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-muted-foreground">Ingresos generados esta semana</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Distribución de servicios */}
+        {/* Service Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Distribución de Servicios</CardTitle>
-            <CardDescription>Por período de programación</CardDescription>
+            <CardTitle>Estado de Servicios</CardTitle>
+            <CardDescription>Distribución por período</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {pieData.map((entry, index) => (
-                <div key={entry.name} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div key={entry.name} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
                   <div className="flex items-center gap-3">
                     <div 
-                      className="w-4 h-4 rounded-full"
+                      className="w-4 h-4 rounded-full border-2 border-background"
                       style={{ backgroundColor: COLORS[index % COLORS.length] }}
                     />
                     <span className="font-medium">{entry.name}</span>
                   </div>
-                  <Badge variant="outline" className="font-bold">{entry.value}</Badge>
+                  <Badge variant="secondary" className="font-bold">{entry.value}</Badge>
                 </div>
               ))}
               {pieData.length === 0 && (

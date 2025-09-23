@@ -21,7 +21,7 @@ import Users from "./pages/Users";
 import Surveys from "./pages/Surveys";
 import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
-import InsurancePolicies from "./pages/InsurancePolicies";
+import ServiceContracts from "./pages/ServiceContracts";
 
 import Warranties from "./pages/Warranties";
 import Fleets from "./pages/Fleets";
@@ -123,7 +123,7 @@ const App = () => (
             path="/polizas" 
             element={
               <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
-                <InsurancePolicies />
+                <ServiceContracts />
               </ProtectedRoute>
             }
           />
