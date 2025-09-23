@@ -6421,6 +6421,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_monthly_policy_payments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_monthly_recommendations: {
         Args: Record<PropertyKey, never>
         Returns: undefined

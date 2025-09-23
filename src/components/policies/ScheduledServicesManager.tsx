@@ -4,46 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, Play, Pause, Clock, RotateCcw, Trash2 } from "lucide-react";
-
-interface ScheduledService {
-  id: string;
-  policy_client_id: string;
-  service_type_id: string;
-  frequency_days: number;
-  next_service_date: string;
-  last_service_date: string | null;
-  is_active: boolean;
-  service_description: string;
-  priority: number;
-  quantity: number;
-  created_at: string;
-  policy_clients: {
-    clients: {
-      name: string;
-      email: string;
-    };
-    insurance_policies: {
-      policy_name: string;
-      policy_number: string;
-    };
-  };
-  service_types: {
-    name: string;
-    description: string;
-  };
-}
+import { Plus, Clock, Trash2, Calendar, Settings } from "lucide-react";
+import { formatDateMexico } from "@/utils/dateUtils";
 
 interface PolicyClient {
   id: string;
   clients: {
+    id: string;
     name: string;
     email: string;
   };
@@ -55,7 +28,22 @@ interface PolicyClient {
 interface ServiceType {
   id: string;
   name: string;
-  description: string;
+  service_category: string;
+  base_price: number;
+}
+
+interface ScheduledService {
+  id: string;
+  frequency_days: number;
+  next_service_date: string;
+  priority: number;
+  is_active: boolean;
+  policy_client_id: string;
+  service_type_id: string;
+  service_description: string | null;
+  quantity: number;
+  policy_clients: PolicyClient;
+  service_types: ServiceType;
 }
 
 interface ScheduledServicesManagerProps {
@@ -70,13 +58,15 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
   const [formData, setFormData] = useState({
     policy_client_id: '',
-    selected_services: {} as Record<string, number>, // service_type_id -> quantity
+    service_type_id: '',
     frequency_days: 30,
+    priority: 2,
     next_service_date: '',
     service_description: '',
-    priority: 1,
+    quantity: 1
   });
 
   useEffect(() => {
@@ -86,244 +76,141 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const loadData = async () => {
     try {
       setLoading(true);
-      
-      // Load scheduled services with bundled items
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('scheduled_services')
-        .select(`
-          *,
-          policy_clients(
-            clients(name, email),
-            insurance_policies(policy_name, policy_number)
-          ),
-          service_types(name, description),
-          scheduled_service_items(
-            id,
-            service_type_id,
-            quantity,
-            service_types(name, description)
-          )
-        `)
-        .order('next_service_date', { ascending: true });
-
-      if (servicesError) throw servicesError;
-      setScheduledServices(servicesData || []);
-
-      // Load policy clients
-      const { data: policyClientsData, error: policyClientsError } = await supabase
-        .from('policy_clients')
-        .select(`
-          id,
-          clients(name, email),
-          insurance_policies(policy_name)
-        `)
-        .eq('is_active', true);
-
-      if (policyClientsError) throw policyClientsError;
-      setPolicyClients(policyClientsData || []);
-
-      // Load service types
-      const { data: serviceTypesData, error: serviceTypesError } = await supabase
-        .from('service_types')
-        .select('id, name, description')
-        .eq('is_active', true)
-        .order('name');
-
-      if (serviceTypesError) throw serviceTypesError;
-      setServiceTypes(serviceTypesData || []);
-
-    } catch (error: any) {
+      await Promise.all([
+        loadScheduledServices(),
+        loadPolicyClients(),
+        loadServiceTypes()
+      ]);
+    } catch (error) {
       console.error('Error loading data:', error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los datos",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateScheduledService = async (e: React.FormEvent) => {
+  const loadScheduledServices = async () => {
+    const { data, error } = await supabase
+      .from('scheduled_services')
+      .select(`
+        *,
+        policy_clients!inner(
+          id,
+          clients!inner(
+            id,
+            name,
+            email
+          ),
+          insurance_policies!inner(
+            policy_name
+          )
+        ),
+        service_types!inner(
+          id,
+          name,
+          service_category,
+          base_price
+        )
+      `)
+      .eq('is_active', true)
+      .order('next_service_date', { ascending: true });
+
+    if (error) throw error;
+    setScheduledServices(data || []);
+  };
+
+  const loadPolicyClients = async () => {
+    const { data, error } = await supabase
+      .from('policy_clients')
+      .select(`
+        id,
+        clients!inner(
+          id,
+          name,
+          email
+        ),
+        insurance_policies!inner(
+          policy_name
+        )
+      `)
+      .eq('is_active', true);
+
+    if (error) throw error;
+    setPolicyClients(data || []);
+  };
+
+  const loadServiceTypes = async () => {
+    const { data, error } = await supabase
+      .from('service_types')
+      .select('id, name, service_category, base_price')
+      .eq('is_active', true)
+      .order('name');
+
+    if (error) throw error;
+    setServiceTypes(data || []);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log('Form data on submit:', formData);
-    console.log('Available policy clients:', policyClients);
-    
-    const selectedServiceIds = Object.keys(formData.selected_services);
-    if (selectedServiceIds.length === 0) {
-      toast({
-        title: "Error",
-        description: "Debe seleccionar al menos un servicio",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Validar que se haya seleccionado un cliente de póliza
-    if (!formData.policy_client_id || formData.policy_client_id.trim() === '') {
-      toast({
-        title: "Error",
-        description: "Debe seleccionar un cliente de póliza",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Verificar que el cliente existe en la lista
-    const selectedPolicyClient = policyClients.find(pc => pc.id === formData.policy_client_id);
-    if (!selectedPolicyClient) {
-      toast({
-        title: "Error",
-        description: "Cliente de póliza inválido. Seleccione nuevamente.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     try {
-      const isValidUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val);
+      const { error } = await supabase
+        .from('scheduled_services')
+        .insert({
+          policy_client_id: formData.policy_client_id,
+          service_type_id: formData.service_type_id,
+          frequency_days: formData.frequency_days,
+          next_service_date: formData.next_service_date,
+          priority: formData.priority,
+          service_description: formData.service_description || null,
+          quantity: formData.quantity,
+          is_active: true
+        });
 
-      // Normaliza IDs de servicio por si se coló un nombre en vez de UUID
-      const normalizedIds = selectedServiceIds.map(id => {
-        if (isValidUUID(id)) return id;
-        const byName = serviceTypes.find(st => st.name === id);
-        return byName?.id || id;
-      });
-
-      // Filtra solo IDs válidos (UUID), evitando valores como "domicilio"
-      const validServiceIds = normalizedIds.filter(isValidUUID);
-      if (validServiceIds.length === 0) {
-        throw new Error('No se encontraron servicios válidos para programar. Vuelva a seleccionarlos.');
-      }
-
-      // Crear bundle de servicios con items JSON
-      const itemsArray = validServiceIds.map(serviceTypeId => ({
-        service_type_id: serviceTypeId,
-        quantity: formData.selected_services[serviceTypeId] ?? 1
-      }));
-
-      console.log('Creating scheduled service bundle with items:', itemsArray);
-
-      const { data, error } = await (supabase as any).rpc('create_scheduled_service_bundle', {
-        p_policy_client_id: formData.policy_client_id,
-        p_frequency_days: formData.frequency_days,
-        p_next_service_date: formData.next_service_date,
-        p_service_description: formData.service_description,
-        p_priority: formData.priority,
-        p_created_by: user?.id,
-        p_items: itemsArray
-      });
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast({
         title: "Éxito",
-        description: `Servicio programado creado con ${selectedServiceIds.length} item(s). Se creó orden y registro pendiente en finanzas.`,
+        description: "Servicio programado creado correctamente"
       });
 
       setIsDialogOpen(false);
       resetForm();
-      loadData();
+      loadScheduledServices();
       onStatsUpdate();
     } catch (error: any) {
       console.error('Error creating scheduled service:', error);
       toast({
         title: "Error",
-        description: `No se pudo crear el servicio programado: ${error.message}`,
-        variant: "destructive",
+        description: "No se pudo crear el servicio programado",
+        variant: "destructive"
       });
     }
   };
 
-  const handleToggleActive = async (serviceId: string, currentStatus: boolean) => {
+  const handleDelete = async (serviceId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este servicio programado?')) return;
+
     try {
       const { error } = await supabase
         .from('scheduled_services')
-        .update({ is_active: !currentStatus })
+        .update({ is_active: false })
         .eq('id', serviceId);
 
       if (error) throw error;
 
       toast({
         title: "Éxito",
-        description: `Servicio ${!currentStatus ? 'activado' : 'pausado'} correctamente`,
+        description: "Servicio programado eliminado correctamente"
       });
 
-      loadData();
-      onStatsUpdate();
-    } catch (error: any) {
-      console.error('Error toggling service status:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo cambiar el estado del servicio",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleCreateOrder = async (service: ScheduledService) => {
-    try {
-      const { data, error } = await (supabase as any).rpc('create_order_for_scheduled_service', {
-        p_scheduled_service_id: service.id
-      });
-
-      if (error) throw error;
-
-      // Las órdenes de servicios programados ya se crean con status 'pendiente' desde la base de datos
-
-      const orderNumber = data?.[0]?.order_number || 'desconocido';
-      
-      // Calculate next date for display
-      const nextDate = new Date();
-      nextDate.setDate(nextDate.getDate() + service.frequency_days);
-
-      toast({
-        title: "Éxito",
-        description: `Orden ${orderNumber} creada con todos los servicios del bundle. Próxima fecha: ${nextDate.toLocaleDateString('es-MX')}`,
-      });
-
-      loadData();
-      onStatsUpdate();
-    } catch (error: any) {
-      console.error('Error creating order:', error);
-      toast({
-        title: "Error",
-        description: `No se pudo crear la orden de servicio: ${error.message}`,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteService = async (serviceId: string, serviceName: string) => {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el servicio programado "${serviceName}"? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('scheduled_services')
-        .delete()
-        .eq('id', serviceId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: "Servicio programado eliminado correctamente",
-      });
-
-      loadData();
+      loadScheduledServices();
       onStatsUpdate();
     } catch (error: any) {
       console.error('Error deleting scheduled service:', error);
       toast({
         title: "Error",
         description: "No se pudo eliminar el servicio programado",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -331,29 +218,20 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const resetForm = () => {
     setFormData({
       policy_client_id: '',
-      selected_services: {},
+      service_type_id: '',
       frequency_days: 30,
+      priority: 2,
       next_service_date: '',
       service_description: '',
-      priority: 1,
+      quantity: 1
     });
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-MX');
-  };
-
-  const getDaysUntilService = (dateString: string) => {
-    const serviceDate = new Date(dateString);
-    const today = new Date();
-    const diffTime = serviceDate.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const getPriorityBadge = (priority: number) => {
-    if (priority === 1) return <Badge variant="destructive">Alta</Badge>;
-    if (priority === 2) return <Badge variant="default">Media</Badge>;
-    return <Badge variant="secondary">Baja</Badge>;
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('es-MX', {
+      style: 'currency',
+      currency: 'MXN'
+    }).format(amount);
   };
 
   if (loading) {
@@ -364,37 +242,39 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Servicios Programados</h2>
+          <h2 className="text-2xl font-bold">Servicios Periódicos</h2>
           <p className="text-muted-foreground">
-            Gestiona los servicios recurrentes para clientes con pólizas
+            Programa servicios automáticos para clientes con pólizas activas
           </p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => {
+              resetForm();
+              setIsDialogOpen(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               Programar Servicio
             </Button>
           </DialogTrigger>
           
-          <DialogContent>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Programar Nuevo Servicio</DialogTitle>
               <DialogDescription>
-                Configura un servicio recurrente para un cliente con póliza
+                Configura un servicio periódico automático para un cliente con póliza
               </DialogDescription>
             </DialogHeader>
             
-            <form onSubmit={handleCreateScheduledService} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="policy_client_id">Cliente con Póliza *</Label>
-                <Select 
-                  value={formData.policy_client_id} 
-                  onValueChange={(value) => setFormData({...formData, policy_client_id: value})}
-                >
+                <Select value={formData.policy_client_id} onValueChange={(value) => 
+                  setFormData({ ...formData, policy_client_id: value })
+                }>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
+                    <SelectValue placeholder="Seleccionar cliente..." />
                   </SelectTrigger>
                   <SelectContent>
                     {policyClients.map((pc) => (
@@ -407,96 +287,82 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="selected_services">Servicios a Realizar *</Label>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">
-                    Selecciona los servicios y especifica la cantidad para cada uno:
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto border rounded-md p-3">
-                    {serviceTypes.map((st) => {
-                      const isSelected = st.id in formData.selected_services;
-                      const quantity = formData.selected_services[st.id] || 1;
-                      
-                      return (
-                        <div key={st.id} className="flex items-center space-x-3">
-                          <input
-                            type="checkbox"
-                            id={`service_${st.id}`}
-                            checked={isSelected}
-                            onChange={(e) => {
-                              const newSelectedServices = { ...formData.selected_services };
-                              if (e.target.checked) {
-                                newSelectedServices[st.id] = 1; // Default quantity
-                              } else {
-                                delete newSelectedServices[st.id];
-                              }
-                              setFormData({...formData, selected_services: newSelectedServices});
-                            }}
-                            className="rounded border-gray-300"
-                          />
-                          <label htmlFor={`service_${st.id}`} className="text-sm font-medium cursor-pointer flex-1">
-                            {st.name}
-                          </label>
-                          {isSelected && (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-muted-foreground">Cantidad:</span>
-                              <Input
-                                type="number"
-                                min="1"
-                                max="99"
-                                value={quantity}
-                                onChange={(e) => {
-                                  const newQuantity = parseInt(e.target.value) || 1;
-                                  setFormData({
-                                    ...formData,
-                                    selected_services: {
-                                      ...formData.selected_services,
-                                      [st.id]: newQuantity
-                                    }
-                                  });
-                                }}
-                                className="w-16 h-8 text-sm"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {Object.keys(formData.selected_services).length > 0 && (
-                    <div className="text-sm text-muted-foreground">
-                      {Object.keys(formData.selected_services).length} servicio(s) seleccionado(s)
-                    </div>
-                  )}
-                </div>
+                <Label htmlFor="service_type_id">Tipo de Servicio *</Label>
+                <Select value={formData.service_type_id} onValueChange={(value) => 
+                  setFormData({ ...formData, service_type_id: value })
+                }>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar servicio..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {serviceTypes.map((service) => (
+                      <SelectItem key={service.id} value={service.id}>
+                        {service.name} - {formatCurrency(service.base_price)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="service_description">Descripción del Servicio</Label>
+                <Input
+                  id="service_description"
+                  value={formData.service_description}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    service_description: e.target.value
+                  })}
+                  placeholder="Descripción específica del servicio..."
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="frequency_days">Frecuencia (días) *</Label>
+                  <Label htmlFor="quantity">Cantidad</Label>
                   <Input
+                    id="quantity"
                     type="number"
-                    value={formData.frequency_days}
-                    onChange={(e) => setFormData({...formData, frequency_days: parseInt(e.target.value)})}
                     min="1"
-                    max="365"
+                    value={formData.quantity}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      quantity: parseInt(e.target.value) || 1
+                    })}
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="priority">Prioridad *</Label>
-                  <Select 
-                    value={formData.priority.toString()} 
-                    onValueChange={(value) => setFormData({...formData, priority: parseInt(value)})}
-                  >
+                  <Label htmlFor="frequency_days">Frecuencia (días) *</Label>
+                  <Input
+                    id="frequency_days"
+                    type="number"
+                    min="1"
+                    value={formData.frequency_days}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      frequency_days: parseInt(e.target.value) || 30
+                    })}
+                    placeholder="30"
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="priority">Prioridad</Label>
+                  <Select value={formData.priority.toString()} onValueChange={(value) => 
+                    setFormData({ ...formData, priority: parseInt(value) })
+                  }>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Alta (1)</SelectItem>
-                      <SelectItem value="2">Media (2)</SelectItem>
-                      <SelectItem value="3">Baja (3)</SelectItem>
+                      <SelectItem value="1">Baja</SelectItem>
+                      <SelectItem value="2">Normal</SelectItem>
+                      <SelectItem value="3">Alta</SelectItem>
+                      <SelectItem value="4">Crítica</SelectItem>
+                      <SelectItem value="5">Urgente</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -505,35 +371,28 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               <div className="space-y-2">
                 <Label htmlFor="next_service_date">Próximo Servicio *</Label>
                 <Input
+                  id="next_service_date"
                   type="date"
                   value={formData.next_service_date}
-                  onChange={(e) => setFormData({...formData, next_service_date: e.target.value})}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    next_service_date: e.target.value
+                  })}
                   required
                 />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="service_description">Descripción del Servicio</Label>
-                <Textarea
-                  value={formData.service_description}
-                  onChange={(e) => setFormData({...formData, service_description: e.target.value})}
-                  placeholder="Detalles específicos del servicio programado"
-                  rows={3}
-                />
-              </div>
-
+              
               <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsDialogOpen(false);
-                    resetForm();
-                  }}
-                >
+                <Button type="button" variant="outline" onClick={() => {
+                  setIsDialogOpen(false);
+                  resetForm();
+                }}>
                   Cancelar
                 </Button>
-                <Button type="submit">
+                <Button 
+                  type="submit" 
+                  disabled={!formData.policy_client_id || !formData.service_type_id}
+                >
                   Programar Servicio
                 </Button>
               </div>
@@ -546,7 +405,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         <CardHeader>
           <CardTitle>Servicios Programados</CardTitle>
           <CardDescription>
-            Lista de servicios recurrentes configurados para clientes con pólizas
+            Servicios automáticos configurados para clientes con pólizas activas
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -554,7 +413,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
             <div className="text-center py-8">
               <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                No hay servicios programados. Programa el primer servicio para comenzar.
+                No hay servicios programados. Configura el primer servicio automático.
               </p>
             </div>
           ) : (
@@ -562,123 +421,67 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               <TableHeader>
                 <TableRow>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Póliza</TableHead>
                   <TableHead>Servicio</TableHead>
+                  <TableHead>Cantidad</TableHead>
                   <TableHead>Frecuencia</TableHead>
                   <TableHead>Próximo Servicio</TableHead>
                   <TableHead>Prioridad</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {scheduledServices.map((service) => {
-                  const daysUntil = getDaysUntilService(service.next_service_date);
-                  const isOverdue = daysUntil < 0;
-                  const isDue = daysUntil <= 3;
-
-                  return (
-                    <TableRow key={service.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {service.policy_clients.clients.name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {service.policy_clients.insurance_policies.policy_name}
-                          </div>
-                        </div>
-                      </TableCell>
-                       <TableCell>
-                         <div>
-                           <div className="font-medium">
-                             Bundle de {(service as any).scheduled_service_items?.length || 1} servicio(s)
-                           </div>
-                           {(service as any).scheduled_service_items && (service as any).scheduled_service_items.length > 0 ? (
-                             <div className="text-sm text-muted-foreground space-y-1">
-                               {(service as any).scheduled_service_items.map((item: any, idx: number) => (
-                                 <div key={idx}>
-                                   • {item.service_types?.name} (x{item.quantity})
-                                 </div>
-                               ))}
-                             </div>
-                           ) : (
-                             <div className="text-sm text-muted-foreground">
-                               {service.service_types.name} (Legacy)
-                             </div>
-                           )}
-                           {service.service_description && (
-                             <div className="text-sm text-muted-foreground mt-1 font-italic">
-                               {service.service_description}
-                             </div>
-                           )}
-                         </div>
-                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <RotateCcw className="h-4 w-4 text-muted-foreground" />
-                          <span>Cada {service.frequency_days} días</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          <span className={isOverdue ? 'text-destructive font-medium' : isDue ? 'text-orange-600 font-medium' : ''}>
-                            {formatDate(service.next_service_date)}
-                          </span>
-                        </div>
+                {scheduledServices.map((service) => (
+                  <TableRow key={service.id}>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{service.policy_clients.clients.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {isOverdue ? (
-                            <span className="text-destructive">Vencido hace {Math.abs(daysUntil)} días</span>
-                          ) : isDue ? (
-                            <span className="text-orange-600">En {daysUntil} días</span>
-                          ) : (
-                            <span>En {daysUntil} días</span>
-                          )}
+                          {service.policy_clients.clients.email}
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(service.priority)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={service.is_active ? "default" : "secondary"}>
-                          {service.is_active ? "Activo" : "Pausado"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {(isOverdue || isDue) && service.is_active && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleCreateOrder(service)}
-                            >
-                              <Play className="h-4 w-4 mr-1" />
-                              Crear Orden
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleActive(service.id, service.is_active)}
-                          >
-                            {service.is_active ? (
-                              <Pause className="h-4 w-4" />
-                            ) : (
-                              <Play className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteService(service.id, service.service_types.name)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                      </div>
+                    </TableCell>
+                    <TableCell>{service.policy_clients.insurance_policies.policy_name}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{service.service_types.name}</div>
+                        {service.service_description && (
+                          <div className="text-sm text-muted-foreground">
+                            {service.service_description}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {service.quantity}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {service.frequency_days} días
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{formatDateMexico(service.next_service_date)}</TableCell>
+                    <TableCell>
+                      <Badge variant={service.priority >= 4 ? "destructive" : service.priority >= 3 ? "default" : "secondary"}>
+                        P{service.priority}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(service.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           )}
