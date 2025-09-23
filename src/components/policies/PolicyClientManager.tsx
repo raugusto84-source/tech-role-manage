@@ -54,7 +54,6 @@ interface ServiceType {
 interface SelectedService {
   service: ServiceType;
   quantity: number;
-  frequency_days: number;
 }
 
 interface PolicyClientManagerProps {
@@ -77,6 +76,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const [selectedPolicyId, setSelectedPolicyId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
+  const [globalFrequencyDays, setGlobalFrequencyDays] = useState<number>(30);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -242,8 +242,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     
     setSelectedServices(prev => [...prev, {
       service,
-      quantity: 1,
-      frequency_days: 30
+      quantity: 1
     }]);
   };
 
@@ -251,7 +250,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     setSelectedServices(prev => prev.filter(s => s.service.id !== serviceId));
   };
 
-  const updateServiceConfig = (serviceId: string, field: 'quantity' | 'frequency_days', value: number) => {
+  const updateServiceConfig = (serviceId: string, field: 'quantity', value: number) => {
     setSelectedServices(prev => prev.map(s => 
       s.service.id === serviceId 
         ? { ...s, [field]: Math.max(1, value) }
@@ -323,7 +322,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         policy_client_id: policyClientId,
         service_type_id: selectedService.service.id,
         quantity: selectedService.quantity,
-        frequency_days: selectedService.frequency_days,
+        frequency_days: globalFrequencyDays,
         created_by: user?.id
       }));
 
@@ -630,7 +629,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                             </Button>
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-4 mt-3">
+                          <div className="grid grid-cols-1 gap-4 mt-3">
                             <div>
                               <Label htmlFor={`quantity-${index}`} className="text-sm">Cantidad</Label>
                               <Input
@@ -646,27 +645,28 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                                 className="mt-1"
                               />
                             </div>
-                            <div>
-                              <Label htmlFor={`frequency-${index}`} className="text-sm">Frecuencia (días)</Label>
-                              <Input
-                                id={`frequency-${index}`}
-                                type="number"
-                                min="1"
-                                value={selectedService.frequency_days}
-                                onChange={(e) => updateServiceConfig(
-                                  selectedService.service.id,
-                                  'frequency_days',
-                                  parseInt(e.target.value) || 30
-                                )}
-                                className="mt-1"
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Órdenes cada {selectedService.frequency_days} días
-                              </p>
-                            </div>
                           </div>
                         </div>
                       ))}
+                      
+                      {selectedServices.length > 0 && (
+                        <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                          <Label htmlFor="global-frequency" className="text-sm font-medium">
+                            Frecuencia de Órdenes (días)
+                          </Label>
+                          <Input
+                            id="global-frequency"
+                            type="number"
+                            min="1"
+                            value={globalFrequencyDays}
+                            onChange={(e) => setGlobalFrequencyDays(parseInt(e.target.value) || 30)}
+                            className="mt-1 max-w-32"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Se creará una orden cada {globalFrequencyDays} días con todos los servicios
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -724,13 +724,18 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                           <div key={selectedService.service.id} className="flex justify-between items-center text-sm">
                             <span>{selectedService.service.name}</span>
                             <span className="text-muted-foreground">
-                              {selectedService.quantity} cada {selectedService.frequency_days} días
+                              Cantidad: {selectedService.quantity}
                             </span>
                           </div>
                         ))}
                       </div>
+                      <div className="mt-3 pt-3 border-t">
+                        <p className="text-sm font-medium">
+                          Frecuencia: Cada {globalFrequencyDays} días
+                        </p>
+                      </div>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Se creará una orden inicial con estos servicios y se configurará la generación automática según la frecuencia especificada.
+                        Se creará una orden inicial con estos servicios y se generarán órdenes automáticas cada {globalFrequencyDays} días.
                       </p>
                     </div>
                   </div>
