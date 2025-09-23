@@ -77,6 +77,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
   const [globalFrequencyDays, setGlobalFrequencyDays] = useState<number>(30);
+  const [frequencyWeeks, setFrequencyWeeks] = useState<number>(1);
+  const [dayOfWeek, setDayOfWeek] = useState<number>(1); // 1 = Lunes
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
