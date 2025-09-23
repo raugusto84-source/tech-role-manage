@@ -285,7 +285,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         .insert([{
           order_number: orderNumber,
           client_id: clientIdToUse,
-          service_type: selectedServices[0]?.service.category || 'general',
+          service_type: selectedServices[0]?.service.id || null, // Use service ID, not category
           failure_description: `Póliza ${policyInfo.policy_name} - Servicios automáticos`,
           delivery_date: new Date().toISOString().split('T')[0],
           estimated_cost: 0,
