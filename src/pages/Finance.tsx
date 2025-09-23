@@ -20,8 +20,8 @@ import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPane
 import { PurchaseHistoryPanel } from "@/components/finance/PurchaseHistoryPanel";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { formatDateMexico } from '@/utils/dateUtils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatDateMexico } from '@/utils/dateUtils';
 
 // Util simple para exportar CSV en cliente
 function exportCsv(filename: string, rows: Record<string, any>[]) {
