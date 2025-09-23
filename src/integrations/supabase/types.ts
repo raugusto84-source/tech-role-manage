@@ -6502,6 +6502,17 @@ export type Database = {
           schedule: string
         }[]
       }
+      get_automation_metrics: {
+        Args: { days_back?: number }
+        Returns: {
+          active_policies: number
+          avg_satisfaction: number
+          completed_orders: number
+          overdue_payments: number
+          pending_services: number
+          total_revenue: number
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
