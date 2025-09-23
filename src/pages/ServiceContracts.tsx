@@ -13,7 +13,8 @@ import { InsurancePolicyManager } from "@/components/policies/InsurancePolicyMan
 import { PolicyCalendar } from "@/components/policies/PolicyCalendar";
 import { PolicyDashboardMetrics } from "@/components/policies/PolicyDashboardMetrics";
 import { PolicyRealtimeProvider } from "@/components/policies/PolicyRealtimeProvider";
-import { AutomationEngine } from "@/components/policies/AutomationEngine";
+import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
+import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { FileText, AlertCircle, Calendar } from "lucide-react";
 interface ContractStats {
   active_contracts: number;
@@ -142,10 +143,11 @@ export default function ServiceContracts() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="summary">Resumen</TabsTrigger>
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
-          <TabsTrigger value="automation">Automatización</TabsTrigger>
+          <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
+          <TabsTrigger value="services">Servicios Periódicos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="summary" className="space-y-6">
@@ -157,8 +159,12 @@ export default function ServiceContracts() {
           <InsurancePolicyManager onStatsUpdate={refreshStats} />
         </TabsContent>
 
-        <TabsContent value="automation" className="space-y-4">
-          <AutomationEngine />
+        <TabsContent value="assignments" className="space-y-4">
+          <PolicyClientManager onStatsUpdate={refreshStats} />
+        </TabsContent>
+
+        <TabsContent value="services" className="space-y-4">
+          <ScheduledServicesManager onStatsUpdate={refreshStats} />
         </TabsContent>
         </Tabs>
         </div>
