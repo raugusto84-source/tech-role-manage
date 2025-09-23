@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Shield, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Shield } from "lucide-react";
 interface InsurancePolicy {
   id: string;
   policy_number: string;
@@ -20,8 +20,6 @@ interface InsurancePolicy {
   monthly_fee: number;
   service_discount_percentage: number;
   free_services: boolean;
-  products_generate_cashback: boolean;
-  cashback_percentage: number;
   is_active: boolean;
   created_at: string;
   policy_clients: any[];
@@ -48,8 +46,6 @@ export function InsurancePolicyManager({
     monthly_fee: 0,
     service_discount_percentage: 0,
     free_services: false,
-    products_generate_cashback: true,
-    cashback_percentage: 2.0,
     is_active: true
   });
   useEffect(() => {
@@ -130,8 +126,6 @@ export function InsurancePolicyManager({
       monthly_fee: policy.monthly_fee,
       service_discount_percentage: policy.service_discount_percentage,
       free_services: policy.free_services,
-      products_generate_cashback: policy.products_generate_cashback,
-      cashback_percentage: policy.cashback_percentage,
       is_active: policy.is_active
     });
     setIsDialogOpen(true);
@@ -165,8 +159,6 @@ export function InsurancePolicyManager({
       monthly_fee: 0,
       service_discount_percentage: 0,
       free_services: false,
-      products_generate_cashback: true,
-      cashback_percentage: 2.0,
       is_active: true
     });
   };
@@ -237,40 +229,20 @@ export function InsurancePolicyManager({
               })} placeholder="Descripción detallada de la póliza y sus beneficios" rows={3} />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="service_discount_percentage">Descuento en Servicios (%)</Label>
-                  <Input id="service_discount_percentage" type="number" step="0.1" min="0" max="100" value={formData.service_discount_percentage} onChange={e => setFormData({
-                  ...formData,
-                  service_discount_percentage: parseFloat(e.target.value) || 0
-                })} placeholder="15.0" />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="cashback_percentage">Cashback en Productos (%)</Label>
-                  <Input id="cashback_percentage" type="number" step="0.1" min="0" max="100" value={formData.cashback_percentage} onChange={e => setFormData({
-                  ...formData,
-                  cashback_percentage: parseFloat(e.target.value) || 0
-                })} placeholder="2.0" />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="service_discount_percentage">Descuento en Servicios (%)</Label>
+                <Input id="service_discount_percentage" type="number" step="0.1" min="0" max="100" value={formData.service_discount_percentage} onChange={e => setFormData({
+                ...formData,
+                service_discount_percentage: parseFloat(e.target.value) || 0
+              })} placeholder="15.0" />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch id="free_services" checked={formData.free_services} onCheckedChange={checked => setFormData({
-                  ...formData,
-                  free_services: checked
-                })} />
-                  <Label htmlFor="free_services">Servicios Gratuitos</Label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch id="products_generate_cashback" checked={formData.products_generate_cashback} onCheckedChange={checked => setFormData({
-                  ...formData,
-                  products_generate_cashback: checked
-                })} />
-                  <Label htmlFor="products_generate_cashback">Productos Generan Cashback</Label>
-                </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="free_services" checked={formData.free_services} onCheckedChange={checked => setFormData({
+                ...formData,
+                free_services: checked
+              })} />
+                <Label htmlFor="free_services">Servicios Gratuitos</Label>
               </div>
               
               <div className="flex items-center space-x-2">
@@ -317,7 +289,6 @@ export function InsurancePolicyManager({
                   <TableHead>Póliza</TableHead>
                   <TableHead>Cuota Mensual</TableHead>
                   <TableHead>Servicios</TableHead>
-                  <TableHead>Cashback</TableHead>
                   <TableHead>Clientes</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Acciones</TableHead>
@@ -340,12 +311,6 @@ export function InsurancePolicyManager({
                             {policy.service_discount_percentage}% desc.
                           </Badge> : <Badge variant="outline">Precio normal</Badge>}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {policy.products_generate_cashback ? <Badge variant="default">
-                          <DollarSign className="h-3 w-3 mr-1" />
-                          {policy.cashback_percentage}%
-                        </Badge> : <Badge variant="outline">Sin cashback</Badge>}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
