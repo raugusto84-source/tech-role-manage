@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getCurrentDateMexico } from '@/utils/dateUtils';
+import { getCurrentDateTimeMexico } from '@/utils/dateUtils';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PenTool, CheckCircle2, ArrowLeft, X } from 'lucide-react';
@@ -165,7 +165,7 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
             account_type: 'no_fiscal', // Por defecto no fiscal, se cambiará al cobrar
             status: 'pendiente', // Pendiente de cobro
             has_invoice: false, // Se definirá al momento del cobro
-            income_date: getCurrentDateMexico()
+            income_date: getCurrentDateTimeMexico()
           });
 
         if (incomeError) {

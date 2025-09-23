@@ -21,7 +21,7 @@ import { PurchaseHistoryPanel } from "@/components/finance/PurchaseHistoryPanel"
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatDateMexico } from '@/utils/dateUtils';
+import { formatDateMexico, formatDateTimeMexico } from '@/utils/dateUtils';
 
 // Util simple para exportar CSV en cliente
 function exportCsv(filename: string, rows: Record<string, any>[]) {
@@ -1650,7 +1650,7 @@ export default function Finance() {
                     <TableHeader>
                        <TableRow>
                          <TableHead>#</TableHead>
-                         <TableHead>Fecha</TableHead>
+                         <TableHead>Fecha y Hora</TableHead>
                          <TableHead>Monto</TableHead>
                          <TableHead>IVA</TableHead>
                          <TableHead>ISR</TableHead>
@@ -1665,7 +1665,7 @@ export default function Finance() {
                        {incomesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
-                           <TableCell>{r.income_date}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
                            <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
                            style: 'currency',
                            currency: 'MXN'
@@ -1741,21 +1741,21 @@ export default function Finance() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>#</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Monto</TableHead>
-                        <TableHead>Categoría</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
+                       <TableRow>
+                         <TableHead>#</TableHead>
+                         <TableHead>Fecha y Hora</TableHead>
+                         <TableHead>Monto</TableHead>
+                         <TableHead>Categoría</TableHead>
+                         <TableHead>Método</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead>Acciones</TableHead>
+                       </TableRow>
                     </TableHeader>
                     <TableBody>
                        {incomesQuery.isLoading && <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
-                           <TableCell>{r.income_date}</TableCell>
+                            <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
                            <TableCell>{Number(r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
@@ -1819,7 +1819,7 @@ export default function Finance() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>#</TableHead>
-                        <TableHead>Fecha</TableHead>
+                         <TableHead>Fecha y Hora</TableHead>
                         <TableHead>Monto</TableHead>
                         <TableHead>IVA</TableHead>
                         <TableHead>Total</TableHead>
@@ -1833,7 +1833,7 @@ export default function Finance() {
                       {expensesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
                       {!expensesQuery.isLoading && expensesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
-                          <TableCell>{r.expense_date}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
                           <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
@@ -1905,7 +1905,7 @@ export default function Finance() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>#</TableHead>
-                        <TableHead>Fecha</TableHead>
+                         <TableHead>Fecha y Hora</TableHead>
                         <TableHead>Monto</TableHead>
                         <TableHead>IVA</TableHead>
                         <TableHead>Total</TableHead>
@@ -1919,7 +1919,7 @@ export default function Finance() {
                       {expensesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
                       {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
-                          <TableCell>{r.expense_date}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
                           <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
@@ -2410,7 +2410,7 @@ export default function Finance() {
                       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
                       return expenseDate >= thirtyDaysAgo && expense.category !== 'reverso';
                     }).slice(0, 10).map((expense: any) => <TableRow key={expense.id}>
-                              <TableCell>{new Date(expense.expense_date).toLocaleDateString()}</TableCell>
+                              <TableCell>{formatDateTimeMexico(expense.expense_date)}</TableCell>
                               <TableCell className="max-w-48 truncate">{expense.description}</TableCell>
                               <TableCell className="font-medium text-red-600">
                                 -${Number(expense.amount).toLocaleString('es-MX', {
@@ -2667,7 +2667,7 @@ export default function Finance() {
                     <TableBody>
                       {expensesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell className="font-mono text-xs">{r.expense_number}</TableCell>
-                          <TableCell>{r.expense_date}</TableCell>
+                          <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
                           <TableCell className="max-w-[200px] truncate" title={r.description}>
                             {r.description}
                           </TableCell>
@@ -2950,7 +2950,7 @@ export default function Finance() {
                         {isrRetentionsQuery.data.map((item, index) => (
                           <div key={index} className="flex justify-between items-center py-2 px-3 bg-muted/30 rounded text-sm">
                             <div>
-                              <div className="font-medium">{formatDateMexico(item.income_date)}</div>
+                              <div className="font-medium">{formatDateTimeMexico(item.income_date)}</div>
                               <div className="text-xs text-muted-foreground truncate max-w-32">
                                 {item.description}
                               </div>
@@ -3158,7 +3158,7 @@ export default function Finance() {
                                 {transaction.type}
                               </div>
                             </TableCell>
-                            <TableCell>{formatDateMexico(transaction.income_date)}</TableCell>
+                            <TableCell>{formatDateTimeMexico(transaction.income_date)}</TableCell>
                             <TableCell className="font-mono">{transaction.income_number}</TableCell>
                             <TableCell className="max-w-[300px] truncate" title={transaction.description}>
                               {transaction.description}
@@ -3378,7 +3378,7 @@ export default function Finance() {
                       <TableBody>
                         {isrRetentionsQuery.data?.map((retention: any, index: number) => (
                           <TableRow key={index} className="hover:bg-amber-50/30">
-                            <TableCell>{formatDateMexico(retention.income_date)}</TableCell>
+                            <TableCell>{formatDateTimeMexico(retention.income_date)}</TableCell>
                             <TableCell className="max-w-[250px] truncate" title={retention.description}>
                               {retention.description}
                             </TableCell>
@@ -3445,7 +3445,7 @@ export default function Finance() {
                       )}
                       {!fiscalIncomesQuery.isLoading && (fiscalIncomesQuery.data ?? []).map((income: any) => (
                         <TableRow key={income.id}>
-                          <TableCell>{formatDateMexico(income.income_date)}</TableCell>
+                          <TableCell>{formatDateTimeMexico(income.income_date)}</TableCell>
                           <TableCell className="font-mono">{income.income_number}</TableCell>
                           <TableCell className="max-w-[300px] truncate" title={income.description}>
                             {income.description}
@@ -3544,7 +3544,7 @@ export default function Finance() {
                        )}
                        {!fiscalExpensesQuery.isLoading && (fiscalExpensesQuery.data ?? []).map((expense: any) => (
                          <TableRow key={expense.id}>
-                           <TableCell>{new Date(expense.expense_date).toLocaleDateString('es-MX')}</TableCell>
+                           <TableCell>{formatDateTimeMexico(expense.expense_date)}</TableCell>
                            <TableCell className="font-mono">{expense.expense_number}</TableCell>
                            <TableCell className="max-w-[300px] truncate" title={expense.description}>
                              {expense.description}
@@ -3825,7 +3825,7 @@ export default function Finance() {
                           <TableBody>
                             {isrRetentionsQuery.data?.map((retention: any, index: number) => (
                               <TableRow key={index}>
-                                <TableCell>{formatDateMexico(retention.income_date)}</TableCell>
+                                <TableCell>{formatDateTimeMexico(retention.income_date)}</TableCell>
                                 <TableCell className="max-w-[250px] truncate" title={retention.description}>
                                   {retention.description}
                                 </TableCell>

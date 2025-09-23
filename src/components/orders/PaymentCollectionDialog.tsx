@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatCOPCeilToTen, ceilToTen, formatMXNExact } from '@/utils/currency';
 import { DollarSign, Calculator } from 'lucide-react';
-import { getCurrentDateMexico } from '@/utils/dateUtils';
+import { getCurrentDateTimeMexico } from '@/utils/dateUtils';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 
 interface PaymentCollectionDialogProps {
@@ -182,7 +182,7 @@ export function PaymentCollectionDialog({
         .from('incomes')
         .insert({
           income_number: incomeNumber,
-          income_date: getCurrentDateMexico(),
+          income_date: getCurrentDateTimeMexico(),
           amount: finalPaymentAmount,
           account_type: accountType,
           category: 'cobranza',
