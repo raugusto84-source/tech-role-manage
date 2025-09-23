@@ -100,7 +100,7 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,created_at").order("income_date", {
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,created_at").order("income_date", {
         ascending: false
       });
       if (startDate) q = q.gte("income_date", startDate);
@@ -1647,42 +1647,49 @@ export default function Finance() {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>#</TableHead>
-                        <TableHead>Fecha</TableHead>
-                        <TableHead>Monto</TableHead>
-                        <TableHead>IVA</TableHead>
-                        <TableHead>Total</TableHead>
-                        <TableHead>Categoría</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead>Descripción</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
+                       <TableRow>
+                         <TableHead>#</TableHead>
+                         <TableHead>Fecha</TableHead>
+                         <TableHead>Monto</TableHead>
+                         <TableHead>IVA</TableHead>
+                         <TableHead>ISR</TableHead>
+                         <TableHead>Total</TableHead>
+                         <TableHead>Categoría</TableHead>
+                         <TableHead>Método</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead>Acciones</TableHead>
+                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {incomesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
-                      {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
-                          <TableCell>{r.income_number}</TableCell>
-                          <TableCell>{r.income_date}</TableCell>
-                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
-                          style: 'currency',
-                          currency: 'MXN'
-                        })}</TableCell>
-                          <TableCell className="text-green-600">
-                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
-                          style: 'currency',
-                          currency: 'MXN'
-                        })} (${r.vat_rate}%)` : 'Sin IVA'}
-                          </TableCell>
-                          <TableCell className="font-semibold">
-                            {Number(r.amount).toLocaleString(undefined, {
-                          style: 'currency',
-                          currency: 'MXN'
-                        })}
-                          </TableCell>
-                          <TableCell>{r.category}</TableCell>
-                          <TableCell>{r.payment_method}</TableCell>
-                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
+                       {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
+                           <TableCell>{r.income_number}</TableCell>
+                           <TableCell>{r.income_date}</TableCell>
+                           <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })}</TableCell>
+                           <TableCell className="text-green-600">
+                             {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })} (${r.vat_rate}%)` : 'Sin IVA'}
+                           </TableCell>
+                           <TableCell className="text-amber-600">
+                             {r.isr_withholding_amount && Number(r.isr_withholding_amount) > 0 ? `-${Number(r.isr_withholding_amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })} (${r.isr_withholding_rate}%)` : 'Sin ISR'}
+                           </TableCell>
+                           <TableCell className="font-semibold">
+                             {Number(r.amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })}
+                           </TableCell>
+                           <TableCell>{r.category}</TableCell>
+                           <TableCell>{r.payment_method}</TableCell>
+                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 {isAdmin && <>
