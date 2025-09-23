@@ -221,7 +221,7 @@ export function InsurancePolicyManager({
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="monthly_fee">Cuota Mensual (Sin Iva)*</Label>
+                  <Label htmlFor="monthly_fee">Cuota Mensual *</Label>
                   <Input id="monthly_fee" type="number" step="0.01" min="0" value={formData.monthly_fee} onChange={e => setFormData({
                   ...formData,
                   monthly_fee: parseFloat(e.target.value) || 0
