@@ -3618,7 +3618,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          day_of_week: number | null
           frequency_days: number
+          frequency_weeks: number | null
           id: string
           is_active: boolean
           policy_client_id: string
@@ -3629,7 +3631,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          day_of_week?: number | null
           frequency_days?: number
+          frequency_weeks?: number | null
           id?: string
           is_active?: boolean
           policy_client_id: string
@@ -3640,7 +3644,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          day_of_week?: number | null
           frequency_days?: number
+          frequency_weeks?: number | null
           id?: string
           is_active?: boolean
           policy_client_id?: string

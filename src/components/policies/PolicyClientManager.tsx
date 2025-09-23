@@ -325,6 +325,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         service_type_id: selectedService.service.id,
         quantity: selectedService.quantity,
         frequency_days: globalFrequencyDays,
+        frequency_weeks: frequencyWeeks,
+        day_of_week: dayOfWeek,
         created_by: user?.id
       }));
 
@@ -653,19 +655,56 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                       
                       {selectedServices.length > 0 && (
                         <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                          <Label htmlFor="global-frequency" className="text-sm font-medium">
-                            Frecuencia de Órdenes (días)
-                          </Label>
-                          <Input
-                            id="global-frequency"
-                            type="number"
-                            min="1"
-                            value={globalFrequencyDays}
-                            onChange={(e) => setGlobalFrequencyDays(parseInt(e.target.value) || 30)}
-                            className="mt-1 max-w-32"
-                          />
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Se creará una orden cada {globalFrequencyDays} días con todos los servicios
+                          <h4 className="text-sm font-medium mb-3">Configuración de Frecuencia</h4>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="day-of-week" className="text-sm font-medium">
+                                Día de la Semana
+                              </Label>
+                              <select
+                                id="day-of-week"
+                                value={dayOfWeek}
+                                onChange={(e) => setDayOfWeek(parseInt(e.target.value))}
+                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              >
+                                <option value={1}>Lunes</option>
+                                <option value={2}>Martes</option>
+                                <option value={3}>Miércoles</option>
+                                <option value={4}>Jueves</option>
+                                <option value={5}>Viernes</option>
+                                <option value={6}>Sábado</option>
+                                <option value={0}>Domingo</option>
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="frequency-weeks" className="text-sm font-medium">
+                                Cada cuántas semanas
+                              </Label>
+                              <select
+                                id="frequency-weeks"
+                                value={frequencyWeeks}
+                                onChange={(e) => setFrequencyWeeks(parseInt(e.target.value))}
+                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                              >
+                                <option value={1}>1 semana</option>
+                                <option value={2}>2 semanas</option>
+                                <option value={3}>3 semanas</option>
+                                <option value={4}>4 semanas</option>
+                              </select>
+                            </div>
+                          </div>
+                          
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Se creará una orden cada {frequencyWeeks === 1 ? '' : frequencyWeeks + ' '}{frequencyWeeks === 1 ? 'semana' : 'semanas'} los {
+                              dayOfWeek === 0 ? 'domingos' :
+                              dayOfWeek === 1 ? 'lunes' :
+                              dayOfWeek === 2 ? 'martes' :
+                              dayOfWeek === 3 ? 'miércoles' :
+                              dayOfWeek === 4 ? 'jueves' :
+                              dayOfWeek === 5 ? 'viernes' : 'sábados'
+                            } con todos los servicios seleccionados
                           </p>
                         </div>
                       )}
@@ -733,11 +772,18 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                       </div>
                       <div className="mt-3 pt-3 border-t">
                         <p className="text-sm font-medium">
-                          Frecuencia: Cada {globalFrequencyDays} días
+                          Frecuencia: Cada {frequencyWeeks === 1 ? '' : frequencyWeeks + ' '}{frequencyWeeks === 1 ? 'semana' : 'semanas'} los {
+                            dayOfWeek === 0 ? 'domingos' :
+                            dayOfWeek === 1 ? 'lunes' :
+                            dayOfWeek === 2 ? 'martes' :
+                            dayOfWeek === 3 ? 'miércoles' :
+                            dayOfWeek === 4 ? 'jueves' :
+                            dayOfWeek === 5 ? 'viernes' : 'sábados'
+                          }
                         </p>
                       </div>
                       <p className="text-sm text-muted-foreground mt-2">
-                        Se creará una orden inicial con estos servicios y se generarán órdenes automáticas cada {globalFrequencyDays} días.
+                        Se creará una orden inicial con estos servicios y se generarán órdenes automáticas según la frecuencia configurada.
                       </p>
                     </div>
                   </div>
