@@ -258,14 +258,7 @@ export function OrderCard({
                 formattedTotal: formatMXNInt(totalAmount)
               });
               
-              // Si hay ISR aplicado, mostrar el total exacto después de ISR
-              if (paymentSummary.hasISRApplied) {
-                const baseAmount = totalAmount / 1.16; // Base sin IVA
-                const isrAmount = baseAmount * 0.0125; // ISR 1.25%
-                const exactTotalWithISR = totalAmount - isrAmount;
-                return formatMXNInt(exactTotalWithISR);
-              }
-              
+              // Siempre mostrar el total original de la orden, sin descontar ISR
               return formatCOPCeilToTen(totalAmount);
             })()}
               </div>}
