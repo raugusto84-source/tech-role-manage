@@ -1348,6 +1348,39 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_projections: {
+        Row: {
+          active_contracts: number
+          created_at: string
+          id: string
+          month: number
+          projected_revenue: number
+          projection_date: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          active_contracts?: number
+          created_at?: string
+          id?: string
+          month: number
+          projected_revenue?: number
+          projection_date?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          active_contracts?: number
+          created_at?: string
+          id?: string
+          month?: number
+          projected_revenue?: number
+          projection_date?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
       fiscal_withdrawals: {
         Row: {
           amount: number
@@ -6338,6 +6371,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      complete_follow_up_reminder: {
+        Args: { p_reminder_id: string; p_success?: boolean }
+        Returns: undefined
+      }
       convert_quote_to_order: {
         Args: { quote_id: string }
         Returns: Json
@@ -6348,6 +6385,10 @@ export type Database = {
           order_id: string
           order_number: string
         }[]
+      }
+      create_policy_follow_up_configs: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       create_scheduled_service_bundle: {
         Args: {
@@ -6451,6 +6492,16 @@ export type Database = {
           total_hours: number
         }[]
       }
+      get_automation_cron_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          active: boolean
+          jobname: string
+          last_run: string
+          next_run: string
+          schedule: string
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -6530,6 +6581,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_pending_follow_ups: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          client_email: string
+          message_content: string
+          notification_channels: string[]
+          processed_count: number
+          reminder_id: string
+        }[]
+      }
       process_scheduled_surveys: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -6575,6 +6636,15 @@ export type Database = {
           technician_id: string
           years_experience: number
         }[]
+      }
+      trigger_policy_follow_ups: {
+        Args: {
+          p_additional_data?: Json
+          p_client_email: string
+          p_event_type: string
+          p_related_id: string
+        }
+        Returns: undefined
       }
       update_overdue_policy_payments: {
         Args: Record<PropertyKey, never>
