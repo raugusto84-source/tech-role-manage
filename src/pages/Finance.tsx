@@ -20,6 +20,7 @@ import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPane
 import { PurchaseHistoryPanel } from "@/components/finance/PurchaseHistoryPanel";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { formatDateMexico } from '@/utils/dateUtils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Util simple para exportar CSV en cliente
@@ -2949,7 +2950,7 @@ export default function Finance() {
                         {isrRetentionsQuery.data.map((item, index) => (
                           <div key={index} className="flex justify-between items-center py-2 px-3 bg-muted/30 rounded text-sm">
                             <div>
-                              <div className="font-medium">{new Date(item.income_date).toLocaleDateString('es-MX')}</div>
+                              <div className="font-medium">{formatDateMexico(item.income_date)}</div>
                               <div className="text-xs text-muted-foreground truncate max-w-32">
                                 {item.description}
                               </div>
@@ -3144,7 +3145,7 @@ export default function Finance() {
                         const allTransactions = [
                           ...(fiscalIncomesQuery.data ?? []).map(item => ({...item, type: 'INGRESO'})),
                           ...(fiscalExpensesQuery.data ?? []).map(item => ({...item, type: 'EGRESO', income_date: item.expense_date, income_number: item.expense_number}))
-                        ].sort((a, b) => new Date(a.income_date).getTime() - new Date(b.income_date).getTime());
+                         ].sort((a, b) => new Date(a.income_date).getTime() - new Date(b.income_date).getTime());
                         
                         return allTransactions.length > 0 ? allTransactions.map((transaction: any) => (
                           <TableRow key={transaction.id} className={transaction.type === 'INGRESO' ? 'bg-green-50/30 hover:bg-green-50/50' : 'bg-red-50/30 hover:bg-red-50/50'}>
@@ -3157,7 +3158,7 @@ export default function Finance() {
                                 {transaction.type}
                               </div>
                             </TableCell>
-                            <TableCell>{new Date(transaction.income_date).toLocaleDateString('es-MX')}</TableCell>
+                            <TableCell>{formatDateMexico(transaction.income_date)}</TableCell>
                             <TableCell className="font-mono">{transaction.income_number}</TableCell>
                             <TableCell className="max-w-[300px] truncate" title={transaction.description}>
                               {transaction.description}
@@ -3377,7 +3378,7 @@ export default function Finance() {
                       <TableBody>
                         {isrRetentionsQuery.data?.map((retention: any, index: number) => (
                           <TableRow key={index} className="hover:bg-amber-50/30">
-                            <TableCell>{new Date(retention.income_date).toLocaleDateString('es-MX')}</TableCell>
+                            <TableCell>{formatDateMexico(retention.income_date)}</TableCell>
                             <TableCell className="max-w-[250px] truncate" title={retention.description}>
                               {retention.description}
                             </TableCell>
@@ -3444,7 +3445,7 @@ export default function Finance() {
                       )}
                       {!fiscalIncomesQuery.isLoading && (fiscalIncomesQuery.data ?? []).map((income: any) => (
                         <TableRow key={income.id}>
-                          <TableCell>{new Date(income.income_date).toLocaleDateString('es-MX')}</TableCell>
+                          <TableCell>{formatDateMexico(income.income_date)}</TableCell>
                           <TableCell className="font-mono">{income.income_number}</TableCell>
                           <TableCell className="max-w-[300px] truncate" title={income.description}>
                             {income.description}
@@ -3824,7 +3825,7 @@ export default function Finance() {
                           <TableBody>
                             {isrRetentionsQuery.data?.map((retention: any, index: number) => (
                               <TableRow key={index}>
-                                <TableCell>{new Date(retention.income_date).toLocaleDateString('es-MX')}</TableCell>
+                                <TableCell>{formatDateMexico(retention.income_date)}</TableCell>
                                 <TableCell className="max-w-[250px] truncate" title={retention.description}>
                                   {retention.description}
                                 </TableCell>

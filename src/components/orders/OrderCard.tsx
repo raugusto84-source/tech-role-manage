@@ -13,6 +13,7 @@ import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
+import { formatDateMexico, formatDateTimeMexico } from '@/utils/dateUtils';
 import { OrderProgressBar } from './OrderProgressBar';
 interface OrderCardProps {
   order: {
@@ -202,18 +203,14 @@ export function OrderCard({
 
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy', {
-        locale: es
-      });
+      return formatDateMexico(dateString);
     } catch {
       return dateString;
     }
   };
   const formatDateTime = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy HH:mm', {
-        locale: es
-      });
+      return formatDateTimeMexico(dateString);
     } catch {
       return dateString;
     }
