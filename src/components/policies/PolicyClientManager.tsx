@@ -289,7 +289,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           failure_description: `Póliza ${policyInfo.policy_name} - Servicios automáticos`,
           delivery_date: new Date().toISOString().split('T')[0],
           estimated_cost: 0,
-          status: 'pendiente' as const, // Already authorized due to policy
+          status: 'en_proceso' as const, // Policy orders start in process
           client_approval: true, // Pre-authorized by policy
           client_approved_at: new Date().toISOString(),
           created_by: user?.id
