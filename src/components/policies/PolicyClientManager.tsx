@@ -334,7 +334,10 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
       const { error: configsError } = await supabase
         .from('policy_service_configurations')
-        .insert(serviceConfigs);
+        .upsert(serviceConfigs, { 
+          onConflict: 'policy_client_id,service_type_id',
+          ignoreDuplicates: false 
+        });
 
       if (configsError) throw configsError;
 
