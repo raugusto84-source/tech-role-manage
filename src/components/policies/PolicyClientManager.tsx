@@ -5,10 +5,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, UserPlus, Calendar } from "lucide-react";
+import { Plus, Trash2, UserPlus, Calendar, ArrowLeft, ArrowRight, Settings } from "lucide-react";
 
 interface Client {
   id: string;
@@ -36,6 +39,24 @@ interface PolicyClient {
   insurance_policies: InsurancePolicy;
 }
 
+interface ServiceType {
+  id: string;
+  name: string;
+  description?: string | null;
+  cost_price: number | null;
+  base_price: number | null;
+  vat_rate: number;
+  item_type: string;
+  category: string;
+  estimated_hours?: number | null;
+}
+
+interface SelectedService {
+  service: ServiceType;
+  quantity: number;
+  frequency_days: number;
+}
+
 interface PolicyClientManagerProps {
   onStatsUpdate: () => void;
 }
@@ -47,10 +68,16 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const [clients, setClients] = useState<Client[]>([]);
   const [profileCandidates, setProfileCandidates] = useState<Array<{ user_id: string; full_name: string | null; email: string | null; phone: string | null }>>([]);
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
+  const [services, setServices] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Multi-step assignment states
+  const [currentStep, setCurrentStep] = useState(1);
   const [selectedPolicyId, setSelectedPolicyId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedServices, setSelectedServices] = useState<SelectedService[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -138,6 +165,20 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       console.log('Loaded policies:', policiesData?.length || 0);
       setPolicies(policiesData || []);
 
+      // Load active services
+      const { data: servicesData, error: servicesError } = await supabase
+        .from('service_types')
+        .select('*')
+        .eq('is_active', true)
+        .order('category, name');
+
+      if (servicesError) {
+        console.error('Services loading error:', servicesError);
+        throw servicesError;
+      }
+      console.log('Loaded services:', servicesData?.length || 0);
+      setServices(servicesData || []);
+
     } catch (error: any) {
       console.error('Error loading clients and policies:', error);
       toast({
@@ -148,8 +189,9 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     }
   };
 
-  const handleAssignClient = async () => {
-    if (!selectedPolicyId || !selectedClientId) {
+  // Multi-step navigation functions
+  const nextStep = () => {
+    if (currentStep === 1 && (!selectedPolicyId || !selectedClientId)) {
       toast({
         title: "Error",
         description: "Debe seleccionar una póliza y un cliente",
@@ -157,8 +199,159 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       });
       return;
     }
+    
+    if (currentStep === 2 && selectedServices.length === 0) {
+      toast({
+        title: "Error", 
+        description: "Debe seleccionar al menos un servicio",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const resetDialog = () => {
+    setCurrentStep(1);
+    setSelectedPolicyId('');
+    setSelectedClientId('');
+    setSelectedServices([]);
+    setIsSubmitting(false);
+  };
+
+  // Service selection functions
+  const addService = (service: ServiceType) => {
+    const existing = selectedServices.find(s => s.service.id === service.id);
+    if (existing) {
+      toast({
+        title: "Información",
+        description: "Este servicio ya está seleccionado",
+        variant: "default",
+      });
+      return;
+    }
+    
+    setSelectedServices(prev => [...prev, {
+      service,
+      quantity: 1,
+      frequency_days: 30
+    }]);
+  };
+
+  const removeService = (serviceId: string) => {
+    setSelectedServices(prev => prev.filter(s => s.service.id !== serviceId));
+  };
+
+  const updateServiceConfig = (serviceId: string, field: 'quantity' | 'frequency_days', value: number) => {
+    setSelectedServices(prev => prev.map(s => 
+      s.service.id === serviceId 
+        ? { ...s, [field]: Math.max(1, value) }
+        : s
+    ));
+  };
+
+  const createInitialOrder = async (policyClientId: string, policyInfo: InsurancePolicy) => {
+    try {
+      // Generate order number
+      const { data: ordersCount } = await supabase
+        .from('orders')
+        .select('id', { count: 'exact' });
+      
+      const currentYear = new Date().getFullYear();
+      const orderNumber = `ORD-${currentYear}-${String((ordersCount?.length || 0) + 1).padStart(4, '0')}`;
+      
+      // Get the client ID
+      let clientIdToUse = '';
+      if (selectedClientId.startsWith('client:')) {
+        clientIdToUse = selectedClientId.split(':')[1];
+      } else {
+        // Handle profile case - this should have been converted already
+        return;
+      }
+
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([{
+          order_number: orderNumber,
+          client_id: clientIdToUse,
+          service_type: selectedServices[0]?.service.category || 'general',
+          failure_description: `Póliza ${policyInfo.policy_name} - Servicios automáticos`,
+          delivery_date: new Date().toISOString().split('T')[0],
+          estimated_cost: 0,
+          status: 'pendiente_aprobacion' as const,
+          created_by: user?.id
+        }])
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items for each selected service
+      const orderItems = selectedServices.map(selectedService => ({
+        order_id: order.id,
+        service_type_id: selectedService.service.id,
+        service_name: selectedService.service.name,
+        service_description: selectedService.service.description || '',
+        quantity: selectedService.quantity,
+        unit_cost_price: selectedService.service.cost_price || 0,
+        unit_base_price: selectedService.service.base_price || 0,
+        subtotal: (selectedService.service.base_price || 0) * selectedService.quantity,
+        vat_rate: selectedService.service.vat_rate || 0,
+        vat_amount: ((selectedService.service.base_price || 0) * selectedService.quantity * (selectedService.service.vat_rate || 0)) / 100,
+        total_amount: (selectedService.service.base_price || 0) * selectedService.quantity * (1 + (selectedService.service.vat_rate || 0) / 100),
+        item_type: selectedService.service.item_type || 'servicio'
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Save service configurations for automatic order generation
+      const serviceConfigs = selectedServices.map(selectedService => ({
+        policy_client_id: policyClientId,
+        service_type_id: selectedService.service.id,
+        quantity: selectedService.quantity,
+        frequency_days: selectedService.frequency_days,
+        created_by: user?.id
+      }));
+
+      const { error: configsError } = await supabase
+        .from('policy_service_configurations')
+        .insert(serviceConfigs);
+
+      if (configsError) throw configsError;
+
+      return order;
+    } catch (error) {
+      console.error('Error creating initial order:', error);
+      throw error;
+    }
+  };
+
+  const handleAssignClient = async () => {
+    if (selectedServices.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debe seleccionar al menos un servicio",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
+      setIsSubmitting(true);
       let clientIdToUse = '';
 
       if (selectedClientId.startsWith('client:')) {
@@ -214,7 +407,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       }
 
       // Upsert assignment to avoid duplicates and reactivate if exists
-      const { error } = await supabase
+      const { data: policyClientData, error: assignmentError } = await supabase
         .from('policy_clients')
         .upsert([
           {
@@ -223,30 +416,39 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
             assigned_by: user?.id,
             is_active: true,
           }
-        ], { onConflict: 'policy_id,client_id' });
+        ], { onConflict: 'policy_id,client_id' })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (assignmentError) throw assignmentError;
 
-      // El primer pago se genera automáticamente mediante un trigger en la base de datos
+      // Get policy info for order creation
+      const policyInfo = policies.find(p => p.id === selectedPolicyId);
+      if (!policyInfo) {
+        throw new Error('Información de póliza no encontrada');
+      }
 
+      // Create initial order with selected services
+      const order = await createInitialOrder(policyClientData.id, policyInfo);
 
       toast({
         title: 'Éxito',
-        description: 'Cliente asignado a la póliza correctamente',
+        description: `Cliente asignado a la póliza correctamente. Orden inicial ${order.order_number} creada con ${selectedServices.length} servicio(s).`,
       });
 
       setIsDialogOpen(false);
-      setSelectedPolicyId('');
-      setSelectedClientId('');
+      resetDialog();
       loadData();
       onStatsUpdate();
     } catch (error: any) {
       console.error('Error assigning client:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo asignar el cliente a la póliza',
+        description: 'No se pudo completar la asignación: ' + (error.message || 'Error desconocido'),
         variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -306,9 +508,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (open) {
-            // Clear current selections and refresh data when dialog opens
-            setSelectedPolicyId('');
-            setSelectedClientId('');
+            resetDialog();
             console.log('Dialog opened, refreshing clients and policies...');
             loadClientsAndPolicies();
           }
@@ -320,62 +520,250 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
             </Button>
           </DialogTrigger>
           
-          <DialogContent>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Asignar Cliente a Póliza</DialogTitle>
+              <DialogTitle>
+                Asignar Cliente a Póliza - Paso {currentStep} de 3
+              </DialogTitle>
               <DialogDescription>
-                Selecciona la póliza y el cliente para crear la asignación
+                {currentStep === 1 && "Selecciona la póliza y el cliente"}
+                {currentStep === 2 && "Configura los servicios automáticos"}
+                {currentStep === 3 && "Confirma la asignación y configuración"}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Póliza</label>
-                <Select value={selectedPolicyId} onValueChange={setSelectedPolicyId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar póliza" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {policies.map((policy) => (
-                      <SelectItem key={policy.id} value={policy.id}>
-                        {policy.policy_name} - {formatCurrency(policy.monthly_fee)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-6">
+              {/* Paso 1: Selección de Póliza y Cliente */}
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Póliza</label>
+                    <Select value={selectedPolicyId} onValueChange={setSelectedPolicyId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar póliza" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {policies.map((policy) => (
+                          <SelectItem key={policy.id} value={policy.id}>
+                            {policy.policy_name} - {formatCurrency(policy.monthly_fee)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Cliente</label>
-                <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((client) => (
-                      <SelectItem key={`client-${client.id}`} value={`client:${client.id}`}>
-                        {client.name} - {client.email}
-                      </SelectItem>
-                    ))}
-                    {profileCandidates.map((p) => (
-                      <SelectItem key={`profile-${p.user_id}`} value={`profile:${p.user_id}`}>
-                        {(p.full_name || p.email) ?? 'Cliente'} - {p.email} (perfil)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Cliente</label>
+                    <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={`client-${client.id}`} value={`client:${client.id}`}>
+                            {client.name} - {client.email}
+                          </SelectItem>
+                        ))}
+                        {profileCandidates.map((p) => (
+                          <SelectItem key={`profile-${p.user_id}`} value={`profile:${p.user_id}`}>
+                            {(p.full_name || p.email) ?? 'Cliente'} - {p.email} (perfil)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
-              <div className="flex justify-end space-x-2 pt-4">
+              {/* Paso 2: Selección y Configuración de Servicios */}
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Servicios Disponibles</h3>
+                    <Badge variant="outline">{selectedServices.length} seleccionados</Badge>
+                  </div>
+
+                  {/* Lista de servicios disponibles */}
+                  <div className="grid gap-3 max-h-60 overflow-y-auto">
+                    {services.map((service) => (
+                      <div key={service.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <h4 className="font-medium">{service.name}</h4>
+                          <p className="text-sm text-muted-foreground">{service.description}</p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant="secondary" className="text-xs">{service.category}</Badge>
+                            <Badge variant={service.item_type === 'servicio' ? 'default' : 'outline'} className="text-xs">
+                              {service.item_type}
+                            </Badge>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={selectedServices.some(s => s.service.id === service.id) ? "secondary" : "outline"}
+                          onClick={() => addService(service)}
+                        >
+                          {selectedServices.some(s => s.service.id === service.id) ? "Seleccionado" : "Seleccionar"}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Servicios seleccionados y configuración */}
+                  {selectedServices.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-medium">Configuración de Servicios</h3>
+                      {selectedServices.map((selectedService, index) => (
+                        <div key={selectedService.service.id} className="p-4 border rounded-lg bg-muted/50">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h4 className="font-medium">{selectedService.service.name}</h4>
+                              <p className="text-sm text-muted-foreground">{selectedService.service.description}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeService(selectedService.service.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div>
+                              <Label htmlFor={`quantity-${index}`} className="text-sm">Cantidad</Label>
+                              <Input
+                                id={`quantity-${index}`}
+                                type="number"
+                                min="1"
+                                value={selectedService.quantity}
+                                onChange={(e) => updateServiceConfig(
+                                  selectedService.service.id,
+                                  'quantity',
+                                  parseInt(e.target.value) || 1
+                                )}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`frequency-${index}`} className="text-sm">Frecuencia (días)</Label>
+                              <Input
+                                id={`frequency-${index}`}
+                                type="number"
+                                min="1"
+                                value={selectedService.frequency_days}
+                                onChange={(e) => updateServiceConfig(
+                                  selectedService.service.id,
+                                  'frequency_days',
+                                  parseInt(e.target.value) || 30
+                                )}
+                                className="mt-1"
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Órdenes cada {selectedService.frequency_days} días
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Paso 3: Confirmación */}
+              {currentStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Confirmar Asignación</h3>
+                  
+                  <div className="space-y-4">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">Póliza Seleccionada</h4>
+                      {(() => {
+                        const policy = policies.find(p => p.id === selectedPolicyId);
+                        return policy ? (
+                          <div>
+                            <p className="font-medium">{policy.policy_name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              Cuota mensual: {formatCurrency(policy.monthly_fee)}
+                            </p>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">Cliente Seleccionado</h4>
+                      {(() => {
+                        if (selectedClientId.startsWith('client:')) {
+                          const client = clients.find(c => c.id === selectedClientId.split(':')[1]);
+                          return client ? (
+                            <div>
+                              <p className="font-medium">{client.name}</p>
+                              <p className="text-sm text-muted-foreground">{client.email}</p>
+                            </div>
+                          ) : null;
+                        } else if (selectedClientId.startsWith('profile:')) {
+                          const profile = profileCandidates.find(p => p.user_id === selectedClientId.split(':')[1]);
+                          return profile ? (
+                            <div>
+                              <p className="font-medium">{profile.full_name || profile.email}</p>
+                              <p className="text-sm text-muted-foreground">{profile.email} (desde perfil)</p>
+                            </div>
+                          ) : null;
+                        }
+                        return null;
+                      })()}
+                    </div>
+
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">Servicios Configurados ({selectedServices.length})</h4>
+                      <div className="space-y-2">
+                        {selectedServices.map((selectedService) => (
+                          <div key={selectedService.service.id} className="flex justify-between items-center text-sm">
+                            <span>{selectedService.service.name}</span>
+                            <span className="text-muted-foreground">
+                              {selectedService.quantity} cada {selectedService.frequency_days} días
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Se creará una orden inicial con estos servicios y se configurará la generación automática según la frecuencia especificada.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navegación */}
+              <div className="flex justify-between pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={currentStep === 1 ? () => setIsDialogOpen(false) : prevStep}
+                  disabled={isSubmitting}
                 >
-                  Cancelar
+                  {currentStep === 1 ? (
+                    "Cancelar"
+                  ) : (
+                    <>
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Anterior
+                    </>
+                  )}
                 </Button>
-                <Button onClick={handleAssignClient}>
-                  Asignar Cliente
-                </Button>
+                
+                {currentStep < 3 ? (
+                  <Button onClick={nextStep} disabled={isSubmitting}>
+                    Siguiente
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                ) : (
+                  <Button onClick={handleAssignClient} disabled={isSubmitting}>
+                    {isSubmitting ? "Procesando..." : "Confirmar Asignación"}
+                  </Button>
+                )}
               </div>
             </div>
           </DialogContent>

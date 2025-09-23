@@ -3614,6 +3614,57 @@ export type Database = {
           },
         ]
       }
+      policy_service_configurations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          frequency_days: number
+          id: string
+          is_active: boolean
+          policy_client_id: string
+          quantity: number
+          service_type_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          frequency_days?: number
+          id?: string
+          is_active?: boolean
+          policy_client_id: string
+          quantity?: number
+          service_type_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          frequency_days?: number
+          id?: string
+          is_active?: boolean
+          policy_client_id?: string
+          quantity?: number
+          service_type_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_service_configurations_policy_client_id_fkey"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_service_configurations_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       policy_visits: {
         Row: {
           actual_date: string | null
