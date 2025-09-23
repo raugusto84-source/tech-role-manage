@@ -31,6 +31,7 @@ interface SimpleOrderCardProps {
     created_at: string;
     estimated_delivery_date?: string | null;
     is_home_service?: boolean;
+    is_policy_order?: boolean;
     service_location?: any;
     travel_time_hours?: number;
     service_types?: {
@@ -344,20 +345,26 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
         <div className="flex justify-between items-center gap-2 pt-2">
           <OrderModificationsBadge orderId={order.id} onChanged={loadOrderItems} />
           <div className="flex gap-2 flex-wrap">
-            {showCollectButton && paymentSummary.remainingBalance > 0 && (
-              <Button 
-                size="sm" 
-                className="bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg font-semibold"
-                onClick={(e) => {
-                  console.log('Cobrar button clicked for order:', order.order_number);
-                  e.stopPropagation();
-                  setShowPaymentDialog(true);
-                  console.log('Payment dialog state set to true');
-                }}
-              >
-                <CreditCard className="h-4 w-4 mr-2" />
-                Cobrar
-              </Button>
+            {order.is_policy_order ? (
+              <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                📋 Póliza
+              </Badge>
+            ) : (
+              showCollectButton && paymentSummary.remainingBalance > 0 && (
+                <Button 
+                  size="sm" 
+                  className="bg-green-600 hover:bg-green-700 text-white shadow-md hover:shadow-lg font-semibold"
+                  onClick={(e) => {
+                    console.log('Cobrar button clicked for order:', order.order_number);
+                    e.stopPropagation();
+                    setShowPaymentDialog(true);
+                    console.log('Payment dialog state set to true');
+                  }}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  Cobrar
+                </Button>
+              )
             )}
             <Button 
               variant="outline" 

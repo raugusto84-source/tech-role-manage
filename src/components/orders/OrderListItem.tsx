@@ -22,6 +22,7 @@ interface Order {
   created_at: string;
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
+  is_policy_order?: boolean;
   service_types?: {
     name: string;
     description?: string;
@@ -159,18 +160,24 @@ export function OrderListItem({
             <Eye className="h-4 w-4" />
           </Button>
           
-          {showCollectButton && order.status === 'finalizada' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                // Implement collect payment logic
-              }}
-              className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-            >
-              <CreditCard className="h-4 w-4" />
-            </Button>
+          {order.is_policy_order ? (
+            <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
+              📋 Póliza
+            </Badge>
+          ) : (
+            showCollectButton && order.status === 'finalizada' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Implement collect payment logic
+                }}
+                className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+              >
+                <CreditCard className="h-4 w-4" />
+              </Button>
+            )
           )}
           
           {canDelete && onDelete && (

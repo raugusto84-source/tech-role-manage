@@ -28,6 +28,7 @@ interface OrderCardProps {
     status: string;
     client_approval?: boolean;
     assigned_technician?: string;
+    is_policy_order?: boolean;
     clients?: {
       name: string;
       client_number: string;
@@ -317,15 +318,27 @@ export function OrderCard({
 
         {/* Removed cashback display - cashback system eliminated */}
 
-        {/* Botón de cobrar para órdenes finalizadas */}
+        {/* Botón de cobrar para órdenes finalizadas o badge para órdenes de póliza */}
         {(() => {
+        // Si es orden de póliza, mostrar badge en lugar de botón de cobro
+        if (order.is_policy_order) {
+          return (
+            <div className="flex gap-2 flex-wrap">
+              <Badge className="flex-1 bg-blue-100 text-blue-800 border-blue-200 justify-center py-2">
+                📋 Póliza
+              </Badge>
+            </div>
+          );
+        }
+        
         const shouldShowButton = showCollectButton && paymentSummary.remainingBalance > 0;
         console.log('OrderCard collect button debug:', {
           showCollectButton,
           remainingBalance: paymentSummary.remainingBalance,
           orderStatus: order.status,
           orderNumber: order.order_number,
-          shouldShow: shouldShowButton
+          shouldShow: shouldShowButton,
+          isPolicy: order.is_policy_order
         });
         return (
           <div className="flex gap-2 flex-wrap">
