@@ -1983,7 +1983,6 @@ export type Database = {
       }
       insurance_policies: {
         Row: {
-          cashback_percentage: number | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -1993,12 +1992,10 @@ export type Database = {
           monthly_fee: number
           policy_name: string
           policy_number: string
-          products_generate_cashback: boolean | null
           service_discount_percentage: number | null
           updated_at: string
         }
         Insert: {
-          cashback_percentage?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -2008,12 +2005,10 @@ export type Database = {
           monthly_fee?: number
           policy_name: string
           policy_number: string
-          products_generate_cashback?: boolean | null
           service_discount_percentage?: number | null
           updated_at?: string
         }
         Update: {
-          cashback_percentage?: number | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -2023,7 +2018,6 @@ export type Database = {
           monthly_fee?: number
           policy_name?: string
           policy_number?: string
-          products_generate_cashback?: boolean | null
           service_discount_percentage?: number | null
           updated_at?: string
         }
