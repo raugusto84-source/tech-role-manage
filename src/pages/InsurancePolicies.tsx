@@ -11,9 +11,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { InsurancePolicyManager } from "@/components/policies/InsurancePolicyManager";
 import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
-
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
+import { PolicyCalendar } from "@/components/policies/PolicyCalendar";
+import { PolicyDashboardMetrics } from "@/components/policies/PolicyDashboardMetrics";
+import { PolicyRealtimeProvider } from "@/components/policies/PolicyRealtimeProvider";
 import { Search, Plus, Shield, Users, CreditCard, Calendar, FileText } from "lucide-react";
 interface PolicyStats {
   total_policies: number;
@@ -24,13 +26,8 @@ interface PolicyStats {
   scheduled_services: number;
 }
 export default function InsurancePolicies() {
-  const {
-    user,
-    profile
-  } = useAuth();
-  const {
-    toast
-  } = useToast();
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   const [stats, setStats] = useState<PolicyStats>({
     total_policies: 0,
@@ -99,8 +96,10 @@ export default function InsurancePolicies() {
   if (!user) {
     return <div>Cargando...</div>;
   }
-  return <AppLayout>
-      <div className="space-y-6">
+  return (
+    <PolicyRealtimeProvider>
+      <AppLayout>
+        <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -196,58 +195,8 @@ export default function InsurancePolicies() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Estado de Pólizas</CardTitle>
-                <CardDescription>
-                  Resumen del estado actual de todas las pólizas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Pólizas Activas</span>
-                    <Badge variant="default">{stats.active_policies}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Clientes Asignados</span>
-                    <Badge variant="secondary">{stats.total_clients}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Servicios Programados</span>
-                    <Badge variant="outline">{stats.scheduled_services}</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Estado de Pagos</CardTitle>
-                <CardDescription>
-                  Control de pagos mensuales de pólizas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Pagos Pendientes</span>
-                    <Badge variant="secondary">{stats.pending_payments}</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Pagos Vencidos</span>
-                    <Badge variant="destructive">{stats.overdue_payments}</Badge>
-                  </div>
-                  {stats.overdue_payments > 0 && <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-                      <p className="text-sm text-destructive">
-                        ⚠️ Hay {stats.overdue_payments} pagos vencidos que requieren atención inmediata
-                      </p>
-                    </div>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <PolicyDashboardMetrics onRefresh={refreshStats} />
+          <PolicyCalendar />
         </TabsContent>
 
         <TabsContent value="policies">
@@ -265,7 +214,9 @@ export default function InsurancePolicies() {
         <TabsContent value="reports">
           <PolicyReportsManager />
         </TabsContent>
-      </Tabs>
-      </div>
-    </AppLayout>;
+        </Tabs>
+        </div>
+      </AppLayout>
+    </PolicyRealtimeProvider>
+  );
 }
