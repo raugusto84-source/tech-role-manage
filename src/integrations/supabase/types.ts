@@ -6364,6 +6364,10 @@ export type Database = {
           scheduled_service_id: string
         }[]
       }
+      generate_automatic_orders_from_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_client_number: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -6387,6 +6391,21 @@ export type Database = {
       generate_payment_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      generate_payment_overdue_alerts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          alert_priority: string
+          amount: number
+          client_email: string
+          client_name: string
+          days_overdue: number
+          policy_name: string
+        }[]
+      }
+      generate_policy_income_projections: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       generate_policy_number: {
         Args: Record<PropertyKey, never>
