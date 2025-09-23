@@ -292,6 +292,9 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           status: 'en_proceso' as const, // Policy orders start in process
           client_approval: true, // Pre-authorized by policy
           client_approved_at: new Date().toISOString(),
+          is_policy_order: true,
+          policy_id: policyInfo.id,
+          policy_name: policyInfo.policy_name,
           created_by: user?.id
         }])
         .select()
