@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // Removed cashback-related imports - cashback system eliminated
-import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt, formatMXNExact, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { PaymentCollectionDialog } from './PaymentCollectionDialog';
@@ -299,23 +299,20 @@ export function OrderCard({
             <div className="flex justify-between">
               <span className="text-emerald-700">Cobrado:</span>
               <span className="font-medium text-emerald-800">
-                {formatMXNInt(paymentSummary.totalPaid)}
+                {formatMXNExact(paymentSummary.totalPaid)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-amber-700">Restante:</span>
               <span className="font-medium text-amber-800">
-                {paymentSummary.hasISRApplied 
-                  ? formatMXNInt(paymentSummary.remainingBalance)
-                  : formatMXNInt(paymentSummary.remainingBalance)
-                }
+                {formatMXNExact(paymentSummary.remainingBalance)}
               </span>
             </div>
             {paymentSummary.hasISRApplied && paymentSummary.totalISRAmount > 0 && (
               <div className="flex justify-between border-t border-emerald-200 pt-2 mt-2">
                 <span className="text-amber-600 text-xs">ISR retenido:</span>
                 <span className="font-medium text-amber-700 text-xs">
-                  -{formatMXNInt(paymentSummary.totalISRAmount)}
+                  -{formatMXNExact(paymentSummary.totalISRAmount)}
                 </span>
               </div>
             )}
