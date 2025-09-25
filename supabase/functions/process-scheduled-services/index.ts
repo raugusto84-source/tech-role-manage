@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -21,29 +20,27 @@ serve(async (req) => {
     console.log('Processing scheduled services...');
 
     const today = new Date();
-    const currentDayOfWeek = today.getDay(); // 0=Sunday, 1=Monday, etc.
+    const currentDayOfWeek = today.getDay();
     
     console.log(`Today is ${today.toISOString().split('T')[0]}, day of week: ${currentDayOfWeek}`);
 
-    // Get all active policy service configurations that should run today
+    // Get policy service configurations for today
     const { data: dueServices, error: servicesError } = await supabaseClient
       .from('policy_service_configurations')
       .select(`
         id,
         policy_client_id,
         service_type_id,
-        frequency_days,
-        frequency_weeks,
         day_of_week,
         quantity,
         created_by,
-        policy_clients!inner(
+        policy_clients(
           id,
           client_id,
-          clients!inner(id, name, email),
+          clients(id, name, email),
           insurance_policies(policy_name)
         ),
-        service_types!inner(name, description)
+        service_types(name, description)
       `)
       .eq('is_active', true)
       .eq('day_of_week', currentDayOfWeek);
@@ -56,19 +53,28 @@ serve(async (req) => {
     console.log(`Found ${dueServices?.length || 0} due services`);
 
     let ordersCreated = 0;
-    let errors = [];
+    const errors: any[] = [];
 
     for (const service of dueServices || []) {
       try {
-        console.log(`Processing service for client: ${service.policy_clients.clients.name}, service: ${service.service_types.name}`);
+        const policyClient = service.policy_clients;
+        const client = Array.isArray(policyClient?.clients) ? policyClient.clients[0] : policyClient?.clients;
+        const serviceType = Array.isArray(service.service_types) ? service.service_types[0] : service.service_types;
+
+        if (!client || !serviceType) {
+          console.log(`Skipping service ${service.id} - missing client or service type data`);
+          continue;
+        }
+
+        console.log(`Processing service for client: ${client.name}, service: ${serviceType.name}`);
         
-        // Check if an order was already created today for this policy service configuration
+        // Check if order already exists today
         const { data: existingOrders } = await supabaseClient
           .from('orders')
           .select('id')
           .eq('is_policy_order', true)
-          .like('failure_description', `%Servicio programado: ${service.service_types.name}%`)
-          .eq('client_id', service.policy_clients.clients.id)
+          .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
+          .eq('client_id', client.id)
           .gte('created_at', today.toISOString().split('T')[0]);
 
         if (existingOrders && existingOrders.length > 0) {
@@ -76,17 +82,17 @@ serve(async (req) => {
           continue;
         }
 
-        // Create order for due service
+        // Create order
         const { data: orderData, error: orderError } = await supabaseClient
           .from('orders')
           .insert({
             order_number: `ORD-POL-${Date.now()}-${service.id.slice(0, 8)}`,
-            client_id: service.policy_clients.clients.id,
+            client_id: client.id,
             service_type: service.service_type_id,
             service_location: 'domicilio',
             delivery_date: today.toISOString().split('T')[0],
             estimated_cost: 0,
-            failure_description: `Servicio programado: ${service.service_types.name}`,
+            failure_description: `Servicio programado: ${serviceType.name}`,
             status: 'pendiente_aprobacion',
             client_approval: false,
             is_policy_order: true,
@@ -112,8 +118,8 @@ serve(async (req) => {
             vat_rate: 16,
             vat_amount: 0,
             total_amount: 0,
-            service_name: service.service_types.name,
-            service_description: service.service_types.description,
+            service_name: serviceType.name,
+            service_description: serviceType.description,
             item_type: 'servicio',
             status: 'pendiente',
           });
@@ -125,9 +131,10 @@ serve(async (req) => {
 
       } catch (serviceError) {
         console.error(`Error processing service ${service.id}:`, serviceError);
+        const errorMessage = serviceError instanceof Error ? serviceError.message : 'Unknown error';
         errors.push({
           service_id: service.id,
-          error: serviceError.message
+          error: errorMessage
         });
       }
     }
@@ -147,10 +154,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in process-scheduled-services function:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message,
+        error: errorMessage,
         processed_services: 0,
         orders_created: 0 
       }), {

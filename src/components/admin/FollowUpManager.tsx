@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Bell, Clock, Mail, MessageSquare, Phone, Plus, Search, RefreshCw } from "lucide-react";
+import { Bell, Clock, Mail, MessageSquare, Phone, Plus, Search, RefreshCw, Settings, Zap, FastForward, Play, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,6 +35,19 @@ interface FollowUpReminder {
   message_content: string;
 }
 
+interface WhatsAppConfig {
+  api_token: string;
+  phone_number: string;
+  webhook_url: string;
+  is_active: boolean;
+}
+
+interface TimeSimulation {
+  current_date: string;
+  days_to_advance: number;
+  simulate_events: boolean;
+}
+
 export function FollowUpManager() {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<FollowUpConfig[]>([]);
@@ -43,6 +56,23 @@ export function FollowUpManager() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingConfig, setEditingConfig] = useState<FollowUpConfig | null>(null);
+  
+  // WhatsApp Configuration
+  const [whatsappConfig, setWhatsappConfig] = useState<WhatsAppConfig>({
+    api_token: "",
+    phone_number: "",
+    webhook_url: "",
+    is_active: false
+  });
+
+  // Time Simulation
+  const [timeSimulation, setTimeSimulation] = useState<TimeSimulation>({
+    current_date: new Date().toISOString().split('T')[0],
+    days_to_advance: 1,
+    simulate_events: true
+  });
+  
+  const [simulationRunning, setSimulationRunning] = useState(false);
 
   const [newConfig, setNewConfig] = useState({
     name: "",
@@ -214,6 +244,112 @@ export function FollowUpManager() {
     config.trigger_event.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // WhatsApp Functions
+  const saveWhatsAppConfig = async () => {
+    try {
+      // Save to localStorage for now - in a real app this should be in database with encryption
+      localStorage.setItem('whatsapp_config', JSON.stringify(whatsappConfig));
+      toast({ 
+        title: "Configuración guardada", 
+        description: "La configuración de WhatsApp se ha guardado correctamente" 
+      });
+    } catch (error) {
+      console.error('Error saving WhatsApp config:', error);
+      toast({ 
+        title: "Error", 
+        description: "No se pudo guardar la configuración", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const loadWhatsAppConfig = () => {
+    try {
+      const saved = localStorage.getItem('whatsapp_config');
+      if (saved) {
+        setWhatsappConfig(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error('Error loading WhatsApp config:', error);
+    }
+  };
+
+  // Time Simulation Functions
+  const simulateTimeAdvance = async () => {
+    try {
+      setSimulationRunning(true);
+      
+      // Call edge function to simulate time advance and trigger events
+      const { data, error } = await supabase.functions.invoke('simulate-time-advance', {
+        body: {
+          days_to_advance: timeSimulation.days_to_advance,
+          simulate_events: timeSimulation.simulate_events,
+          current_date: timeSimulation.current_date
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Simulación completada",
+        description: `Se avanzaron ${timeSimulation.days_to_advance} días. ${data?.events_created || 0} eventos creados.`
+      });
+
+      // Reload data to see the new events
+      await loadData();
+      
+    } catch (error) {
+      console.error('Error in time simulation:', error);
+      toast({
+        title: "Error en simulación",
+        description: "No se pudo completar la simulación de tiempo",
+        variant: "destructive"
+      });
+    } finally {
+      setSimulationRunning(false);
+    }
+  };
+
+  const testAllEvents = async () => {
+    try {
+      setSimulationRunning(true);
+      
+      // Test all possible events by advancing 30 days
+      const { data, error } = await supabase.functions.invoke('simulate-time-advance', {
+        body: {
+          days_to_advance: 30,
+          simulate_events: true,
+          current_date: timeSimulation.current_date,
+          test_all_events: true
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Prueba completa realizada",
+        description: `Se probaron todos los eventos. ${data?.events_created || 0} eventos creados en 30 días simulados.`
+      });
+
+      // Reload data
+      await loadData();
+      
+    } catch (error) {
+      console.error('Error testing events:', error);
+      toast({
+        title: "Error en prueba",
+        description: "No se pudo completar la prueba de eventos",
+        variant: "destructive"
+      });
+    } finally {
+      setSimulationRunning(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWhatsAppConfig();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -353,9 +489,11 @@ export function FollowUpManager() {
       </div>
 
       <Tabs defaultValue="configurations" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="configurations">Configuraciones</TabsTrigger>
           <TabsTrigger value="reminders">Recordatorios Activos</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+          <TabsTrigger value="simulation">Simulación</TabsTrigger>
         </TabsList>
 
         <TabsContent value="configurations" className="space-y-4">
@@ -489,6 +627,187 @@ export function FollowUpManager() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="whatsapp" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Configuración de WhatsApp
+                  </CardTitle>
+                  <CardDescription>
+                    Configure la integración de WhatsApp para envío de recordatorios
+                  </CardDescription>
+                </div>
+                <Badge variant={whatsappConfig.is_active ? "default" : "secondary"}>
+                  {whatsappConfig.is_active ? "Activo" : "Inactivo"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="whatsapp-token">Token de API</Label>
+                  <Input
+                    id="whatsapp-token"
+                    type="password"
+                    placeholder="Token de WhatsApp Business API"
+                    value={whatsappConfig.api_token}
+                    onChange={(e) => setWhatsappConfig({...whatsappConfig, api_token: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="whatsapp-phone">Número de Teléfono</Label>
+                  <Input
+                    id="whatsapp-phone"
+                    placeholder="+52 XXX XXX XXXX"
+                    value={whatsappConfig.phone_number}
+                    onChange={(e) => setWhatsappConfig({...whatsappConfig, phone_number: e.target.value})}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="webhook-url">URL del Webhook</Label>
+                <Input
+                  id="webhook-url"
+                  placeholder="https://api.whatsapp.com/webhook"
+                  value={whatsappConfig.webhook_url}
+                  onChange={(e) => setWhatsappConfig({...whatsappConfig, webhook_url: e.target.value})}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="whatsapp-active"
+                    checked={whatsappConfig.is_active}
+                    onCheckedChange={(checked) => setWhatsappConfig({...whatsappConfig, is_active: checked})}
+                  />
+                  <Label htmlFor="whatsapp-active">Activar integración de WhatsApp</Label>
+                </div>
+                
+                <Button onClick={saveWhatsAppConfig}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Guardar Configuración
+                </Button>
+              </div>
+
+              <div className="bg-muted p-4 rounded-lg">
+                <h4 className="font-medium mb-2 flex items-center gap-2">
+                  <Bell className="h-4 w-4" />
+                  Información Importante
+                </h4>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li>• Necesita una cuenta de WhatsApp Business API activa</li>
+                  <li>• El token debe tener permisos para enviar mensajes</li>
+                  <li>• Verifique que el webhook esté configurado correctamente</li>
+                  <li>• Los mensajes están sujetos a las políticas de WhatsApp</li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="simulation" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FastForward className="h-5 w-5" />
+                Simulación de Tiempo
+              </CardTitle>
+              <CardDescription>
+                Simule el avance del tiempo para probar eventos programados
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="current-date">Fecha Actual del Sistema</Label>
+                  <Input
+                    id="current-date"
+                    type="date"
+                    value={timeSimulation.current_date}
+                    onChange={(e) => setTimeSimulation({...timeSimulation, current_date: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="days-advance">Días a Avanzar</Label>
+                  <Input
+                    id="days-advance"
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={timeSimulation.days_to_advance}
+                    onChange={(e) => setTimeSimulation({...timeSimulation, days_to_advance: parseInt(e.target.value) || 1})}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="simulate-events"
+                  checked={timeSimulation.simulate_events}
+                  onCheckedChange={(checked) => setTimeSimulation({...timeSimulation, simulate_events: checked})}
+                />
+                <Label htmlFor="simulate-events">Crear eventos programados automáticamente</Label>
+              </div>
+
+              <div className="flex gap-4">
+                <Button 
+                  onClick={simulateTimeAdvance} 
+                  disabled={simulationRunning}
+                  className="flex-1"
+                >
+                  {simulationRunning ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4 mr-2" />
+                  )}
+                  Simular Avance de Tiempo
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={testAllEvents}
+                  disabled={simulationRunning}
+                  className="flex-1"
+                >
+                  {simulationRunning ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4 mr-2" />
+                  )}
+                  Probar Todos los Eventos (30 días)
+                </Button>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-700">
+                  <Calendar className="h-4 w-4" />
+                  ¿Qué hace esta simulación?
+                </h4>
+                <ul className="text-sm text-blue-600 space-y-1">
+                  <li>• <strong>Servicios Programados:</strong> Crea órdenes para servicios de pólizas que correspondan a los días simulados</li>
+                  <li>• <strong>Pagos de Pólizas:</strong> Genera pagos mensuales automáticos cuando corresponda</li>
+                  <li>• <strong>Recordatorios:</strong> Activa seguimientos y notificaciones programadas</li>
+                  <li>• <strong>Eventos de Calendario:</strong> Muestra todos los eventos que se crearían en el rango de tiempo</li>
+                </ul>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+                <h4 className="font-medium mb-2 text-yellow-700">⚠️ Advertencia</h4>
+                <p className="text-sm text-yellow-600">
+                  Esta función es solo para pruebas. Los eventos creados son reales y aparecerán en el sistema. 
+                  Use con precaución en entornos de producción.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
