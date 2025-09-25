@@ -67,7 +67,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
     .select(`
       id,
       policy_client_id,
-      service_type_id,
+      services,
       frequency_type,
       frequency_value,
       quantity,
@@ -79,8 +79,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
         client_id,
         clients!inner(id, name, email),
         insurance_policies!inner(policy_name)
-      ),
-      service_types!inner(name, description, base_price)
+      )
     `)
     .eq('is_active', true)
     .eq('policy_client_id', policy_client_id)
@@ -96,84 +95,121 @@ async function createInitialOrders(supabaseClient: any, body: any) {
   let ordersCreated = 0;
   const errors: any[] = [];
 
-  for (const service of scheduledServices || []) {
+  for (const scheduledService of scheduledServices || []) {
     try {
-      const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
+      const policyClient = Array.isArray(scheduledService.policy_clients) ? scheduledService.policy_clients[0] : scheduledService.policy_clients;
       const client = Array.isArray(policyClient?.clients) ? policyClient.clients[0] : policyClient?.clients;
-      const serviceType = Array.isArray(service.service_types) ? service.service_types[0] : service.service_types;
 
-      if (!client || !serviceType) {
-        console.log(`Skipping service ${service.id} - missing client or service type data`);
+      if (!client) {
+        console.log(`Skipping scheduled service ${scheduledService.id} - missing client data`);
         continue;
       }
 
-      console.log(`Creating initial order for client: ${client.name}, service: ${serviceType.name}`);
-      
-      // Check if order already exists for this date
+      if (!scheduledService.services || !Array.isArray(scheduledService.services) || scheduledService.services.length === 0) {
+        console.log(`Skipping scheduled service ${scheduledService.id} - no services configured`);
+        continue;
+      }
+
+      console.log(`Creating initial order for client: ${client.name}, services: ${scheduledService.services.length}`);
+
+      // Get service types information for all services
+      const serviceTypeIds = scheduledService.services.map((s: any) => s.service_type_id);
+      const { data: serviceTypes, error: serviceTypesError } = await supabaseClient
+        .from('service_types')
+        .select('id, name, description, base_price')
+        .in('id', serviceTypeIds);
+
+      if (serviceTypesError) {
+        console.error('Error fetching service types:', serviceTypesError);
+        continue;
+      }
+
+      // Check if order already exists for this scheduled service on this date
       const { data: existingOrders } = await supabaseClient
         .from('orders')
         .select('id')
         .eq('is_policy_order', true)
-        .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
+        .like('failure_description', `%Servicio programado%`)
         .eq('client_id', client.id)
         .eq('delivery_date', start_date);
 
       if (existingOrders && existingOrders.length > 0) {
-        console.log(`Order already exists for service ${service.id} on ${start_date}`);
+        console.log(`Order already exists for scheduled service ${scheduledService.id} on ${start_date}`);
         continue;
       }
 
-      // Create order
+      // Calculate total estimated cost
+      const totalCost = scheduledService.services.reduce((total: number, service: any) => {
+        const serviceType = serviceTypes?.find((st: any) => st.id === service.service_type_id);
+        return total + (serviceType?.base_price || 0) * service.quantity;
+      }, 0);
+
+      // Create single order with all services
       const { data: orderData, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
-          order_number: `ORD-POL-${Date.now()}-${service.id.slice(0, 8)}`,
+          order_number: `ORD-POL-${Date.now()}-${scheduledService.id.slice(0, 8)}`,
           client_id: client.id,
-          service_type: service.service_type_id,
+          service_type: serviceTypeIds[0], // Use first service as primary
           service_location: 'domicilio',
           delivery_date: start_date,
-          estimated_cost: serviceType.base_price || 0,
-          failure_description: `Servicio programado: ${serviceType.name} (Inicio: ${start_date})`,
+          estimated_cost: totalCost,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (Inicio: ${start_date})`,
           status: 'pendiente_aprobacion',
           client_approval: false,
           is_policy_order: true,
-          order_priority: service.priority || 2
+          order_priority: scheduledService.priority || 2
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Create order item
-      const { error: itemError } = await supabaseClient
-        .from('order_items')
-        .insert({
-          order_id: orderData.id,
-          service_type_id: service.service_type_id,
-          quantity: service.quantity || 1,
-          unit_cost_price: serviceType.base_price || 0,
-          unit_base_price: serviceType.base_price || 0,
-          profit_margin_rate: 0,
-          subtotal: serviceType.base_price || 0,
-          vat_rate: 16,
-          vat_amount: (serviceType.base_price || 0) * 0.16,
-          total_amount: (serviceType.base_price || 0) * 1.16,
-          service_name: serviceType.name,
-          service_description: service.service_description || serviceType.description,
-          item_type: 'servicio',
-          status: 'pendiente',
-        });
+      // Create order items for each service
+      const orderItemsPromises = scheduledService.services.map((service: any) => {
+        const serviceType = serviceTypes?.find((st: any) => st.id === service.service_type_id);
+        
+        if (!serviceType) {
+          console.warn(`Service type not found for ID: ${service.service_type_id}`);
+          return null;
+        }
 
-      if (itemError) throw itemError;
+        return supabaseClient
+          .from('order_items')
+          .insert({
+            order_id: orderData.id,
+            service_type_id: service.service_type_id,
+            quantity: service.quantity,
+            unit_cost_price: serviceType.base_price || 0,
+            unit_base_price: serviceType.base_price || 0,
+            profit_margin_rate: 0,
+            subtotal: (serviceType.base_price || 0) * service.quantity,
+            vat_rate: 16,
+            vat_amount: ((serviceType.base_price || 0) * service.quantity) * 0.16,
+            total_amount: ((serviceType.base_price || 0) * service.quantity) * 1.16,
+            service_name: serviceType.name,
+            service_description: scheduledService.service_description || serviceType.description,
+            item_type: 'servicio',
+            status: 'pendiente',
+          });
+      }).filter(Boolean);
+
+      const itemResults = await Promise.all(orderItemsPromises);
+      const itemErrors = itemResults.filter(result => result?.error);
+      
+      if (itemErrors.length > 0) {
+        console.error('Errors creating order items:', itemErrors);
+        throw new Error(`Failed to create ${itemErrors.length} order items`);
+      }
 
       ordersCreated++;
-      console.log(`Initial order created: ${orderData.order_number} for service ${service.id}`);
+      console.log(`Initial order created: ${orderData.order_number} for scheduled service ${scheduledService.id} with ${scheduledService.services.length} services`);
 
     } catch (serviceError) {
-      console.error(`Error creating initial order for service ${service.id}:`, serviceError);
+      console.error(`Error creating initial order for scheduled service ${scheduledService.id}:`, serviceError);
       const errorMessage = serviceError instanceof Error ? serviceError.message : 'Unknown error';
       errors.push({
-        service_id: service.id,
+        service_id: scheduledService.id,
         error: errorMessage
       });
     }
@@ -210,7 +246,7 @@ async function processDueServices(supabaseClient: any) {
     .select(`
       id,
       policy_client_id,
-      service_type_id,
+      services,
       frequency_type,
       frequency_value,
       next_run,
@@ -223,8 +259,7 @@ async function processDueServices(supabaseClient: any) {
         client_id,
         clients!inner(id, name, email),
         insurance_policies!inner(policy_name)
-      ),
-      service_types!inner(name, description, base_price)
+      )
     `)
     .eq('is_active', true)
     .lte('next_run', nowStr);
@@ -239,95 +274,132 @@ async function processDueServices(supabaseClient: any) {
   let ordersCreated = 0;
   const errors: any[] = [];
 
-  for (const service of dueServices || []) {
+  for (const scheduledService of dueServices || []) {
     try {
-      const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
+      const policyClient = Array.isArray(scheduledService.policy_clients) ? scheduledService.policy_clients[0] : scheduledService.policy_clients;
       const client = Array.isArray(policyClient?.clients) ? policyClient.clients[0] : policyClient?.clients;
-      const serviceType = Array.isArray(service.service_types) ? service.service_types[0] : service.service_types;
 
-      if (!client || !serviceType) {
-        console.log(`Skipping service ${service.id} - missing client or service type data`);
+      if (!client) {
+        console.log(`Skipping scheduled service ${scheduledService.id} - missing client data`);
         continue;
       }
 
-      console.log(`Processing service for client: ${client.name}, service: ${serviceType.name}`);
+      if (!scheduledService.services || !Array.isArray(scheduledService.services) || scheduledService.services.length === 0) {
+        console.log(`Skipping scheduled service ${scheduledService.id} - no services configured`);
+        continue;
+      }
+
+      console.log(`Processing scheduled service for client: ${client.name}, services: ${scheduledService.services.length}`);
+
+      // Get service types information for all services
+      const serviceTypeIds = scheduledService.services.map((s: any) => s.service_type_id);
+      const { data: serviceTypes, error: serviceTypesError } = await supabaseClient
+        .from('service_types')
+        .select('id, name, description, base_price')
+        .in('id', serviceTypeIds);
+
+      if (serviceTypesError) {
+        console.error('Error fetching service types:', serviceTypesError);
+        continue;
+      }
       
-      // Check if order already exists today
+      // Check if order already exists today for this scheduled service
       const { data: existingOrders } = await supabaseClient
         .from('orders')
         .select('id')
         .eq('is_policy_order', true)
-        .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
+        .like('failure_description', `%Servicio programado%`)
         .eq('client_id', client.id)
         .gte('created_at', todayStr)
         .lt('created_at', nextDayStr);
 
       if (existingOrders && existingOrders.length > 0) {
-        console.log(`Order already exists for service ${service.id} today`);
+        console.log(`Order already exists for scheduled service ${scheduledService.id} today`);
         continue;
       }
 
-      // Create order
+      // Calculate total estimated cost
+      const totalCost = scheduledService.services.reduce((total: number, service: any) => {
+        const serviceType = serviceTypes?.find((st: any) => st.id === service.service_type_id);
+        return total + (serviceType?.base_price || 0) * service.quantity;
+      }, 0);
+
+      // Create single order with all services
       const { data: orderData, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
-          order_number: `ORD-POL-${Date.now()}-${service.id.slice(0, 8)}`,
+          order_number: `ORD-POL-${Date.now()}-${scheduledService.id.slice(0, 8)}`,
           client_id: client.id,
-          service_type: service.service_type_id,
+          service_type: serviceTypeIds[0], // Use first service as primary
           service_location: 'domicilio',
           delivery_date: todayStr,
-          estimated_cost: serviceType.base_price || 0,
-          failure_description: `Servicio programado: ${serviceType.name}`,
+          estimated_cost: totalCost,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')}`,
           status: 'pendiente_aprobacion',
           client_approval: false,
           is_policy_order: true,
-          order_priority: service.priority || 2
+          order_priority: scheduledService.priority || 2
         })
         .select()
         .single();
 
       if (orderError) throw orderError;
 
-      // Create order item
-      const { error: itemError } = await supabaseClient
-        .from('order_items')
-        .insert({
-          order_id: orderData.id,
-          service_type_id: service.service_type_id,
-          quantity: service.quantity || 1,
-          unit_cost_price: serviceType.base_price || 0,
-          unit_base_price: serviceType.base_price || 0,
-          profit_margin_rate: 0,
-          subtotal: serviceType.base_price || 0,
-          vat_rate: 16,
-          vat_amount: (serviceType.base_price || 0) * 0.16,
-          total_amount: (serviceType.base_price || 0) * 1.16,
-          service_name: serviceType.name,
-          service_description: service.service_description || serviceType.description,
-          item_type: 'servicio',
-          status: 'pendiente',
-        });
+      // Create order items for each service
+      const orderItemsPromises = scheduledService.services.map((service: any) => {
+        const serviceType = serviceTypes?.find((st: any) => st.id === service.service_type_id);
+        
+        if (!serviceType) {
+          console.warn(`Service type not found for ID: ${service.service_type_id}`);
+          return null;
+        }
 
-      if (itemError) throw itemError;
+        return supabaseClient
+          .from('order_items')
+          .insert({
+            order_id: orderData.id,
+            service_type_id: service.service_type_id,
+            quantity: service.quantity,
+            unit_cost_price: serviceType.base_price || 0,
+            unit_base_price: serviceType.base_price || 0,
+            profit_margin_rate: 0,
+            subtotal: (serviceType.base_price || 0) * service.quantity,
+            vat_rate: 16,
+            vat_amount: ((serviceType.base_price || 0) * service.quantity) * 0.16,
+            total_amount: ((serviceType.base_price || 0) * service.quantity) * 1.16,
+            service_name: serviceType.name,
+            service_description: scheduledService.service_description || serviceType.description,
+            item_type: 'servicio',
+            status: 'pendiente',
+          });
+      }).filter(Boolean);
+
+      const itemResults = await Promise.all(orderItemsPromises);
+      const itemErrors = itemResults.filter(result => result?.error);
+      
+      if (itemErrors.length > 0) {
+        console.error('Errors creating order items:', itemErrors);
+        throw new Error(`Failed to create ${itemErrors.length} order items`);
+      }
 
       // Advance next_run based on frequency type
-      const currentNext = new Date(service.next_run || new Date());
+      const currentNext = new Date(scheduledService.next_run || new Date());
       const advanced = new Date(currentNext);
       
-      if (service.frequency_type === 'minutes') {
-        advanced.setMinutes(advanced.getMinutes() + service.frequency_value);
-      } else if (service.frequency_type === 'days') {
-        advanced.setDate(advanced.getDate() + service.frequency_value);
-      } else if (service.frequency_type === 'weekly_on_day') {
+      if (scheduledService.frequency_type === 'minutes') {
+        advanced.setMinutes(advanced.getMinutes() + scheduledService.frequency_value);
+      } else if (scheduledService.frequency_type === 'days') {
+        advanced.setDate(advanced.getDate() + scheduledService.frequency_value);
+      } else if (scheduledService.frequency_type === 'weekly_on_day') {
         // Calculate next occurrence of specific day of week
-        const targetDay = service.frequency_value; // 0=Sunday, 1=Monday, etc.
+        const targetDay = scheduledService.frequency_value; // 0=Sunday, 1=Monday, etc.
         const currentDay = advanced.getDay();
         let daysUntilTarget = (targetDay - currentDay + 7) % 7;
         if (daysUntilTarget === 0) daysUntilTarget = 7; // If today is the target day, schedule for next week
         advanced.setDate(advanced.getDate() + daysUntilTarget);
       } else { // monthly_on_day
         advanced.setMonth(advanced.getMonth() + 1);
-        advanced.setDate(service.frequency_value);
+        advanced.setDate(scheduledService.frequency_value);
       }
       
       await supabaseClient
@@ -336,16 +408,16 @@ async function processDueServices(supabaseClient: any) {
           next_run: advanced.toISOString(),
           next_service_date: advanced.toISOString().split('T')[0] 
         })
-        .eq('id', service.id);
+        .eq('id', scheduledService.id);
 
       ordersCreated++;
-      console.log(`Order created: ${orderData.order_number} for service ${service.id}`);
+      console.log(`Order created: ${orderData.order_number} for scheduled service ${scheduledService.id} with ${scheduledService.services.length} services`);
 
     } catch (serviceError) {
-      console.error(`Error processing service ${service.id}:`, serviceError);
+      console.error(`Error processing scheduled service ${scheduledService.id}:`, serviceError);
       const errorMessage = serviceError instanceof Error ? serviceError.message : 'Unknown error';
       errors.push({
-        service_id: service.id,
+        service_id: scheduledService.id,
         error: errorMessage
       });
     }

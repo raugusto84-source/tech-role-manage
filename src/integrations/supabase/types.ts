@@ -4811,7 +4811,8 @@ export type Database = {
           priority: number | null
           quantity: number
           service_description: string | null
-          service_type_id: string
+          service_type_id: string | null
+          services: Json | null
           start_date: string | null
           updated_at: string
         }
@@ -4830,7 +4831,8 @@ export type Database = {
           priority?: number | null
           quantity?: number
           service_description?: string | null
-          service_type_id: string
+          service_type_id?: string | null
+          services?: Json | null
           start_date?: string | null
           updated_at?: string
         }
@@ -4849,7 +4851,8 @@ export type Database = {
           priority?: number | null
           quantity?: number
           service_description?: string | null
-          service_type_id?: string
+          service_type_id?: string | null
+          services?: Json | null
           start_date?: string | null
           updated_at?: string
         }

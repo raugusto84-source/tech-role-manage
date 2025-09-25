@@ -43,12 +43,11 @@ interface ScheduledService {
   priority: number;
   is_active: boolean;
   policy_client_id: string;
-  service_type_id: string;
+  services: any[];
   service_description: string | null;
   quantity: number;
   start_date: string | null;
   policy_clients: PolicyClient;
-  service_types: ServiceType;
 }
 
 interface ScheduledServicesManagerProps {
@@ -108,12 +107,6 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
           insurance_policies!inner(
             policy_name
           )
-        ),
-        service_types!inner(
-          id,
-          name,
-          service_category,
-          base_price
         )
       `)
       .eq('is_active', true)
@@ -178,34 +171,25 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setDate(formData.frequency_value);
       }
 
-      // Create scheduled services
-      const insertPromises = formData.selected_services.flatMap(selectedService => 
-        Array.from({ length: selectedService.quantity }, () =>
-          supabase
-            .from('scheduled_services')
-            .insert({
-              policy_client_id: formData.policy_client_id,
-              service_type_id: selectedService.service_type_id,
-              frequency_type: formData.frequency_type,
-              frequency_value: formData.frequency_value,
-              next_run: nextRun.toISOString(),
-              next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
-              priority: formData.priority,
-              service_description: formData.service_description || null,
-              quantity: 1, // Each scheduled service has quantity 1
-              start_date: formData.start_date,
-              is_active: true
-            })
-        )
-      );
+      // Create single scheduled service record with multiple services
+      const { error: insertError } = await supabase
+        .from('scheduled_services')
+        .insert({
+          policy_client_id: formData.policy_client_id,
+          services: formData.selected_services, // Array of {service_type_id, quantity}
+          frequency_type: formData.frequency_type,
+          frequency_value: formData.frequency_value,
+          next_run: nextRun.toISOString(),
+          next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
+          priority: formData.priority,
+          service_description: formData.service_description || null,
+          quantity: formData.selected_services.reduce((total, service) => total + service.quantity, 0),
+          start_date: formData.start_date,
+          is_active: true
+        });
 
-      const results = await Promise.all(insertPromises);
-      
-      // Check if any insertion failed
-      const hasError = results.some(result => result.error);
-      if (hasError) {
-        const errors = results.filter(result => result.error).map(result => result.error);
-        throw new Error(`Errores: ${errors.map(e => e?.message).join(', ')}`);
+      if (insertError) {
+        throw insertError;
       }
 
       // Call edge function to create initial orders and set up automation
@@ -590,21 +574,32 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       </div>
                     </TableCell>
                     <TableCell>{service.policy_clients.insurance_policies.policy_name}</TableCell>
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{service.service_types.name}</div>
-                        {service.service_description && (
-                          <div className="text-sm text-muted-foreground">
-                            {service.service_description}
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {service.quantity}
-                      </Badge>
-                    </TableCell>
+                     <TableCell>
+                       <div className="space-y-1">
+                         {service.services?.map((svc: any, index: number) => (
+                           <div key={index} className="flex items-center space-x-2">
+                             <div className="font-medium text-sm">Servicio {index + 1}</div>
+                             <Badge variant="outline">
+                               Cantidad: {svc.quantity}
+                             </Badge>
+                           </div>
+                         )) || (
+                           <div className="text-sm text-muted-foreground">
+                             Sin servicios configurados
+                           </div>
+                         )}
+                         {service.service_description && (
+                           <div className="text-sm text-muted-foreground mt-1">
+                             {service.service_description}
+                           </div>
+                         )}
+                       </div>
+                     </TableCell>
+                     <TableCell>
+                       <Badge variant="outline">
+                         {service.services?.reduce((total: number, svc: any) => total + svc.quantity, 0) || 0}
+                       </Badge>
+                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
                         {service.start_date ? formatDateMexico(service.start_date) : 'No definida'}
