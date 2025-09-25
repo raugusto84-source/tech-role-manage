@@ -262,6 +262,11 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
   const createInitialOrder = async (policyClientId: string, policyInfo: InsurancePolicy) => {
     try {
+      // Validar que el usuario esté autenticado
+      if (!user?.id) {
+        throw new Error('Usuario no autenticado');
+      }
+
       // Generate order number
       const { data: ordersCount } = await supabase
         .from('orders')
@@ -276,7 +281,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         clientIdToUse = selectedClientId.split(':')[1];
       } else {
         // Handle profile case - this should have been converted already
-        return;
+        throw new Error('ID de cliente no válido');
       }
 
       // Create order
@@ -295,7 +300,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           is_policy_order: true,
           policy_id: policyInfo.id,
           policy_name: policyInfo.policy_name,
-          created_by: user?.id
+          created_by: user.id
         }])
         .select()
         .single();
@@ -332,7 +337,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         frequency_days: globalFrequencyDays,
         frequency_weeks: frequencyWeeks,
         day_of_week: dayOfWeek,
-        created_by: user?.id
+        created_by: user.id // Ya validamos que user.id existe arriba
       }));
 
       const { error: configsError } = await supabase
@@ -342,7 +347,10 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           ignoreDuplicates: false 
         });
 
-      if (configsError) throw configsError;
+      if (configsError) {
+        console.error('Error inserting service configs:', configsError);
+        throw configsError;
+      }
 
       return order;
     } catch (error) {
