@@ -65,12 +65,11 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   
   const [formData, setFormData] = useState({
     policy_client_id: '',
-    service_type_ids: [] as string[],
+    selected_services: [] as Array<{ service_type_id: string; quantity: number }>,
     frequency_type: 'minutes' as 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day',
     frequency_value: 10,
     priority: 2,
     service_description: '',
-    quantity: 1
   });
 
   useEffect(() => {
@@ -175,22 +174,24 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setDate(formData.frequency_value);
       }
 
-      // Create a scheduled service for each selected service type
-      const insertPromises = formData.service_type_ids.map(serviceTypeId => 
-        supabase
-          .from('scheduled_services')
-          .insert({
-            policy_client_id: formData.policy_client_id,
-            service_type_id: serviceTypeId,
-            frequency_type: formData.frequency_type,
-            frequency_value: formData.frequency_value,
-            next_run: nextRun.toISOString(),
-            next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
-            priority: formData.priority,
-            service_description: formData.service_description || null,
-            quantity: formData.quantity,
-            is_active: true
-          })
+      // Create a scheduled service for each selected service with its quantity
+      const insertPromises = formData.selected_services.flatMap(selectedService => 
+        Array.from({ length: selectedService.quantity }, () =>
+          supabase
+            .from('scheduled_services')
+            .insert({
+              policy_client_id: formData.policy_client_id,
+              service_type_id: selectedService.service_type_id,
+              frequency_type: formData.frequency_type,
+              frequency_value: formData.frequency_value,
+              next_run: nextRun.toISOString(),
+              next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
+              priority: formData.priority,
+              service_description: formData.service_description || null,
+              quantity: 1, // Each scheduled service has quantity 1
+              is_active: true
+            })
+        )
       );
 
       const results = await Promise.all(insertPromises);
@@ -204,7 +205,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
       toast({
         title: "Éxito",
-        description: `${formData.service_type_ids.length} servicio(s) programado(s) creado(s) correctamente`
+        description: `${formData.selected_services.reduce((total, service) => total + service.quantity, 0)} servicio(s) programado(s) creado(s) correctamente`
       });
 
       setIsDialogOpen(false);
@@ -252,12 +253,11 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const resetForm = () => {
     setFormData({
       policy_client_id: '',
-      service_type_ids: [],
+      selected_services: [],
       frequency_type: 'minutes',
       frequency_value: 10,
       priority: 2,
       service_description: '',
-      quantity: 1
     });
   };
 
@@ -321,41 +321,72 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               </div>
 
               <div className="space-y-2">
-                <Label>Tipos de Servicio * (seleccionar uno o más)</Label>
-                <div className="border rounded-md p-3 max-h-60 overflow-y-auto space-y-2">
-                  {serviceTypes.map((service) => (
-                    <div key={service.id} className="flex items-center space-x-2">
+                <Label>Servicios a Programar * (seleccionar servicios y cantidades)</Label>
+                <div className="border rounded-md p-3 max-h-60 overflow-y-auto space-y-3">
+                  {serviceTypes.map((service) => {
+                    const selectedService = formData.selected_services.find(s => s.service_type_id === service.id);
+                    const isSelected = !!selectedService;
+                    const currentQuantity = selectedService?.quantity || 0;
+                    
+                    return (
+                      <div key={service.id} className="flex items-center space-x-3 p-2 border rounded">
                       <Checkbox
                         id={service.id}
-                        checked={formData.service_type_ids.includes(service.id)}
+                        checked={isSelected}
                         onCheckedChange={(checked) => {
                           if (checked) {
                             setFormData({
                               ...formData,
-                              service_type_ids: [...formData.service_type_ids, service.id]
+                              selected_services: [...formData.selected_services, { service_type_id: service.id, quantity: 1 }]
                             });
                           } else {
                             setFormData({
                               ...formData,
-                              service_type_ids: formData.service_type_ids.filter(id => id !== service.id)
+                              selected_services: formData.selected_services.filter(s => s.service_type_id !== service.id)
                             });
                           }
                         }}
                       />
-                      <Label htmlFor={service.id} className="flex-1 cursor-pointer">
-                        {service.name} - {formatCurrency(service.base_price)}
-                      </Label>
+                      <div className="flex-1">
+                        <Label htmlFor={service.id} className="cursor-pointer font-medium">
+                          {service.name} - {formatCurrency(service.base_price)}
+                        </Label>
+                      </div>
+                      {isSelected && (
+                        <div className="flex items-center space-x-2">
+                          <Label className="text-sm">Cantidad:</Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={currentQuantity}
+                            onChange={(e) => {
+                              const newQuantity = parseInt(e.target.value) || 1;
+                              setFormData({
+                                ...formData,
+                                selected_services: formData.selected_services.map(s => 
+                                  s.service_type_id === service.id 
+                                    ? { ...s, quantity: newQuantity }
+                                    : s
+                                )
+                              });
+                            }}
+                            className="w-16"
+                          />
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                   {serviceTypes.length === 0 && (
                     <p className="text-muted-foreground text-sm">
                       No hay servicios disponibles
                     </p>
                   )}
                 </div>
-                {formData.service_type_ids.length > 0 && (
+                {formData.selected_services.length > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    {formData.service_type_ids.length} servicio(s) seleccionado(s)
+                    {formData.selected_services.reduce((total, service) => total + service.quantity, 0)} servicio(s) seleccionado(s)
                   </p>
                 )}
               </div>
@@ -374,21 +405,6 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantity">Cantidad</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      quantity: parseInt(e.target.value) || 1
-                    })}
-                    required
-                  />
-                </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="priority">Prioridad</Label>
                   <Select value={formData.priority.toString()} onValueChange={(value) => 
@@ -486,7 +502,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={!formData.policy_client_id || formData.service_type_ids.length === 0}
+                  disabled={!formData.policy_client_id || formData.selected_services.length === 0}
                 >
                   Programar Servicio(s)
                 </Button>
