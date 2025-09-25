@@ -20,27 +20,33 @@ serve(async (req) => {
 
     console.log('Processing scheduled services...');
 
-    // Get all active scheduled services that are due (next_service_date <= today)
+    const today = new Date();
+    const currentDayOfWeek = today.getDay(); // 0=Sunday, 1=Monday, etc.
+    
+    console.log(`Today is ${today.toISOString().split('T')[0]}, day of week: ${currentDayOfWeek}`);
+
+    // Get all active policy service configurations that should run today
     const { data: dueServices, error: servicesError } = await supabaseClient
-      .from('scheduled_services')
+      .from('policy_service_configurations')
       .select(`
         id,
         policy_client_id,
         service_type_id,
         frequency_days,
-        next_service_date,
-        service_description,
-        priority,
+        frequency_weeks,
+        day_of_week,
+        quantity,
         created_by,
-        policy_clients(
+        policy_clients!inner(
           id,
-          clients(id, name, email),
+          client_id,
+          clients!inner(id, name, email),
           insurance_policies(policy_name)
         ),
-        service_types(name, description)
+        service_types!inner(name, description)
       `)
       .eq('is_active', true)
-      .lte('next_service_date', new Date().toISOString().split('T')[0]);
+      .eq('day_of_week', currentDayOfWeek);
 
     if (servicesError) {
       console.error('Error fetching due services:', servicesError);
@@ -54,14 +60,16 @@ serve(async (req) => {
 
     for (const service of dueServices || []) {
       try {
-        // Check if an order was already created today for this service
+        console.log(`Processing service for client: ${service.policy_clients.clients.name}, service: ${service.service_types.name}`);
+        
+        // Check if an order was already created today for this policy service configuration
         const { data: existingOrders } = await supabaseClient
           .from('orders')
           .select('id')
           .eq('is_policy_order', true)
           .like('failure_description', `%Servicio programado: ${service.service_types.name}%`)
           .eq('client_id', service.policy_clients.clients.id)
-          .gte('created_at', new Date().toISOString().split('T')[0]);
+          .gte('created_at', today.toISOString().split('T')[0]);
 
         if (existingOrders && existingOrders.length > 0) {
           console.log(`Order already exists for service ${service.id} today`);
@@ -76,14 +84,13 @@ serve(async (req) => {
             client_id: service.policy_clients.clients.id,
             service_type: service.service_type_id,
             service_location: 'domicilio',
-            delivery_date: service.next_service_date,
+            delivery_date: today.toISOString().split('T')[0],
             estimated_cost: 0,
-            failure_description: service.service_description || `Servicio programado: ${service.service_types.name}`,
-            status: 'en_proceso',
-            client_approval: true,
-            client_approved_at: new Date().toISOString(),
+            failure_description: `Servicio programado: ${service.service_types.name}`,
+            status: 'pendiente_aprobacion',
+            client_approval: false,
             is_policy_order: true,
-            order_priority: service.priority,
+            order_priority: 'media',
             created_by: service.created_by,
           })
           .select()
@@ -97,12 +104,12 @@ serve(async (req) => {
           .insert({
             order_id: orderData.id,
             service_type_id: service.service_type_id,
-            quantity: 1,
+            quantity: service.quantity || 1,
             unit_cost_price: 0,
             unit_base_price: 0,
             profit_margin_rate: 0,
             subtotal: 0,
-            vat_rate: 0,
+            vat_rate: 16,
             vat_amount: 0,
             total_amount: 0,
             service_name: service.service_types.name,
@@ -112,20 +119,6 @@ serve(async (req) => {
           });
 
         if (itemError) throw itemError;
-
-        // Update scheduled service with new next service date
-        const nextDate = new Date();
-        nextDate.setDate(nextDate.getDate() + service.frequency_days);
-
-        const { error: updateError } = await supabaseClient
-          .from('scheduled_services')
-          .update({
-            last_service_date: new Date().toISOString().split('T')[0],
-            next_service_date: nextDate.toISOString().split('T')[0],
-          })
-          .eq('id', service.id);
-
-        if (updateError) throw updateError;
 
         ordersCreated++;
         console.log(`Order created: ${orderData.order_number} for service ${service.id}`);
