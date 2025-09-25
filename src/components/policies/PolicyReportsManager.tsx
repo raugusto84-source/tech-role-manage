@@ -91,6 +91,8 @@ export function PolicyReportsManager() {
           policy_client_id,
           payment_status,
           is_paid,
+          payment_month,
+          payment_year,
           policy_clients(
             clients(name, email),
             insurance_policies(policy_name, policy_number, monthly_fee)
@@ -100,6 +102,20 @@ export function PolicyReportsManager() {
         .eq('payment_year', selectedYear);
 
       if (paymentsError) throw paymentsError;
+
+      // Also load all active policy clients to show them even without expenses/payments this month
+      const { data: activePolicyClients, error: activePolicyError } = await supabase
+        .from('policy_clients')
+        .select(`
+          id,
+          is_active,
+          clients(name, email),
+          insurance_policies(policy_name, policy_number, monthly_fee, is_active)
+        `)
+        .eq('is_active', true)
+        .eq('insurance_policies.is_active', true);
+
+      if (activePolicyError) throw activePolicyError;
 
       // Combine expenses with payment status
       const combinedReports: MonthlyReport[] = [];
@@ -142,6 +158,29 @@ export function PolicyReportsManager() {
             products_cost: 0,
             total_expenses: 0,
             payment_status: payment.is_paid ? 'pagado' : payment.payment_status,
+          });
+        }
+      });
+
+      // Add all active policy clients (even without expenses or payments this month)
+      activePolicyClients?.forEach(policyClient => {
+        const clientId = policyClient.clients.name;
+        if (!clientExpenseMap.has(clientId)) {
+          // Find if they have a payment for this specific month
+          const clientPayment = paymentsData?.find(p => 
+            p.policy_client_id === policyClient.id
+          );
+          
+          clientExpenseMap.set(clientId, {
+            client_name: policyClient.clients.name,
+            policy_name: policyClient.insurance_policies.policy_name,
+            monthly_fee: policyClient.insurance_policies.monthly_fee,
+            services_cost: 0,
+            products_cost: 0,
+            total_expenses: 0,
+            payment_status: clientPayment ? 
+              (clientPayment.is_paid ? 'pagado' : clientPayment.payment_status) : 
+              'sin_programar',
           });
         }
       });
