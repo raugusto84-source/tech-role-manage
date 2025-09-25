@@ -223,13 +223,29 @@ serve(async (req) => {
             const client = Array.isArray(billing.clients) ? billing.clients[0] : billing.clients;
             const policy = Array.isArray(billing.insurance_policies) ? billing.insurance_policies[0] : billing.insurance_policies;
             
+            // Check if payment already exists for this month/year
+            const currentMonth = simulatedDate.getMonth() + 1;
+            const currentYear = simulatedDate.getFullYear();
+            
+            const { data: existingPayment } = await supabaseClient
+              .from('policy_payments')
+              .select('id')
+              .eq('policy_client_id', billing.id)
+              .eq('payment_month', currentMonth)
+              .eq('payment_year', currentYear)
+              .single();
+              
+            if (existingPayment) {
+              continue; // Skip if payment already exists
+            }
+            
             // Create policy payment
             const { error: paymentError } = await supabaseClient
               .from('policy_payments')
               .insert({
                 policy_client_id: billing.id,
-                payment_month: simulatedDate.getMonth() + 1,
-                payment_year: simulatedDate.getFullYear(),
+                payment_month: currentMonth,
+                payment_year: currentYear,
                 amount: policy.monthly_fee,
                 account_type: 'no_fiscal',
                 due_date: simulatedDate.toISOString().split('T')[0],
