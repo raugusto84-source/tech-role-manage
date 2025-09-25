@@ -3246,10 +3246,19 @@ export type Database = {
           balance: number
           client_email: string
           client_name: string
+          collected_at: string | null
+          collected_by: string | null
+          collection_type: string
           created_at: string
+          created_by: string | null
+          due_date: string
           id: string
-          order_id: string
-          order_number: string
+          notes: string | null
+          order_id: string | null
+          order_number: string | null
+          policy_client_id: string | null
+          policy_name: string | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -3257,10 +3266,19 @@ export type Database = {
           balance?: number
           client_email: string
           client_name: string
+          collected_at?: string | null
+          collected_by?: string | null
+          collection_type?: string
           created_at?: string
+          created_by?: string | null
+          due_date?: string
           id?: string
-          order_id: string
-          order_number: string
+          notes?: string | null
+          order_id?: string | null
+          order_number?: string | null
+          policy_client_id?: string | null
+          policy_name?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -3268,13 +3286,30 @@ export type Database = {
           balance?: number
           client_email?: string
           client_name?: string
+          collected_at?: string | null
+          collected_by?: string | null
+          collection_type?: string
           created_at?: string
+          created_by?: string | null
+          due_date?: string
           id?: string
-          order_id?: string
-          order_number?: string
+          notes?: string | null
+          order_id?: string | null
+          order_number?: string | null
+          policy_client_id?: string | null
+          policy_name?: string | null
+          status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pending_collections_policy_client_id_fkey"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pending_expenses: {
         Row: {

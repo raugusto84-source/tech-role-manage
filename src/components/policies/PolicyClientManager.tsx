@@ -388,8 +388,11 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           due_date: dueDate,
           collection_type: 'policy_payment',
           status: 'pending',
-          created_by: user?.id
-        });
+          created_by: user?.id,
+          order_id: null,
+          order_number: null,
+          balance: 0
+        } as any);
 
       if (notificationError) {
         console.error('Error creating collection notification:', notificationError);

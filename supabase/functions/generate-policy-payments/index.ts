@@ -161,6 +161,26 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Create pending collection notification
+        const clientEmail = (policyClient.clients as any)?.[0]?.email || (policyClient.clients as any)?.email;
+        if (clientEmail) {
+          await supabase
+            .from('pending_collections')
+            .insert({
+              policy_client_id: policyClient.id,
+              client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
+              client_email: clientEmail,
+              policy_name: (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name,
+              amount: (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0,
+              due_date: due_date,
+              collection_type: 'policy_payment',
+              status: 'pending',
+              order_id: null,
+              order_number: null,
+              balance: 0
+            });
+        }
+
         // Advance next billing run
         const nextBilling = new Date(policyClient.next_billing_run);
         if (policyClient.billing_frequency_type === 'minutes') {
