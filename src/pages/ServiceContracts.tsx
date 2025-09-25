@@ -16,7 +16,7 @@ import { PolicyRealtimeProvider } from "@/components/policies/PolicyRealtimeProv
 import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
-import { TestSimulationPanel } from "@/components/policies/TestSimulationPanel";
+
 import { FileText, AlertCircle, Calendar } from "lucide-react";
 interface ContractStats {
   active_contracts: number;
@@ -145,12 +145,11 @@ export default function ServiceContracts() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="summary">Resumen</TabsTrigger>
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
           <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
           <TabsTrigger value="services">Servicios Periódicos</TabsTrigger>
-          <TabsTrigger value="simulation">Prueba Simulación</TabsTrigger>
           <TabsTrigger value="reports">Reportes</TabsTrigger>
         </TabsList>
 
@@ -169,10 +168,6 @@ export default function ServiceContracts() {
 
         <TabsContent value="services" className="space-y-4">
           <ScheduledServicesManager onStatsUpdate={refreshStats} />
-        </TabsContent>
-
-        <TabsContent value="simulation" className="space-y-4">
-          <TestSimulationPanel />
         </TabsContent>
 
         <TabsContent value="reports" className="space-y-4">
