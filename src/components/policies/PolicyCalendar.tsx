@@ -397,116 +397,186 @@ export function PolicyCalendar() {
         <div>
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
                 {format(selectedDate, 'dd \'de\' MMMM', { locale: es })}
               </CardTitle>
               <p className="text-sm text-muted-foreground">
                 {selectedDateEvents.length} evento(s) programado(s)
               </p>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               {selectedDateEvents.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CheckCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   <p>No hay eventos programados</p>
                 </div>
               ) : (
-                selectedDateEvents.map((event) => (
-                  <Popover key={event.id}>
-                    <PopoverTrigger asChild>
-                      <div
-                        className={cn(
-                          "p-3 rounded-lg cursor-pointer transition-all hover:shadow-md",
-                          getEventColor(event)
-                        )}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{event.title}</p>
-                            <p className="text-sm opacity-90 truncate">{event.subtitle}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {event.type === 'service' ? (
-                                <Clock className="h-3 w-3" />
-                              ) : event.type === 'projected_order' ? (
-                                <CalendarIcon className="h-3 w-3" />
-                              ) : (
-                                <AlertTriangle className="h-3 w-3" />
-                              )}
-                              <span className="text-xs">
-                                {event.type === 'service' ? 'Servicio' : 
-                                 event.type === 'projected_order' ? 'Orden Proyectada' : 'Pago'}
-                              </span>
-                            </div>
-                          </div>
-                          <Badge variant="secondary" className="ml-2">
-                            P{event.priority}
-                          </Badge>
-                        </div>
-                      </div>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="space-y-3">
-                        <div>
-                          <h4 className="font-semibold">{event.title}</h4>
-                          <p className="text-sm text-muted-foreground">{event.subtitle}</p>
-                        </div>
-                        
-                        {event.type === 'service' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              <span className="text-sm">Frecuencia: cada {event.details.frequency_days} días</span>
-                            </div>
-                          </div>
-                        )}
+                <div>
+                  {/* Resumen de Clientes */}
+                  <div className="mb-4">
+                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+                      Resumen del día
+                    </h4>
+                    <div className="space-y-2">
+                      {(() => {
+                        // Agrupar eventos por cliente
+                        const clientsMap = new Map();
+                        selectedDateEvents.forEach(event => {
+                          const clientName = event.title;
+                          if (!clientsMap.has(clientName)) {
+                            clientsMap.set(clientName, []);
+                          }
+                          clientsMap.get(clientName).push(event);
+                        });
 
-                        {event.type === 'projected_order' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
+                        return Array.from(clientsMap.entries()).map(([clientName, events]) => (
+                          <div key={clientName} className="bg-muted/50 p-3 rounded-lg border">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-primary" />
+                                <span className="font-medium text-sm">{clientName}</span>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                {events.length} evento(s)
+                              </Badge>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span className="text-sm">
-                                Día programado: {event.details.target_weekday} (en {event.details.days_until} día(s))
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4" />
-                              <span className="text-sm">Frecuencia: cada {event.details.frequency_weeks} semana(s)</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                              💡 Esta orden se generará automáticamente según la configuración de la póliza
+                            <div className="space-y-1">
+                              {events.map(event => (
+                                <div key={event.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                                  <div className="flex items-center gap-2">
+                                    {event.type === 'service' ? (
+                                      <Clock className="h-3 w-3 text-green-500" />
+                                    ) : event.type === 'projected_order' ? (
+                                      <CalendarIcon className="h-3 w-3 text-blue-500" />
+                                    ) : (
+                                      <AlertTriangle className="h-3 w-3 text-orange-500" />
+                                    )}
+                                    <span>{event.subtitle}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Badge 
+                                      variant={event.type === 'payment' && event.status === 'vencido' ? 'destructive' : 'secondary'}
+                                      className="text-xs px-1 py-0"
+                                    >
+                                      {event.type === 'service' ? 'Servicio' : 
+                                       event.type === 'projected_order' ? 'Proyectado' : 'Pago'}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
                             </div>
                           </div>
-                        )}
-                        
-                        {event.type === 'payment' && (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4" />
-                              <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Detalles Expandibles */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+                      Detalles de eventos
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedDateEvents.map((event) => (
+                        <Popover key={event.id}>
+                          <PopoverTrigger asChild>
+                            <div
+                              className={cn(
+                                "p-3 rounded-lg cursor-pointer transition-all hover:shadow-md border-l-4",
+                                getEventColor(event)
+                              )}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm truncate">{event.title}</p>
+                                  <p className="text-xs opacity-90 truncate">{event.subtitle}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {event.type === 'service' ? (
+                                      <Clock className="h-3 w-3" />
+                                    ) : event.type === 'projected_order' ? (
+                                      <CalendarIcon className="h-3 w-3" />
+                                    ) : (
+                                      <AlertTriangle className="h-3 w-3" />
+                                    )}
+                                    <span className="text-xs">
+                                      {event.type === 'service' ? 'Servicio Actual' : 
+                                       event.type === 'projected_order' ? 'Orden Proyectada' : 'Pago Pendiente'}
+                                    </span>
+                                  </div>
+                                </div>
+                                <Badge variant="secondary" className="text-xs">
+                                  P{event.priority}
+                                </Badge>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <AlertTriangle className="h-4 w-4" />
-                              <span className="text-sm">
-                                Estado: {event.details.payment_status === 'vencido' ? 'Vencido' : 'Pendiente'}
-                              </span>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80">
+                            <div className="space-y-3">
+                              <div>
+                                <h4 className="font-semibold">{event.title}</h4>
+                                <p className="text-sm text-muted-foreground">{event.subtitle}</p>
+                              </div>
+                              
+                              {event.type === 'service' && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="h-4 w-4" />
+                                    <span className="text-sm">Frecuencia: cada {event.details.frequency_days} días</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {event.type === 'projected_order' && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <CalendarIcon className="h-4 w-4" />
+                                    <span className="text-sm">
+                                      Día programado: {event.details.target_weekday} (en {event.details.days_until} día(s))
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Clock className="h-4 w-4" />
+                                    <span className="text-sm">Frecuencia: cada {event.details.frequency_weeks} semana(s)</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                                    💡 Esta orden se generará automáticamente según la configuración de la póliza
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {event.type === 'payment' && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <span className="text-sm">
+                                      Estado: {event.details.payment_status === 'vencido' ? 'Vencido' : 'Pendiente'}
+                                    </span>
+                                  </div>
+                                  <div className="text-sm">
+                                    Monto: <span className="font-semibold">${event.details.amount}</span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-sm">
-                              Monto: <span className="font-semibold">${event.details.amount}</span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                ))
+                          </PopoverContent>
+                        </Popover>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
