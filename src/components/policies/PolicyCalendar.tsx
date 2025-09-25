@@ -275,5 +275,168 @@ export function PolicyCalendar() {
       </div>;
   };
   const selectedDateEvents = getEventsForDate(selectedDate);
-  return;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Calendar Section */}
+        <Card className="flex-1">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5" />
+                Calendario de Pólizas
+              </CardTitle>
+              <div className="flex gap-2">
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="service">Servicios</SelectItem>
+                    <SelectItem value="payment">Pagos</SelectItem>
+                    <SelectItem value="projected_order">Proyectados</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterPriority} onValueChange={setFilterPriority}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Prioridad" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="1">Baja (1)</SelectItem>
+                    <SelectItem value="2">Media (2)</SelectItem>
+                    <SelectItem value="3">Alta (3)</SelectItem>
+                    <SelectItem value="4">Crítica (4)</SelectItem>
+                    <SelectItem value="5">Urgente (5)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              locale={es}
+              className="rounded-md border"
+              components={{
+                DayContent: ({ date }) => (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <span>{date.getDate()}</span>
+                    {getDayContent(date)}
+                  </div>
+                ),
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Events for Selected Date */}
+        <Card className="w-full lg:w-96">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              {format(selectedDate, "d 'de' MMMM, yyyy", { locale: es })}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Cargando eventos...</p>
+              </div>
+            ) : selectedDateEvents.length === 0 ? (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No hay eventos programados para este día</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {selectedDateEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className={cn(
+                      "p-3 rounded-lg border",
+                      getEventColor(event)
+                    )}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          {event.type === 'service' && <User className="h-4 w-4" />}
+                          {event.type === 'payment' && <AlertTriangle className="h-4 w-4" />}
+                          {event.type === 'projected_order' && <CheckCircle className="h-4 w-4" />}
+                          <span className="font-medium text-sm">{event.title}</span>
+                        </div>
+                        <p className="text-sm opacity-90">{event.subtitle}</p>
+                        {event.type === 'projected_order' && (
+                          <p className="text-xs opacity-75 mt-1">
+                            En {event.details.days_until} días
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        P{event.priority}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-success"></div>
+              <span className="text-sm font-medium">Servicios Programados</span>
+            </div>
+            <p className="text-2xl font-bold mt-2">
+              {filteredEvents.filter(e => e.type === 'service').length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-warning"></div>
+              <span className="text-sm font-medium">Pagos Pendientes</span>
+            </div>
+            <p className="text-2xl font-bold mt-2">
+              {filteredEvents.filter(e => e.type === 'payment' && e.status === 'pendiente').length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-error"></div>
+              <span className="text-sm font-medium">Pagos Vencidos</span>
+            </div>
+            <p className="text-2xl font-bold mt-2">
+              {filteredEvents.filter(e => e.type === 'payment' && e.status === 'vencido').length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-info"></div>
+              <span className="text-sm font-medium">Órdenes Proyectadas</span>
+            </div>
+            <p className="text-2xl font-bold mt-2">
+              {filteredEvents.filter(e => e.type === 'projected_order').length}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
 }
