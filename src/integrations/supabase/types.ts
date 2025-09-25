@@ -4864,13 +4864,6 @@ export type Database = {
             referencedRelation: "policy_clients"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "scheduled_services_service_type_id_fkey"
-            columns: ["service_type_id"]
-            isOneToOne: false
-            referencedRelation: "service_types"
-            referencedColumns: ["id"]
-          },
         ]
       }
       scheduled_surveys: {

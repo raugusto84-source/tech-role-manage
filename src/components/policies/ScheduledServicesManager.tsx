@@ -352,8 +352,16 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       />
                       <div className="flex-1">
                         <Label htmlFor={service.id} className="cursor-pointer font-medium">
-                          {service.name} - {formatCurrency(service.base_price)}
+                          {service.name}
                         </Label>
+                        <div className="text-sm text-muted-foreground">
+                          Precio unitario: {formatCurrency(service.base_price)}
+                        </div>
+                        {isSelected && currentQuantity > 1 && (
+                          <div className="text-sm font-medium text-primary">
+                            Subtotal: {formatCurrency(service.base_price * currentQuantity)}
+                          </div>
+                        )}
                       </div>
                       {isSelected && (
                         <div className="flex items-center space-x-2">
@@ -388,9 +396,40 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   )}
                 </div>
                 {formData.selected_services.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {formData.selected_services.reduce((total, service) => total + service.quantity, 0)} servicio(s) seleccionado(s)
-                  </p>
+                  <div className="mt-3 p-3 bg-muted rounded-lg">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Resumen de servicios seleccionados:</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formData.selected_services.reduce((total, service) => total + service.quantity, 0)} servicio(s)
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {formData.selected_services.map((selectedService) => {
+                        const serviceType = serviceTypes.find(st => st.id === selectedService.service_type_id);
+                        if (!serviceType) return null;
+                        const itemTotal = serviceType.base_price * selectedService.quantity;
+                        return (
+                          <div key={selectedService.service_type_id} className="flex justify-between text-sm">
+                            <span>{serviceType.name} x{selectedService.quantity}</span>
+                            <span className="font-medium">{formatCurrency(itemTotal)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex justify-between font-semibold">
+                          <span>Total estimado por ejecución:</span>
+                          <span className="text-primary">
+                            {formatCurrency(
+                              formData.selected_services.reduce((total, service) => {
+                                const serviceType = serviceTypes.find(st => st.id === service.service_type_id);
+                                return total + (serviceType?.base_price || 0) * service.quantity;
+                              }, 0)
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
 
