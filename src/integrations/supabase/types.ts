@@ -3383,6 +3383,7 @@ export type Database = {
           assigned_by: string | null
           client_id: string
           created_at: string
+          created_by: string | null
           end_date: string | null
           id: string
           is_active: boolean | null
@@ -3394,6 +3395,7 @@ export type Database = {
           assigned_by?: string | null
           client_id: string
           created_at?: string
+          created_by?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
@@ -3405,6 +3407,7 @@ export type Database = {
           assigned_by?: string | null
           client_id?: string
           created_at?: string
+          created_by?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null

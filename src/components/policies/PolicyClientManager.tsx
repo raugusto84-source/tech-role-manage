@@ -434,6 +434,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
             policy_id: selectedPolicyId,
             client_id: clientIdToUse,
             assigned_by: user?.id,
+            created_by: user?.id,
             is_active: true,
           }
         ], { onConflict: 'policy_id,client_id' })
