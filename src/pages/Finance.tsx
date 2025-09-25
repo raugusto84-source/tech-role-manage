@@ -18,7 +18,7 @@ import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDia
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
 import { PurchaseHistoryPanel } from "@/components/finance/PurchaseHistoryPanel";
-import { PolicyPaymentsPending } from "@/components/finance/PolicyPaymentsPending";
+import { CollectionsManager } from "@/components/finance/CollectionsManager";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1626,7 +1626,7 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          <TabsTrigger value="policy-payments" className="text-gray-950">Pagos Pólizas</TabsTrigger>
+          <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
           <TabsTrigger value="purchase-history">Hist. Compras</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
@@ -2764,8 +2764,8 @@ export default function Finance() {
           <PurchaseHistoryPanel />
         </TabsContent>
 
-        <TabsContent value="policy-payments">
-          <PolicyPaymentsPending />
+        <TabsContent value="cobranza">
+          <CollectionsManager />
         </TabsContent>
 
         <TabsContent value="history">
