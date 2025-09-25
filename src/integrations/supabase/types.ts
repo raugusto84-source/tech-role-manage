@@ -4812,6 +4812,7 @@ export type Database = {
           quantity: number
           service_description: string | null
           service_type_id: string
+          start_date: string | null
           updated_at: string
         }
         Insert: {
@@ -4830,6 +4831,7 @@ export type Database = {
           quantity?: number
           service_description?: string | null
           service_type_id: string
+          start_date?: string | null
           updated_at?: string
         }
         Update: {
@@ -4848,6 +4850,7 @@ export type Database = {
           quantity?: number
           service_description?: string | null
           service_type_id?: string
+          start_date?: string | null
           updated_at?: string
         }
         Relationships: [

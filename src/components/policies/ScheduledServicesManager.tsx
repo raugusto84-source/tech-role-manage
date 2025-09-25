@@ -46,6 +46,7 @@ interface ScheduledService {
   service_type_id: string;
   service_description: string | null;
   quantity: number;
+  start_date: string | null;
   policy_clients: PolicyClient;
   service_types: ServiceType;
 }
@@ -66,10 +67,11 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [formData, setFormData] = useState({
     policy_client_id: '',
     selected_services: [] as Array<{ service_type_id: string; quantity: number }>,
-    frequency_type: 'minutes' as 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day',
+    frequency_type: 'minutes' as 'minutes' | 'days' | 'weekly_on_day' | 'monthly_on_day',
     frequency_value: 10,
     priority: 2,
     service_description: '',
+    start_date: new Date().toISOString().split('T')[0], // Today's date as default
   });
 
   useEffect(() => {
@@ -156,8 +158,10 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     e.preventDefault();
     
     try {
-      // Calculate next run time based on frequency
-      const nextRun = new Date();
+      // Calculate next run time based on frequency and start date
+      const startDate = new Date(formData.start_date);
+      const nextRun = new Date(startDate);
+      
       if (formData.frequency_type === 'minutes') {
         nextRun.setMinutes(nextRun.getMinutes() + formData.frequency_value);
       } else if (formData.frequency_type === 'days') {
@@ -174,7 +178,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setDate(formData.frequency_value);
       }
 
-      // Create a scheduled service for each selected service with its quantity
+      // Create scheduled services
       const insertPromises = formData.selected_services.flatMap(selectedService => 
         Array.from({ length: selectedService.quantity }, () =>
           supabase
@@ -189,6 +193,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               priority: formData.priority,
               service_description: formData.service_description || null,
               quantity: 1, // Each scheduled service has quantity 1
+              start_date: formData.start_date,
               is_active: true
             })
         )
@@ -201,6 +206,19 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       if (hasError) {
         const errors = results.filter(result => result.error).map(result => result.error);
         throw new Error(`Errores: ${errors.map(e => e?.message).join(', ')}`);
+      }
+
+      // Call edge function to create initial orders and set up automation
+      const { error: functionError } = await supabase.functions.invoke('process-scheduled-services', {
+        body: { 
+          action: 'create_initial_orders',
+          start_date: formData.start_date,
+          policy_client_id: formData.policy_client_id
+        }
+      });
+
+      if (functionError) {
+        console.warn('Warning: Could not create initial orders:', functionError);
       }
 
       toast({
@@ -258,6 +276,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       frequency_value: 10,
       priority: 2,
       service_description: '',
+      start_date: new Date().toISOString().split('T')[0],
     });
   };
 
@@ -404,6 +423,23 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Fecha de Inicio *</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    start_date: e.target.value
+                  })}
+                  required
+                />
+                <p className="text-sm text-muted-foreground">
+                  Se creará una orden en esta fecha y las siguientes según la frecuencia configurada
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="priority">Prioridad</Label>
@@ -535,6 +571,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   <TableHead>Póliza</TableHead>
                   <TableHead>Servicio</TableHead>
                   <TableHead>Cantidad</TableHead>
+                  <TableHead>Fecha Inicio</TableHead>
                   <TableHead>Frecuencia</TableHead>
                   <TableHead>Próxima Ejecución</TableHead>
                   <TableHead>Prioridad</TableHead>
@@ -567,6 +604,11 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       <Badge variant="outline">
                         {service.quantity}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {service.start_date ? formatDateMexico(service.start_date) : 'No definida'}
+                      </div>
                     </TableCell>
                     <TableCell>
                        <Badge variant="outline">
