@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { PasswordChangeForm } from '@/components/auth/PasswordChangeForm';
+import { AuthDebug } from '@/components/AuthDebug';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Settings, LogOut } from 'lucide-react';
@@ -103,6 +104,7 @@ export default function Dashboard() {
     return (
       <AppLayout>
         <div className="space-y-6">
+          <AuthDebug />
           {/* Header con botón de cerrar sesión */}
           <div className="flex justify-between items-center">
             <div>
