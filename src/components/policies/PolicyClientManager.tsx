@@ -409,7 +409,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                 email: profile.email,
                 phone: profile.phone,
                 address: '',
-                client_number: ''
+                client_number: '',
+                created_by: user?.id
               }
             ])
             .select('id')
