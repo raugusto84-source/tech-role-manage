@@ -293,9 +293,12 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
         if (assignmentError) throw assignmentError;
 
+        // Generate immediate first payment after successful assignment
+        await generateInitialPayment(selectedPolicyId, clientIdToUse);
+
         toast({
           title: 'Éxito',
-          description: 'Cliente asignado a la póliza correctamente',
+          description: 'Cliente asignado a la póliza correctamente y primer pago generado',
         });
       }
 
@@ -312,6 +315,89 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const generateInitialPayment = async (policyId: string, clientId: string) => {
+    try {
+      // Get policy and client info for payment generation
+      const { data: policyData } = await supabase
+        .from('insurance_policies')
+        .select('monthly_fee, policy_name')
+        .eq('id', policyId)
+        .single();
+
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('name, email')
+        .eq('id', clientId)
+        .single();
+
+      if (!policyData || !clientData) {
+        console.error('Missing policy or client data for payment generation');
+        return;
+      }
+
+      const today = new Date();
+      const currentMonth = today.getUTCMonth() + 1;
+      const currentYear = today.getUTCFullYear();
+      const dueDate = today.toISOString().split('T')[0];
+
+      // Get the policy_client assignment we just created
+      const { data: policyClientData } = await supabase
+        .from('policy_clients')
+        .select('id')
+        .eq('policy_id', policyId)
+        .eq('client_id', clientId)
+        .eq('is_active', true)
+        .single();
+
+      if (!policyClientData) {
+        console.error('Policy client assignment not found');
+        return;
+      }
+
+      // Create the initial payment
+      const { error: paymentError } = await supabase
+        .from('policy_payments')
+        .insert({
+          policy_client_id: policyClientData.id,
+          payment_month: currentMonth,
+          payment_year: currentYear,
+          amount: policyData.monthly_fee,
+          account_type: 'no_fiscal',
+          due_date: dueDate,
+          is_paid: false,
+          payment_status: 'pendiente'
+        });
+
+      if (paymentError) {
+        console.error('Error creating initial payment:', paymentError);
+        return;
+      }
+
+      // Create pending collection notification
+      const { error: notificationError } = await supabase
+        .from('pending_collections')
+        .insert({
+          policy_client_id: policyClientData.id,
+          client_name: clientData.name,
+          client_email: clientData.email,
+          policy_name: policyData.policy_name,
+          amount: policyData.monthly_fee,
+          due_date: dueDate,
+          collection_type: 'policy_payment',
+          status: 'pending',
+          created_by: user?.id
+        });
+
+      if (notificationError) {
+        console.error('Error creating collection notification:', notificationError);
+      }
+
+      console.log(`Generated initial payment and notification for ${clientData.name} - ${policyData.policy_name}`);
+    } catch (error) {
+      console.error('Error in generateInitialPayment:', error);
     }
   };
 
