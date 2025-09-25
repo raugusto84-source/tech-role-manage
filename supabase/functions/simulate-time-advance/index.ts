@@ -84,6 +84,7 @@ serve(async (req) => {
       if (servicesError) {
         console.error('Error fetching due scheduled services:', servicesError);
       } else {
+        console.log(`Due scheduled services on ${simulatedDateStr}: ${dueServices?.length || 0}`);
         for (const service of dueServices || []) {
           try {
             const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
@@ -128,45 +129,57 @@ serve(async (req) => {
               .select()
               .single();
 
-            if (!orderError && orderData) {
-              await supabaseClient
-                .from('order_items')
-                .insert({
-                  order_id: orderData.id,
-                  service_type_id: service.service_type_id,
-                  quantity: service.quantity || 1,
-                  unit_cost_price: 0,
-                  unit_base_price: 0,
-                  profit_margin_rate: 0,
-                  subtotal: 0,
-                  vat_rate: 16,
-                  vat_amount: 0,
-                  total_amount: 0,
-                  service_name: `[SIM] ${serviceType.name}`,
-                  service_description: service.service_description || serviceType.description,
-                  item_type: 'servicio',
-                  status: 'pendiente',
-                });
-
-              // advance next_service_date
-              const currentNext = new Date(service.next_service_date);
-              const advanced = new Date(currentNext);
-              advanced.setDate(advanced.getDate() + (service.frequency_days || 1));
-              const advancedStr = advanced.toISOString().split('T')[0];
-              await supabaseClient
-                .from('scheduled_services')
-                .update({ next_service_date: advancedStr })
-                .eq('id', service.id);
-
-              total_scheduled_services++;
-              events_created.push({
-                type: 'scheduled_service',
-                date: simulatedDateStr,
-                client: client.name,
-                service: serviceType.name,
-                order_id: orderData.id
-              });
+            if (orderError || !orderData) {
+              console.error('Order insert failed for scheduled service', { service_id: service.id, error: orderError });
+              continue;
             }
+
+            const { error: itemError } = await supabaseClient
+              .from('order_items')
+              .insert({
+                order_id: orderData.id,
+                service_type_id: service.service_type_id,
+                quantity: service.quantity || 1,
+                unit_cost_price: 0,
+                unit_base_price: 0,
+                profit_margin_rate: 0,
+                subtotal: 0,
+                vat_rate: 16,
+                vat_amount: 0,
+                total_amount: 0,
+                service_name: `[SIM] ${serviceType.name}`,
+                service_description: service.service_description || serviceType.description,
+                item_type: 'servicio',
+                status: 'pendiente',
+              });
+
+            if (itemError) {
+              console.error('Order item insert failed', { order_id: orderData.id, error: itemError });
+              continue;
+            }
+
+            // advance next_service_date
+            const currentNext = new Date(service.next_service_date);
+            const advanced = new Date(currentNext);
+            advanced.setDate(advanced.getDate() + (service.frequency_days || 1));
+            const advancedStr = advanced.toISOString().split('T')[0];
+            const { error: advanceError } = await supabaseClient
+              .from('scheduled_services')
+              .update({ next_service_date: advancedStr })
+              .eq('id', service.id);
+
+            if (advanceError) {
+              console.error('Failed to advance next_service_date', { service_id: service.id, error: advanceError });
+            }
+
+            total_scheduled_services++;
+            events_created.push({
+              type: 'scheduled_service',
+              date: simulatedDateStr,
+              client: client.name,
+              service: serviceType.name,
+              order_id: orderData.id
+            });
           } catch (serviceError) {
             console.error('Error creating simulated service order:', serviceError);
           }
