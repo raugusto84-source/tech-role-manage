@@ -20,30 +20,33 @@ serve(async (req) => {
     console.log('Processing scheduled services...');
 
     const today = new Date();
-    const currentDayOfWeek = today.getDay();
+    const todayStr = today.toISOString().split('T')[0];
+    const nextDayStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
     
-    console.log(`Today is ${today.toISOString().split('T')[0]}, day of week: ${currentDayOfWeek}`);
+    console.log(`Processing date: ${todayStr}`);
 
-    // Get policy service configurations for today
+    // Get scheduled services due today or earlier
     const { data: dueServices, error: servicesError } = await supabaseClient
-      .from('policy_service_configurations')
+      .from('scheduled_services')
       .select(`
         id,
         policy_client_id,
         service_type_id,
-        day_of_week,
+        next_service_date,
+        frequency_days,
         quantity,
-        created_by,
-        policy_clients(
+        service_description,
+        priority,
+        policy_clients!inner(
           id,
           client_id,
-          clients(id, name, email),
-          insurance_policies(policy_name)
+          clients!inner(id, name, email),
+          insurance_policies!inner(policy_name)
         ),
-        service_types(name, description)
+        service_types!inner(name, description)
       `)
       .eq('is_active', true)
-      .eq('day_of_week', currentDayOfWeek);
+      .lte('next_service_date', todayStr);
 
     if (servicesError) {
       console.error('Error fetching due services:', servicesError);
@@ -75,7 +78,8 @@ serve(async (req) => {
           .eq('is_policy_order', true)
           .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
           .eq('client_id', client.id)
-          .gte('created_at', today.toISOString().split('T')[0]);
+          .gte('created_at', todayStr)
+          .lt('created_at', nextDayStr);
 
         if (existingOrders && existingOrders.length > 0) {
           console.log(`Order already exists for service ${service.id} today`);
@@ -90,14 +94,13 @@ serve(async (req) => {
             client_id: client.id,
             service_type: service.service_type_id,
             service_location: 'domicilio',
-            delivery_date: today.toISOString().split('T')[0],
+            delivery_date: todayStr,
             estimated_cost: 0,
             failure_description: `Servicio programado: ${serviceType.name}`,
             status: 'pendiente_aprobacion',
             client_approval: false,
             is_policy_order: true,
-            order_priority: 'media',
-            created_by: service.created_by,
+            order_priority: 'media'
           })
           .select()
           .single();
@@ -119,12 +122,22 @@ serve(async (req) => {
             vat_amount: 0,
             total_amount: 0,
             service_name: serviceType.name,
-            service_description: serviceType.description,
+            service_description: service.service_description || serviceType.description,
             item_type: 'servicio',
             status: 'pendiente',
           });
 
         if (itemError) throw itemError;
+
+        // Advance next_service_date for this scheduled service
+        const currentNext = new Date(service.next_service_date || todayStr);
+        const advanced = new Date(currentNext);
+        advanced.setDate(advanced.getDate() + (service.frequency_days || 1));
+        const advancedStr = advanced.toISOString().split('T')[0];
+        await supabaseClient
+          .from('scheduled_services')
+          .update({ next_service_date: advancedStr })
+          .eq('id', service.id);
 
         ordersCreated++;
         console.log(`Order created: ${orderData.order_number} for service ${service.id}`);

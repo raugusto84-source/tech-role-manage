@@ -58,42 +58,44 @@ serve(async (req) => {
       if (!simulate_events) continue;
 
       // 1. Check for scheduled services (policy services due on this day of week)
+      // 1. Scheduled services due by next_service_date
       const { data: dueServices, error: servicesError } = await supabaseClient
-        .from('policy_service_configurations')
+        .from('scheduled_services')
         .select(`
           id,
           policy_client_id,
           service_type_id,
-          day_of_week,
+          next_service_date,
+          frequency_days,
           quantity,
-          created_by,
+          service_description,
+          priority,
           policy_clients!inner(
             id,
             client_id,
             clients!inner(id, name, email),
-            insurance_policies(policy_name)
+            insurance_policies!inner(policy_name)
           ),
           service_types!inner(name, description)
         `)
         .eq('is_active', true)
-        .eq('day_of_week', simulatedDayOfWeek);
+        .lte('next_service_date', simulatedDateStr);
 
       if (servicesError) {
-        console.error('Error fetching due services:', servicesError);
+        console.error('Error fetching due scheduled services:', servicesError);
       } else {
-        // Create orders for due services
         for (const service of dueServices || []) {
           try {
             const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
             const client = Array.isArray(policyClient?.clients) ? policyClient.clients[0] : policyClient?.clients;
             const serviceType = Array.isArray(service.service_types) ? service.service_types[0] : service.service_types;
-            
             if (!client || !serviceType) {
               console.log(`Skipping service ${service.id} - missing client or service type data`);
               continue;
             }
-            
-            // Check if order already exists for this date
+
+            // prevent duplicate orders for this simulated day
+            const nextDayStr = new Date(simulatedDate.getTime() + 86400000).toISOString().split('T')[0];
             const { data: existingOrders } = await supabaseClient
               .from('orders')
               .select('id')
@@ -101,14 +103,13 @@ serve(async (req) => {
               .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
               .eq('client_id', client.id)
               .gte('created_at', simulatedDateStr)
-              .lt('created_at', new Date(simulatedDate.getTime() + 86400000).toISOString().split('T')[0]);
+              .lt('created_at', nextDayStr);
 
             if (existingOrders && existingOrders.length > 0) {
               console.log(`Order already exists for service ${service.id} on ${simulatedDateStr}`);
               continue;
             }
 
-            // Create simulated order
             const { data: orderData, error: orderError } = await supabaseClient
               .from('orders')
               .insert({
@@ -122,14 +123,12 @@ serve(async (req) => {
                 status: 'pendiente_aprobacion',
                 client_approval: false,
                 is_policy_order: true,
-                order_priority: 'media',
-                created_by: service.created_by,
+                order_priority: 'media'
               })
               .select()
               .single();
 
             if (!orderError && orderData) {
-              // Create order item
               await supabaseClient
                 .from('order_items')
                 .insert({
@@ -144,10 +143,20 @@ serve(async (req) => {
                   vat_amount: 0,
                   total_amount: 0,
                   service_name: `[SIM] ${serviceType.name}`,
-                  service_description: serviceType.description,
+                  service_description: service.service_description || serviceType.description,
                   item_type: 'servicio',
                   status: 'pendiente',
                 });
+
+              // advance next_service_date
+              const currentNext = new Date(service.next_service_date);
+              const advanced = new Date(currentNext);
+              advanced.setDate(advanced.getDate() + (service.frequency_days || 1));
+              const advancedStr = advanced.toISOString().split('T')[0];
+              await supabaseClient
+                .from('scheduled_services')
+                .update({ next_service_date: advancedStr })
+                .eq('id', service.id);
 
               total_scheduled_services++;
               events_created.push({
@@ -159,7 +168,7 @@ serve(async (req) => {
               });
             }
           } catch (serviceError) {
-            console.error(`Error creating simulated service order:`, serviceError);
+            console.error('Error creating simulated service order:', serviceError);
           }
         }
       }
