@@ -458,9 +458,12 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   })}
                   required
                 />
-                <p className="text-sm text-muted-foreground">
-                  Se creará una orden en esta fecha y las siguientes según la frecuencia configurada
-                </p>
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p><strong>📅 Creación automática de órdenes:</strong></p>
+                  <p>• El sistema creará órdenes para TODAS las fechas desde esta fecha hasta hoy</p>
+                  <p>• Ejemplo: Si es lunes y programas "cada lunes" desde hace 1 mes, se crearán 4-5 órdenes</p>
+                  <p>• Luego programará automáticamente las siguientes según la frecuencia</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -549,6 +552,44 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       required
                     />
                   )}
+                </div>
+
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-3">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                    📋 Comportamiento de creación automática:
+                  </p>
+                  <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    {formData.frequency_type === 'weekly_on_day' && (
+                      <div>
+                        <strong>Ejemplo:</strong> Si seleccionas "Lunes" y la fecha de inicio fue hace 1 mes, 
+                        se crearán órdenes para TODOS los lunes desde entonces hasta hoy, 
+                        luego se programará automáticamente para cada lunes futuro.
+                      </div>
+                    )}
+                    
+                    {formData.frequency_type === 'monthly_on_day' && (
+                      <div>
+                        <strong>Ejemplo:</strong> Si seleccionas día "15" y la fecha de inicio fue hace 3 meses, 
+                        se crearán órdenes para el día 15 de cada mes desde entonces hasta hoy, 
+                        luego continuará automáticamente cada mes.
+                      </div>
+                    )}
+                    
+                    {formData.frequency_type === 'days' && (
+                      <div>
+                        <strong>Ejemplo:</strong> Si seleccionas "cada 7 días" desde hace 1 mes, 
+                        se crearán aproximadamente 4-5 órdenes para ponerse al día,
+                        luego continuará cada 7 días automáticamente.
+                      </div>
+                    )}
+
+                    {formData.frequency_type === 'minutes' && (
+                      <div>
+                        <strong>Nota:</strong> Para frecuencias en minutos (solo pruebas),
+                        se crearán órdenes para los intervalos pasados hasta alcanzar el presente.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               
