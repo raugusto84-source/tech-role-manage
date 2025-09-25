@@ -59,13 +59,17 @@ Deno.serve(async (req) => {
     const currentMonth = today.getUTCMonth() + 1;
     const currentYear = today.getUTCFullYear();
 
-    // Get all active policy clients or specific one
+    // Get all active policy clients due for billing or specific one
+    const nowStr = new Date().toISOString();
     let query = supabase
       .from('policy_clients')
       .select(`
         id,
         policy_id,
         start_date,
+        billing_frequency_type,
+        billing_frequency_value,
+        next_billing_run,
         clients(name, email),
         insurance_policies(monthly_fee, policy_name)
       `)
@@ -73,6 +77,9 @@ Deno.serve(async (req) => {
 
     if (requestBody.policy_client_id) {
       query = query.eq('client_id', requestBody.policy_client_id);
+    } else if (!requestBody.generate_immediate) {
+      // Only get those due for billing now
+      query = query.lte('next_billing_run', nowStr);
     }
 
     const { data: policyClients, error: pcError } = await query;
@@ -90,89 +97,103 @@ Deno.serve(async (req) => {
 
     for (const policyClient of policyClients || []) {
       try {
-        // Generate payments for current month if immediate, or next month
-        const monthsToGenerate = requestBody.generate_immediate ? 
-          [{ month: currentMonth, year: currentYear }, getNextDueDate(currentMonth, currentYear)] :
-          [getNextDueDate(currentMonth, currentYear)];
+        // Create payment for current period
+        const paymentMonth = currentMonth;
+        const paymentYear = currentYear;
 
-        for (const { month, year } of monthsToGenerate) {
-          const due_date = `${year}-${month.toString().padStart(2, '0')}-05`;
-          
-          // Check if payment for this month already exists
-          const { data: existingPayment, error: checkError } = await supabase
-            .from('policy_payments')
-            .select('id')
-            .eq('policy_client_id', policyClient.id)
-            .eq('payment_month', month)
-            .eq('payment_year', year)
-            .maybeSingle();
+        const due_date = new Date().toISOString().split('T')[0];
+        
+        // Check if payment for this billing run already exists (prevent duplicates)
+        const { data: existingPayment, error: checkError } = await supabase
+          .from('policy_payments')
+          .select('id')
+          .eq('policy_client_id', policyClient.id)
+          .eq('payment_month', paymentMonth)
+          .eq('payment_year', paymentYear)
+          .maybeSingle();
 
-          if (checkError && checkError.code !== 'PGRST116') {
-            console.error(`Error checking existing payment for policy client ${policyClient.id}:`, checkError);
-            details.push({
-              policy_client_id: policyClient.id,
-              client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
-              status: 'error',
-              message: `Check error: ${checkError.message}`
-            });
-            continue;
-          }
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error(`Error checking existing payment for policy client ${policyClient.id}:`, checkError);
+          details.push({
+            policy_client_id: policyClient.id,
+            client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
+            status: 'error',
+            message: `Check error: ${checkError.message}`
+          });
+          continue;
+        }
 
-          if (existingPayment) {
-            const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
-            console.log(`Payment already exists for ${clientName} for ${month}/${year}`);
-            skipped++;
-            details.push({
-              policy_client_id: policyClient.id,
-              client_name: clientName,
-              status: 'skipped',
-              message: `Payment for ${month}/${year} already exists`
-            });
-            continue;
-          }
-
-          // Create new payment
-          const { error: insertError } = await supabase
-            .from('policy_payments')
-            .insert({
-              policy_client_id: policyClient.id,
-              payment_month: month,
-              payment_year: year,
-              amount: (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0,
-              account_type: 'no_fiscal',
-              due_date: due_date,
-              is_paid: false,
-              payment_status: 'pendiente',
-            });
-
-          if (insertError) {
-            console.error(`Error creating payment for policy client ${policyClient.id}:`, insertError);
-            details.push({
-              policy_client_id: policyClient.id,
-              client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
-              status: 'error',
-              message: insertError.message
-            });
-            continue;
-          }
-
+        if (existingPayment) {
           const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
-          const policyName = (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name;
-          const monthlyFee = (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee;
-          
-          console.log(`Created payment for ${clientName} - ${month}/${year}`);
-          created++;
+          console.log(`Payment already exists for ${clientName} for ${paymentMonth}/${paymentYear}`);
+          skipped++;
           details.push({
             policy_client_id: policyClient.id,
             client_name: clientName,
-            policy_name: policyName,
-            status: 'created',
-            month: month,
-            year: year,
-            amount: monthlyFee,
-            due_date: due_date
+            status: 'skipped',
+            message: `Payment for ${paymentMonth}/${paymentYear} already exists`
           });
+          continue;
         }
+
+        // Create new payment
+        const { error: insertError } = await supabase
+          .from('policy_payments')
+          .insert({
+            policy_client_id: policyClient.id,
+            payment_month: paymentMonth,
+            payment_year: paymentYear,
+            amount: (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0,
+            account_type: 'no_fiscal',
+            due_date: due_date,
+            is_paid: false,
+            payment_status: 'pendiente',
+          });
+
+        if (insertError) {
+          console.error(`Error creating payment for policy client ${policyClient.id}:`, insertError);
+          details.push({
+            policy_client_id: policyClient.id,
+            client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
+            status: 'error',
+            message: insertError.message
+          });
+          continue;
+        }
+
+        // Advance next billing run
+        const nextBilling = new Date(policyClient.next_billing_run);
+        if (policyClient.billing_frequency_type === 'minutes') {
+          nextBilling.setMinutes(nextBilling.getMinutes() + policyClient.billing_frequency_value);
+        } else if (policyClient.billing_frequency_type === 'days') {
+          nextBilling.setDate(nextBilling.getDate() + policyClient.billing_frequency_value);
+        } else { // monthly_on_day
+          nextBilling.setMonth(nextBilling.getMonth() + 1);
+          nextBilling.setDate(policyClient.billing_frequency_value);
+        }
+
+        await supabase
+          .from('policy_clients')
+          .update({ next_billing_run: nextBilling.toISOString() })
+          .eq('id', policyClient.id);
+
+        const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
+        const policyName = (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name;
+        const monthlyFee = (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee;
+        
+        console.log(`Created payment for ${clientName} - ${paymentMonth}/${paymentYear}`);
+        created++;
+        details.push({
+          policy_client_id: policyClient.id,
+          client_name: clientName,
+          policy_name: policyName,
+          status: 'created',
+          month: paymentMonth,
+          year: paymentYear,
+          amount: monthlyFee,
+          due_date: due_date,
+          next_billing_run: nextBilling.toISOString()
+        });
 
       } catch (error: any) {
         console.error(`Unexpected error processing policy client ${policyClient.id}:`, error);

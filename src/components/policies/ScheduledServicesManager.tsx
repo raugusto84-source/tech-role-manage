@@ -36,6 +36,9 @@ interface ScheduledService {
   id: string;
   frequency_days: number;
   next_service_date: string;
+  frequency_type: 'minutes' | 'days' | 'monthly_on_day';
+  frequency_value: number;
+  next_run: string;
   priority: number;
   is_active: boolean;
   policy_client_id: string;
@@ -62,9 +65,9 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [formData, setFormData] = useState({
     policy_client_id: '',
     service_type_id: '',
-    frequency_days: 30,
+    frequency_type: 'minutes' as 'minutes' | 'days' | 'monthly_on_day',
+    frequency_value: 10,
     priority: 2,
-    next_service_date: '',
     service_description: '',
     quantity: 1
   });
@@ -115,7 +118,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       .order('next_service_date', { ascending: true });
 
     if (error) throw error;
-    setScheduledServices(data || []);
+    setScheduledServices(data as ScheduledService[] || []);
   };
 
   const loadPolicyClients = async () => {
@@ -153,13 +156,26 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     e.preventDefault();
     
     try {
+      // Calculate next run time based on frequency
+      const nextRun = new Date();
+      if (formData.frequency_type === 'minutes') {
+        nextRun.setMinutes(nextRun.getMinutes() + formData.frequency_value);
+      } else if (formData.frequency_type === 'days') {
+        nextRun.setDate(nextRun.getDate() + formData.frequency_value);
+      } else { // monthly_on_day
+        nextRun.setMonth(nextRun.getMonth() + 1);
+        nextRun.setDate(formData.frequency_value);
+      }
+
       const { error } = await supabase
         .from('scheduled_services')
         .insert({
           policy_client_id: formData.policy_client_id,
           service_type_id: formData.service_type_id,
-          frequency_days: formData.frequency_days,
-          next_service_date: formData.next_service_date,
+          frequency_type: formData.frequency_type,
+          frequency_value: formData.frequency_value,
+          next_run: nextRun.toISOString(),
+          next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
           priority: formData.priority,
           service_description: formData.service_description || null,
           quantity: formData.quantity,
@@ -219,9 +235,9 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
     setFormData({
       policy_client_id: '',
       service_type_id: '',
-      frequency_days: 30,
+      frequency_type: 'minutes',
+      frequency_value: 10,
       priority: 2,
-      next_service_date: '',
       service_description: '',
       quantity: 1
     });
@@ -317,7 +333,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="quantity">Cantidad</Label>
                   <Input
@@ -329,22 +345,6 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       ...formData,
                       quantity: parseInt(e.target.value) || 1
                     })}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="frequency_days">Frecuencia (días) *</Label>
-                  <Input
-                    id="frequency_days"
-                    type="number"
-                    min="1"
-                    value={formData.frequency_days}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      frequency_days: parseInt(e.target.value) || 30
-                    })}
-                    placeholder="30"
                     required
                   />
                 </div>
@@ -368,18 +368,43 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="next_service_date">Próximo Servicio *</Label>
-                <Input
-                  id="next_service_date"
-                  type="date"
-                  value={formData.next_service_date}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    next_service_date: e.target.value
-                  })}
-                  required
-                />
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium">Configuración de Frecuencia</h4>
+                
+                <div className="space-y-2">
+                  <Label>Tipo de Frecuencia *</Label>
+                  <Select value={formData.frequency_type} onValueChange={(value) => 
+                    setFormData({ ...formData, frequency_type: value as any })
+                  }>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Cada X minutos (para pruebas)</SelectItem>
+                      <SelectItem value="days">Cada X días</SelectItem>
+                      <SelectItem value="monthly_on_day">Día X de cada mes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Valor de Frecuencia *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={formData.frequency_type === 'monthly_on_day' ? 31 : 9999}
+                    value={formData.frequency_value}
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      frequency_value: parseInt(e.target.value) || 1
+                    })}
+                    placeholder={
+                      formData.frequency_type === 'minutes' ? '10 (minutos)' :
+                      formData.frequency_type === 'days' ? '30 (días)' : '10 (día del mes)'
+                    }
+                    required
+                  />
+                </div>
               </div>
               
               <div className="flex justify-end space-x-2 pt-4">
@@ -425,7 +450,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   <TableHead>Servicio</TableHead>
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Frecuencia</TableHead>
-                  <TableHead>Próximo Servicio</TableHead>
+                  <TableHead>Próxima Ejecución</TableHead>
                   <TableHead>Prioridad</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -460,10 +485,16 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     <TableCell>
                       <Badge variant="outline">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {service.frequency_days} días
+                        {service.frequency_type === 'minutes' ? `${service.frequency_value} min` :
+                         service.frequency_type === 'days' ? `${service.frequency_value} días` :
+                         `Día ${service.frequency_value} del mes`}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatDateMexico(service.next_service_date)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        {service.next_run ? new Date(service.next_run).toLocaleString('es-MX') : 'No programado'}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={service.priority >= 4 ? "destructive" : service.priority >= 3 ? "default" : "secondary"}>
                         P{service.priority}

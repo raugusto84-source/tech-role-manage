@@ -7,7 +7,8 @@ const corsHeaders = {
 };
 
 interface SimulationRequest {
-  days_to_advance: number;
+  days_to_advance?: number;
+  minutes_to_advance?: number;
   current_date?: string;
   simulate_events?: boolean;
   test_all_events?: boolean;
@@ -36,9 +37,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { days_to_advance, current_date, simulate_events = true, test_all_events = false }: SimulationRequest = await req.json();
+    const { days_to_advance = 0, minutes_to_advance = 0, current_date, simulate_events = true, test_all_events = false }: SimulationRequest = await req.json();
 
-    console.log(`Starting time simulation - advancing ${days_to_advance} days from ${current_date || 'today'}`);
+    const totalMinutes = (days_to_advance * 24 * 60) + minutes_to_advance;
+    console.log(`Starting time simulation - advancing ${totalMinutes} minutes (${days_to_advance} days + ${minutes_to_advance} minutes) from ${current_date || 'now'}`);
 
     const baseDate = current_date ? new Date(current_date) : new Date();
     const events_created: any[] = [];
@@ -46,27 +48,29 @@ serve(async (req) => {
     let total_policy_payments = 0;
     let total_follow_ups = 0;
 
-    // Simulate each day in the range
-    for (let day = 0; day < days_to_advance; day++) {
+    // Simulate in minute intervals for flexible frequency checking
+    for (let minute = 0; minute < totalMinutes; minute += 1) {
       const simulatedDate = new Date(baseDate);
-      simulatedDate.setDate(simulatedDate.getDate() + day);
-      const simulatedDayOfWeek = simulatedDate.getDay();
-      const simulatedDateStr = simulatedDate.toISOString().split('T')[0];
+      simulatedDate.setMinutes(simulatedDate.getMinutes() + minute);
+      const simulatedDateStr = simulatedDate.toISOString();
 
-      console.log(`Simulating day ${day + 1}: ${simulatedDateStr} (day of week: ${simulatedDayOfWeek})`);
+      // Only log every 60 minutes to reduce noise
+      if (minute % 60 === 0) {
+        console.log(`Simulating minute ${minute}: ${simulatedDateStr}`);
+      }
 
       if (!simulate_events) continue;
 
-      // 1. Check for scheduled services (policy services due on this day of week)
-      // 1. Scheduled services due by next_service_date
+      // 1. Check for scheduled services due by next_run timestamp
       const { data: dueServices, error: servicesError } = await supabaseClient
         .from('scheduled_services')
         .select(`
           id,
           policy_client_id,
           service_type_id,
-          next_service_date,
-          frequency_days,
+          frequency_type,
+          frequency_value,
+          next_run,
           quantity,
           service_description,
           priority,
@@ -79,12 +83,14 @@ serve(async (req) => {
           service_types!inner(name, description)
         `)
         .eq('is_active', true)
-        .lte('next_service_date', simulatedDateStr);
+        .lte('next_run', simulatedDateStr);
 
       if (servicesError) {
         console.error('Error fetching due scheduled services:', servicesError);
       } else {
-        console.log(`Due scheduled services on ${simulatedDateStr}: ${dueServices?.length || 0}`);
+        if (dueServices?.length && minute % 60 === 0) {
+          console.log(`Due scheduled services on ${simulatedDateStr}: ${dueServices.length}`);
+        }
         for (const service of dueServices || []) {
           try {
             const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
@@ -95,30 +101,29 @@ serve(async (req) => {
               continue;
             }
 
-            // prevent duplicate orders for this simulated day
-            const nextDayStr = new Date(simulatedDate.getTime() + 86400000).toISOString().split('T')[0];
+            // prevent duplicate orders for this simulated minute/hour
+            const nextHourStr = new Date(simulatedDate.getTime() + 3600000).toISOString();
             const { data: existingOrders } = await supabaseClient
               .from('orders')
               .select('id')
               .eq('is_policy_order', true)
               .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
               .eq('client_id', client.id)
-              .gte('created_at', simulatedDateStr)
-              .lt('created_at', nextDayStr);
+              .gte('created_at', simulatedDate.toISOString())
+              .lt('created_at', nextHourStr);
 
             if (existingOrders && existingOrders.length > 0) {
-              console.log(`Order already exists for service ${service.id} on ${simulatedDateStr}`);
               continue;
             }
 
             const { data: orderData, error: orderError } = await supabaseClient
               .from('orders')
               .insert({
-                order_number: `SIM-${simulatedDateStr}-${service.id.slice(0, 8)}`,
+                order_number: `SIM-${simulatedDate.toISOString().slice(0, 19).replace(/[:-]/g, '')}-${service.id.slice(0, 8)}`,
                 client_id: client.id,
                 service_type: service.service_type_id,
                 service_location: 'domicilio',
-                delivery_date: simulatedDateStr,
+                delivery_date: simulatedDate.toISOString().split('T')[0],
                 estimated_cost: 0,
                 failure_description: `[SIMULACIÓN] Servicio programado: ${serviceType.name}`,
                 status: 'pendiente_aprobacion',
@@ -158,27 +163,37 @@ serve(async (req) => {
               continue;
             }
 
-            // advance next_service_date
-            const currentNext = new Date(service.next_service_date);
+            // advance next_run based on frequency type
+            const currentNext = new Date(service.next_run || simulatedDate);
             const advanced = new Date(currentNext);
-            advanced.setDate(advanced.getDate() + (service.frequency_days || 1));
-            const advancedStr = advanced.toISOString().split('T')[0];
+            
+            if (service.frequency_type === 'minutes') {
+              advanced.setMinutes(advanced.getMinutes() + service.frequency_value);
+            } else if (service.frequency_type === 'days') {
+              advanced.setDate(advanced.getDate() + service.frequency_value);
+            } else { // monthly_on_day
+              advanced.setMonth(advanced.getMonth() + 1);
+              advanced.setDate(service.frequency_value);
+            }
+            
             const { error: advanceError } = await supabaseClient
               .from('scheduled_services')
-              .update({ next_service_date: advancedStr })
+              .update({ next_run: advanced.toISOString() })
               .eq('id', service.id);
 
             if (advanceError) {
-              console.error('Failed to advance next_service_date', { service_id: service.id, error: advanceError });
+              console.error('Failed to advance next_run', { service_id: service.id, error: advanceError });
             }
 
             total_scheduled_services++;
             events_created.push({
               type: 'scheduled_service',
-              date: simulatedDateStr,
+              date: simulatedDate.toISOString(),
               client: client.name,
               service: serviceType.name,
-              order_id: orderData.id
+              order_id: orderData.id,
+              frequency_type: service.frequency_type,
+              next_run: advanced.toISOString()
             });
           } catch (serviceError) {
             console.error('Error creating simulated service order:', serviceError);
@@ -186,30 +201,75 @@ serve(async (req) => {
         }
       }
 
-      // 2. Check for monthly policy payments (on the 1st of each month)
-      if (simulatedDate.getDate() === 1) {
-        const month = simulatedDate.getMonth() + 1;
-        const year = simulatedDate.getFullYear();
+      // 2. Check for policy payments due by next_billing_run (every minute check)
+      const { data: dueBillings, error: billingError } = await supabaseClient
+        .from('policy_clients')
+        .select(`
+          id,
+          billing_frequency_type,
+          billing_frequency_value,
+          next_billing_run,
+          clients!inner(name, email),
+          insurance_policies!inner(policy_name, monthly_fee)
+        `)
+        .eq('is_active', true)
+        .lte('next_billing_run', simulatedDate.toISOString());
 
-        try {
-          const { data: paymentResult } = await supabaseClient
-            .rpc('generate_monthly_policy_payments', {
-              target_month: month,
-              target_year: year
-            });
+      if (billingError) {
+        console.error('Error fetching due billings:', billingError);
+      } else if (dueBillings?.length) {
+        for (const billing of dueBillings) {
+          try {
+            const client = Array.isArray(billing.clients) ? billing.clients[0] : billing.clients;
+            const policy = Array.isArray(billing.insurance_policies) ? billing.insurance_policies[0] : billing.insurance_policies;
+            
+            // Create policy payment
+            const { error: paymentError } = await supabaseClient
+              .from('policy_payments')
+              .insert({
+                policy_client_id: billing.id,
+                payment_month: simulatedDate.getMonth() + 1,
+                payment_year: simulatedDate.getFullYear(),
+                amount: policy.monthly_fee,
+                account_type: 'no_fiscal',
+                due_date: simulatedDate.toISOString().split('T')[0],
+                is_paid: false,
+                payment_status: 'pendiente'
+              });
 
-          if (paymentResult && paymentResult.payments_created > 0) {
-            total_policy_payments += paymentResult.payments_created;
+            if (paymentError) {
+              console.error('Payment insert failed:', paymentError);
+              continue;
+            }
+
+            // Advance next billing run
+            const nextBilling = new Date(billing.next_billing_run);
+            if (billing.billing_frequency_type === 'minutes') {
+              nextBilling.setMinutes(nextBilling.getMinutes() + billing.billing_frequency_value);
+            } else if (billing.billing_frequency_type === 'days') {
+              nextBilling.setDate(nextBilling.getDate() + billing.billing_frequency_value);
+            } else { // monthly_on_day
+              nextBilling.setMonth(nextBilling.getMonth() + 1);
+              nextBilling.setDate(billing.billing_frequency_value);
+            }
+
+            await supabaseClient
+              .from('policy_clients')
+              .update({ next_billing_run: nextBilling.toISOString() })
+              .eq('id', billing.id);
+
+            total_policy_payments++;
             events_created.push({
-              type: 'policy_payments',
-              date: simulatedDateStr,
-              count: paymentResult.payments_created,
-              month: month,
-              year: year
+              type: 'policy_payment',
+              date: simulatedDate.toISOString(),
+              client: client.name,
+              policy: policy.policy_name,
+              amount: policy.monthly_fee,
+              next_billing: nextBilling.toISOString()
             });
+          } catch (error) {
+            console.error('Error creating policy payment:', error);
           }
-        } catch (error) {
-          console.error('Error generating policy payments:', error);
         }
       }
 
@@ -243,7 +303,7 @@ serve(async (req) => {
       scheduled_services_created: total_scheduled_services,
       policy_payments_created: total_policy_payments,
       follow_ups_created: total_follow_ups,
-      simulation_date: new Date(baseDate.getTime() + (days_to_advance * 86400000)).toISOString().split('T')[0],
+      simulation_date: new Date(baseDate.getTime() + (totalMinutes * 60000)).toISOString(),
       details: events_created
     };
 

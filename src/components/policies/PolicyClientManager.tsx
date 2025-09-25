@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +34,9 @@ interface PolicyClient {
   start_date: string;
   end_date: string | null;
   is_active: boolean;
+  billing_frequency_type: 'minutes' | 'days' | 'monthly_on_day';
+  billing_frequency_value: number;
+  next_billing_run: string;
   clients: Client;
   insurance_policies: InsurancePolicy;
 }
@@ -54,6 +58,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const [selectedPolicyId, setSelectedPolicyId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingFrequencyType, setBillingFrequencyType] = useState<'minutes' | 'days' | 'monthly_on_day'>('minutes');
+  const [billingFrequencyValue, setBillingFrequencyValue] = useState(10);
 
   useEffect(() => {
     loadData();
@@ -75,7 +81,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         .order('created_at', { ascending: false });
 
       if (policyClientsError) throw policyClientsError;
-      setPolicyClients(policyClientsData || []);
+      setPolicyClients(policyClientsData as PolicyClient[] || []);
 
       await loadClientsAndPolicies();
 
@@ -156,6 +162,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     setSelectedPolicyId('');
     setSelectedClientId('');
     setIsSubmitting(false);
+    setBillingFrequencyType('minutes');
+    setBillingFrequencyValue(10);
   };
 
   const handleAssignClient = async () => {
@@ -256,6 +264,17 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           });
         }
       } else {
+        // Calculate next billing run based on frequency
+        const nextBillingRun = new Date();
+        if (billingFrequencyType === 'minutes') {
+          nextBillingRun.setMinutes(nextBillingRun.getMinutes() + billingFrequencyValue);
+        } else if (billingFrequencyType === 'days') {
+          nextBillingRun.setDate(nextBillingRun.getDate() + billingFrequencyValue);
+        } else { // monthly_on_day
+          nextBillingRun.setMonth(nextBillingRun.getMonth() + 1);
+          nextBillingRun.setDate(billingFrequencyValue);
+        }
+
         // Create new assignment
         const { error: assignmentError } = await supabase
           .from('policy_clients')
@@ -266,6 +285,9 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
               assigned_by: user?.id,
               created_by: user?.id,
               is_active: true,
+              billing_frequency_type: billingFrequencyType,
+              billing_frequency_value: billingFrequencyValue,
+              next_billing_run: nextBillingRun.toISOString(),
             }
           ]);
 
@@ -407,6 +429,40 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="space-y-4 border-t pt-4">
+                <h4 className="font-medium">Configuración de Cobro</h4>
+                
+                <div className="space-y-2">
+                  <Label>Frecuencia de Cobro *</Label>
+                  <Select value={billingFrequencyType} onValueChange={(value) => setBillingFrequencyType(value as any)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Cada X minutos (para pruebas)</SelectItem>
+                      <SelectItem value="days">Cada X días</SelectItem>
+                      <SelectItem value="monthly_on_day">Día X de cada mes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Valor de Frecuencia *</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max={billingFrequencyType === 'monthly_on_day' ? 31 : 9999}
+                    value={billingFrequencyValue}
+                    onChange={(e) => setBillingFrequencyValue(parseInt(e.target.value) || 1)}
+                    placeholder={
+                      billingFrequencyType === 'minutes' ? '10 (minutos)' :
+                      billingFrequencyType === 'days' ? '30 (días)' : '10 (día del mes)'
+                    }
+                    required
+                  />
+                </div>
+              </div>
               
               <div className="flex justify-end space-x-2 pt-4">
                 <Button type="button" variant="outline" onClick={() => {
@@ -449,6 +505,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                   <TableHead>Cliente</TableHead>
                   <TableHead>Póliza</TableHead>
                   <TableHead>Cuota Mensual</TableHead>
+                  <TableHead>Frecuencia de Cobro</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -473,6 +530,15 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                       </div>
                     </TableCell>
                     <TableCell>{formatCurrency(assignment.insurance_policies.monthly_fee)}</TableCell>
+                    <TableCell>
+                      <div className="text-sm">
+                        <Badge variant="outline" className="mb-1">
+                          {assignment.billing_frequency_type === 'minutes' ? `${assignment.billing_frequency_value} min` :
+                           assignment.billing_frequency_type === 'days' ? `${assignment.billing_frequency_value} días` :
+                           `Día ${assignment.billing_frequency_value} del mes`}
+                        </Badge>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={assignment.is_active ? "default" : "secondary"}>
                         {assignment.is_active ? "Activa" : "Inactiva"}

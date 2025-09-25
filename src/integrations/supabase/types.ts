@@ -3381,36 +3381,45 @@ export type Database = {
       policy_clients: {
         Row: {
           assigned_by: string | null
+          billing_frequency_type: string
+          billing_frequency_value: number
           client_id: string
           created_at: string
           created_by: string | null
           end_date: string | null
           id: string
           is_active: boolean | null
+          next_billing_run: string
           policy_id: string
           start_date: string
           updated_at: string
         }
         Insert: {
           assigned_by?: string | null
+          billing_frequency_type?: string
+          billing_frequency_value?: number
           client_id: string
           created_at?: string
           created_by?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
+          next_billing_run?: string
           policy_id: string
           start_date?: string
           updated_at?: string
         }
         Update: {
           assigned_by?: string | null
+          billing_frequency_type?: string
+          billing_frequency_value?: number
           client_id?: string
           created_at?: string
           created_by?: string | null
           end_date?: string | null
           id?: string
           is_active?: boolean | null
+          next_billing_run?: string
           policy_id?: string
           start_date?: string
           updated_at?: string
@@ -4756,9 +4765,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           frequency_days: number
+          frequency_type: string
+          frequency_value: number
           id: string
           is_active: boolean | null
           last_service_date: string | null
+          next_run: string
           next_service_date: string
           policy_client_id: string
           priority: number | null
@@ -4771,9 +4783,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           frequency_days?: number
+          frequency_type?: string
+          frequency_value?: number
           id?: string
           is_active?: boolean | null
           last_service_date?: string | null
+          next_run?: string
           next_service_date: string
           policy_client_id: string
           priority?: number | null
@@ -4786,9 +4801,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           frequency_days?: number
+          frequency_type?: string
+          frequency_value?: number
           id?: string
           is_active?: boolean | null
           last_service_date?: string | null
+          next_run?: string
           next_service_date?: string
           policy_client_id?: string
           priority?: number | null

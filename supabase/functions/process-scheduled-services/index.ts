@@ -25,15 +25,17 @@ serve(async (req) => {
     
     console.log(`Processing date: ${todayStr}`);
 
-    // Get scheduled services due today or earlier
+    // Get scheduled services due now or earlier
+    const nowStr = new Date().toISOString();
     const { data: dueServices, error: servicesError } = await supabaseClient
       .from('scheduled_services')
       .select(`
         id,
         policy_client_id,
         service_type_id,
-        next_service_date,
-        frequency_days,
+        frequency_type,
+        frequency_value,
+        next_run,
         quantity,
         service_description,
         priority,
@@ -46,7 +48,7 @@ serve(async (req) => {
         service_types!inner(name, description)
       `)
       .eq('is_active', true)
-      .lte('next_service_date', todayStr);
+      .lte('next_run', nowStr);
 
     if (servicesError) {
       console.error('Error fetching due services:', servicesError);
@@ -129,14 +131,22 @@ serve(async (req) => {
 
         if (itemError) throw itemError;
 
-        // Advance next_service_date for this scheduled service
-        const currentNext = new Date(service.next_service_date || todayStr);
+        // Advance next_run based on frequency type
+        const currentNext = new Date(service.next_run || new Date());
         const advanced = new Date(currentNext);
-        advanced.setDate(advanced.getDate() + (service.frequency_days || 1));
-        const advancedStr = advanced.toISOString().split('T')[0];
+        
+        if (service.frequency_type === 'minutes') {
+          advanced.setMinutes(advanced.getMinutes() + service.frequency_value);
+        } else if (service.frequency_type === 'days') {
+          advanced.setDate(advanced.getDate() + service.frequency_value);
+        } else { // monthly_on_day
+          advanced.setMonth(advanced.getMonth() + 1);
+          advanced.setDate(service.frequency_value);
+        }
+        
         await supabaseClient
           .from('scheduled_services')
-          .update({ next_service_date: advancedStr })
+          .update({ next_run: advanced.toISOString() })
           .eq('id', service.id);
 
         ordersCreated++;
