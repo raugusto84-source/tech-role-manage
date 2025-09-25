@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CreditCard, DollarSign, Calendar, CheckCircle, AlertCircle } from "lucide-react";
+import { PolicyPaymentDialog } from "./PolicyPaymentDialog";
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -46,6 +47,8 @@ export function PolicyPaymentsPending() {
     overdue_count: 0,
     overdue_amount: 0,
   });
+  const [selectedPayment, setSelectedPayment] = useState<PolicyPayment | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const months = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -123,33 +126,13 @@ export function PolicyPaymentsPending() {
     }
   };
 
-  const markAsPaid = async (paymentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('policy_payments')
-        .update({
-          is_paid: true,
-          payment_status: 'pagado',
-          payment_date: new Date().toISOString().split('T')[0]
-        })
-        .eq('id', paymentId);
+  const handlePaymentClick = (payment: PolicyPayment) => {
+    setSelectedPayment(payment);
+    setDialogOpen(true);
+  };
 
-      if (error) throw error;
-
-      toast({
-        title: "Éxito",
-        description: "Pago marcado como pagado correctamente",
-      });
-
-      loadPendingPayments();
-    } catch (error: any) {
-      console.error('Error marking payment as paid:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo marcar el pago como pagado",
-        variant: "destructive"
-      });
-    }
+  const handlePaymentProcessed = () => {
+    loadPendingPayments();
   };
 
   const getPaymentStatusBadge = (payment: PolicyPayment) => {
@@ -329,11 +312,11 @@ export function PolicyPaymentsPending() {
                       {!payment.is_paid && (
                         <Button
                           size="sm"
-                          onClick={() => markAsPaid(payment.id)}
+                          onClick={() => handlePaymentClick(payment)}
                           className="gap-2"
                         >
                           <CheckCircle className="h-4 w-4" />
-                          Marcar Pagado
+                          Cobrar
                         </Button>
                       )}
                     </TableCell>
@@ -344,6 +327,16 @@ export function PolicyPaymentsPending() {
           )}
         </CardContent>
       </Card>
+      
+      {/* Diálogo de cobro de pago */}
+      {selectedPayment && (
+        <PolicyPaymentDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          payment={selectedPayment}
+          onPaymentProcessed={handlePaymentProcessed}
+        />
+      )}
     </div>
   );
 }
