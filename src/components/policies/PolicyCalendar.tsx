@@ -111,30 +111,28 @@ export function PolicyCalendar() {
 
       if (servicesError) throw servicesError;
 
-      // Cargar TODOS los servicios activos para calcular proyecciones
-      const { data: allActiveServices, error: allServicesError } = await supabase
-        .from('scheduled_services')
+      // Cargar configuraciones de servicios de pólizas para calcular proyecciones
+      const { data: policyServiceConfigs, error: configsError } = await supabase
+        .from('policy_service_configurations')
         .select(`
           id,
-          next_service_date,
-          priority,
           frequency_days,
+          frequency_weeks,
+          day_of_week,
           policy_clients!inner(
             clients!inner(
               name,
               email
             )
           ),
-          scheduled_service_items(
-            service_types(
-              name,
-              service_category
-            )
+          service_types!inner(
+            name,
+            service_category
           )
         `)
         .eq('is_active', true);
 
-      if (allServicesError) throw allServicesError;
+      if (configsError) throw configsError;
 
       // Cargar pagos pendientes/vencidos
       const { data: payments, error: paymentsError } = await supabase
@@ -162,8 +160,29 @@ export function PolicyCalendar() {
       // Generar órdenes proyectadas para las próximas 2 semanas
       const projectedOrders: CalendarEvent[] = [];
       
-      (allActiveServices || []).forEach(service => {
-        let currentDate = parseISO(service.next_service_date);
+      // Función para encontrar la próxima fecha de un día específico de la semana
+      const getNextDateForWeekday = (startDate: Date, weekDay: number, weeksInterval: number = 1): Date => {
+        const date = new Date(startDate);
+        const currentDay = date.getDay();
+        const daysUntilTarget = (weekDay - currentDay + 7) % 7;
+        
+        if (daysUntilTarget === 0) {
+          // Si ya es el día correcto, tomar la siguiente ocurrencia
+          date.setDate(date.getDate() + (7 * weeksInterval));
+        } else {
+          // Ir al próximo día de la semana especificado
+          date.setDate(date.getDate() + daysUntilTarget);
+        }
+        
+        return date;
+      };
+      
+      (policyServiceConfigs || []).forEach(config => {
+        const targetWeekDay = config.day_of_week || 1; // Default to Monday if not specified
+        const weeksInterval = config.frequency_weeks || 1;
+        
+        // Comenzar desde hoy para calcular las próximas fechas
+        let currentDate = getNextDateForWeekday(today, targetWeekDay);
         let counter = 0;
         
         // Generar hasta 10 fechas futuras para evitar bucles infinitos
@@ -172,24 +191,27 @@ export function PolicyCalendar() {
           if (isWithinInterval(currentDate, { start: startDate, end: endDate }) &&
               isWithinInterval(currentDate, { start: today, end: projectionEndDate })) {
             
+            const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+            
             projectedOrders.push({
-              id: `projected-${service.id}-${counter}`,
+              id: `projected-${config.id}-${counter}`,
               date: currentDate,
               type: 'projected_order',
-              title: service.policy_clients?.clients?.name || 'Cliente',
-              subtitle: `⚡ ${service.scheduled_service_items?.[0]?.service_types?.name || 'Servicio'} (Proyectado)`,
-              priority: (service.priority || 1) + 0.5, // Prioridad ligeramente menor que servicios actuales
+              title: config.policy_clients?.clients?.name || 'Cliente',
+              subtitle: `⚡ ${config.service_types?.name || 'Servicio'} (${daysOfWeek[targetWeekDay]})`,
+              priority: 2.5, // Prioridad media para órdenes proyectadas
               status: 'projected',
               details: {
-                ...service,
+                ...config,
                 projected_date: currentDate.toISOString(),
-                days_until: Math.ceil((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                days_until: Math.ceil((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
+                target_weekday: daysOfWeek[targetWeekDay]
               }
             });
           }
           
-          // Calcular siguiente fecha basada en la frecuencia
-          currentDate = addDays(currentDate, service.frequency_days);
+          // Calcular siguiente fecha basada en la frecuencia en semanas
+          currentDate = addDays(currentDate, 7 * weeksInterval);
           counter++;
         }
       });
@@ -451,15 +473,15 @@ export function PolicyCalendar() {
                             <div className="flex items-center gap-2">
                               <CalendarIcon className="h-4 w-4" />
                               <span className="text-sm">
-                                Se creará automáticamente en {event.details.days_until} día(s)
+                                Día programado: {event.details.target_weekday} (en {event.details.days_until} día(s))
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4" />
-                              <span className="text-sm">Frecuencia: cada {event.details.frequency_days} días</span>
+                              <span className="text-sm">Frecuencia: cada {event.details.frequency_weeks} semana(s)</span>
                             </div>
                             <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
-                              💡 Esta orden se generará automáticamente basada en los servicios programados
+                              💡 Esta orden se generará automáticamente según la configuración de la póliza
                             </div>
                           </div>
                         )}
