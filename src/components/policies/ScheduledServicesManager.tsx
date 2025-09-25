@@ -36,7 +36,7 @@ interface ScheduledService {
   id: string;
   frequency_days: number;
   next_service_date: string;
-  frequency_type: 'minutes' | 'days' | 'monthly_on_day';
+  frequency_type: 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day';
   frequency_value: number;
   next_run: string;
   priority: number;
@@ -65,7 +65,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [formData, setFormData] = useState({
     policy_client_id: '',
     service_type_id: '',
-    frequency_type: 'minutes' as 'minutes' | 'days' | 'monthly_on_day',
+    frequency_type: 'minutes' as 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day',
     frequency_value: 10,
     priority: 2,
     service_description: '',
@@ -162,6 +162,13 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setMinutes(nextRun.getMinutes() + formData.frequency_value);
       } else if (formData.frequency_type === 'days') {
         nextRun.setDate(nextRun.getDate() + formData.frequency_value);
+      } else if (formData.frequency_type === 'weekly_on_day') {
+        // Calculate next occurrence of specific day of week
+        const targetDay = formData.frequency_value; // 0=Sunday, 1=Monday, etc.
+        const currentDay = nextRun.getDay();
+        let daysUntilTarget = (targetDay - currentDay + 7) % 7;
+        if (daysUntilTarget === 0) daysUntilTarget = 7; // If today is the target day, schedule for next week
+        nextRun.setDate(nextRun.getDate() + daysUntilTarget);
       } else { // monthly_on_day
         nextRun.setMonth(nextRun.getMonth() + 1);
         nextRun.setDate(formData.frequency_value);
@@ -373,37 +380,67 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                 
                 <div className="space-y-2">
                   <Label>Tipo de Frecuencia *</Label>
-                  <Select value={formData.frequency_type} onValueChange={(value) => 
-                    setFormData({ ...formData, frequency_type: value as any })
-                  }>
+                  <Select value={formData.frequency_type} onValueChange={(value) => {
+                    const newFrequencyValue = value === 'weekly_on_day' ? 1 : // Default to Monday
+                                            value === 'monthly_on_day' ? 10 : // Default to day 10
+                                            value === 'minutes' ? 10 : // Default to 10 minutes  
+                                            30; // Default to 30 days
+                    setFormData({ 
+                      ...formData, 
+                      frequency_type: value as any,
+                      frequency_value: newFrequencyValue
+                    });
+                  }}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="minutes">Cada X minutos (para pruebas)</SelectItem>
                       <SelectItem value="days">Cada X días</SelectItem>
+                      <SelectItem value="weekly_on_day">Día específico de la semana</SelectItem>
                       <SelectItem value="monthly_on_day">Día X de cada mes</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Valor de Frecuencia *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max={formData.frequency_type === 'monthly_on_day' ? 31 : 9999}
-                    value={formData.frequency_value}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      frequency_value: parseInt(e.target.value) || 1
-                    })}
-                    placeholder={
-                      formData.frequency_type === 'minutes' ? '10 (minutos)' :
-                      formData.frequency_type === 'days' ? '30 (días)' : '10 (día del mes)'
-                    }
-                    required
-                  />
+                  <Label>
+                    {formData.frequency_type === 'weekly_on_day' ? 'Día de la Semana *' : 'Valor de Frecuencia *'}
+                  </Label>
+                  {formData.frequency_type === 'weekly_on_day' ? (
+                    <Select value={formData.frequency_value.toString()} onValueChange={(value) => 
+                      setFormData({ ...formData, frequency_value: parseInt(value) })
+                    }>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar día..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Domingo</SelectItem>
+                        <SelectItem value="1">Lunes</SelectItem>
+                        <SelectItem value="2">Martes</SelectItem>
+                        <SelectItem value="3">Miércoles</SelectItem>
+                        <SelectItem value="4">Jueves</SelectItem>
+                        <SelectItem value="5">Viernes</SelectItem>
+                        <SelectItem value="6">Sábado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      type="number"
+                      min="1"
+                      max={formData.frequency_type === 'monthly_on_day' ? 31 : 9999}
+                      value={formData.frequency_value}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        frequency_value: parseInt(e.target.value) || 1
+                      })}
+                      placeholder={
+                        formData.frequency_type === 'minutes' ? '10 (minutos)' :
+                        formData.frequency_type === 'days' ? '30 (días)' : '10 (día del mes)'
+                      }
+                      required
+                    />
+                  )}
                 </div>
               </div>
               
@@ -483,12 +520,14 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {service.frequency_type === 'minutes' ? `${service.frequency_value} min` :
-                         service.frequency_type === 'days' ? `${service.frequency_value} días` :
-                         `Día ${service.frequency_value} del mes`}
-                      </Badge>
+                       <Badge variant="outline">
+                         <Calendar className="h-3 w-3 mr-1" />
+                         {service.frequency_type === 'minutes' ? `${service.frequency_value} min` :
+                          service.frequency_type === 'days' ? `${service.frequency_value} días` :
+                          service.frequency_type === 'weekly_on_day' ? 
+                            ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'][service.frequency_value] :
+                          `Día ${service.frequency_value} del mes`}
+                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
