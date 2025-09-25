@@ -10,6 +10,7 @@ interface UnreadCounts {
   ordersFinalized: number;
   ordersInProcess: number;
   ordersPendingAuth: number;
+  ordersPendingDelivery: number;
 }
 
 export function useUnreadCounts() {
@@ -21,7 +22,8 @@ export function useUnreadCounts() {
     collections: 0,
     ordersFinalized: 0,
     ordersInProcess: 0,
-    ordersPendingAuth: 0
+    ordersPendingAuth: 0,
+    ordersPendingDelivery: 0
   });
 
   const fetchCounts = async () => {
@@ -87,6 +89,11 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pendiente_aprobacion');
 
+      const { count: pendingDeliveryCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pendiente_entrega');
+
       setCounts({
         orders: ordersCount || 0,
         quotes: quotesCount || 0,
@@ -94,7 +101,8 @@ export function useUnreadCounts() {
         collections: 0,
         ordersFinalized: finalizedCount || 0,
         ordersInProcess: inProcessCount || 0,
-        ordersPendingAuth: pendingAuthCount || 0
+        ordersPendingAuth: pendingAuthCount || 0,
+        ordersPendingDelivery: pendingDeliveryCount || 0
       });
     } catch (error) {
       console.error('Error fetching unread counts:', error);

@@ -1,4 +1,4 @@
-import { Bell, Clock, CheckCircle, AlertCircle, FileText } from 'lucide-react';
+import { Bell, Clock, CheckCircle, AlertCircle, FileText, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -14,7 +14,7 @@ export function OrderNotifications() {
     return null;
   }
 
-  const totalNotifications = counts.ordersPendingAuth + counts.ordersInProcess + counts.ordersFinalized + counts.quotes;
+  const totalNotifications = counts.ordersPendingAuth + counts.ordersInProcess + counts.ordersFinalized + counts.ordersPendingDelivery + counts.quotes;
 
   return (
     <Popover>
@@ -70,6 +70,18 @@ export function OrderNotifications() {
                 </div>
               </div>
               <Badge variant="secondary">{counts.ordersInProcess}</Badge>
+            </div>
+
+            {/* Pending Delivery */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-yellow-50 dark:bg-yellow-950/20">
+              <div className="flex items-center gap-3">
+                <Truck className="h-5 w-5 text-yellow-600" />
+                <div>
+                  <p className="text-sm font-medium">Pendientes de Entrega</p>
+                  <p className="text-xs text-muted-foreground">Órdenes listas para entregar</p>
+                </div>
+              </div>
+              <Badge variant="secondary">{counts.ordersPendingDelivery}</Badge>
             </div>
 
             {/* Finalized */}
