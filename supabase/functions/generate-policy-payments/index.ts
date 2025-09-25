@@ -15,19 +15,10 @@ function addOneMonth(dateStr: string): string {
   return next.toISOString().substring(0, 10);
 }
 
-function getNextDueDate(currentMonth: number, currentYear: number): { month: number; year: number; due_date: string } {
-  let nextMonth = currentMonth + 1;
-  let nextYear = currentYear;
-  
-  if (nextMonth > 12) {
-    nextMonth = 1;
-    nextYear += 1;
-  }
-  
-  // Due on the 5th of each month
-  const due_date = `${nextYear}-${nextMonth.toString().padStart(2, '0')}-05`;
-  
-  return { month: nextMonth, year: nextYear, due_date };
+function getNextFirstOfMonth(): string {
+  const today = new Date();
+  const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  return nextMonth.toISOString().split('T')[0];
 }
 
 Deno.serve(async (req) => {
@@ -181,16 +172,11 @@ Deno.serve(async (req) => {
             });
         }
 
-        // Advance next billing run
-        const nextBilling = new Date(policyClient.next_billing_run);
-        if (policyClient.billing_frequency_type === 'minutes') {
-          nextBilling.setMinutes(nextBilling.getMinutes() + policyClient.billing_frequency_value);
-        } else if (policyClient.billing_frequency_type === 'days') {
-          nextBilling.setDate(nextBilling.getDate() + policyClient.billing_frequency_value);
-        } else { // monthly_on_day
-          nextBilling.setMonth(nextBilling.getMonth() + 1);
-          nextBilling.setDate(policyClient.billing_frequency_value);
-        }
+        // Advance next billing run - always to 1st of next month
+        const nextBilling = new Date();
+        nextBilling.setMonth(nextBilling.getMonth() + 1);
+        nextBilling.setDate(1);
+        nextBilling.setHours(0, 0, 0, 0);
 
         await supabase
           .from('policy_clients')
@@ -247,8 +233,7 @@ Deno.serve(async (req) => {
       skipped: skipped,
       current_month: currentMonth,
       current_year: currentYear,
-      next_generation_month: getNextDueDate(currentMonth, currentYear).month,
-      next_generation_year: getNextDueDate(currentMonth, currentYear).year,
+      next_generation_date: getNextFirstOfMonth(),
       details: details,
       timestamp: new Date().toISOString()
     };
