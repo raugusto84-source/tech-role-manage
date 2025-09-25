@@ -385,21 +385,24 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                     <SelectValue placeholder="Seleccionar cliente..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <optgroup label="Clientes existentes">
-                      {clients.map((client) => (
-                        <SelectItem key={`client:${client.id}`} value={`client:${client.id}`}>
-                          {client.name} - {client.email}
-                        </SelectItem>
-                      ))}
-                    </optgroup>
+                    {clients.length > 0 && (
+                      <>
+                        {clients.map((client) => (
+                          <SelectItem key={`client:${client.id}`} value={`client:${client.id}`}>
+                            {client.name} - {client.email}
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
                     {profileCandidates.length > 0 && (
-                      <optgroup label="Usuarios sin registro de cliente">
+                      <>
+                        {clients.length > 0 && <div className="px-2 py-1 text-xs font-medium text-muted-foreground">Usuarios sin registro</div>}
                         {profileCandidates.map((profile) => (
                           <SelectItem key={`profile:${profile.user_id}`} value={`profile:${profile.user_id}`}>
                             {profile.full_name || profile.email} - {profile.email}
                           </SelectItem>
                         ))}
-                      </optgroup>
+                      </>
                     )}
                   </SelectContent>
                 </Select>
