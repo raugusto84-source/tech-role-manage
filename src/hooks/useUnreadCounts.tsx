@@ -56,7 +56,16 @@ export function useUnreadCounts() {
         .select(`
           id,
           estimated_cost,
-          is_policy_order
+          is_policy_order,
+          order_items (
+            quantity,
+            unit_cost_price,
+            unit_base_price,
+            vat_rate,
+            item_type,
+            profit_margin_rate,
+            total_amount
+          )
         `)
         .eq('status', 'finalizada')
         .neq('is_policy_order', true);
@@ -70,8 +79,31 @@ export function useUnreadCounts() {
             .select('payment_amount')
             .eq('order_id', order.id);
           
+          // Calculate order total from items (same logic as in OrderCard)
+          let orderTotal = 0;
+          if (order.order_items && order.order_items.length > 0) {
+            orderTotal = order.order_items.reduce((total, item) => {
+              const quantity = item.quantity || 1;
+              const hasStoredTotal = item.total_amount && item.total_amount > 0;
+              
+              if (hasStoredTotal) {
+                return total + item.total_amount;
+              }
+              
+              const unitPrice = item.unit_base_price || item.unit_cost_price || 0;
+              const vatRate = item.vat_rate || 16;
+              const subtotal = unitPrice * quantity;
+              const vatAmount = subtotal * (vatRate / 100);
+              const itemTotal = Math.ceil((subtotal + vatAmount) / 10) * 10;
+              
+              return total + itemTotal;
+            }, 0);
+          } else {
+            orderTotal = order.estimated_cost || 0;
+          }
+          
           const totalPaid = payments?.reduce((sum, payment) => sum + (payment.payment_amount || 0), 0) || 0;
-          const remaining = (order.estimated_cost || 0) - totalPaid;
+          const remaining = orderTotal - totalPaid;
           
           if (remaining > 0) {
             finalizedCount++;
