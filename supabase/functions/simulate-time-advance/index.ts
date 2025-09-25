@@ -84,13 +84,22 @@ serve(async (req) => {
         // Create orders for due services
         for (const service of dueServices || []) {
           try {
+            const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
+            const client = Array.isArray(policyClient?.clients) ? policyClient.clients[0] : policyClient?.clients;
+            const serviceType = Array.isArray(service.service_types) ? service.service_types[0] : service.service_types;
+            
+            if (!client || !serviceType) {
+              console.log(`Skipping service ${service.id} - missing client or service type data`);
+              continue;
+            }
+            
             // Check if order already exists for this date
             const { data: existingOrders } = await supabaseClient
               .from('orders')
               .select('id')
               .eq('is_policy_order', true)
-              .like('failure_description', `%Servicio programado: ${service.service_types[0]?.name}%`)
-              .eq('client_id', (service.policy_clients as any)?.[0]?.clients?.[0]?.id)
+              .like('failure_description', `%Servicio programado: ${serviceType.name}%`)
+              .eq('client_id', client.id)
               .gte('created_at', simulatedDateStr)
               .lt('created_at', new Date(simulatedDate.getTime() + 86400000).toISOString().split('T')[0]);
 
@@ -104,12 +113,12 @@ serve(async (req) => {
               .from('orders')
               .insert({
                 order_number: `SIM-${simulatedDateStr}-${service.id.slice(0, 8)}`,
-                client_id: (service.policy_clients as any)?.[0]?.clients?.[0]?.id,
+                client_id: client.id,
                 service_type: service.service_type_id,
                 service_location: 'domicilio',
                 delivery_date: simulatedDateStr,
                 estimated_cost: 0,
-                failure_description: `[SIMULACIÓN] Servicio programado: ${service.service_types[0]?.name}`,
+                failure_description: `[SIMULACIÓN] Servicio programado: ${serviceType.name}`,
                 status: 'pendiente_aprobacion',
                 client_approval: false,
                 is_policy_order: true,
@@ -134,8 +143,8 @@ serve(async (req) => {
                   vat_rate: 16,
                   vat_amount: 0,
                   total_amount: 0,
-                  service_name: `[SIM] ${service.service_types[0]?.name}`,
-                  service_description: service.service_types[0]?.description,
+                  service_name: `[SIM] ${serviceType.name}`,
+                  service_description: serviceType.description,
                   item_type: 'servicio',
                   status: 'pendiente',
                 });
@@ -144,8 +153,8 @@ serve(async (req) => {
               events_created.push({
                 type: 'scheduled_service',
                 date: simulatedDateStr,
-                client: (service.policy_clients as any)?.[0]?.clients?.[0]?.name,
-                service: service.service_types[0]?.name,
+                client: client.name,
+                service: serviceType.name,
                 order_id: orderData.id
               });
             }
