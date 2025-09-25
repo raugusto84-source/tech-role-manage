@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -64,7 +65,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   
   const [formData, setFormData] = useState({
     policy_client_id: '',
-    service_type_id: '',
+    service_type_ids: [] as string[],
     frequency_type: 'minutes' as 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day',
     frequency_value: 10,
     priority: 2,
@@ -174,26 +175,36 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setDate(formData.frequency_value);
       }
 
-      const { error } = await supabase
-        .from('scheduled_services')
-        .insert({
-          policy_client_id: formData.policy_client_id,
-          service_type_id: formData.service_type_id,
-          frequency_type: formData.frequency_type,
-          frequency_value: formData.frequency_value,
-          next_run: nextRun.toISOString(),
-          next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
-          priority: formData.priority,
-          service_description: formData.service_description || null,
-          quantity: formData.quantity,
-          is_active: true
-        });
+      // Create a scheduled service for each selected service type
+      const insertPromises = formData.service_type_ids.map(serviceTypeId => 
+        supabase
+          .from('scheduled_services')
+          .insert({
+            policy_client_id: formData.policy_client_id,
+            service_type_id: serviceTypeId,
+            frequency_type: formData.frequency_type,
+            frequency_value: formData.frequency_value,
+            next_run: nextRun.toISOString(),
+            next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
+            priority: formData.priority,
+            service_description: formData.service_description || null,
+            quantity: formData.quantity,
+            is_active: true
+          })
+      );
 
-      if (error) throw error;
+      const results = await Promise.all(insertPromises);
+      
+      // Check if any insertion failed
+      const hasError = results.some(result => result.error);
+      if (hasError) {
+        const errors = results.filter(result => result.error).map(result => result.error);
+        throw new Error(`Errores: ${errors.map(e => e?.message).join(', ')}`);
+      }
 
       toast({
         title: "Éxito",
-        description: "Servicio programado creado correctamente"
+        description: `${formData.service_type_ids.length} servicio(s) programado(s) creado(s) correctamente`
       });
 
       setIsDialogOpen(false);
@@ -201,10 +212,10 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       loadScheduledServices();
       onStatsUpdate();
     } catch (error: any) {
-      console.error('Error creating scheduled service:', error);
+      console.error('Error creating scheduled services:', error);
       toast({
         title: "Error",
-        description: "No se pudo crear el servicio programado",
+        description: "No se pudieron crear los servicios programados",
         variant: "destructive"
       });
     }
@@ -241,7 +252,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const resetForm = () => {
     setFormData({
       policy_client_id: '',
-      service_type_id: '',
+      service_type_ids: [],
       frequency_type: 'minutes',
       frequency_value: 10,
       priority: 2,
@@ -310,21 +321,43 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="service_type_id">Tipo de Servicio *</Label>
-                <Select value={formData.service_type_id} onValueChange={(value) => 
-                  setFormData({ ...formData, service_type_id: value })
-                }>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar servicio..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {serviceTypes.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
+                <Label>Tipos de Servicio * (seleccionar uno o más)</Label>
+                <div className="border rounded-md p-3 max-h-60 overflow-y-auto space-y-2">
+                  {serviceTypes.map((service) => (
+                    <div key={service.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={service.id}
+                        checked={formData.service_type_ids.includes(service.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({
+                              ...formData,
+                              service_type_ids: [...formData.service_type_ids, service.id]
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              service_type_ids: formData.service_type_ids.filter(id => id !== service.id)
+                            });
+                          }
+                        }}
+                      />
+                      <Label htmlFor={service.id} className="flex-1 cursor-pointer">
                         {service.name} - {formatCurrency(service.base_price)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      </Label>
+                    </div>
+                  ))}
+                  {serviceTypes.length === 0 && (
+                    <p className="text-muted-foreground text-sm">
+                      No hay servicios disponibles
+                    </p>
+                  )}
+                </div>
+                {formData.service_type_ids.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {formData.service_type_ids.length} servicio(s) seleccionado(s)
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -453,9 +486,9 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                 </Button>
                 <Button 
                   type="submit" 
-                  disabled={!formData.policy_client_id || !formData.service_type_id}
+                  disabled={!formData.policy_client_id || formData.service_type_ids.length === 0}
                 >
-                  Programar Servicio
+                  Programar Servicio(s)
                 </Button>
               </div>
             </form>
