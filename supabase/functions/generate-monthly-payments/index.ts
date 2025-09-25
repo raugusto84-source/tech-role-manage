@@ -1,3 +1,4 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -15,7 +16,7 @@ interface PaymentGenerationResult {
   error?: string;
 }
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -75,7 +76,7 @@ Deno.serve(async (req) => {
       next_month: 0,
       next_year: 0,
       execution_date: new Date().toISOString(),
-      error: error.message || 'Unknown error occurred'
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
     };
 
     return new Response(
