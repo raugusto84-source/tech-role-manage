@@ -100,7 +100,7 @@ serve(async (req) => {
             status: 'pendiente_aprobacion',
             client_approval: false,
             is_policy_order: true,
-            order_priority: 'media'
+            order_priority: service.priority || 2
           })
           .select()
           .single();
