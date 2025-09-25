@@ -53,17 +53,7 @@ export function OrderPaymentsPending() {
       // Get pending collections for orders
       const { data: pendingCollections, error: collectionsError } = await supabase
         .from('pending_collections')
-        .select(`
-          *,
-          orders(
-            id,
-            order_number,
-            estimated_cost,
-            status,
-            client_id,
-            clients(name, email, phone)
-          )
-        `)
+        .select('*')
         .eq('collection_type', 'order_payment')
         .eq('status', 'pending')
         .order('due_date', { ascending: true });
