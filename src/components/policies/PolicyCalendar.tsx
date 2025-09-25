@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { Calendar as CalendarIcon, Clock, User, AlertTriangle, CheckCircle } from 'lucide-react';
-import { format, parseISO, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parseISO, isSameDay, startOfMonth, endOfMonth, addDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -48,7 +48,7 @@ interface PolicyPayment {
 interface CalendarEvent {
   id: string;
   date: Date;
-  type: 'service' | 'payment';
+  type: 'service' | 'payment' | 'projected_order';
   title: string;
   subtitle: string;
   priority: number;
@@ -80,7 +80,11 @@ export function PolicyCalendar() {
       const startDate = startOfMonth(selectedDate);
       const endDate = endOfMonth(selectedDate);
       
-      // Cargar servicios programados
+      // Rango para órdenes proyectadas (próximas 2 semanas desde hoy)
+      const today = new Date();
+      const projectionEndDate = addDays(today, 14);
+      
+      // Cargar servicios programados actuales
       const { data: services, error: servicesError } = await supabase
         .from('scheduled_services')
         .select(`
@@ -107,6 +111,31 @@ export function PolicyCalendar() {
 
       if (servicesError) throw servicesError;
 
+      // Cargar TODOS los servicios activos para calcular proyecciones
+      const { data: allActiveServices, error: allServicesError } = await supabase
+        .from('scheduled_services')
+        .select(`
+          id,
+          next_service_date,
+          priority,
+          frequency_days,
+          policy_clients!inner(
+            clients!inner(
+              name,
+              email
+            )
+          ),
+          scheduled_service_items(
+            service_types(
+              name,
+              service_category
+            )
+          )
+        `)
+        .eq('is_active', true);
+
+      if (allServicesError) throw allServicesError;
+
       // Cargar pagos pendientes/vencidos
       const { data: payments, error: paymentsError } = await supabase
         .from('policy_payments')
@@ -129,6 +158,41 @@ export function PolicyCalendar() {
         .in('payment_status', ['pendiente', 'vencido']);
 
       if (paymentsError) throw paymentsError;
+
+      // Generar órdenes proyectadas para las próximas 2 semanas
+      const projectedOrders: CalendarEvent[] = [];
+      
+      (allActiveServices || []).forEach(service => {
+        let currentDate = parseISO(service.next_service_date);
+        let counter = 0;
+        
+        // Generar hasta 10 fechas futuras para evitar bucles infinitos
+        while (counter < 10 && currentDate <= projectionEndDate) {
+          // Solo incluir si está en el rango de visualización Y dentro de las 2 semanas
+          if (isWithinInterval(currentDate, { start: startDate, end: endDate }) &&
+              isWithinInterval(currentDate, { start: today, end: projectionEndDate })) {
+            
+            projectedOrders.push({
+              id: `projected-${service.id}-${counter}`,
+              date: currentDate,
+              type: 'projected_order',
+              title: service.policy_clients?.clients?.name || 'Cliente',
+              subtitle: `⚡ ${service.scheduled_service_items?.[0]?.service_types?.name || 'Servicio'} (Proyectado)`,
+              priority: (service.priority || 1) + 0.5, // Prioridad ligeramente menor que servicios actuales
+              status: 'projected',
+              details: {
+                ...service,
+                projected_date: currentDate.toISOString(),
+                days_until: Math.ceil((currentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+              }
+            });
+          }
+          
+          // Calcular siguiente fecha basada en la frecuencia
+          currentDate = addDays(currentDate, service.frequency_days);
+          counter++;
+        }
+      });
 
       // Convertir a eventos del calendario
       const serviceEvents: CalendarEvent[] = (services || []).map(service => ({
@@ -153,7 +217,7 @@ export function PolicyCalendar() {
         details: payment
       }));
 
-      setEvents([...serviceEvents, ...paymentEvents]);
+      setEvents([...serviceEvents, ...paymentEvents, ...projectedOrders]);
     } catch (error) {
       console.error('Error loading calendar data:', error);
     } finally {
@@ -179,6 +243,10 @@ export function PolicyCalendar() {
   const getEventColor = (event: CalendarEvent) => {
     if (event.type === 'payment' && event.status === 'vencido') {
       return 'bg-error text-error-foreground';
+    }
+    
+    if (event.type === 'projected_order') {
+      return 'bg-info/60 text-info-foreground border border-info/30';
     }
     
     switch (event.priority) {
@@ -232,7 +300,7 @@ export function PolicyCalendar() {
         <div>
           <h2 className="text-2xl font-bold">Calendario de Servicios y Pagos</h2>
           <p className="text-muted-foreground">
-            Vista visual de servicios programados y pagos pendientes
+            Vista visual de servicios programados, pagos pendientes y órdenes proyectadas (próximas 2 semanas)
           </p>
         </div>
         
@@ -245,6 +313,7 @@ export function PolicyCalendar() {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="service">Servicios</SelectItem>
               <SelectItem value="payment">Pagos</SelectItem>
+              <SelectItem value="projected_order">Órdenes Proyectadas</SelectItem>
             </SelectContent>
           </Select>
 
@@ -336,11 +405,14 @@ export function PolicyCalendar() {
                             <div className="flex items-center gap-2 mt-1">
                               {event.type === 'service' ? (
                                 <Clock className="h-3 w-3" />
+                              ) : event.type === 'projected_order' ? (
+                                <CalendarIcon className="h-3 w-3" />
                               ) : (
                                 <AlertTriangle className="h-3 w-3" />
                               )}
                               <span className="text-xs">
-                                {event.type === 'service' ? 'Servicio' : 'Pago'}
+                                {event.type === 'service' ? 'Servicio' : 
+                                 event.type === 'projected_order' ? 'Orden Proyectada' : 'Pago'}
                               </span>
                             </div>
                           </div>
@@ -366,6 +438,28 @@ export function PolicyCalendar() {
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4" />
                               <span className="text-sm">Frecuencia: cada {event.details.frequency_days} días</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {event.type === 'projected_order' && (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4" />
+                              <span className="text-sm">Cliente: {event.details.policy_clients?.clients?.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <CalendarIcon className="h-4 w-4" />
+                              <span className="text-sm">
+                                Se creará automáticamente en {event.details.days_until} día(s)
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Clock className="h-4 w-4" />
+                              <span className="text-sm">Frecuencia: cada {event.details.frequency_days} días</span>
+                            </div>
+                            <div className="text-xs text-muted-foreground p-2 bg-muted rounded">
+                              💡 Esta orden se generará automáticamente basada en los servicios programados
                             </div>
                           </div>
                         )}
