@@ -298,6 +298,63 @@ export type Database = {
           },
         ]
       }
+      automated_notifications_log: {
+        Row: {
+          channel: string
+          created_at: string
+          id: string
+          message_content: string
+          notification_type: string
+          order_id: string | null
+          recipient_identifier: string
+          recipient_type: string
+          sent_at: string | null
+          status: string | null
+          tracking_id: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          id?: string
+          message_content: string
+          notification_type: string
+          order_id?: string | null
+          recipient_identifier: string
+          recipient_type: string
+          sent_at?: string | null
+          status?: string | null
+          tracking_id?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          id?: string
+          message_content?: string
+          notification_type?: string
+          order_id?: string | null
+          recipient_identifier?: string
+          recipient_type?: string
+          sent_at?: string | null
+          status?: string | null
+          tracking_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automated_notifications_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automated_notifications_log_tracking_id_fkey"
+            columns: ["tracking_id"]
+            isOneToOne: false
+            referencedRelation: "order_process_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           attachment_url: string | null
@@ -2675,6 +2732,100 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      order_process_slas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          max_hours: number
+          notification_channels: string[] | null
+          service_type_id: string | null
+          status_stage: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+          warning_hours: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          max_hours?: number
+          notification_channels?: string[] | null
+          service_type_id?: string | null
+          status_stage: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          warning_hours?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          max_hours?: number
+          notification_channels?: string[] | null
+          service_type_id?: string | null
+          status_stage?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          warning_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_process_slas_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_process_tracking: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          hours_elapsed: number | null
+          id: string
+          notifications_sent: Json | null
+          order_id: string | null
+          sla_status: string | null
+          started_at: string
+          status_stage: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          hours_elapsed?: number | null
+          id?: string
+          notifications_sent?: Json | null
+          order_id?: string | null
+          sla_status?: string | null
+          started_at?: string
+          status_stage: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          hours_elapsed?: number | null
+          id?: string
+          notifications_sent?: Json | null
+          order_id?: string | null
+          sla_status?: string | null
+          started_at?: string
+          status_stage?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_process_tracking_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_rejections: {
         Row: {
