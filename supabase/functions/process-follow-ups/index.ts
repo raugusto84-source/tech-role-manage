@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error('Error in process-follow-ups function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       details: 'Failed to process follow-up configurations'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

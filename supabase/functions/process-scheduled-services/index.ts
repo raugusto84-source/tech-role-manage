@@ -57,7 +57,7 @@ serve(async (req) => {
 
     for (const service of dueServices || []) {
       try {
-        const policyClient = service.policy_clients;
+        const policyClient = Array.isArray(service.policy_clients) ? service.policy_clients[0] : service.policy_clients;
         const client = Array.isArray(policyClient?.clients) ? policyClient.clients[0] : policyClient?.clients;
         const serviceType = Array.isArray(service.service_types) ? service.service_types[0] : service.service_types;
 

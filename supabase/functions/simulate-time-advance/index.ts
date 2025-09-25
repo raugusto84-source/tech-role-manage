@@ -90,7 +90,7 @@ serve(async (req) => {
               .select('id')
               .eq('is_policy_order', true)
               .like('failure_description', `%Servicio programado: ${service.service_types[0]?.name}%`)
-              .eq('client_id', service.policy_clients.clients[0]?.id)
+              .eq('client_id', (service.policy_clients as any)?.[0]?.clients?.[0]?.id)
               .gte('created_at', simulatedDateStr)
               .lt('created_at', new Date(simulatedDate.getTime() + 86400000).toISOString().split('T')[0]);
 
@@ -104,7 +104,7 @@ serve(async (req) => {
               .from('orders')
               .insert({
                 order_number: `SIM-${simulatedDateStr}-${service.id.slice(0, 8)}`,
-                client_id: service.policy_clients.clients[0]?.id,
+                client_id: (service.policy_clients as any)?.[0]?.clients?.[0]?.id,
                 service_type: service.service_type_id,
                 service_location: 'domicilio',
                 delivery_date: simulatedDateStr,
@@ -144,7 +144,7 @@ serve(async (req) => {
               events_created.push({
                 type: 'scheduled_service',
                 date: simulatedDateStr,
-                client: service.policy_clients.clients[0]?.name,
+                client: (service.policy_clients as any)?.[0]?.clients?.[0]?.name,
                 service: service.service_types[0]?.name,
                 order_id: orderData.id
               });

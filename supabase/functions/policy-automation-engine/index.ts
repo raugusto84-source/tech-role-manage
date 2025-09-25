@@ -52,7 +52,7 @@ serve(async (req) => {
           process: 'generate-policy-payments',
           success: false,
           processed: 0,
-          errors: [error.message],
+          errors: [error instanceof Error ? error.message : String(error)],
           execution_time: Date.now() - paymentStart
         });
       }
@@ -78,7 +78,7 @@ serve(async (req) => {
           process: 'process-scheduled-services',
           success: false,
           processed: 0,
-          errors: [error.message],
+          errors: [error instanceof Error ? error.message : String(error)],
           execution_time: Date.now() - servicesStart
         });
       }
@@ -114,7 +114,7 @@ serve(async (req) => {
           } catch (error) {
             reminderErrors.push({
               reminder_id: reminder.id,
-              error: error.message
+              error: error instanceof Error ? error.message : String(error)
             });
             
             // Mark as failed
@@ -137,7 +137,7 @@ serve(async (req) => {
           process: 'process-follow-ups',
           success: false,
           processed: 0,
-          errors: [error.message],
+          errors: [error instanceof Error ? error.message : String(error)],
           execution_time: Date.now() - followUpStart
         });
       }
@@ -168,7 +168,7 @@ serve(async (req) => {
           process: 'update-overdue-payments',
           success: false,
           processed: 0,
-          errors: [error.message],
+          errors: [error instanceof Error ? error.message : String(error)],
           execution_time: Date.now() - overdueStart
         });
       }
@@ -199,7 +199,7 @@ serve(async (req) => {
           if (policiesError) throw policiesError;
           
           const monthlyRevenue = activePolicies?.reduce((sum, pc) => 
-            sum + (pc.insurance_policies?.monthly_fee || 0), 0) || 0;
+            sum + ((pc.insurance_policies as any)?.[0]?.monthly_fee || (pc.insurance_policies as any)?.monthly_fee || 0), 0) || 0;
           
           projections.push({
             year,
@@ -232,7 +232,7 @@ serve(async (req) => {
           process: 'generate-financial-projections',
           success: false,
           processed: 0,
-          errors: [error.message],
+          errors: [error instanceof Error ? error.message : String(error)],
           execution_time: Date.now() - projectionsStart
         });
       }
@@ -274,7 +274,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
       execution_time_ms: 0,
       summary: {

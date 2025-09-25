@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error('Error in send-follow-up-notifications function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       details: 'Failed to send follow-up notifications'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
             console.error(`Error checking existing payment for policy client ${policyClient.id}:`, checkError);
             details.push({
               policy_client_id: policyClient.id,
-              client_name: policyClient.clients?.name,
+              client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
               status: 'error',
               message: `Check error: ${checkError.message}`
             });
@@ -119,11 +119,12 @@ Deno.serve(async (req) => {
           }
 
           if (existingPayment) {
-            console.log(`Payment already exists for ${policyClient.clients?.name} for ${month}/${year}`);
+            const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
+            console.log(`Payment already exists for ${clientName} for ${month}/${year}`);
             skipped++;
             details.push({
               policy_client_id: policyClient.id,
-              client_name: policyClient.clients?.name,
+              client_name: clientName,
               status: 'skipped',
               message: `Payment for ${month}/${year} already exists`
             });
@@ -137,7 +138,7 @@ Deno.serve(async (req) => {
               policy_client_id: policyClient.id,
               payment_month: month,
               payment_year: year,
-              amount: policyClient.insurance_policies?.monthly_fee || 0,
+              amount: (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0,
               account_type: 'no_fiscal',
               due_date: due_date,
               is_paid: false,
@@ -148,23 +149,27 @@ Deno.serve(async (req) => {
             console.error(`Error creating payment for policy client ${policyClient.id}:`, insertError);
             details.push({
               policy_client_id: policyClient.id,
-              client_name: policyClient.clients?.name,
+              client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
               status: 'error',
               message: insertError.message
             });
             continue;
           }
 
-          console.log(`Created payment for ${policyClient.clients?.name} - ${month}/${year}`);
+          const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
+          const policyName = (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name;
+          const monthlyFee = (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee;
+          
+          console.log(`Created payment for ${clientName} - ${month}/${year}`);
           created++;
           details.push({
             policy_client_id: policyClient.id,
-            client_name: policyClient.clients?.name,
-            policy_name: policyClient.insurance_policies?.policy_name,
+            client_name: clientName,
+            policy_name: policyName,
             status: 'created',
             month: month,
             year: year,
-            amount: policyClient.insurance_policies?.monthly_fee,
+            amount: monthlyFee,
             due_date: due_date
           });
         }
@@ -173,9 +178,9 @@ Deno.serve(async (req) => {
         console.error(`Unexpected error processing policy client ${policyClient.id}:`, error);
         details.push({
           policy_client_id: policyClient.id,
-          client_name: policyClient.clients?.name,
+          client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
           status: 'error',
-          message: error.message
+          message: error instanceof Error ? error.message : String(error)
         });
       }
     }
