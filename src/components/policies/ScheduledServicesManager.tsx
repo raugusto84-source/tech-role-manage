@@ -554,15 +554,20 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   )}
                 </div>
 
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-3">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-3">
                   <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
                     📋 Comportamiento de creación automática:
                   </p>
                   <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <div className="mb-2 p-2 bg-green-100 dark:bg-green-900/30 rounded text-green-800 dark:text-green-200">
+                      <strong>✅ Las órdenes se crean automáticamente en estado "EN PROCESO"</strong>
+                      <br />No requieren aprobación del cliente - están listas para asignar técnico
+                    </div>
+                    
                     {formData.frequency_type === 'weekly_on_day' && (
                       <div>
                         <strong>Ejemplo:</strong> Si seleccionas "Lunes" y la fecha de inicio fue hace 1 mes, 
-                        se crearán órdenes para TODOS los lunes desde entonces hasta hoy, 
+                        se crearán órdenes EN PROCESO para TODOS los lunes desde entonces hasta hoy, 
                         luego se programará automáticamente para cada lunes futuro.
                       </div>
                     )}
@@ -570,7 +575,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     {formData.frequency_type === 'monthly_on_day' && (
                       <div>
                         <strong>Ejemplo:</strong> Si seleccionas día "15" y la fecha de inicio fue hace 3 meses, 
-                        se crearán órdenes para el día 15 de cada mes desde entonces hasta hoy, 
+                        se crearán órdenes EN PROCESO para el día 15 de cada mes desde entonces hasta hoy, 
                         luego continuará automáticamente cada mes.
                       </div>
                     )}
@@ -578,7 +583,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     {formData.frequency_type === 'days' && (
                       <div>
                         <strong>Ejemplo:</strong> Si seleccionas "cada 7 días" desde hace 1 mes, 
-                        se crearán aproximadamente 4-5 órdenes para ponerse al día,
+                        se crearán aproximadamente 4-5 órdenes EN PROCESO para ponerse al día,
                         luego continuará cada 7 días automáticamente.
                       </div>
                     )}
@@ -586,7 +591,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     {formData.frequency_type === 'minutes' && (
                       <div>
                         <strong>Nota:</strong> Para frecuencias en minutos (solo pruebas),
-                        se crearán órdenes para los intervalos pasados hasta alcanzar el presente.
+                        se crearán órdenes EN PROCESO para los intervalos pasados hasta alcanzar el presente.
                       </div>
                     )}
                   </div>

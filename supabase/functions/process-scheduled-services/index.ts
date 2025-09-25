@@ -202,7 +202,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
               delivery_date: serviceDate,
               estimated_cost: totalCost,
               failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (${serviceDate})`,
-              status: 'pendiente_aprobacion',
+              status: 'en_proceso',
               client_approval: false,
               is_policy_order: true,
               order_priority: scheduledService.priority || 2
@@ -425,7 +425,7 @@ async function processDueServices(supabaseClient: any) {
           delivery_date: todayStr,
           estimated_cost: totalCost,
           failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')}`,
-          status: 'pendiente_aprobacion',
+          status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
           order_priority: scheduledService.priority || 2
