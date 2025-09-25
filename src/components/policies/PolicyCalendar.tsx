@@ -370,23 +370,28 @@ export function PolicyCalendar() {
                 mode="single"
                 selected={selectedDate}
                 onSelect={(date) => date && setSelectedDate(date)}
-                className="w-full pointer-events-auto"
+                className="w-full"
                 components={{
-                  Day: ({ date, ...props }) => (
-                    <div className="relative w-full h-full">
-                      <button
-                        {...props}
-                        className={cn(
-                          "relative w-full h-full p-2 text-sm",
-                          "hover:bg-accent rounded-md transition-colors",
-                          isSameDay(date, selectedDate) && "bg-primary text-primary-foreground"
-                        )}
-                      >
-                        {date.getDate()}
-                        {getDayContent(date)}
-                      </button>
-                    </div>
-                  )
+                  Day: ({ date, ...props }) => {
+                    const isSelected = isSameDay(date, selectedDate);
+                    return (
+                      <div className="relative w-full h-full">
+                        <button
+                          {...props}
+                          onClick={() => setSelectedDate(date)}
+                          className={cn(
+                            "relative w-full h-full p-2 text-sm border-0 bg-transparent",
+                            "hover:bg-accent rounded-md transition-colors cursor-pointer",
+                            "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                            isSelected && "bg-primary text-primary-foreground hover:bg-primary"
+                          )}
+                        >
+                          <span className="relative z-10">{date.getDate()}</span>
+                          {getDayContent(date)}
+                        </button>
+                      </div>
+                    );
+                  }
                 }}
               />
             </CardContent>
