@@ -32,11 +32,12 @@ export function useUnreadCounts() {
     }
 
     try {
-      // Count orders pending acceptance or update (pendiente_aprobacion status)
+      // Count orders pending acceptance or update (pendiente_aprobacion status, excluding deleted orders)
       const { count: ordersCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendiente_aprobacion');
+        .eq('status', 'pendiente_aprobacion')
+        .is('deleted_at', null);
 
       // Count quotes pending approval (new status flow)
       const { count: quotesCount } = await supabase
@@ -50,7 +51,7 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
-      // Count finalized orders with pending balance (excluding policy orders)
+      // Count finalized orders with pending balance (excluding policy orders and deleted orders)
       const { data: finalizedOrders } = await supabase
         .from('orders')
         .select(`
@@ -68,7 +69,8 @@ export function useUnreadCounts() {
           )
         `)
         .eq('status', 'finalizada')
-        .neq('is_policy_order', true);
+        .neq('is_policy_order', true)
+        .is('deleted_at', null);
 
       // Get payments for each finalized order and filter those with remaining balance > 0
       let finalizedCount = 0;
@@ -77,7 +79,8 @@ export function useUnreadCounts() {
           const { data: payments } = await supabase
             .from('order_payments')
             .select('payment_amount')
-            .eq('order_id', order.id);
+            .eq('order_id', order.id)
+            .is('deleted_at', null); // Exclude deleted payments
           
           // Calculate order total from items (same logic as in OrderCard)
           let orderTotal = 0;
@@ -114,17 +117,20 @@ export function useUnreadCounts() {
       const { count: inProcessCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'en_proceso');
+        .eq('status', 'en_proceso')
+        .is('deleted_at', null);
 
       const { count: pendingAuthCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendiente_aprobacion');
+        .eq('status', 'pendiente_aprobacion')
+        .is('deleted_at', null);
 
       const { count: pendingDeliveryCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendiente_entrega');
+        .eq('status', 'pendiente_entrega')
+        .is('deleted_at', null);
 
       setCounts({
         orders: ordersCount || 0,

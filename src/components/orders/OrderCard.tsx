@@ -4,7 +4,7 @@ import { es } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // Removed cashback-related imports - cashback system eliminated
 import { formatCOPCeilToTen, formatMXNInt, formatMXNExact, ceilToTen } from '@/utils/currency';
@@ -15,6 +15,8 @@ import { useOrderPayments } from '@/hooks/useOrderPayments';
 import { OrderModificationsBadge } from './OrderModificationsBadge';
 import { formatDateMexico, formatDateTimeMexico } from '@/utils/dateUtils';
 import { OrderProgressBar } from './OrderProgressBar';
+import { DeleteOrderDialog } from './DeleteOrderDialog';
+import { useAuth } from '@/hooks/useAuth';
 interface OrderCardProps {
   order: {
     id: string;
@@ -61,7 +63,9 @@ export function OrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   // Removed rewardSettings - no longer needed without cashback
+  const { user } = useAuth();
 
   const loadOrderItems = async () => {
     setItemsLoading(true);
@@ -351,11 +355,32 @@ export function OrderCard({
                 Restante por cobrar: {formatMXNInt(paymentSummary.remainingBalance)}
               </Button>
             )}
+            {canDelete && (
+              <Button 
+                size="sm" 
+                variant="destructive" 
+                className="shadow-md hover:shadow-lg"
+                onClick={e => {
+                  e.stopPropagation();
+                  setShowDeleteDialog(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Eliminar
+              </Button>
+            )}
           </div>
         );
       })()}
       </CardContent>
 
       <PaymentCollectionDialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog} order={order} totalAmount={calculateCorrectTotal()} />
+      <DeleteOrderDialog 
+        orderId={order.id}
+        orderNumber={order.order_number}
+        isOpen={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        onDeleted={onDelete ? () => onDelete(order.id) : undefined}
+      />
     </Card>;
 }

@@ -782,6 +782,39 @@ export type Database = {
         }
         Relationships: []
       }
+      deletion_history: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string
+          id: string
+          record_data: Json
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason: string
+          id?: string
+          record_data: Json
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string
+          id?: string
+          record_data?: Json
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       delivery_signatures: {
         Row: {
           client_name: string
@@ -1226,6 +1259,9 @@ export type Database = {
           category: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           description: string
           expense_date: string
           expense_number: string
@@ -1255,6 +1291,9 @@ export type Database = {
           category: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           description: string
           expense_date?: string
           expense_number: string
@@ -1284,6 +1323,9 @@ export type Database = {
           category?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           description?: string
           expense_date?: string
           expense_number?: string
@@ -1954,6 +1996,9 @@ export type Database = {
           client_name: string | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           description: string
           has_invoice: boolean | null
           id: string
@@ -1981,6 +2026,9 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           description: string
           has_invoice?: boolean | null
           id?: string
@@ -2008,6 +2056,9 @@ export type Database = {
           client_name?: string | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           description?: string
           has_invoice?: boolean | null
           id?: string
@@ -2685,6 +2736,9 @@ export type Database = {
           client_name: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           description: string | null
           id: string
           income_id: string | null
@@ -2702,6 +2756,9 @@ export type Database = {
           client_name: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           description?: string | null
           id?: string
           income_id?: string | null
@@ -2719,6 +2776,9 @@ export type Database = {
           client_name?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           description?: string | null
           id?: string
           income_id?: string | null
@@ -3133,6 +3193,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           deleted_by: string | null
+          deletion_reason: string | null
           delivery_date: string
           diagnosis_completed: boolean
           estimated_cost: number | null
@@ -3176,6 +3237,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          deletion_reason?: string | null
           delivery_date: string
           diagnosis_completed?: boolean
           estimated_cost?: number | null
@@ -3219,6 +3281,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
+          deletion_reason?: string | null
           delivery_date?: string
           diagnosis_completed?: boolean
           estimated_cost?: number | null
@@ -4137,6 +4200,9 @@ export type Database = {
           concept: string
           created_at: string
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
           expense_id: string | null
           fiscal_withdrawal_id: string | null
           has_invoice: boolean
@@ -4155,6 +4221,9 @@ export type Database = {
           concept: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           expense_id?: string | null
           fiscal_withdrawal_id?: string | null
           has_invoice?: boolean
@@ -4173,6 +4242,9 @@ export type Database = {
           concept?: string
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
           expense_id?: string | null
           fiscal_withdrawal_id?: string | null
           has_invoice?: boolean
@@ -6809,6 +6881,15 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      log_deletion: {
+        Args: {
+          p_deletion_reason: string
+          p_record_data: Json
+          p_record_id: string
+          p_table_name: string
+        }
+        Returns: undefined
+      }
       log_financial_audit_safe: {
         Args: {
           p_change_reason?: string
@@ -6884,6 +6965,14 @@ export type Database = {
           p_related_type: string
         }
         Returns: undefined
+      }
+      soft_delete_order: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: boolean
+      }
+      soft_delete_payment: {
+        Args: { p_payment_id: string; p_reason: string }
+        Returns: boolean
       }
       suggest_optimal_fleet: {
         Args: { p_delivery_date?: string; p_service_type_id: string }

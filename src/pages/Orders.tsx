@@ -34,6 +34,7 @@ import {
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { OrderHistoryPanel } from "@/components/orders/OrderHistoryPanel";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useSoftDelete } from "@/hooks/useSoftDelete";
 
 /**
  * Página principal del módulo de órdenes
@@ -118,6 +119,7 @@ export default function Orders() {
   const [activeTab, setActiveTab] = useState('list');
   const [showMinimalForm, setShowMinimalForm] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const { canDeleteOrders } = useSoftDelete();
 
   const loadOrders = async () => {
     try {
@@ -135,7 +137,7 @@ export default function Orders() {
             service_types:service_type_id(name, description, service_category)
           )
         `)
-        .is('deleted_at', null)
+        .is('deleted_at', null) // Exclude soft-deleted orders
         .order('created_at', { ascending: false });
 
       // Filter by role
@@ -410,9 +412,12 @@ export default function Orders() {
   const handleRestoreOrder = (orderId: string) => {
     loadOrders(); // Recargar órdenes después de la restauración
   };
+  
+  const handleOrderDeleted = () => {
+    loadOrders(); // Recargar órdenes después de la eliminación
+  };
 
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico' || profile?.role === 'supervisor';
-  const canDeleteOrder = profile?.role === 'administrador';
   const canCollectPayment = profile?.role === 'administrador' || profile?.role === 'vendedor';
   
   // Debug logging
@@ -602,8 +607,8 @@ export default function Orders() {
                       key={order.id}
                       order={order}
                       onClick={() => setSelectedOrder(order)}
-                      onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                      canDelete={canDeleteOrder}
+                       onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
+                       canDelete={canDeleteOrders}
                       getStatusColor={getStatusColor}
                       showCollectButton={canCollectPayment}
                     />
@@ -657,8 +662,8 @@ export default function Orders() {
                                   key={order.id}
                                   order={order}
                                   onClick={() => setSelectedOrder(order)}
-                                  onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                  canDelete={canDeleteOrder}
+                                   onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
+                                   canDelete={canDeleteOrders}
                                   getStatusColor={getStatusColor}
                                   showCollectButton={canCollectPayment}
                                 />
@@ -713,15 +718,15 @@ export default function Orders() {
                           </div>
                           <div className="space-y-1">
                              {seguridadOrders.map((order) => (
-                                <OrderCard
-                                  key={order.id}
-                                  order={order}
-                                  onClick={() => setSelectedOrder(order)}
-                                  onDelete={canDeleteOrder ? () => setOrderToDelete(order.id) : undefined}
-                                  canDelete={canDeleteOrder}
-                                  getStatusColor={getStatusColor}
-                                  showCollectButton={canCollectPayment}
-                                />
+                                 <OrderCard
+                                   key={order.id}
+                                   order={order}
+                                   onClick={() => setSelectedOrder(order)}
+                                   onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
+                                   canDelete={canDeleteOrders}
+                                   getStatusColor={getStatusColor}
+                                   showCollectButton={canCollectPayment}
+                                 />
                              ))}
                           </div>
                         </div>
