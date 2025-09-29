@@ -6972,7 +6972,7 @@ export type Database = {
       }
       soft_delete_payment: {
         Args: { p_payment_id: string; p_reason: string }
-        Returns: boolean
+        Returns: Json
       }
       suggest_optimal_fleet: {
         Args: { p_delivery_date?: string; p_service_type_id: string }
