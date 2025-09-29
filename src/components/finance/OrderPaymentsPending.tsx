@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PaymentCollectionDialog } from "../orders/PaymentCollectionDialog";
-import { DollarSign, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { DeletePaymentDialog } from "./DeletePaymentDialog";
+import { DollarSign, Calendar, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
 import { formatDateMexico } from '@/utils/dateUtils';
+import { useSoftDelete } from "@/hooks/useSoftDelete";
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
@@ -41,6 +43,9 @@ export function OrderPaymentsPending() {
   });
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<OrderPayment | null>(null);
+  const { canDeletePayments } = useSoftDelete();
 
   useEffect(() => {
     loadPendingOrderPayments();
@@ -140,6 +145,15 @@ export function OrderPaymentsPending() {
   const handlePaymentProcessed = () => {
     setDialogOpen(false);
     setSelectedOrder(null);
+    loadPendingOrderPayments();
+  };
+
+  const handleDeleteClick = (payment: OrderPayment) => {
+    setPaymentToDelete(payment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteSuccess = () => {
     loadPendingOrderPayments();
   };
 
@@ -291,14 +305,27 @@ export function OrderPaymentsPending() {
                         {getPaymentStatusBadge(payment)}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handlePaymentClick(payment)}
-                          className="flex items-center gap-2"
-                        >
-                          <DollarSign className="h-4 w-4" />
-                          Cobrar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handlePaymentClick(payment)}
+                            className="flex items-center gap-2"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                            Cobrar
+                          </Button>
+                          {canDeletePayments && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDeleteClick(payment)}
+                              className="gap-2 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Eliminar
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -325,6 +352,18 @@ export function OrderPaymentsPending() {
             clients: selectedOrder.clients
           }}
           totalAmount={selectedOrder.totalAmount || 0}
+        />
+      )}
+
+      {/* Diálogo de eliminación de pago */}
+      {paymentToDelete && (
+        <DeletePaymentDialog
+          paymentId={paymentToDelete.id}
+          paymentAmount={paymentToDelete.amount}
+          orderNumber={paymentToDelete.order_number}
+          isOpen={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDeleted={handleDeleteSuccess}
         />
       )}
     </div>

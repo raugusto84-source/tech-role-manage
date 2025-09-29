@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { CreditCard, DollarSign, Calendar, CheckCircle, AlertCircle } from "lucide-react";
+import { CreditCard, DollarSign, Calendar, CheckCircle, AlertCircle, Trash2 } from "lucide-react";
 import { PolicyPaymentDialog } from "./PolicyPaymentDialog";
+import { DeletePaymentDialog } from "./DeletePaymentDialog";
+import { useSoftDelete } from "@/hooks/useSoftDelete";
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -49,6 +51,9 @@ export function PolicyPaymentsPending() {
   });
   const [selectedPayment, setSelectedPayment] = useState<PolicyPayment | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<PolicyPayment | null>(null);
+  const { canDeletePayments } = useSoftDelete();
 
   const months = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -132,6 +137,15 @@ export function PolicyPaymentsPending() {
   };
 
   const handlePaymentProcessed = () => {
+    loadPendingPayments();
+  };
+
+  const handleDeleteClick = (payment: PolicyPayment) => {
+    setPaymentToDelete(payment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteSuccess = () => {
     loadPendingPayments();
   };
 
@@ -309,16 +323,29 @@ export function PolicyPaymentsPending() {
                       {getPaymentStatusBadge(payment)}
                     </TableCell>
                     <TableCell>
-                      {!payment.is_paid && (
-                        <Button
-                          size="sm"
-                          onClick={() => handlePaymentClick(payment)}
-                          className="gap-2"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          Cobrar
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {!payment.is_paid && (
+                          <Button
+                            size="sm"
+                            onClick={() => handlePaymentClick(payment)}
+                            className="gap-2"
+                          >
+                            <CheckCircle className="h-4 w-4" />
+                            Cobrar
+                          </Button>
+                        )}
+                        {canDeletePayments && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteClick(payment)}
+                            className="gap-2 text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Eliminar
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -335,6 +362,17 @@ export function PolicyPaymentsPending() {
           onOpenChange={setDialogOpen}
           payment={selectedPayment}
           onPaymentProcessed={handlePaymentProcessed}
+        />
+      )}
+
+      {/* Diálogo de eliminación de pago */}
+      {paymentToDelete && (
+        <DeletePaymentDialog
+          paymentId={paymentToDelete.id}
+          paymentAmount={paymentToDelete.amount}
+          isOpen={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDeleted={handleDeleteSuccess}
         />
       )}
     </div>
