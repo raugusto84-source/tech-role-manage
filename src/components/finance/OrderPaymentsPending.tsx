@@ -304,29 +304,29 @@ export function OrderPaymentsPending() {
                       <TableCell>
                         {getPaymentStatusBadge(payment)}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handlePaymentClick(payment)}
-                            className="flex items-center gap-2"
-                          >
-                            <DollarSign className="h-4 w-4" />
-                            Cobrar
-                          </Button>
-                          {canDeletePayments && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeleteClick(payment)}
-                              className="gap-2 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Eliminar
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
+                       <TableCell>
+                         <div className="flex items-center gap-2">
+                           <Button
+                             size="sm"
+                             onClick={() => handlePaymentClick(payment)}
+                             className="flex items-center gap-2"
+                           >
+                             <DollarSign className="h-4 w-4" />
+                             Cobrar
+                           </Button>
+                           {canDeletePayments && (
+                             <Button
+                               size="sm"
+                               variant="outline"
+                               onClick={() => handleDeleteClick(payment)}
+                               className="flex items-center gap-2 text-destructive hover:text-destructive"
+                             >
+                               <Trash2 className="h-4 w-4" />
+                               Eliminar
+                             </Button>
+                           )}
+                         </div>
+                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
