@@ -97,7 +97,8 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
         .from('service_types')
         .select('*')
         .eq('is_active', true)
-        .order('name');
+        .order('name')
+        .limit(1000); // Ensure we get all records
 
       if (error) {
         console.error('Error loading service types:', error);
@@ -110,6 +111,12 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
       }
 
       console.log('Service types loaded:', data?.length || 0, 'items');
+      console.log('Service types data:', data);
+      
+      // Check if DVR is in the results
+      const dvrServices = data?.filter(item => item.name.toLowerCase().includes('dvr')) || [];
+      console.log('DVR services found:', dvrServices.length, dvrServices);
+      
       setServiceTypes(data || []);
     } catch (error) {
       console.error('Error loading service types:', error);

@@ -117,7 +117,7 @@ export function QuoteWizard({
       const {
         data,
         error
-      } = await supabase.from('clients').select('*').order('name');
+      } = await supabase.from('clients').select('*').order('name').limit(1000);
       
       if (error) {
         console.error('Error loading clients:', error);
