@@ -65,11 +65,34 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
   // Cargar tipos de servicio
   useEffect(() => {
     loadServiceTypes();
+    
+    // Set up real-time subscription for service_types
+    const channel = supabase
+      .channel('service-types-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'service_types'
+        },
+        () => {
+          console.log('Service types changed, reloading...');
+          loadServiceTypes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadServiceTypes = async () => {
     try {
       setLoading(true);
+      console.log('Loading service types...');
+      
       const { data, error } = await supabase
         .from('service_types')
         .select('*')
@@ -80,15 +103,21 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
         console.error('Error loading service types:', error);
         toast({
           title: "Error",
-          description: "No se pudieron cargar los tipos de servicio",
+          description: `No se pudieron cargar los tipos de servicio: ${error.message}`,
           variant: "destructive",
         });
         return;
       }
 
+      console.log('Service types loaded:', data?.length || 0, 'items');
       setServiceTypes(data || []);
     } catch (error) {
       console.error('Error loading service types:', error);
+      toast({
+        title: "Error",
+        description: "Error inesperado al cargar los tipos de servicio",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -270,26 +299,55 @@ export function ServiceSelection({ selectedItems, onItemsChange }: ServiceSelect
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="predefined" className="flex items-center gap-2 text-xs md:text-sm">
-            <Package className="h-4 w-4" />
-            <span className="md:hidden">Predef.</span>
-            <span className="hidden md:inline">Servicios Predefinidos</span>
-          </TabsTrigger>
-          <TabsTrigger value="custom" className="flex items-center gap-2 text-xs md:text-sm">
-            <Plus className="h-4 w-4" />
-            <span className="md:hidden">Pers.</span>
-            <span className="hidden md:inline">Artículo Personalizado</span>
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex justify-between items-center">
+          <TabsList className="grid w-full grid-cols-2 flex-1 mr-2">
+            <TabsTrigger value="predefined" className="flex items-center gap-2 text-xs md:text-sm">
+              <Package className="h-4 w-4" />
+              <span className="md:hidden">Predef.</span>
+              <span className="hidden md:inline">Servicios Predefinidos</span>
+            </TabsTrigger>
+            <TabsTrigger value="custom" className="flex items-center gap-2 text-xs md:text-sm">
+              <Plus className="h-4 w-4" />
+              <span className="md:hidden">Pers.</span>
+              <span className="hidden md:inline">Artículo Personalizado</span>
+            </TabsTrigger>
+          </TabsList>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={loadServiceTypes}
+            disabled={loading}
+            className="ml-2"
+          >
+            {loading ? '⟳' : '↻'}
+          </Button>
+        </div>
 
         {/* Servicios Predefinidos */}
         <TabsContent value="predefined" className="space-y-4">
+          <div className="mb-4 p-3 bg-info/10 border border-info/20 rounded-lg">
+            <p className="text-sm">
+              <span className="font-medium">Servicios disponibles:</span> {serviceTypes.length}
+              {serviceTypes.length === 0 && (
+                <span className="text-destructive ml-2">
+                  ⚠️ No se encontraron servicios. Verifique que haya servicios activos creados o haga clic en refrescar.
+                </span>
+              )}
+            </p>
+          </div>
           <div className="grid gap-4">
             {serviceTypes.length === 0 ? (
               <div className="text-center py-8">
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">No hay servicios predefinidos disponibles</p>
+                <Button 
+                  variant="outline" 
+                  onClick={loadServiceTypes} 
+                  className="mt-4"
+                  disabled={loading}
+                >
+                  {loading ? 'Cargando...' : 'Refrescar servicios'}
+                </Button>
               </div>
             ) : (
               serviceTypes.map((service) => (

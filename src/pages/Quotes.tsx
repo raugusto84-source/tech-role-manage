@@ -124,6 +124,27 @@ export default function Quotes() {
       setShowWizard(true);
       window.history.replaceState({}, '', '/quotes');
     }
+
+    // Set up real-time subscriptions for quotes, clients and service_types
+    const quotesChannel = supabase
+      .channel('quotes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'quotes'
+        },
+        () => {
+          console.log('Quotes changed, reloading...');
+          loadQuotes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(quotesChannel);
+    };
   }, []);
 
   // Filtrar cotizaciones solo por búsqueda (sin filtro de estado)
@@ -332,14 +353,25 @@ export default function Quotes() {
 
         {/* Mobile-first Search filter */}
         <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4" />
-            <Input
-              placeholder="Buscar cotizaciones..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 sm:h-4 sm:w-4" />
+              <Input
+                placeholder="Buscar cotizaciones..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 sm:pl-10 text-sm h-8 sm:h-10"
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadQuotes}
+              disabled={loading}
+              className="px-3 h-8 sm:h-10"
+            >
+              {loading ? '⟳' : '↻'}
+            </Button>
           </div>
         </div>
 

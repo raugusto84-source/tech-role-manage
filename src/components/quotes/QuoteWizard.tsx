@@ -72,6 +72,27 @@ export function QuoteWizard({
   // Cargar clientes
   useEffect(() => {
     loadClients();
+    
+    // Set up real-time subscription for clients
+    const channel = supabase
+      .channel('clients-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'clients'
+        },
+        () => {
+          console.log('Clients changed, reloading...');
+          loadClients();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Auto-selección de cliente para usuarios con rol "cliente"
@@ -91,18 +112,33 @@ export function QuoteWizard({
   }, [profile?.role, profile?.email]);
   const loadClients = async () => {
     try {
+      console.log('Loading clients...');
+      
       const {
         data,
         error
       } = await supabase.from('clients').select('*').order('name');
+      
       if (error) {
         console.error('Error loading clients:', error);
+        toast({
+          title: "Error",
+          description: `No se pudieron cargar los clientes: ${error.message}`,
+          variant: "destructive",
+        });
         return;
       }
+      
+      console.log('Clients loaded:', data?.length || 0, 'items');
       setClients(data || []);
       setFilteredClients(data || []);
     } catch (error) {
       console.error('Error loading clients:', error);
+      toast({
+        title: "Error",
+        description: "Error inesperado al cargar los clientes",
+        variant: "destructive",
+      });
     }
   };
 
@@ -402,16 +438,46 @@ export function QuoteWizard({
         {/* Step 1: Client Selection */}
         {currentStep === 'client' && <Card>
             <CardContent className="p-4 space-y-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Buscar cliente..." value={clientSearchTerm} onChange={e => setClientSearchTerm(e.target.value)} className="pl-10" />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Buscar cliente..." value={clientSearchTerm} onChange={e => setClientSearchTerm(e.target.value)} className="pl-10" />
+                </div>
+                <Button variant="outline" size="sm" onClick={loadClients} className="px-3">
+                  ↻
+                </Button>
+              </div>
+              
+              <div className="mb-4 p-3 bg-info/10 border border-info/20 rounded-lg">
+                <p className="text-sm">
+                  <span className="font-medium">Clientes disponibles:</span> {filteredClients.length}
+                  {filteredClients.length === 0 && clients.length === 0 && (
+                    <span className="text-destructive ml-2">
+                      ⚠️ No se encontraron clientes. Verifique que haya clientes registrados o haga clic en refrescar.
+                    </span>
+                  )}
+                </p>
               </div>
               
               <div className="max-h-60 overflow-y-auto space-y-2">
-                {filteredClients.map(client => <div key={client.id} onClick={() => setSelectedClient(client)} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedClient?.id === client.id ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/20'}`}>
-                    <div className="font-medium text-sm">{client.name}</div>
-                    <div className="text-xs text-muted-foreground">{client.email}</div>
-                  </div>)}
+                {filteredClients.length === 0 && clients.length === 0 ? (
+                  <div className="text-center py-8">
+                    <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No hay clientes disponibles</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={loadClients} 
+                      className="mt-4"
+                    >
+                      Refrescar clientes
+                    </Button>
+                  </div>
+                ) : (
+                  filteredClients.map(client => <div key={client.id} onClick={() => setSelectedClient(client)} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedClient?.id === client.id ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/20'}`}>
+                      <div className="font-medium text-sm">{client.name}</div>
+                      <div className="text-xs text-muted-foreground">{client.email}</div>
+                    </div>)
+                )}
               </div>
 
               {selectedClient && <div className="p-3 bg-green-50 rounded-lg border-green-200 border">
