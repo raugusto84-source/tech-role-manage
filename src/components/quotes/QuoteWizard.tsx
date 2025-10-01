@@ -113,31 +113,63 @@ export function QuoteWizard({
   const loadClients = async () => {
     try {
       console.log('Loading clients...');
-      
-      const {
-        data,
-        error
-      } = await supabase.from('clients').select('*').order('name').limit(1000);
-      
-      if (error) {
-        console.error('Error loading clients:', error);
-        toast({
-          title: "Error",
-          description: `No se pudieron cargar los clientes: ${error.message}`,
-          variant: "destructive",
+
+      // 1) Tabla clients
+      const { data: clientsTable, error: clientsError } = await supabase
+        .from('clients')
+        .select('id, name, email, phone, address, user_id')
+        .order('name')
+        .limit(1000);
+
+      if (clientsError) throw clientsError;
+
+      // 2) Usuarios con rol cliente en profiles
+      const { data: profileClients, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone')
+        .eq('role', 'cliente');
+
+      if (profilesError) throw profilesError;
+
+      // 3) Unificar por email (preferir registro de clients si existe)
+      const map = new Map<string, Client>();
+
+      for (const c of clientsTable || []) {
+        const key = (c.email || `client-${c.id}`)?.toLowerCase();
+        map.set(key, {
+          id: c.id, // id real de clients
+          name: c.name || c.email || 'Sin nombre',
+          email: c.email || '',
+          phone: c.phone || undefined,
+          address: c.address || ''
         });
-        return;
       }
-      
-      console.log('Clients loaded:', data?.length || 0, 'items');
-      setClients(data || []);
-      setFilteredClients(data || []);
-    } catch (error) {
+
+      for (const p of profileClients || []) {
+        const key = (p.email || `profile-${p.user_id}`)?.toLowerCase();
+        if (!map.has(key)) {
+          map.set(key, {
+            id: p.user_id, // usar user_id como id estable
+            name: p.full_name || p.email || 'Sin nombre',
+            email: p.email || '',
+            phone: p.phone || undefined,
+            address: ''
+          });
+        }
+      }
+
+      // 4) Ordenar por nombre
+      const unified = Array.from(map.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      console.log('Clients loaded (unified):', unified.length, 'items');
+      setClients(unified);
+      setFilteredClients(unified);
+    } catch (error: any) {
       console.error('Error loading clients:', error);
       toast({
-        title: "Error",
-        description: "Error inesperado al cargar los clientes",
-        variant: "destructive",
+        title: 'Error',
+        description: `No se pudieron cargar los clientes: ${error.message || 'Error inesperado'}`,
+        variant: 'destructive',
       });
     }
   };
