@@ -451,6 +451,9 @@ export function QuoteWizard({
               <div className="mb-4 p-3 bg-info/10 border border-info/20 rounded-lg">
                 <p className="text-sm">
                   <span className="font-medium">Clientes disponibles:</span> {filteredClients.length}
+                  {filteredClients.length < clients.length && (
+                    <span className="ml-2 text-xs text-muted-foreground">(mostrando {filteredClients.length} de {clients.length}; usa la barra para buscar)</span>
+                  )}
                   {filteredClients.length === 0 && clients.length === 0 && (
                     <span className="text-destructive ml-2">
                       ⚠️ No se encontraron clientes. Verifique que haya clientes registrados o haga clic en refrescar.

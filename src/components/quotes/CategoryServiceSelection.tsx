@@ -105,7 +105,9 @@ export function CategoryServiceSelection({
         .from('service_types')
         .select('*')
         .eq('is_active', true)
-        .order('category, name');
+        .order('category')
+        .order('name')
+        .limit(1000);
 
       // Extract unique categories from services
       const uniqueCategories = [...new Set(servicesData?.map(s => s.category).filter(Boolean) || [])];
@@ -318,12 +320,17 @@ export function CategoryServiceSelection({
         return Shield;
       case 'Sistemas':
         return Monitor;
+      case 'Todos':
+        return Package;
       default:
         return Package;
     }
   };
 
   const getFilteredServices = (mainCategory: string, itemType: string) => {
+    if (mainCategory === 'Todos') {
+      return filteredServices.filter(service => service.item_type === itemType);
+    }
     const categoryNames = mainCategory === 'Seguridad' ? securityCategories : systemsCategories;
     return filteredServices.filter(service => 
       categoryNames.includes(service.category_name || '') && 
@@ -357,18 +364,20 @@ export function CategoryServiceSelection({
           {/* Services Categories */}
           <div>
             <h3 className="text-lg font-medium mb-4">Servicios</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {renderCategoryButton('Seguridad', 'servicio')}
               {renderCategoryButton('Sistemas', 'servicio')}
+              {renderCategoryButton('Todos', 'servicio')}
             </div>
           </div>
           
           {/* Products Categories */}
           <div>
             <h3 className="text-lg font-medium mb-4">Productos</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               {renderCategoryButton('Seguridad', 'articulo')}
               {renderCategoryButton('Sistemas', 'articulo')}
+              {renderCategoryButton('Todos', 'articulo')}
             </div>
           </div>
         </div>
