@@ -22,6 +22,7 @@ interface ServiceType {
   base_price: number | null;
   vat_rate: number;
   item_type: string;
+  service_category?: string;
   category_id?: string;
   category_name?: string;
   image_url?: string | null;
@@ -127,6 +128,7 @@ export function CategoryServiceSelection({
           base_price: service.base_price,
           vat_rate: service.vat_rate || 0,
           item_type: service.item_type || 'servicio',
+          service_category: service.service_category,
           category_name: service.category || 'Sin categoría',
           image_url: service.image_url,
           profit_margin_tiers: Array.isArray(service.profit_margin_tiers) 
@@ -310,10 +312,6 @@ export function CategoryServiceSelection({
     !service.category_name || service.category_name === 'Sin categoría'
   );
 
-  // Group categories into main categories
-  const securityCategories = ['Alarmas', 'Cámaras', 'Cercas Eléctricas', 'Control de Acceso'];
-  const systemsCategories = ['Computadoras', 'Fraccionamientos'];
-
   const getMainCategoryIcon = (mainCategory: string) => {
     switch (mainCategory) {
       case 'Seguridad':
@@ -331,11 +329,12 @@ export function CategoryServiceSelection({
     if (mainCategory === 'Todos') {
       return filteredServices.filter(service => service.item_type === itemType);
     }
-    const categoryNames = mainCategory === 'Seguridad' ? securityCategories : systemsCategories;
-    return filteredServices.filter(service => 
-      categoryNames.includes(service.category_name || '') && 
-      service.item_type === itemType
-    );
+    // Use service_category field directly instead of hardcoded category lists
+    const serviceCategoryValue = mainCategory.toLowerCase(); // 'seguridad' or 'sistemas'
+    return filteredServices.filter(service => {
+      const serviceCategory = (service as any).service_category?.toLowerCase() || '';
+      return serviceCategory === serviceCategoryValue && service.item_type === itemType;
+    });
   };
 
   const renderCategoryButton = (mainCategory: string, itemType: string) => {
