@@ -185,30 +185,35 @@ async function createInitialOrders(supabaseClient: any, body: any) {
             continue;
           }
 
-          // Calculate total estimated cost
-          const totalCost = scheduledService.services.reduce((total: number, service: any) => {
-            const serviceType = serviceTypes?.find((st: any) => st.id === service.service_type_id);
-            return total + (serviceType?.base_price || 0) * service.quantity;
-          }, 0);
+      // Calculate total estimated cost
+      const totalCost = scheduledService.services.reduce((total: number, service: any) => {
+        const serviceType = serviceTypes?.find((st: any) => st.id === service.service_type_id);
+        return total + (serviceType?.base_price || 0) * service.quantity;
+      }, 0);
 
-          // Create order for this date
-          const { data: orderData, error: orderError } = await supabaseClient
-            .from('orders')
-            .insert({
-              order_number: `ORD-POL-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-              client_id: client.id,
-              service_type: serviceTypeIds[0], // Use first service as primary
-              service_location: 'domicilio',
-              delivery_date: serviceDate,
-              estimated_cost: totalCost,
-              failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (${serviceDate})`,
-              status: 'en_proceso',
-              client_approval: false,
-              is_policy_order: true,
-              order_priority: scheduledService.priority || 2
-            })
-            .select()
-            .single();
+      // Generate short sequential policy order number
+      const { data: numberData, error: numberError } = await supabaseClient.rpc('generate_policy_order_number');
+      if (numberError) throw numberError;
+      const orderNumber = numberData as string;
+
+      // Create order for this date
+      const { data: orderData, error: orderError } = await supabaseClient
+        .from('orders')
+        .insert({
+          order_number: orderNumber,
+          client_id: client.id,
+          service_type: serviceTypeIds[0], // Use first service as primary
+          service_location: 'domicilio',
+          delivery_date: serviceDate,
+          estimated_cost: totalCost,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (${serviceDate})`,
+          status: 'en_proceso',
+          client_approval: false,
+          is_policy_order: true,
+          order_priority: scheduledService.priority || 2
+        })
+        .select()
+        .single();
 
           if (orderError) throw orderError;
 
@@ -283,6 +288,9 @@ async function createInitialOrders(supabaseClient: any, body: any) {
         nextRun = new Date(lastServiceDate);
         nextRun.setDate(nextRun.getDate() + scheduledService.frequency_value);
       }
+
+      // Ensure execution time at 00:01 local time
+      nextRun.setHours(0, 1, 0, 0);
 
       // Update scheduled service with next execution date
       await supabaseClient
@@ -393,18 +401,21 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
       
-      // Check if order already exists today for this scheduled service
+      // Determine target service date from next_run (normalize to date portion)
+      const nextRunDate = new Date(scheduledService.next_run || new Date());
+      const targetDateStr = nextRunDate.toISOString().split('T')[0];
+
+      // Check if order already exists for that date
       const { data: existingOrders } = await supabaseClient
         .from('orders')
         .select('id')
         .eq('is_policy_order', true)
         .like('failure_description', `%Servicio programado%`)
         .eq('client_id', client.id)
-        .gte('created_at', todayStr)
-        .lt('created_at', nextDayStr);
+        .eq('delivery_date', targetDateStr);
 
       if (existingOrders && existingOrders.length > 0) {
-        console.log(`Order already exists for scheduled service ${scheduledService.id} today`);
+        console.log(`Order already exists for scheduled service ${scheduledService.id} on ${targetDateStr}`);
         continue;
       }
 
@@ -414,15 +425,20 @@ async function processDueServices(supabaseClient: any) {
         return total + (serviceType?.base_price || 0) * service.quantity;
       }, 0);
 
+      // Generate short sequential policy order number
+      const { data: numberData, error: numberError } = await supabaseClient.rpc('generate_policy_order_number');
+      if (numberError) throw numberError;
+      const orderNumber = numberData as string;
+
       // Create single order with all services
       const { data: orderData, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
-          order_number: `ORD-POL-${Date.now()}-${scheduledService.id.slice(0, 8)}`,
+          order_number: orderNumber,
           client_id: client.id,
           service_type: serviceTypeIds[0], // Use first service as primary
           service_location: 'domicilio',
-          delivery_date: todayStr,
+          delivery_date: targetDateStr,
           estimated_cost: totalCost,
           failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')}`,
           status: 'en_proceso',
@@ -492,6 +508,9 @@ async function processDueServices(supabaseClient: any) {
         advanced.setDate(scheduledService.frequency_value);
       }
       
+      // Ensure execution time at 00:01 local time
+      advanced.setHours(0, 1, 0, 0);
+      
       await supabaseClient
         .from('scheduled_services')
         .update({ 
@@ -499,7 +518,6 @@ async function processDueServices(supabaseClient: any) {
           next_service_date: advanced.toISOString().split('T')[0] 
         })
         .eq('id', scheduledService.id);
-
       ordersCreated++;
       console.log(`Order created: ${orderData.order_number} for scheduled service ${scheduledService.id} with ${scheduledService.services.length} services`);
 

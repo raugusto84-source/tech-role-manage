@@ -6785,6 +6785,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      generate_policy_order_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       generate_purchase_number: {
         Args: Record<PropertyKey, never>
         Returns: string
