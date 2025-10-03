@@ -314,218 +314,94 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
   const generateHistoricalPayments = async (policyId: string, clientId: string, startDate: Date) => {
     try {
-      // Get policy and client info
-      const { data: policyData } = await supabase
-        .from('insurance_policies')
-        .select('monthly_fee, policy_name')
-        .eq('id', policyId)
-        .single();
+      // Load policy, client and assignment
+      const [{ data: policyData }, { data: clientData }, { data: policyClientData }] = await Promise.all([
+        supabase.from('insurance_policies').select('monthly_fee, policy_name').eq('id', policyId).maybeSingle(),
+        supabase.from('clients').select('name, email').eq('id', clientId).maybeSingle(),
+        supabase.from('policy_clients').select('id, start_date, next_billing_run').eq('policy_id', policyId).eq('client_id', clientId).eq('is_active', true).maybeSingle(),
+      ]);
 
-      const { data: clientData } = await supabase
-        .from('clients')
-        .select('name, email')
-        .eq('id', clientId)
-        .single();
-
-      if (!policyData || !clientData) {
-        console.error('Missing policy or client data for payment generation');
+      if (!policyData || !clientData || !policyClientData) {
+        console.error('Missing data for payment generation', { policyData, clientData, policyClientData });
         return;
       }
 
-      // Get the policy_client assignment
-      const { data: policyClientData } = await supabase
-        .from('policy_clients')
-        .select('id, next_billing_run')
-        .eq('policy_id', policyId)
-        .eq('client_id', clientId)
-        .eq('is_active', true)
-        .single();
-
-      if (!policyClientData) {
-        console.error('Policy client assignment not found');
-        return;
-      }
-
-      // Calculate all months from start date to current month (INCLUSIVE)
+      // Determine the effective start date (prefer DB value)
+      const effectiveStart = policyClientData.start_date ? new Date(policyClientData.start_date as any) : new Date(startDate);
       const today = new Date();
-      const currentMonth = today.getMonth() + 1; // 1-12
+      const currentMonth = today.getMonth() + 1; // 1..12
       const currentYear = today.getFullYear();
-      
-      let paymentDate = new Date(startDate);
-      paymentDate.setDate(1); // Start on the 1st of the month
-      paymentDate.setHours(0, 0, 0, 0);
-      
-      const paymentsToCreate = [];
-      const notificationsToCreate = [];
 
-      // Generate payments from start date through current month (inclusive)
-      while (
-        paymentDate.getFullYear() < currentYear ||
-        (paymentDate.getFullYear() === currentYear && (paymentDate.getMonth() + 1) <= currentMonth)
-      ) {
-        const month = paymentDate.getMonth() + 1; // 1-12
-        const year = paymentDate.getFullYear();
+      const startMonth = effectiveStart.getMonth() + 1; // 1..12
+      const startYear = effectiveStart.getFullYear();
+
+      // Months difference inclusive (e.g., Sep->Oct = 2 months: Sep, Oct)
+      const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+
+      // Fetch existing payments to prevent duplicates in one query
+      const { data: existing } = await supabase
+        .from('policy_payments')
+        .select('payment_month, payment_year')
+        .eq('policy_client_id', policyClientData.id);
+
+      const existingSet = new Set((existing || []).map((p: any) => `${p.payment_year}-${p.payment_month}`));
+
+      const paymentsToCreate: any[] = [];
+      const notificationsToCreate: any[] = [];
+
+      for (let i = 0; i <= monthsDiff; i++) {
+        const totalMonths = (startMonth - 1) + i;
+        const year = startYear + Math.floor(totalMonths / 12);
+        const month = (totalMonths % 12) + 1; // 1..12
+        const key = `${year}-${month}`;
+        if (existingSet.has(key)) continue;
+
         const dueDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-
-        // Check if payment already exists for this month/year
-        const { data: existingPayment } = await supabase
-          .from('policy_payments')
-          .select('id')
-          .eq('policy_client_id', policyClientData.id)
-          .eq('payment_month', month)
-          .eq('payment_year', year)
-          .maybeSingle();
-
-        if (!existingPayment) {
-          paymentsToCreate.push({
-            policy_client_id: policyClientData.id,
-            payment_month: month,
-            payment_year: year,
-            amount: policyData.monthly_fee,
-            account_type: 'no_fiscal',
-            due_date: dueDate,
-            is_paid: false,
-            payment_status: 'pendiente'
-          });
-
-          notificationsToCreate.push({
-            policy_client_id: policyClientData.id,
-            client_name: clientData.name,
-            client_email: clientData.email,
-            policy_name: policyData.policy_name,
-            amount: policyData.monthly_fee,
-            due_date: dueDate,
-            collection_type: 'policy_payment',
-            status: 'pending',
-            created_by: user?.id,
-            order_id: null,
-            order_number: null,
-            balance: 0
-          });
-        }
-
-        // Move to next month
-        paymentDate.setMonth(paymentDate.getMonth() + 1);
-      }
-
-      // Check if next_billing_run has already arrived or passed
-      const nextBillingDate = new Date(policyClientData.next_billing_run);
-      const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const nextBillingNormalized = new Date(nextBillingDate.getFullYear(), nextBillingDate.getMonth(), nextBillingDate.getDate());
-
-      if (nextBillingNormalized <= todayNormalized) {
-        // The next billing date has arrived/passed, generate that payment too
-        const nextMonth = nextBillingDate.getMonth() + 1;
-        const nextYear = nextBillingDate.getFullYear();
-        const nextDueDate = new Date(nextYear, nextMonth - 1, 1).toISOString().split('T')[0];
-
-        // Check if payment already exists
-        const { data: existingNextPayment } = await supabase
-          .from('policy_payments')
-          .select('id')
-          .eq('policy_client_id', policyClientData.id)
-          .eq('payment_month', nextMonth)
-          .eq('payment_year', nextYear)
-          .maybeSingle();
-
-        if (!existingNextPayment) {
-          paymentsToCreate.push({
-            policy_client_id: policyClientData.id,
-            payment_month: nextMonth,
-            payment_year: nextYear,
-            amount: policyData.monthly_fee,
-            account_type: 'no_fiscal',
-            due_date: nextDueDate,
-            is_paid: false,
-            payment_status: 'pendiente'
-          });
-
-          notificationsToCreate.push({
-            policy_client_id: policyClientData.id,
-            client_name: clientData.name,
-            client_email: clientData.email,
-            policy_name: policyData.policy_name,
-            amount: policyData.monthly_fee,
-            due_date: nextDueDate,
-            collection_type: 'policy_payment',
-            status: 'pending',
-            created_by: user?.id,
-            order_id: null,
-            order_number: null,
-            balance: 0
-          });
-
-          // Update next_billing_run to the following month
-          const newNextBilling = new Date(nextBillingDate);
-          newNextBilling.setMonth(newNextBilling.getMonth() + 1);
-          newNextBilling.setDate(1);
-          newNextBilling.setHours(0, 0, 0, 0);
-
-          await supabase
-            .from('policy_clients')
-            .update({ next_billing_run: newNextBilling.toISOString() })
-            .eq('id', policyClientData.id);
-        }
-      }
-
-      // Always ensure at least one payment is created (current month) if none were generated
-      if (paymentsToCreate.length === 0) {
-        const todayDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
-        
         paymentsToCreate.push({
           policy_client_id: policyClientData.id,
-          payment_month: currentMonth,
-          payment_year: currentYear,
+          payment_month: month,
+          payment_year: year,
           amount: policyData.monthly_fee,
           account_type: 'no_fiscal',
-          due_date: todayDueDate,
+          due_date,
           is_paid: false,
-          payment_status: 'pendiente'
+          payment_status: 'pendiente',
         });
-
         notificationsToCreate.push({
           policy_client_id: policyClientData.id,
           client_name: clientData.name,
           client_email: clientData.email,
           policy_name: policyData.policy_name,
           amount: policyData.monthly_fee,
-          due_date: todayDueDate,
+          due_date,
           collection_type: 'policy_payment',
           status: 'pending',
           created_by: user?.id,
           order_id: null,
           order_number: null,
-          balance: 0
+          balance: 0,
         });
       }
 
-      // Insert all payments in batch
-      const { error: paymentError } = await supabase
-        .from('policy_payments')
-        .insert(paymentsToCreate);
-
-      if (paymentError) {
-        console.error('Error creating payments:', paymentError);
-        throw paymentError;
+      // Insert all payments
+      if (paymentsToCreate.length > 0) {
+        const { error: paymentError } = await supabase.from('policy_payments').insert(paymentsToCreate);
+        if (paymentError) throw paymentError;
       }
 
-      // Insert all notifications in batch
+      // Insert notifications
       if (notificationsToCreate.length > 0) {
-        const { error: notificationError } = await supabase
-          .from('pending_collections')
-          .insert(notificationsToCreate as any);
-
-        if (notificationError) {
-          console.error('Error creating notifications:', notificationError);
-        }
+        const { error: notificationError } = await supabase.from('pending_collections').insert(notificationsToCreate as any);
+        if (notificationError) console.error('Error creating notifications:', notificationError);
       }
 
-      const paymentsCreated = paymentsToCreate.length;
-      console.log(`Generated ${paymentsCreated} payments for ${clientData.name} - ${policyData.policy_name}`);
-      
+      const createdCount = paymentsToCreate.length;
+      console.log(`Generated ${createdCount} payments from ${format(effectiveStart, 'yyyy-MM')} to ${format(today, 'yyyy-MM')}`);
       toast({
-        title: 'Éxito',
-        description: `Se crearon ${paymentsCreated} cobro${paymentsCreated > 1 ? 's' : ''} desde ${format(startDate, 'MMMM yyyy', { locale: es })}`,
+        title: 'Cobros generados',
+        description: createdCount > 0
+          ? `Se crearon ${createdCount} cobro${createdCount > 1 ? 's' : ''} desde ${format(effectiveStart, 'MMMM yyyy', { locale: es })}`
+          : 'No había cobros pendientes por generar',
       });
     } catch (error) {
       console.error('Error in generateHistoricalPayments:', error);
@@ -669,7 +545,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                       selected={startDate}
                       onSelect={setStartDate}
                       initialFocus
-                      className="pointer-events-auto"
+                      className={cn("p-3 pointer-events-auto")}
                       disabled={(date) => date > new Date()}
                     />
                   </PopoverContent>
