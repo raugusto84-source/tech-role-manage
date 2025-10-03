@@ -47,8 +47,9 @@ Deno.serve(async (req) => {
     console.log('Starting policy payments generation...', requestBody);
 
     const today = new Date();
-    const currentMonth = today.getUTCMonth() + 1;
-    const currentYear = today.getUTCFullYear();
+    // Use local timezone to avoid off-by-one month when it's the 1st in user timezone
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
 
     // Get all active policy clients due for billing or specific one
     const nowStr = new Date().toISOString();
@@ -138,7 +139,7 @@ Deno.serve(async (req) => {
         }
 
         // 2. If we're on day 1 or later, also create next month's payment
-        const currentDay = today.getUTCDate();
+        const currentDay = today.getDate();
         if (currentDay >= 1) {
           let nextMonth = currentMonth + 1;
           let nextYear = currentYear;
