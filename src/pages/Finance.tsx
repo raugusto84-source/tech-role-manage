@@ -18,7 +18,7 @@ import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDia
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
 import { CollectionsManager } from "@/components/finance/CollectionsManager";
-import { PayrollDashboard } from "@/components/admin/PayrollDashboard";
+import { PayrollWithdrawals } from "@/components/finance/PayrollWithdrawals";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2956,7 +2956,7 @@ export default function Finance() {
         </TabsContent>
 
         <TabsContent value="nomina">
-          <PayrollDashboard />
+          <PayrollWithdrawals />
         </TabsContent>
 
         <TabsContent value="cobranza">
