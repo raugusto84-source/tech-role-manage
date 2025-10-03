@@ -326,19 +326,12 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         return;
       }
 
-      // Determine the effective start date (prefer DB value)
-      const effectiveStart = policyClientData.start_date ? new Date(policyClientData.start_date as any) : new Date(startDate);
       const today = new Date();
       const currentMonth = today.getMonth() + 1; // 1..12
       const currentYear = today.getFullYear();
+      const currentDay = today.getDate();
 
-      const startMonth = effectiveStart.getMonth() + 1; // 1..12
-      const startYear = effectiveStart.getFullYear();
-
-      // Months difference inclusive (e.g., Sep->Oct = 2 months: Sep, Oct)
-      const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
-
-      // Fetch existing payments to prevent duplicates in one query
+      // Fetch existing payments to prevent duplicates
       const { data: existing } = await supabase
         .from('policy_payments')
         .select('payment_month, payment_year')
@@ -349,21 +342,17 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       const paymentsToCreate: any[] = [];
       const notificationsToCreate: any[] = [];
 
-      for (let i = 0; i <= monthsDiff; i++) {
-        const totalMonths = (startMonth - 1) + i;
-        const year = startYear + Math.floor(totalMonths / 12);
-        const month = (totalMonths % 12) + 1; // 1..12
-        const key = `${year}-${month}`;
-        if (existingSet.has(key)) continue;
-
-        const dueDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+      // 1. Generar cobro del mes actual (siempre)
+      const currentKey = `${currentYear}-${currentMonth}`;
+      if (!existingSet.has(currentKey)) {
+        const currentDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
         paymentsToCreate.push({
           policy_client_id: policyClientData.id,
-          payment_month: month,
-          payment_year: year,
+          payment_month: currentMonth,
+          payment_year: currentYear,
           amount: policyData.monthly_fee,
           account_type: 'no_fiscal',
-          due_date: dueDate,
+          due_date: currentDueDate,
           is_paid: false,
           payment_status: 'pendiente',
         });
@@ -373,7 +362,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           client_email: clientData.email,
           policy_name: policyData.policy_name,
           amount: policyData.monthly_fee,
-          due_date: dueDate,
+          due_date: currentDueDate,
           collection_type: 'policy_payment',
           status: 'pending',
           created_by: user?.id,
@@ -381,6 +370,46 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           order_number: null,
           balance: 0,
         });
+      }
+
+      // 2. Si ya pasó el día 1 del mes siguiente, generar también ese cobro
+      if (currentDay >= 1) {
+        // Calcular siguiente mes
+        let nextMonth = currentMonth + 1;
+        let nextYear = currentYear;
+        if (nextMonth > 12) {
+          nextMonth = 1;
+          nextYear = nextYear + 1;
+        }
+
+        const nextKey = `${nextYear}-${nextMonth}`;
+        if (!existingSet.has(nextKey)) {
+          const nextDueDate = new Date(nextYear, nextMonth - 1, 1).toISOString().split('T')[0];
+          paymentsToCreate.push({
+            policy_client_id: policyClientData.id,
+            payment_month: nextMonth,
+            payment_year: nextYear,
+            amount: policyData.monthly_fee,
+            account_type: 'no_fiscal',
+            due_date: nextDueDate,
+            is_paid: false,
+            payment_status: 'pendiente',
+          });
+          notificationsToCreate.push({
+            policy_client_id: policyClientData.id,
+            client_name: clientData.name,
+            client_email: clientData.email,
+            policy_name: policyData.policy_name,
+            amount: policyData.monthly_fee,
+            due_date: nextDueDate,
+            collection_type: 'policy_payment',
+            status: 'pending',
+            created_by: user?.id,
+            order_id: null,
+            order_number: null,
+            balance: 0,
+          });
+        }
       }
 
       // Insert all payments
@@ -396,12 +425,10 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       }
 
       const createdCount = paymentsToCreate.length;
-      console.log(`Generated ${createdCount} payments from ${format(effectiveStart, 'yyyy-MM')} to ${format(today, 'yyyy-MM')}`);
+      console.log(`Generated ${createdCount} payment(s) for current and next month`);
       toast({
         title: 'Cobros generados',
-        description: createdCount > 0
-          ? `Se crearon ${createdCount} cobro${createdCount > 1 ? 's' : ''} desde ${format(effectiveStart, 'MMMM yyyy', { locale: es })}`
-          : 'No había cobros pendientes por generar',
+        description: `Se crearon ${createdCount} cobro${createdCount > 1 ? 's' : ''} (mes actual${createdCount > 1 ? ' y siguiente' : ''})`,
       });
     } catch (error) {
       console.error('Error in generateHistoricalPayments:', error);
