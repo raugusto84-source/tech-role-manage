@@ -150,11 +150,7 @@ export function PolicyPaymentDialog({
           payment_date: new Date().toISOString().split('T')[0],
           account_type: accountType,
           payment_method: paymentMethod,
-          ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() }),
-          ...(hasISRWithholding && {
-            isr_withholding_applied: true,
-            isr_withholding_amount: isrWithholdingAmount
-          })
+          ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() })
         })
         .eq('id', payment.id);
 
