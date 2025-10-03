@@ -7,10 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, UserPlus } from "lucide-react";
+import { Plus, Trash2, UserPlus, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface Client {
   id: string;
@@ -57,6 +62,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   
   const [selectedPolicyId, setSelectedPolicyId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -159,6 +165,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const resetDialog = () => {
     setSelectedPolicyId('');
     setSelectedClientId('');
+    setStartDate(new Date());
     setIsSubmitting(false);
   };
 
@@ -266,13 +273,14 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         nextBillingRun.setDate(1);
         nextBillingRun.setHours(0, 0, 0, 0);
 
-        // Create new assignment
+        // Create new assignment with selected start date
         const { error: assignmentError } = await supabase
           .from('policy_clients')
           .insert([
             {
               policy_id: selectedPolicyId,
               client_id: clientIdToUse,
+              start_date: startDate?.toISOString().split('T')[0],
               assigned_by: user?.id,
               created_by: user?.id,
               is_active: true,
@@ -284,8 +292,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
         if (assignmentError) throw assignmentError;
 
-        // Generate immediate first payment after successful assignment
-        await generateInitialPayment(selectedPolicyId, clientIdToUse);
+        // Generate all historical payments from start date to today
+        await generateHistoricalPayments(selectedPolicyId, clientIdToUse, startDate || new Date());
 
         toast({
           title: 'Éxito',
@@ -309,9 +317,9 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
     }
   };
 
-  const generateInitialPayment = async (policyId: string, clientId: string) => {
+  const generateHistoricalPayments = async (policyId: string, clientId: string, startDate: Date) => {
     try {
-      // Get policy and client info for payment generation
+      // Get policy and client info
       const { data: policyData } = await supabase
         .from('insurance_policies')
         .select('monthly_fee, policy_name')
@@ -329,12 +337,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         return;
       }
 
-      const today = new Date();
-      const currentMonth = today.getUTCMonth() + 1;
-      const currentYear = today.getUTCFullYear();
-      const dueDate = today.toISOString().split('T')[0];
-
-      // Get the policy_client assignment we just created
+      // Get the policy_client assignment
       const { data: policyClientData } = await supabase
         .from('policy_clients')
         .select('id')
@@ -348,50 +351,101 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         return;
       }
 
-      // Create the initial payment
-      const { error: paymentError } = await supabase
-        .from('policy_payments')
-        .insert({
-          policy_client_id: policyClientData.id,
-          payment_month: currentMonth,
-          payment_year: currentYear,
-          amount: policyData.monthly_fee,
-          account_type: 'no_fiscal',
-          due_date: dueDate,
-          is_paid: false,
-          payment_status: 'pendiente'
-        });
+      // Calculate all months from start date to current month
+      const today = new Date();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      
+      let paymentDate = new Date(startDate);
+      paymentDate.setDate(1); // Start on the 1st of the month
+      
+      const paymentsToCreate = [];
+      const notificationsToCreate = [];
+      let paymentsCreated = 0;
 
-      if (paymentError) {
-        console.error('Error creating initial payment:', paymentError);
-        return;
+      while (
+        paymentDate.getFullYear() < currentYear ||
+        (paymentDate.getFullYear() === currentYear && paymentDate.getMonth() <= currentMonth)
+      ) {
+        const month = paymentDate.getMonth() + 1;
+        const year = paymentDate.getFullYear();
+        const dueDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+
+        // Check if payment already exists for this month/year
+        const { data: existingPayment } = await supabase
+          .from('policy_payments')
+          .select('id')
+          .eq('policy_client_id', policyClientData.id)
+          .eq('payment_month', month)
+          .eq('payment_year', year)
+          .maybeSingle();
+
+        if (!existingPayment) {
+          paymentsToCreate.push({
+            policy_client_id: policyClientData.id,
+            payment_month: month,
+            payment_year: year,
+            amount: policyData.monthly_fee,
+            account_type: 'no_fiscal',
+            due_date: dueDate,
+            is_paid: false,
+            payment_status: 'pendiente'
+          });
+
+          notificationsToCreate.push({
+            policy_client_id: policyClientData.id,
+            client_name: clientData.name,
+            client_email: clientData.email,
+            policy_name: policyData.policy_name,
+            amount: policyData.monthly_fee,
+            due_date: dueDate,
+            collection_type: 'policy_payment',
+            status: 'pending',
+            created_by: user?.id,
+            order_id: null,
+            order_number: null,
+            balance: 0
+          });
+        }
+
+        // Move to next month
+        paymentDate.setMonth(paymentDate.getMonth() + 1);
       }
 
-      // Create pending collection notification
-      const { error: notificationError } = await supabase
-        .from('pending_collections')
-        .insert({
-          policy_client_id: policyClientData.id,
-          client_name: clientData.name,
-          client_email: clientData.email,
-          policy_name: policyData.policy_name,
-          amount: policyData.monthly_fee,
-          due_date: dueDate,
-          collection_type: 'policy_payment',
-          status: 'pending',
-          created_by: user?.id,
-          order_id: null,
-          order_number: null,
-          balance: 0
-        } as any);
+      // Insert all payments in batch
+      if (paymentsToCreate.length > 0) {
+        const { error: paymentError } = await supabase
+          .from('policy_payments')
+          .insert(paymentsToCreate);
 
-      if (notificationError) {
-        console.error('Error creating collection notification:', notificationError);
+        if (paymentError) {
+          console.error('Error creating payments:', paymentError);
+          throw paymentError;
+        }
+
+        paymentsCreated = paymentsToCreate.length;
       }
 
-      console.log(`Generated initial payment and notification for ${clientData.name} - ${policyData.policy_name}`);
+      // Insert all notifications in batch
+      if (notificationsToCreate.length > 0) {
+        const { error: notificationError } = await supabase
+          .from('pending_collections')
+          .insert(notificationsToCreate as any);
+
+        if (notificationError) {
+          console.error('Error creating notifications:', notificationError);
+        }
+      }
+
+      console.log(`Generated ${paymentsCreated} historical payments for ${clientData.name} - ${policyData.policy_name}`);
+      
+      toast({
+        title: 'Pagos generados',
+        description: `Se crearon ${paymentsCreated} pagos desde ${format(startDate, 'MMMM yyyy', { locale: es })}`,
+      });
     } catch (error) {
-      console.error('Error in generateInitialPayment:', error);
+      console.error('Error in generateHistoricalPayments:', error);
+      throw error;
     }
   };
 
@@ -508,6 +562,37 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                     )}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Fecha de Inicio del Contrato *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP", { locale: es }) : "Seleccionar fecha"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                      className="pointer-events-auto"
+                      disabled={(date) => date > new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">
+                  Se generarán los cobros mensuales desde esta fecha hasta hoy
+                </p>
               </div>
 
               <div className="space-y-2 border-t pt-4">
