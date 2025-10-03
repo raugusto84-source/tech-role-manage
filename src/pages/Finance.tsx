@@ -17,8 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { FiscalWithdrawalDialog } from "@/components/finance/FiscalWithdrawalDialog";
 import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFiscalWithdrawalsDialog";
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
-import { PurchaseHistoryPanel } from "@/components/finance/PurchaseHistoryPanel";
 import { CollectionsManager } from "@/components/finance/CollectionsManager";
+import { PayrollDashboard } from "@/components/admin/PayrollDashboard";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -787,7 +787,8 @@ export default function Finance() {
       if (purchaseError) throw purchaseError;
 
       // Si tiene factura y se pagó de cuenta no fiscal, crear retiro fiscal disponible
-      if (purchaseHasInvoice && purchaseAccount === 'no_fiscal') {
+      // Solo crear retiro si el monto es mayor a 0
+      if (purchaseHasInvoice && purchaseAccount === 'no_fiscal' && amount > 0) {
         console.log('Creating fiscal withdrawal for invoiced purchase from non-fiscal account');
 
         // Create a dummy income first since income_id is required
@@ -1773,8 +1774,8 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
+          <TabsTrigger value="nomina" className="text-gray-950">Nómina</TabsTrigger>
           <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
-          <TabsTrigger value="purchase-history">Hist. Compras</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
@@ -2369,14 +2370,61 @@ export default function Finance() {
                             </span>}
                         </TableCell>
                         <TableCell>
-                          {withdrawal.withdrawal_status === 'available' ? <Button size="sm" onClick={() => setFiscalWithdrawalDialog({
-                        open: true,
-                        withdrawal
-                      })} className="bg-green-600 hover:bg-green-700">
-                              Retirar Compra
-                            </Button> : <div className="text-sm text-muted-foreground">
+                          {withdrawal.withdrawal_status === 'available' ? (
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => setFiscalWithdrawalDialog({
+                                open: true,
+                                withdrawal
+                              })} className="bg-green-600 hover:bg-green-700">
+                                Retirar Compra
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar retiro fiscal?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta acción eliminará permanentemente el retiro fiscal de ${Number(withdrawal.amount).toFixed(2)}.
+                                      No se puede deshacer.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={async () => {
+                                        try {
+                                          const { error } = await supabase
+                                            .from("fiscal_withdrawals")
+                                            .delete()
+                                            .eq("id", withdrawal.id);
+                                          if (error) throw error;
+                                          toast({ title: "Retiro eliminado" });
+                                          fiscalWithdrawalsQuery.refetch();
+                                        } catch (error: any) {
+                                          toast({
+                                            title: "Error",
+                                            description: error.message,
+                                            variant: "destructive"
+                                          });
+                                        }
+                                      }}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
                               {withdrawal.withdrawn_at && <span>Retirado {new Date(withdrawal.withdrawn_at).toLocaleDateString()}</span>}
-                            </div>}
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>)}
                     {!fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).length && <TableRow>
@@ -2907,8 +2955,8 @@ export default function Finance() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="purchase-history">
-          <PurchaseHistoryPanel />
+        <TabsContent value="nomina">
+          <PayrollDashboard />
         </TabsContent>
 
         <TabsContent value="cobranza">
