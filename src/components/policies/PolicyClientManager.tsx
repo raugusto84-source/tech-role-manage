@@ -294,11 +294,6 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
         // Generate all historical payments from start date to today
         await generateHistoricalPayments(selectedPolicyId, clientIdToUse, startDate || new Date());
-
-        toast({
-          title: 'Éxito',
-          description: 'Cliente asignado a la póliza correctamente y primer pago generado',
-        });
       }
 
       setIsDialogOpen(false);
@@ -351,23 +346,24 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         return;
       }
 
-      // Calculate all months from start date to current month
+      // Calculate all months from start date to current month (INCLUSIVE)
       const today = new Date();
-      const currentMonth = today.getMonth();
+      const currentMonth = today.getMonth() + 1; // 1-12
       const currentYear = today.getFullYear();
       
       let paymentDate = new Date(startDate);
       paymentDate.setDate(1); // Start on the 1st of the month
+      paymentDate.setHours(0, 0, 0, 0);
       
       const paymentsToCreate = [];
       const notificationsToCreate = [];
-      let paymentsCreated = 0;
 
+      // Generate payments from start date through current month (inclusive)
       while (
         paymentDate.getFullYear() < currentYear ||
-        (paymentDate.getFullYear() === currentYear && paymentDate.getMonth() <= currentMonth)
+        (paymentDate.getFullYear() === currentYear && (paymentDate.getMonth() + 1) <= currentMonth)
       ) {
-        const month = paymentDate.getMonth() + 1;
+        const month = paymentDate.getMonth() + 1; // 1-12
         const year = paymentDate.getFullYear();
         const dueDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
 
@@ -412,18 +408,45 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         paymentDate.setMonth(paymentDate.getMonth() + 1);
       }
 
+      // Always ensure at least one payment is created (current month)
+      if (paymentsToCreate.length === 0) {
+        const todayDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
+        
+        paymentsToCreate.push({
+          policy_client_id: policyClientData.id,
+          payment_month: currentMonth,
+          payment_year: currentYear,
+          amount: policyData.monthly_fee,
+          account_type: 'no_fiscal',
+          due_date: todayDueDate,
+          is_paid: false,
+          payment_status: 'pendiente'
+        });
+
+        notificationsToCreate.push({
+          policy_client_id: policyClientData.id,
+          client_name: clientData.name,
+          client_email: clientData.email,
+          policy_name: policyData.policy_name,
+          amount: policyData.monthly_fee,
+          due_date: todayDueDate,
+          collection_type: 'policy_payment',
+          status: 'pending',
+          created_by: user?.id,
+          order_id: null,
+          order_number: null,
+          balance: 0
+        });
+      }
+
       // Insert all payments in batch
-      if (paymentsToCreate.length > 0) {
-        const { error: paymentError } = await supabase
-          .from('policy_payments')
-          .insert(paymentsToCreate);
+      const { error: paymentError } = await supabase
+        .from('policy_payments')
+        .insert(paymentsToCreate);
 
-        if (paymentError) {
-          console.error('Error creating payments:', paymentError);
-          throw paymentError;
-        }
-
-        paymentsCreated = paymentsToCreate.length;
+      if (paymentError) {
+        console.error('Error creating payments:', paymentError);
+        throw paymentError;
       }
 
       // Insert all notifications in batch
@@ -437,11 +460,12 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         }
       }
 
-      console.log(`Generated ${paymentsCreated} historical payments for ${clientData.name} - ${policyData.policy_name}`);
+      const paymentsCreated = paymentsToCreate.length;
+      console.log(`Generated ${paymentsCreated} payments for ${clientData.name} - ${policyData.policy_name}`);
       
       toast({
-        title: 'Pagos generados',
-        description: `Se crearon ${paymentsCreated} pagos desde ${format(startDate, 'MMMM yyyy', { locale: es })}`,
+        title: 'Éxito',
+        description: `Se crearon ${paymentsCreated} cobro${paymentsCreated > 1 ? 's' : ''} desde ${format(startDate, 'MMMM yyyy', { locale: es })}`,
       });
     } catch (error) {
       console.error('Error in generateHistoricalPayments:', error);
