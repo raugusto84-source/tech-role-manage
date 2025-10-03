@@ -70,12 +70,13 @@ export function CollectionsManager() {
 
       // Calculate overdue amounts
       const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
       const overduePolicy = policies
-        .filter(p => new Date(p.due_date) < today)
+        .filter(p => (p as any).due_date < todayKey)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
       
       const overdueOrder = collections
-        .filter(c => c.collection_type === 'order_payment' && new Date(c.due_date) < today)
+        .filter(c => c.collection_type === 'order_payment' && (c as any).due_date < todayKey)
         .reduce((sum, c) => sum + (c.amount || 0), 0);
 
       const overdueAmount = overduePolicy + overdueOrder;

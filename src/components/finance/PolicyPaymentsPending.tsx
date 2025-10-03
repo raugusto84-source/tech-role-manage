@@ -61,27 +61,29 @@ export function PolicyPaymentsPending() {
   ];
 
   useEffect(() => {
-    loadPendingPayments();
-    
-    // Configurar suscripción en tiempo real
-    const channel = supabase
-      .channel('policy-payments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'policy_payments'
-        },
-        () => {
-          loadPendingPayments();
-        }
-      )
-      .subscribe();
+    const init = async () => {
+      // Normalize due dates to day 5
+      try {
+        await supabase.functions.invoke('normalize-policy-payment-due-dates', { body: { dry_run: false } });
+      } catch (e) {
+        console.warn('Normalization function failed or unavailable:', e);
+      }
+      await loadPendingPayments();
 
-    return () => {
-      supabase.removeChannel(channel);
+      // Real-time subscription
+      const channel = supabase
+        .channel('policy-payments-changes')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'policy_payments' },
+          () => { loadPendingPayments(); }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
     };
+
+    init();
   }, []);
 
   const loadPendingPayments = async () => {
@@ -105,11 +107,12 @@ export function PolicyPaymentsPending() {
       setPayments(data || []);
 
       // Calcular estadísticas
-      const currentDate = new Date();
       const pendingPayments = data || [];
-      
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
       const totalAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
-      const overduePayments = pendingPayments.filter(p => new Date(p.due_date) < currentDate);
+      const overduePayments = pendingPayments.filter(p => p.due_date < todayKey);
       const overdueAmount = overduePayments.reduce((sum, p) => sum + p.amount, 0);
 
       setStats({
@@ -150,7 +153,9 @@ export function PolicyPaymentsPending() {
   };
 
   const getPaymentStatusBadge = (payment: PolicyPayment) => {
-    const isOverdue = new Date(payment.due_date) < new Date();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const isOverdue = payment.due_date < todayKey;
     
     if (payment.is_paid) {
       return <Badge variant="default" className="bg-green-100 text-green-800">Pagado</Badge>;
@@ -164,11 +169,12 @@ export function PolicyPaymentsPending() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    // Safe formatting for YYYY-MM-DD without timezone shifts
+    const [y, m, d] = dateString.split('-').map(Number);
+    const dd = String(d).padStart(2, '0');
+    const mm = String(m).padStart(2, '0');
+    const yy = String(y);
+    return `${dd}/${mm}/${yy}`;
   };
 
   if (loading) {

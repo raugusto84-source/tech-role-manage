@@ -258,7 +258,8 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-MX');
+    const [y, m, d] = dateString.split('-');
+    return `${d}/${m}/${y}`;
   };
 
   const getStatusBadge = (payment: PolicyPayment) => {
