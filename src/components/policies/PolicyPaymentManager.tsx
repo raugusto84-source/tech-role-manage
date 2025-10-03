@@ -69,9 +69,15 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
     payment_year: new Date().getFullYear(),
     account_type: 'no_fiscal' as 'fiscal' | 'no_fiscal',
     payment_method: '',
-    due_date: '',
+    due_date: new Date(new Date().getFullYear(), new Date().getMonth(), 5).toISOString().split('T')[0],
     invoice_number: '',
   });
+
+  // Update due_date whenever month or year changes
+  useEffect(() => {
+    const dueDate = new Date(formData.payment_year, formData.payment_month - 1, 5).toISOString().split('T')[0];
+    setFormData(prev => ({ ...prev, due_date: dueDate }));
+  }, [formData.payment_month, formData.payment_year]);
 
   const months = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -231,13 +237,15 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
   };
 
   const resetForm = () => {
+    const currentMonth = new Date().getMonth() + 1;
+    const currentYear = new Date().getFullYear();
     setFormData({
       policy_client_id: '',
-      payment_month: new Date().getMonth() + 1,
-      payment_year: new Date().getFullYear(),
+      payment_month: currentMonth,
+      payment_year: currentYear,
       account_type: 'no_fiscal',
       payment_method: '',
-      due_date: '',
+      due_date: new Date(currentYear, currentMonth - 1, 5).toISOString().split('T')[0],
       invoice_number: '',
     });
   };
@@ -357,12 +365,13 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="due_date">Fecha de Vencimiento *</Label>
+                <Label htmlFor="due_date">Fecha de Vencimiento (Día 5)</Label>
                 <Input
                   type="date"
                   value={formData.due_date}
-                  onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                  required
+                  readOnly
+                  className="bg-muted cursor-not-allowed"
+                  title="La fecha de vencimiento siempre es el día 5 del mes seleccionado"
                 />
               </div>
 
