@@ -66,10 +66,11 @@ export default function Finance() {
     if (!linkCanonical.parentElement) document.head.appendChild(linkCanonical);
   }, []);
 
-  // Filtros compartidos
-  const [startDate, setStartDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().substring(0, 10));
-  const [endDate, setEndDate] = useState<string>(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().substring(0, 10));
+  // Filtros compartidos - desactivados por defecto
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [accountType, setAccountType] = useState<string>("all"); // all | fiscal | no_fiscal
+  const [filtersEnabled, setFiltersEnabled] = useState<boolean>(false);
 
   // Estado para retiros
   const [selectedWithdrawals, setSelectedWithdrawals] = useState<string[]>([]);
@@ -96,17 +97,49 @@ export default function Finance() {
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().substring(0, 10);
     setStartDate(firstDay);
     setEndDate(lastDay);
+    setFiltersEnabled(true);
+  };
+  
+  const clearFilters = () => {
+    setStartDate("");
+    setEndDate("");
+    setFiltersEnabled(false);
   };
 
-  // Queries
+  // Queries para balances generales (sin filtros)
+  const generalIncomesQuery = useQuery({
+    queryKey: ["general_incomes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("incomes")
+        .select("amount,account_type")
+        .eq("status", "recibido")
+        .neq("category", "referencia");
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  const generalExpensesQuery = useQuery({
+    queryKey: ["general_expenses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("amount,account_type");
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  // Queries con filtros
   const incomesQuery = useQuery({
-    queryKey: ["incomes", startDate, endDate, accountType],
+    queryKey: ["incomes", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
       let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,created_at").order("income_date", {
         ascending: false
       });
-      if (startDate) q = q.gte("income_date", startDate);
-      if (endDate) q = q.lte("income_date", endDate);
+      if (filtersEnabled && startDate) q = q.gte("income_date", startDate);
+      if (filtersEnabled && endDate) q = q.lte("income_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
       // Mostrar solo ingresos cobrados, no los pendientes de cobranza
       q = q.eq("status", "recibido");
@@ -151,13 +184,13 @@ export default function Finance() {
     }
   });
   const expensesQuery = useQuery({
-    queryKey: ["expenses", startDate, endDate, accountType],
+    queryKey: ["expenses", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
       let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,created_at").order("expense_date", {
         ascending: false
       });
-      if (startDate) q = q.gte("expense_date", startDate);
-      if (endDate) q = q.lte("expense_date", endDate);
+      if (filtersEnabled && startDate) q = q.gte("expense_date", startDate);
+      if (filtersEnabled && endDate) q = q.lte("expense_date", endDate);
       if (accountType !== "all") q = q.eq("account_type", accountType as any);
       const {
         data,
@@ -404,6 +437,19 @@ export default function Finance() {
       return data ?? [];
     }
   });
+  // Balances generales (sin filtro)
+  const generalData = useMemo(() => {
+    const generalIncomes = generalIncomesQuery.data ?? [];
+    const generalExpenses = generalExpensesQuery.data ?? [];
+    
+    const genIF = generalIncomes.filter(r => r.account_type === 'fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const genINF = generalIncomes.filter(r => r.account_type === 'no_fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const genEF = generalExpenses.filter(r => r.account_type === 'fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const genENF = generalExpenses.filter(r => r.account_type === 'no_fiscal').reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    
+    return { genIF, genINF, genEF, genENF };
+  }, [generalIncomesQuery.data, generalExpensesQuery.data]);
+
   const incomesTotal = useMemo(() => incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [incomesQuery.data]);
   const expensesTotal = useMemo(() => expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [expensesQuery.data]);
 
@@ -1532,25 +1578,124 @@ export default function Finance() {
         <p className="text-muted-foreground mt-2">Panel administrativo para gestionar finanzas con filtros por fecha y tipo de cuenta.</p>
       </header>
 
+      {/* Resumen General - Sin Filtros */}
+      <section className="mb-8">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">Balance General (Total Acumulado)</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="border-l-4 border-l-orange-500">
+            <CardHeader className="bg-orange-50/50 dark:bg-orange-950/20">
+              <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                Cuenta Fiscal - Total
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Ingresos</div>
+                  <div className="font-semibold text-orange-700 dark:text-orange-300">{generalData.genIF.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Egresos</div>
+                  <div className="font-semibold text-orange-700 dark:text-orange-300">{generalData.genEF.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Balance</div>
+                  <div className="font-semibold text-orange-700 dark:text-orange-300">{(generalData.genIF - generalData.genEF).toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader className="bg-blue-50/50 dark:bg-blue-950/20">
+              <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                Cuenta No Fiscal - Total
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Ingresos</div>
+                  <div className="font-semibold text-blue-700 dark:text-blue-300">{generalData.genINF.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Egresos</div>
+                  <div className="font-semibold text-blue-700 dark:text-blue-300">{generalData.genENF.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Balance</div>
+                  <div className="font-semibold text-blue-700 dark:text-blue-300">{(generalData.genINF - generalData.genENF).toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Filtros de Fecha */}
       <section className="mb-6">
-        <div className="grid gap-3 md:grid-cols-3 mb-4">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">Filtros {filtersEnabled && <span className="text-sm font-normal text-muted-foreground">(Activos)</span>}</h2>
+        <div className="grid gap-3 md:grid-cols-4 mb-4">
           <div>
             <label className="text-sm text-muted-foreground">Desde</label>
-            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <Input 
+              type="date" 
+              value={startDate} 
+              onChange={e => {
+                setStartDate(e.target.value);
+                if (e.target.value) setFiltersEnabled(true);
+              }} 
+            />
           </div>
           <div>
             <label className="text-sm text-muted-foreground">Hasta</label>
-            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <Input 
+              type="date" 
+              value={endDate} 
+              onChange={e => {
+                setEndDate(e.target.value);
+                if (e.target.value) setFiltersEnabled(true);
+              }} 
+            />
           </div>
           <div className="flex items-end">
             <Button onClick={setCurrentMonth} variant="outline" className="w-full">
               Mes Actual
             </Button>
           </div>
+          <div className="flex items-end">
+            <Button onClick={clearFilters} variant="outline" className="w-full">
+              Limpiar Filtros
+            </Button>
+          </div>
         </div>
       </section>
 
-      <section className="mb-6 grid gap-4 md:grid-cols-2">
+      {/* Resumen Filtrado */}
+      {filtersEnabled && (
+        <section className="mb-6">
+          <h2 className="text-xl font-semibold mb-4 text-foreground">Balance del Período Filtrado</h2>
+          <div className="grid gap-4 md:grid-cols-2">
         <Card className="border-l-4 border-l-orange-500">
           <CardHeader className="bg-orange-50/50 dark:bg-orange-950/20">
             <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
@@ -1618,7 +1763,9 @@ export default function Finance() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </section>
+      )}
 
       <Tabs defaultValue="incomes">
         <TabsList className="bg-lime-400 rounded-none">
