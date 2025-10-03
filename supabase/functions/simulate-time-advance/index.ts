@@ -239,7 +239,8 @@ serve(async (req) => {
               continue; // Skip if payment already exists
             }
             
-            // Create policy payment
+            // Create policy payment with due date on the 5th of the month
+            const paymentDueDate = new Date(currentYear, currentMonth - 1, 5).toISOString().split('T')[0];
             const { error: paymentError } = await supabaseClient
               .from('policy_payments')
               .insert({
@@ -248,7 +249,7 @@ serve(async (req) => {
                 payment_year: currentYear,
                 amount: policy.monthly_fee,
                 account_type: 'no_fiscal',
-                due_date: simulatedDate.toISOString().split('T')[0],
+                due_date: paymentDueDate,
                 is_paid: false,
                 payment_status: 'pendiente'
               });
