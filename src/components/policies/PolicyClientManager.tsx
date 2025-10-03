@@ -335,7 +335,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       // Get the policy_client assignment
       const { data: policyClientData } = await supabase
         .from('policy_clients')
-        .select('id')
+        .select('id, next_billing_run')
         .eq('policy_id', policyId)
         .eq('client_id', clientId)
         .eq('is_active', true)
@@ -408,7 +408,67 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         paymentDate.setMonth(paymentDate.getMonth() + 1);
       }
 
-      // Always ensure at least one payment is created (current month)
+      // Check if next_billing_run has already arrived or passed
+      const nextBillingDate = new Date(policyClientData.next_billing_run);
+      const todayNormalized = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const nextBillingNormalized = new Date(nextBillingDate.getFullYear(), nextBillingDate.getMonth(), nextBillingDate.getDate());
+
+      if (nextBillingNormalized <= todayNormalized) {
+        // The next billing date has arrived/passed, generate that payment too
+        const nextMonth = nextBillingDate.getMonth() + 1;
+        const nextYear = nextBillingDate.getFullYear();
+        const nextDueDate = new Date(nextYear, nextMonth - 1, 1).toISOString().split('T')[0];
+
+        // Check if payment already exists
+        const { data: existingNextPayment } = await supabase
+          .from('policy_payments')
+          .select('id')
+          .eq('policy_client_id', policyClientData.id)
+          .eq('payment_month', nextMonth)
+          .eq('payment_year', nextYear)
+          .maybeSingle();
+
+        if (!existingNextPayment) {
+          paymentsToCreate.push({
+            policy_client_id: policyClientData.id,
+            payment_month: nextMonth,
+            payment_year: nextYear,
+            amount: policyData.monthly_fee,
+            account_type: 'no_fiscal',
+            due_date: nextDueDate,
+            is_paid: false,
+            payment_status: 'pendiente'
+          });
+
+          notificationsToCreate.push({
+            policy_client_id: policyClientData.id,
+            client_name: clientData.name,
+            client_email: clientData.email,
+            policy_name: policyData.policy_name,
+            amount: policyData.monthly_fee,
+            due_date: nextDueDate,
+            collection_type: 'policy_payment',
+            status: 'pending',
+            created_by: user?.id,
+            order_id: null,
+            order_number: null,
+            balance: 0
+          });
+
+          // Update next_billing_run to the following month
+          const newNextBilling = new Date(nextBillingDate);
+          newNextBilling.setMonth(newNextBilling.getMonth() + 1);
+          newNextBilling.setDate(1);
+          newNextBilling.setHours(0, 0, 0, 0);
+
+          await supabase
+            .from('policy_clients')
+            .update({ next_billing_run: newNextBilling.toISOString() })
+            .eq('id', policyClientData.id);
+        }
+      }
+
+      // Always ensure at least one payment is created (current month) if none were generated
       if (paymentsToCreate.length === 0) {
         const todayDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
         
