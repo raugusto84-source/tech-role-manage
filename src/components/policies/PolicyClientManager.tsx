@@ -363,7 +363,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           payment_year: year,
           amount: policyData.monthly_fee,
           account_type: 'no_fiscal',
-          due_date,
+          due_date: dueDate,
           is_paid: false,
           payment_status: 'pendiente',
         });
@@ -373,7 +373,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           client_email: clientData.email,
           policy_name: policyData.policy_name,
           amount: policyData.monthly_fee,
-          due_date,
+          due_date: dueDate,
           collection_type: 'policy_payment',
           status: 'pending',
           created_by: user?.id,
