@@ -327,10 +327,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       }
 
       const today = new Date();
-      const currentMonth = today.getMonth() + 1; // 1..12
-      const currentYear = today.getFullYear();
-      const currentDay = today.getDate();
-
+      const policyStart = new Date(startDate);
+      
       // Fetch existing payments to prevent duplicates
       const { data: existing } = await supabase
         .from('policy_payments')
@@ -342,56 +340,29 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       const paymentsToCreate: any[] = [];
       const notificationsToCreate: any[] = [];
 
-      // 1. Generar cobro del mes actual (siempre)
-      const currentKey = `${currentYear}-${currentMonth}`;
-      if (!existingSet.has(currentKey)) {
-        const currentDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
-        paymentsToCreate.push({
-          policy_client_id: policyClientData.id,
-          payment_month: currentMonth,
-          payment_year: currentYear,
-          amount: policyData.monthly_fee,
-          account_type: 'no_fiscal',
-          due_date: currentDueDate,
-          is_paid: false,
-          payment_status: 'pendiente',
-        });
-        notificationsToCreate.push({
-          policy_client_id: policyClientData.id,
-          client_name: clientData.name,
-          client_email: clientData.email,
-          policy_name: policyData.policy_name,
-          amount: policyData.monthly_fee,
-          due_date: currentDueDate,
-          collection_type: 'policy_payment',
-          status: 'pending',
-          created_by: user?.id,
-          order_id: null,
-          order_number: null,
-          balance: 0,
-        });
-      }
+      // Start from policy start month
+      let iterMonth = policyStart.getMonth() + 1;
+      let iterYear = policyStart.getFullYear();
 
-      // 2. Si ya pasó el día 1 del mes siguiente, generar también ese cobro
-      if (currentDay >= 1) {
-        // Calcular siguiente mes
-        let nextMonth = currentMonth + 1;
-        let nextYear = currentYear;
-        if (nextMonth > 12) {
-          nextMonth = 1;
-          nextYear = nextYear + 1;
+      // Generate payments for each month where day 1 has passed
+      while (true) {
+        const firstOfMonth = new Date(iterYear, iterMonth - 1, 1);
+        
+        // Stop if this month's 1st hasn't arrived yet
+        if (firstOfMonth > today) {
+          break;
         }
 
-        const nextKey = `${nextYear}-${nextMonth}`;
-        if (!existingSet.has(nextKey)) {
-          const nextDueDate = new Date(nextYear, nextMonth - 1, 1).toISOString().split('T')[0];
+        const monthKey = `${iterYear}-${iterMonth}`;
+        if (!existingSet.has(monthKey)) {
+          const dueDate = new Date(iterYear, iterMonth - 1, 1).toISOString().split('T')[0];
           paymentsToCreate.push({
             policy_client_id: policyClientData.id,
-            payment_month: nextMonth,
-            payment_year: nextYear,
+            payment_month: iterMonth,
+            payment_year: iterYear,
             amount: policyData.monthly_fee,
             account_type: 'no_fiscal',
-            due_date: nextDueDate,
+            due_date: dueDate,
             is_paid: false,
             payment_status: 'pendiente',
           });
@@ -401,7 +372,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
             client_email: clientData.email,
             policy_name: policyData.policy_name,
             amount: policyData.monthly_fee,
-            due_date: nextDueDate,
+            due_date: dueDate,
             collection_type: 'policy_payment',
             status: 'pending',
             created_by: user?.id,
@@ -409,6 +380,13 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
             order_number: null,
             balance: 0,
           });
+        }
+
+        // Move to next month
+        iterMonth++;
+        if (iterMonth > 12) {
+          iterMonth = 1;
+          iterYear++;
         }
       }
 

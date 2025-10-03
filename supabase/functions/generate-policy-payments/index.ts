@@ -97,80 +97,44 @@ Deno.serve(async (req) => {
         // Array to store payments to create
         const paymentsToCreate: any[] = [];
 
-        // 1. Always create payment for current month
-        const currentDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
-        
-        const { data: existingCurrent } = await supabase
-          .from('policy_payments')
-          .select('id')
-          .eq('policy_client_id', policyClient.id)
-          .eq('payment_month', currentMonth)
-          .eq('payment_year', currentYear)
-          .maybeSingle();
+        // Get policy start date
+        const policyStart = new Date(policyClient.start_date);
+        let iterMonth = policyStart.getMonth() + 1;
+        let iterYear = policyStart.getFullYear();
 
-        if (!existingCurrent) {
-          paymentsToCreate.push({
-            policy_client_id: policyClient.id,
-            payment_month: currentMonth,
-            payment_year: currentYear,
-            amount: monthlyFee,
-            account_type: 'no_fiscal',
-            due_date: currentDueDate,
-            is_paid: false,
-            payment_status: 'pendiente',
-          });
+        // Generate payments for each month where day 1 has passed since policy start
+        while (true) {
+          const firstOfMonth = new Date(iterYear, iterMonth - 1, 1);
           
-          // Create pending collection notification for current month
-          if (clientEmail) {
-            await supabase.from('pending_collections').insert({
-              policy_client_id: policyClient.id,
-              client_name: clientName,
-              client_email: clientEmail,
-              policy_name: policyName,
-              amount: monthlyFee,
-              due_date: currentDueDate,
-              collection_type: 'policy_payment',
-              status: 'pending',
-              order_id: null,
-              order_number: null,
-              balance: 0
-            });
-          }
-        }
-
-        // 2. If we're on day 1 or later, also create next month's payment
-        const currentDay = today.getDate();
-        if (currentDay >= 1) {
-          let nextMonth = currentMonth + 1;
-          let nextYear = currentYear;
-          if (nextMonth > 12) {
-            nextMonth = 1;
-            nextYear++;
+          // Stop if this month's 1st hasn't arrived yet
+          if (firstOfMonth > today) {
+            break;
           }
 
-          const nextDueDate = new Date(nextYear, nextMonth - 1, 1).toISOString().split('T')[0];
+          const dueDate = new Date(iterYear, iterMonth - 1, 1).toISOString().split('T')[0];
           
-          const { data: existingNext } = await supabase
+          // Check if payment already exists
+          const { data: existing } = await supabase
             .from('policy_payments')
             .select('id')
             .eq('policy_client_id', policyClient.id)
-            .eq('payment_month', nextMonth)
-            .eq('payment_year', nextYear)
+            .eq('payment_month', iterMonth)
+            .eq('payment_year', iterYear)
             .maybeSingle();
 
-          if (!existingNext) {
+          if (!existing) {
             paymentsToCreate.push({
               policy_client_id: policyClient.id,
-              payment_month: nextMonth,
-              payment_year: nextYear,
+              payment_month: iterMonth,
+              payment_year: iterYear,
               amount: monthlyFee,
               account_type: 'no_fiscal',
-              due_date: nextDueDate,
+              due_date: dueDate,
               is_paid: false,
               payment_status: 'pendiente',
             });
-
-            // Create pending collection notification for next month
+            
+            // Create pending collection notification
             if (clientEmail) {
               await supabase.from('pending_collections').insert({
                 policy_client_id: policyClient.id,
@@ -178,7 +142,7 @@ Deno.serve(async (req) => {
                 client_email: clientEmail,
                 policy_name: policyName,
                 amount: monthlyFee,
-                due_date: nextDueDate,
+                due_date: dueDate,
                 collection_type: 'policy_payment',
                 status: 'pending',
                 order_id: null,
@@ -186,6 +150,13 @@ Deno.serve(async (req) => {
                 balance: 0
               });
             }
+          }
+
+          // Move to next month
+          iterMonth++;
+          if (iterMonth > 12) {
+            iterMonth = 1;
+            iterYear++;
           }
         }
 
