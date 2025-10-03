@@ -355,7 +355,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
         const monthKey = `${iterYear}-${iterMonth}`;
         if (!existingSet.has(monthKey)) {
-          const dueDate = new Date(iterYear, iterMonth - 1, 1).toISOString().split('T')[0];
+          const dueDate = new Date(iterYear, iterMonth - 1, 5).toISOString().split('T')[0];
           paymentsToCreate.push({
             policy_client_id: policyClientData.id,
             payment_month: iterMonth,

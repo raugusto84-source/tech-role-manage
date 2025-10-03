@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
             break;
           }
 
-          const dueDate = new Date(iterYear, iterMonth - 1, 1).toISOString().split('T')[0];
+          const dueDate = new Date(iterYear, iterMonth - 1, 5).toISOString().split('T')[0];
           
           // Check if payment already exists
           const { data: existing } = await supabase
