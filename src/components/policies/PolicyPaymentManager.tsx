@@ -85,7 +85,18 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
   ];
 
   useEffect(() => {
-    loadData();
+    const init = async () => {
+      // Generate missing payments for all policy clients first
+      try {
+        await supabase.functions.invoke('generate-policy-payments', { 
+          body: { generate_immediate: true } 
+        });
+      } catch (e) {
+        console.warn('Payment generation failed:', e);
+      }
+      await loadData();
+    };
+    init();
   }, []);
 
   const loadData = async () => {

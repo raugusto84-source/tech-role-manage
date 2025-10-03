@@ -62,12 +62,22 @@ export function PolicyPaymentsPending() {
 
   useEffect(() => {
     const init = async () => {
-      // Normalize due dates to day 5
+      // First, generate any missing payments for all active policy clients
+      try {
+        await supabase.functions.invoke('generate-policy-payments', { 
+          body: { generate_immediate: true } 
+        });
+      } catch (e) {
+        console.warn('Payment generation function failed or unavailable:', e);
+      }
+      
+      // Then normalize due dates to day 5
       try {
         await supabase.functions.invoke('normalize-policy-payment-due-dates', { body: { dry_run: false } });
       } catch (e) {
         console.warn('Normalization function failed or unavailable:', e);
       }
+      
       await loadPendingPayments();
 
       // Real-time subscription
