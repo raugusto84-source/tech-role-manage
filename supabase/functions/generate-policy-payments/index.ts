@@ -88,91 +88,150 @@ Deno.serve(async (req) => {
 
     for (const policyClient of policyClients || []) {
       try {
-        // Create payment for current period
-        const paymentMonth = currentMonth;
-        const paymentYear = currentYear;
+        const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
+        const clientEmail = (policyClient.clients as any)?.[0]?.email || (policyClient.clients as any)?.email;
+        const policyName = (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name;
+        const monthlyFee = (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0;
 
-        const due_date = new Date().toISOString().split('T')[0];
+        // Array to store payments to create
+        const paymentsToCreate: any[] = [];
+
+        // 1. Always create payment for current month
+        const currentDueDate = new Date(currentYear, currentMonth - 1, 1).toISOString().split('T')[0];
         
-        // Check if payment for this billing run already exists (prevent duplicates)
-        const { data: existingPayment, error: checkError } = await supabase
+        const { data: existingCurrent } = await supabase
           .from('policy_payments')
           .select('id')
           .eq('policy_client_id', policyClient.id)
-          .eq('payment_month', paymentMonth)
-          .eq('payment_year', paymentYear)
+          .eq('payment_month', currentMonth)
+          .eq('payment_year', currentYear)
           .maybeSingle();
 
-        if (checkError && checkError.code !== 'PGRST116') {
-          console.error(`Error checking existing payment for policy client ${policyClient.id}:`, checkError);
-          details.push({
+        if (!existingCurrent) {
+          paymentsToCreate.push({
             policy_client_id: policyClient.id,
-            client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
-            status: 'error',
-            message: `Check error: ${checkError.message}`
-          });
-          continue;
-        }
-
-        if (existingPayment) {
-          const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
-          console.log(`Payment already exists for ${clientName} for ${paymentMonth}/${paymentYear}`);
-          skipped++;
-          details.push({
-            policy_client_id: policyClient.id,
-            client_name: clientName,
-            status: 'skipped',
-            message: `Payment for ${paymentMonth}/${paymentYear} already exists`
-          });
-          continue;
-        }
-
-        // Create new payment
-        const { error: insertError } = await supabase
-          .from('policy_payments')
-          .insert({
-            policy_client_id: policyClient.id,
-            payment_month: paymentMonth,
-            payment_year: paymentYear,
-            amount: (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0,
+            payment_month: currentMonth,
+            payment_year: currentYear,
+            amount: monthlyFee,
             account_type: 'no_fiscal',
-            due_date: due_date,
+            due_date: currentDueDate,
             is_paid: false,
             payment_status: 'pendiente',
           });
-
-        if (insertError) {
-          console.error(`Error creating payment for policy client ${policyClient.id}:`, insertError);
-          details.push({
-            policy_client_id: policyClient.id,
-            client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
-            status: 'error',
-            message: insertError.message
-          });
-          continue;
-        }
-
-        // Create pending collection notification
-        const clientEmail = (policyClient.clients as any)?.[0]?.email || (policyClient.clients as any)?.email;
-        if (clientEmail) {
-          await supabase
-            .from('pending_collections')
-            .insert({
+          
+          // Create pending collection notification for current month
+          if (clientEmail) {
+            await supabase.from('pending_collections').insert({
               policy_client_id: policyClient.id,
-              client_name: (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name,
+              client_name: clientName,
               client_email: clientEmail,
-              policy_name: (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name,
-              amount: (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee || 0,
-              due_date: due_date,
+              policy_name: policyName,
+              amount: monthlyFee,
+              due_date: currentDueDate,
               collection_type: 'policy_payment',
               status: 'pending',
               order_id: null,
               order_number: null,
               balance: 0
             });
+          }
         }
 
-        // Advance next billing run - always to 1st of next month
+        // 2. If we're on day 1 or later, also create next month's payment
+        const currentDay = today.getUTCDate();
+        if (currentDay >= 1) {
+          let nextMonth = currentMonth + 1;
+          let nextYear = currentYear;
+          if (nextMonth > 12) {
+            nextMonth = 1;
+            nextYear++;
+          }
+
+          const nextDueDate = new Date(nextYear, nextMonth - 1, 1).toISOString().split('T')[0];
+          
+          const { data: existingNext } = await supabase
+            .from('policy_payments')
+            .select('id')
+            .eq('policy_client_id', policyClient.id)
+            .eq('payment_month', nextMonth)
+            .eq('payment_year', nextYear)
+            .maybeSingle();
+
+          if (!existingNext) {
+            paymentsToCreate.push({
+              policy_client_id: policyClient.id,
+              payment_month: nextMonth,
+              payment_year: nextYear,
+              amount: monthlyFee,
+              account_type: 'no_fiscal',
+              due_date: nextDueDate,
+              is_paid: false,
+              payment_status: 'pendiente',
+            });
+
+            // Create pending collection notification for next month
+            if (clientEmail) {
+              await supabase.from('pending_collections').insert({
+                policy_client_id: policyClient.id,
+                client_name: clientName,
+                client_email: clientEmail,
+                policy_name: policyName,
+                amount: monthlyFee,
+                due_date: nextDueDate,
+                collection_type: 'policy_payment',
+                status: 'pending',
+                order_id: null,
+                order_number: null,
+                balance: 0
+              });
+            }
+          }
+        }
+
+        // Insert all payments for this policy client
+        if (paymentsToCreate.length > 0) {
+          const { error: insertError } = await supabase
+            .from('policy_payments')
+            .insert(paymentsToCreate);
+
+          if (insertError) {
+            console.error(`Error creating payments for policy client ${policyClient.id}:`, insertError);
+            details.push({
+              policy_client_id: policyClient.id,
+              client_name: clientName,
+              status: 'error',
+              message: insertError.message
+            });
+            continue;
+          }
+
+          console.log(`Created ${paymentsToCreate.length} payment(s) for ${clientName}`);
+          created += paymentsToCreate.length;
+          
+          paymentsToCreate.forEach(payment => {
+            details.push({
+              policy_client_id: policyClient.id,
+              client_name: clientName,
+              policy_name: policyName,
+              status: 'created',
+              month: payment.payment_month,
+              year: payment.payment_year,
+              amount: monthlyFee,
+              due_date: payment.due_date
+            });
+          });
+        } else {
+          console.log(`No new payments needed for ${clientName}`);
+          skipped++;
+          details.push({
+            policy_client_id: policyClient.id,
+            client_name: clientName,
+            status: 'skipped',
+            message: 'Payments already exist'
+          });
+        }
+
+        // Update next billing run - always to 1st of next month
         const nextBilling = new Date();
         nextBilling.setMonth(nextBilling.getMonth() + 1);
         nextBilling.setDate(1);
@@ -182,24 +241,6 @@ Deno.serve(async (req) => {
           .from('policy_clients')
           .update({ next_billing_run: nextBilling.toISOString() })
           .eq('id', policyClient.id);
-
-        const clientName = (policyClient.clients as any)?.[0]?.name || (policyClient.clients as any)?.name;
-        const policyName = (policyClient.insurance_policies as any)?.[0]?.policy_name || (policyClient.insurance_policies as any)?.policy_name;
-        const monthlyFee = (policyClient.insurance_policies as any)?.[0]?.monthly_fee || (policyClient.insurance_policies as any)?.monthly_fee;
-        
-        console.log(`Created payment for ${clientName} - ${paymentMonth}/${paymentYear}`);
-        created++;
-        details.push({
-          policy_client_id: policyClient.id,
-          client_name: clientName,
-          policy_name: policyName,
-          status: 'created',
-          month: paymentMonth,
-          year: paymentYear,
-          amount: monthlyFee,
-          due_date: due_date,
-          next_billing_run: nextBilling.toISOString()
-        });
 
       } catch (error: any) {
         console.error(`Unexpected error processing policy client ${policyClient.id}:`, error);
