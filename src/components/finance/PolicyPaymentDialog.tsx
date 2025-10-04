@@ -11,9 +11,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatCOPCeilToTen, formatMXNExact } from '@/utils/currency';
-import { DollarSign, Calculator, CalendarIcon } from 'lucide-react';
+import { DollarSign, Calculator, CalendarIcon, User, Calendar as CalendarDaysIcon } from 'lucide-react';
 import { getCurrentDateTimeMexico } from '@/utils/dateUtils';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
 interface PolicyPaymentDialogProps {
@@ -22,6 +23,7 @@ interface PolicyPaymentDialogProps {
   payment: {
     id: string;
     amount: number;
+    due_date: string;
     policy_clients: {
       clients: {
         name: string;
@@ -203,6 +205,22 @@ export function PolicyPaymentDialog({
             Cobrar Póliza {payment.policy_clients.insurance_policies.policy_number}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Información del cliente y mes */}
+        <div className="space-y-2 p-3 bg-muted/50 rounded-lg border">
+          <div className="flex items-center gap-2 text-sm">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Cliente:</span>
+            <span>{payment.policy_clients.clients.name}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <CalendarDaysIcon className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Mes de cobro:</span>
+            <span className="capitalize">
+              {format(new Date(payment.due_date), "MMMM yyyy", { locale: es })}
+            </span>
+          </div>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
