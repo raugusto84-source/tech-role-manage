@@ -6,11 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { formatCOPCeilToTen, formatMXNExact } from '@/utils/currency';
-import { DollarSign, Calculator } from 'lucide-react';
+import { DollarSign, Calculator, CalendarIcon } from 'lucide-react';
 import { getCurrentDateTimeMexico } from '@/utils/dateUtils';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface PolicyPaymentDialogProps {
   open: boolean;
@@ -44,6 +48,7 @@ export function PolicyPaymentDialog({
   const [paymentMethod, setPaymentMethod] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [hasISRWithholding, setHasISRWithholding] = useState(false);
+  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,13 +117,16 @@ export function PolicyPaymentDialog({
       
       // Generar número de ingreso
       const incomeNumber = `ING-${Date.now()}`;
+      
+      // Formatear la fecha seleccionada para income_date (YYYY-MM-DD HH:mm:ss)
+      const formattedIncomeDate = format(paymentDate, "yyyy-MM-dd HH:mm:ss");
 
       // Registrar ingreso
       const { data: incomeInsert, error: incomeError } = await supabase
         .from('incomes')
         .insert({
           income_number: incomeNumber,
-          income_date: getCurrentDateTimeMexico(),
+          income_date: formattedIncomeDate,
           amount: finalPaymentAmount,
           account_type: accountType,
           category: 'cobranza',
@@ -147,7 +155,7 @@ export function PolicyPaymentDialog({
         .update({
           is_paid: true,
           payment_status: 'pagado',
-          payment_date: new Date().toISOString().split('T')[0],
+          payment_date: format(paymentDate, 'yyyy-MM-dd'),
           account_type: accountType,
           payment_method: paymentMethod,
           ...(accountType === 'fiscal' && invoiceNumber.trim() && { invoice_number: invoiceNumber.trim() })
@@ -172,6 +180,7 @@ export function PolicyPaymentDialog({
       setPaymentMethod('');
       setInvoiceNumber('');
       setHasISRWithholding(false);
+      setPaymentDate(new Date());
 
     } catch (error) {
       console.error('Error registering payment:', error);
@@ -230,6 +239,33 @@ export function PolicyPaymentDialog({
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fecha de cobro</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !paymentDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {paymentDate ? format(paymentDate, "PPP") : <span>Selecciona fecha</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={paymentDate}
+                  onSelect={(date) => date && setPaymentDate(date)}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-3">
