@@ -425,9 +425,34 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   };
 
   const handleRemoveAssignment = async (assignmentId: string) => {
-    if (!confirm('¿Estás seguro de que quieres remover esta asignación?')) return;
+    if (!confirm('¿Estás seguro de que quieres remover esta asignación? Esto también eliminará los pagos pendientes asociados.')) return;
 
     try {
+      // First, delete pending policy payments for this assignment
+      const { error: paymentsError } = await supabase
+        .from('policy_payments')
+        .delete()
+        .eq('policy_client_id', assignmentId)
+        .eq('is_paid', false);
+
+      if (paymentsError) {
+        console.error('Error deleting pending payments:', paymentsError);
+        throw paymentsError;
+      }
+
+      // Also delete pending collections notifications for this assignment
+      const { error: collectionsError } = await supabase
+        .from('pending_collections')
+        .delete()
+        .eq('policy_client_id', assignmentId)
+        .eq('status', 'pending');
+
+      if (collectionsError) {
+        console.error('Error deleting pending collections:', collectionsError);
+        // Don't throw, continue with assignment removal
+      }
+
+      // Finally, deactivate the assignment
       const { error } = await supabase
         .from('policy_clients')
         .update({ is_active: false })
@@ -437,7 +462,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
 
       toast({
         title: "Éxito",
-        description: "Asignación removida correctamente",
+        description: "Asignación y pagos pendientes removidos correctamente",
       });
 
       loadData();
