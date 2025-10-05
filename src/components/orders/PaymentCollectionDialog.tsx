@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { formatCOPCeilToTen, ceilToTen, formatMXNExact } from '@/utils/currency';
+import { formatMXNExact } from '@/utils/currency';
 import { DollarSign, Calculator } from 'lucide-react';
 import { getCurrentDateTimeMexico } from '@/utils/dateUtils';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
@@ -32,9 +32,8 @@ export function PaymentCollectionDialog({
   order,
   totalAmount
 }: PaymentCollectionDialogProps) {
-  // Use same rounding logic as OrderCard for consistency
-  const roundedTotalAmount = ceilToTen(totalAmount);
-  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, roundedTotalAmount);
+  // Use exact total amount (no rounding) to respect manual item prices
+  const { paymentSummary, loading: paymentsLoading } = useOrderPayments(order.id, totalAmount);
   const [amount, setAmount] = useState('');
   const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal'>('no_fiscal');
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -50,9 +49,9 @@ export function PaymentCollectionDialog({
       
       // Si hay ISR aplicado, recalcular el remaining balance con el monto exacto
       if (accountType === 'fiscal' && hasISRWithholding) {
-        const baseAmount = roundedTotalAmount / 1.16; // Base sin IVA
+        const baseAmount = totalAmount / 1.16; // Base sin IVA
         const isrAmount = baseAmount * 0.0125; // ISR 1.25%
-        const exactFinalAmount = roundedTotalAmount - isrAmount; // Total exacto después de ISR
+        const exactFinalAmount = totalAmount - isrAmount; // Total exacto después de ISR
         remainingAmount = Math.max(0, exactFinalAmount - paymentSummary.totalPaid);
       }
       
@@ -64,7 +63,7 @@ export function PaymentCollectionDialog({
         setAccountType(paymentSummary.existingAccountType);
       }
     }
-  }, [open, order.order_number, paymentSummary.remainingBalance, paymentSummary.totalPaid, paymentSummary.existingAccountType, paymentsLoading, accountType, hasISRWithholding, roundedTotalAmount]);
+  }, [open, order.order_number, paymentSummary.remainingBalance, paymentSummary.totalPaid, paymentSummary.existingAccountType, paymentsLoading, accountType, hasISRWithholding, totalAmount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,9 +114,9 @@ export function PaymentCollectionDialog({
     
     // Si hay ISR aplicado, usar el remaining balance exacto
     if (accountType === 'fiscal' && hasISRWithholding) {
-      const baseAmount = roundedTotalAmount / 1.16; // Base sin IVA
+      const baseAmount = totalAmount / 1.16; // Base sin IVA
       const isrAmount = baseAmount * 0.0125; // ISR 1.25%
-      const exactFinalAmount = roundedTotalAmount - isrAmount; // Total exacto después de ISR
+      const exactFinalAmount = totalAmount - isrAmount; // Total exacto después de ISR
       maxAllowedAmount = Math.max(0, exactFinalAmount - paymentSummary.totalPaid);
     }
     
@@ -125,7 +124,7 @@ export function PaymentCollectionDialog({
       console.log('Validation failed - amount exceeds remaining balance:', paymentAmount, 'vs', maxAllowedAmount);
       toast({
         title: "Error",
-        description: `El monto no puede ser mayor al restante por cobrar: ${hasISRWithholding ? formatMXNExact(maxAllowedAmount) : formatCOPCeilToTen(maxAllowedAmount)}`,
+        description: `El monto no puede ser mayor al restante por cobrar: ${formatMXNExact(maxAllowedAmount)}`,
         variant: "destructive"
       });
       return;
@@ -236,7 +235,7 @@ export function PaymentCollectionDialog({
 
       toast({
         title: "Pago registrado",
-        description: `Se registró el cobro de ${formatCOPCeilToTen(paymentAmount)} para la orden ${order.order_number}${hasISRWithholding ? ' (con retención ISR aplicada)' : ''}`,
+        description: `Se registró el cobro de ${formatMXNExact(paymentAmount)} para la orden ${order.order_number}${hasISRWithholding ? ' (con retención ISR aplicada)' : ''}`,
       });
 
       console.log('Closing dialog and refreshing parent component...');
@@ -283,8 +282,8 @@ export function PaymentCollectionDialog({
             <Label htmlFor="amount">
               Monto a cobrar (Restante: {
                 accountType === 'fiscal' && hasISRWithholding 
-                  ? formatMXNExact(Math.max(0, (roundedTotalAmount - (roundedTotalAmount / 1.16) * 0.0125) - paymentSummary.totalPaid))
-                  : formatCOPCeilToTen(paymentSummary.remainingBalance)
+                  ? formatMXNExact(Math.max(0, (totalAmount - (totalAmount / 1.16) * 0.0125) - paymentSummary.totalPaid))
+                  : formatMXNExact(paymentSummary.remainingBalance)
               })
             </Label>
             <Input
@@ -295,21 +294,21 @@ export function PaymentCollectionDialog({
               onChange={(e) => setAmount(e.target.value)}
               placeholder={
                 accountType === 'fiscal' && hasISRWithholding 
-                  ? (roundedTotalAmount - (roundedTotalAmount / 1.16) * 0.0125 - paymentSummary.totalPaid).toString()
-                  : paymentSummary.remainingBalance.toString()
+                  ? (totalAmount - (totalAmount / 1.16) * 0.0125 - paymentSummary.totalPaid).toFixed(2)
+                  : paymentSummary.remainingBalance.toFixed(2)
               }
               required
               className="text-lg font-semibold"
             />
             <div className="text-sm text-muted-foreground space-y-1">
               {paymentSummary.totalPaid > 0 && (
-                <p>Ya cobrado: {formatCOPCeilToTen(paymentSummary.totalPaid)}</p>
+                <p>Ya cobrado: {formatMXNExact(paymentSummary.totalPaid)}</p>
               )}
               <p className="text-green-600 font-medium">
                 Monto restante por cobrar: {
                   accountType === 'fiscal' && hasISRWithholding 
-                    ? formatMXNExact(Math.max(0, (roundedTotalAmount - (roundedTotalAmount / 1.16) * 0.0125) - paymentSummary.totalPaid))
-                    : formatCOPCeilToTen(paymentSummary.remainingBalance)
+                    ? formatMXNExact(Math.max(0, (totalAmount - (totalAmount / 1.16) * 0.0125) - paymentSummary.totalPaid))
+                    : formatMXNExact(paymentSummary.remainingBalance)
                 }
               </p>
               
@@ -321,11 +320,11 @@ export function PaymentCollectionDialog({
                     Cálculo con retención ISR (1.25%)
                   </div>
                   <div className="text-xs space-y-1">
-                    <p>1. Total con IVA: {formatCOPCeilToTen(roundedTotalAmount)}</p>
-                    <p>2. Base (sin IVA): {formatMXNExact(roundedTotalAmount / 1.16)}</p>
-                    <p>3. ISR sobre la base (1.25%): -{formatMXNExact((roundedTotalAmount / 1.16) * 0.0125)}</p>
+                    <p>1. Total con IVA: {formatMXNExact(totalAmount)}</p>
+                    <p>2. Base (sin IVA): {formatMXNExact(totalAmount / 1.16)}</p>
+                    <p>3. ISR sobre la base (1.25%): -{formatMXNExact((totalAmount / 1.16) * 0.0125)}</p>
                     <p className="font-semibold border-t border-amber-200 pt-1">
-                      Total final exacto (a cobrar): {formatMXNExact(roundedTotalAmount - ((roundedTotalAmount / 1.16) * 0.0125))}
+                      Total final exacto (a cobrar): {formatMXNExact(totalAmount - ((totalAmount / 1.16) * 0.0125))}
                     </p>
                     <p className="text-xs text-amber-700">
                       ⚠️ Con ISR se cobra el monto exacto, sin redondear
