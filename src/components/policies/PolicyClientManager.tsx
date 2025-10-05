@@ -326,8 +326,12 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         return;
       }
 
+      // Use current date normalized to start of day for comparisons
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const policyStart = new Date(startDate);
+      policyStart.setHours(0, 0, 0, 0);
       
       // Fetch existing payments to prevent duplicates
       const { data: existing } = await supabase
@@ -343,12 +347,18 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       // Start from policy start month
       let iterMonth = policyStart.getMonth() + 1;
       let iterYear = policyStart.getFullYear();
+      
+      // Current month and year for comparison
+      const currentMonth = today.getMonth() + 1;
+      const currentYear = today.getFullYear();
 
-      // Generate payments for each month where day 1 has passed
+      // Generate payments from start month through current month (inclusive)
       while (true) {
+        // Create a date for comparison (first of the month)
         const firstOfMonth = new Date(iterYear, iterMonth - 1, 1);
+        firstOfMonth.setHours(0, 0, 0, 0);
         
-        // Stop if this month's 1st hasn't arrived yet
+        // Stop if we've gone past current month
         if (firstOfMonth > today) {
           break;
         }
