@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Edit, Trash2, Plus, Monitor, Hash, Info } from 'lucide-react';
 import { EquipmentForm } from './EquipmentForm';
@@ -17,6 +19,9 @@ interface Equipment {
   physical_condition?: string;
   problem_description?: string;
   additional_notes?: string;
+  serviced_at?: string | null;
+  serviced_by?: string | null;
+  policy_equipment_id?: string | null;
   equipment_categories?: {
     name: string;
     icon?: string;
@@ -28,6 +33,7 @@ interface EquipmentListProps {
   equipment: Equipment[];
   onUpdate: () => void;
   canEdit: boolean;
+  isPolicyOrder?: boolean;
 }
 
 const getConditionColor = (condition?: string) => {
@@ -52,12 +58,47 @@ const getConditionLabel = (condition?: string) => {
   }
 };
 
-export function EquipmentList({ orderId, equipment, onUpdate, canEdit }: EquipmentListProps) {
+export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyOrder = false }: EquipmentListProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+
+  const handleToggleServiced = async (equipmentId: string, currentlyServiced: boolean) => {
+    setLoading(true);
+    try {
+      const updateData = currentlyServiced
+        ? { serviced_at: null, serviced_by: null }
+        : { serviced_at: new Date().toISOString(), serviced_by: user?.id };
+
+      const { error } = await supabase
+        .from('order_equipment')
+        .update(updateData)
+        .eq('id', equipmentId);
+
+      if (error) throw error;
+
+      toast({
+        title: currentlyServiced ? "Marcado como no atendido" : "Marcado como atendido",
+        description: currentlyServiced 
+          ? "El equipo ha sido desmarcado" 
+          : "El equipo ha sido marcado como atendido en esta visita."
+      });
+      
+      onUpdate();
+    } catch (error) {
+      console.error('Error toggling serviced status:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado del equipo",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDelete = async (equipmentId: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este equipo?')) {
@@ -191,6 +232,28 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit }: Equipme
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                {isPolicyOrder && item.policy_equipment_id && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                    <Checkbox
+                      id={`serviced-${item.id}`}
+                      checked={!!item.serviced_at}
+                      onCheckedChange={() => handleToggleServiced(item.id, !!item.serviced_at)}
+                      disabled={loading}
+                    />
+                    <label
+                      htmlFor={`serviced-${item.id}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {item.serviced_at ? '✓ Atendido en esta visita' : 'Marcar como atendido en esta visita'}
+                    </label>
+                    {item.serviced_at && (
+                      <Badge variant="default" className="ml-auto">
+                        Atendido
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {item.brand_name && (
                     <div>

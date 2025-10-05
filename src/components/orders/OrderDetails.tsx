@@ -43,6 +43,7 @@ interface OrderDetailsProps {
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
+    is_policy_order?: boolean;
     service_types?: {
       name: string;
       description?: string;
@@ -546,7 +547,13 @@ export function OrderDetails({
               </button>
               
               {expandedSections.equipment && <div className="mt-3">
-                  <EquipmentList orderId={order.id} equipment={orderEquipment} onUpdate={loadOrderEquipment} canEdit={!isClient && (canModifyOrder || ['en_proceso', 'pendiente', 'pendiente_aprobacion'].includes(orderStatus))} />
+                  <EquipmentList 
+                    orderId={order.id} 
+                    equipment={orderEquipment} 
+                    onUpdate={loadOrderEquipment} 
+                    canEdit={!isClient && (canModifyOrder || ['en_proceso', 'pendiente', 'pendiente_aprobacion'].includes(orderStatus))} 
+                    isPolicyOrder={order.is_policy_order || false}
+                  />
                 </div>}
             </CardContent>
           </Card>

@@ -12,7 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, UserPlus, CalendarIcon } from "lucide-react";
+import { Plus, Trash2, UserPlus, CalendarIcon, Settings } from "lucide-react";
+import { PolicyEquipmentManager } from "./PolicyEquipmentManager";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,8 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
   const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<PolicyClient | null>(null);
   
   const [selectedPolicyId, setSelectedPolicyId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -714,10 +717,22 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                     <TableCell>
                       <div className="flex space-x-2">
                         <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAssignment(assignment);
+                            setEquipmentDialogOpen(true);
+                          }}
+                          title="Gestionar equipos"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                        <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleRemoveAssignment(assignment.id)}
                           disabled={!assignment.is_active}
+                          title="Remover asignación"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -730,6 +745,22 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
           )}
         </CardContent>
       </Card>
+
+      {/* Equipment Management Dialog */}
+      <Dialog open={equipmentDialogOpen} onOpenChange={setEquipmentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gestión de Equipos del Contrato</DialogTitle>
+          </DialogHeader>
+          {selectedAssignment && (
+            <PolicyEquipmentManager
+              policyClientId={selectedAssignment.id}
+              clientName={selectedAssignment.clients.name}
+              policyName={selectedAssignment.insurance_policies.policy_name}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

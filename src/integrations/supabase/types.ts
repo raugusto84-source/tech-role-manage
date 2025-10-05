@@ -2434,8 +2434,11 @@ export type Database = {
           model_name: string | null
           order_id: string
           physical_condition: string | null
+          policy_equipment_id: string | null
           problem_description: string | null
           serial_number: string | null
+          serviced_at: string | null
+          serviced_by: string | null
           updated_at: string
         }
         Insert: {
@@ -2451,8 +2454,11 @@ export type Database = {
           model_name?: string | null
           order_id: string
           physical_condition?: string | null
+          policy_equipment_id?: string | null
           problem_description?: string | null
           serial_number?: string | null
+          serviced_at?: string | null
+          serviced_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -2468,8 +2474,11 @@ export type Database = {
           model_name?: string | null
           order_id?: string
           physical_condition?: string | null
+          policy_equipment_id?: string | null
           problem_description?: string | null
           serial_number?: string | null
+          serviced_at?: string | null
+          serviced_by?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2500,6 +2509,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_equipment_policy_equipment_id_fkey"
+            columns: ["policy_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "policy_equipment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_equipment_serviced_by_fkey"
+            columns: ["serviced_by"]
+            isOneToOne: false
+            referencedRelation: "admin_employee_overview"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "order_equipment_serviced_by_fkey"
+            columns: ["serviced_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -3744,6 +3774,86 @@ export type Database = {
             columns: ["policy_id"]
             isOneToOne: false
             referencedRelation: "insurance_policies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      policy_equipment: {
+        Row: {
+          additional_notes: string | null
+          brand_id: string | null
+          brand_name: string | null
+          category_id: string | null
+          created_at: string
+          equipment_name: string
+          id: string
+          is_active: boolean
+          model_id: string | null
+          model_name: string | null
+          physical_condition: string | null
+          policy_client_id: string
+          serial_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          additional_notes?: string | null
+          brand_id?: string | null
+          brand_name?: string | null
+          category_id?: string | null
+          created_at?: string
+          equipment_name: string
+          id?: string
+          is_active?: boolean
+          model_id?: string | null
+          model_name?: string | null
+          physical_condition?: string | null
+          policy_client_id: string
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          additional_notes?: string | null
+          brand_id?: string | null
+          brand_name?: string | null
+          category_id?: string | null
+          created_at?: string
+          equipment_name?: string
+          id?: string
+          is_active?: boolean
+          model_id?: string | null
+          model_name?: string | null
+          physical_condition?: string | null
+          policy_client_id?: string
+          serial_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "policy_equipment_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_equipment_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_equipment_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "policy_equipment_policy_client_id_fkey"
+            columns: ["policy_client_id"]
+            isOneToOne: false
+            referencedRelation: "policy_clients"
             referencedColumns: ["id"]
           },
         ]

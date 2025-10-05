@@ -274,6 +274,36 @@ async function createInitialOrders(supabaseClient: any, body: any) {
             throw new Error(`Failed to create ${itemErrors.length} order items`);
           }
 
+          // Copy policy equipment to order
+          const { data: policyEquipment, error: equipmentError } = await supabaseClient
+            .from('policy_equipment')
+            .select('*')
+            .eq('policy_client_id', scheduledService.policy_client_id)
+            .eq('is_active', true);
+
+          if (!equipmentError && policyEquipment && policyEquipment.length > 0) {
+            const orderEquipmentPromises = policyEquipment.map((equipment: any) => {
+              return supabaseClient
+                .from('order_equipment')
+                .insert({
+                  order_id: orderData.id,
+                  policy_equipment_id: equipment.id,
+                  category_id: equipment.category_id,
+                  brand_id: equipment.brand_id,
+                  model_id: equipment.model_id,
+                  equipment_name: equipment.equipment_name,
+                  brand_name: equipment.brand_name,
+                  model_name: equipment.model_name,
+                  serial_number: equipment.serial_number,
+                  physical_condition: equipment.physical_condition,
+                  additional_notes: equipment.additional_notes,
+                });
+            });
+
+            await Promise.all(orderEquipmentPromises);
+            console.log(`Copied ${policyEquipment.length} equipment items to order ${orderData.order_number}`);
+          }
+
           ordersCreated++;
           console.log(`Order created: ${orderData.order_number} for scheduled service ${scheduledService.id} on ${serviceDate} with ${scheduledService.services.length} services`);
 
@@ -523,6 +553,36 @@ async function processDueServices(supabaseClient: any) {
       if (itemErrors.length > 0) {
         console.error('Errors creating order items:', itemErrors);
         throw new Error(`Failed to create ${itemErrors.length} order items`);
+      }
+
+      // Copy policy equipment to order
+      const { data: policyEquipment, error: equipmentError } = await supabaseClient
+        .from('policy_equipment')
+        .select('*')
+        .eq('policy_client_id', scheduledService.policy_client_id)
+        .eq('is_active', true);
+
+      if (!equipmentError && policyEquipment && policyEquipment.length > 0) {
+        const orderEquipmentPromises = policyEquipment.map((equipment: any) => {
+          return supabaseClient
+            .from('order_equipment')
+            .insert({
+              order_id: orderData.id,
+              policy_equipment_id: equipment.id,
+              category_id: equipment.category_id,
+              brand_id: equipment.brand_id,
+              model_id: equipment.model_id,
+              equipment_name: equipment.equipment_name,
+              brand_name: equipment.brand_name,
+              model_name: equipment.model_name,
+              serial_number: equipment.serial_number,
+              physical_condition: equipment.physical_condition,
+              additional_notes: equipment.additional_notes,
+            });
+        });
+
+        await Promise.all(orderEquipmentPromises);
+        console.log(`Copied ${policyEquipment.length} equipment items to order ${orderData.order_number}`);
       }
 
       // Advance next_run based on frequency type
