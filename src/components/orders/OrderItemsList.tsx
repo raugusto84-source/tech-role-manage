@@ -395,26 +395,39 @@ export function OrderItemsList({
                      
                      <div>
                        <Label className="text-xs">Precio Unit.</Label>
-                       <Input 
-                         type="number" 
-                         min="0" 
-                         step="0.01"
-                         value={item.unit_price} 
-                         onChange={e => updateItemPrice(item.id, parseFloat(e.target.value) || 0)} 
-                         className="w-24 h-8 mt-1" 
-                       />
+                       {item.service_type_id === 'manual' ? (
+                         <Input 
+                           type="number" 
+                           min="0" 
+                           step="0.01"
+                           value={item.unit_price} 
+                           onChange={e => updateItemPrice(item.id, parseFloat(e.target.value) || 0)} 
+                           className="w-24 h-8 mt-1" 
+                         />
+                       ) : (
+                         <div className="text-muted-foreground mt-1">
+                           {formatCurrency(item.unit_price, false)}
+                         </div>
+                       )}
                      </div>
                      
                      <div>
                        <Label className="text-xs">Tiempo Est.</Label>
-                       <Input 
-                         type="number" 
-                         min="0" 
-                         step="0.5"
-                         value={item.estimated_hours} 
-                         onChange={e => updateItemEstimatedHours(item.id, parseFloat(e.target.value) || 0)} 
-                         className="w-20 h-8 mt-1" 
-                       />
+                       {item.service_type_id === 'manual' ? (
+                         <Input 
+                           type="number" 
+                           min="0" 
+                           step="0.5"
+                           value={item.estimated_hours} 
+                           onChange={e => updateItemEstimatedHours(item.id, parseFloat(e.target.value) || 0)} 
+                           className="w-20 h-8 mt-1" 
+                         />
+                       ) : (
+                         <div className="text-blue-600 mt-1 flex items-center gap-1">
+                           <Clock className="h-3 w-3" />
+                           {formatHours(item.estimated_hours)}
+                         </div>
+                       )}
                      </div>
                      
                      <div>
