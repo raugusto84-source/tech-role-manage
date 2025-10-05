@@ -424,7 +424,7 @@ export function OrderDetails({
                 <div className="text-right text-sm">
                   <div className="text-xs text-muted-foreground mb-1">Total con IVA:</div>
                   <div className="font-bold text-primary">
-                    {itemsLoading ? <Skeleton className="h-4 w-16 rounded" /> : formatCOPCeilToTen(totalAmount)}
+                    {itemsLoading ? <Skeleton className="h-4 w-16 rounded" /> : formatMXNExact(totalAmount)}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {getEstimatedHours()}h est.
@@ -524,7 +524,7 @@ export function OrderDetails({
                         <div className="flex items-center gap-2">
                           <DollarSign className="h-4 w-4 text-primary" />
                             {itemsLoading ? <Skeleton className="h-6 w-24 rounded" /> : <span className="text-lg font-bold text-primary">
-                                 {formatCOPCeilToTen(totalAmount)}
+                                 {formatMXNExact(totalAmount)}
                                </span>}
                         </div>
                       </div>

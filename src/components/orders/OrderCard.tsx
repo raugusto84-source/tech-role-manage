@@ -203,7 +203,7 @@ export function OrderCard({
     paymentSummary,
     loading: paymentsLoading,
     refreshPayments
-  } = useOrderPayments(order.id, ceilToTen(totalAmount));
+  } = useOrderPayments(order.id, totalAmount);
   // Removed orderCashback - cashback system eliminated
 
   const formatDate = (dateString: string) => {
@@ -256,12 +256,12 @@ export function OrderCard({
                 usingEstimated,
                 estimatedCost: order.estimated_cost,
                 totalAmount,
-                formattedEstimated: usingEstimated ? formatCOPCeilToTen(order.estimated_cost!) : 'N/A',
-                formattedTotal: formatMXNInt(totalAmount)
+                formattedEstimated: usingEstimated ? formatMXNExact(order.estimated_cost!) : 'N/A',
+                formattedTotal: formatMXNExact(totalAmount)
               });
               
-              // Siempre mostrar el total original de la orden, sin descontar ISR
-              return formatCOPCeilToTen(totalAmount);
+              // Mostrar total exacto guardado de la orden (sin redondeo adicional)
+              return formatMXNExact(totalAmount);
             })()}
               </div>}
           </div>
@@ -352,7 +352,7 @@ export function OrderCard({
                 setShowPaymentDialog(true);
               }}>
                 <DollarSign className="h-4 w-4 mr-1" />
-                Restante por cobrar: {formatMXNInt(paymentSummary.remainingBalance)}
+                Restante por cobrar: {formatMXNExact(paymentSummary.remainingBalance)}
               </Button>
             )}
             {canDelete && (
