@@ -2330,6 +2330,64 @@ export type Database = {
           },
         ]
       }
+      order_checklist_progress: {
+        Row: {
+          checklist_item_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string | null
+          id: string
+          is_completed: boolean | null
+          notes: string | null
+          order_item_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          checklist_item_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          order_item_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          checklist_item_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          notes?: string | null
+          order_item_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_checklist_progress_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_employee_overview"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "order_checklist_progress_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "order_checklist_progress_order_item_id_fkey"
+            columns: ["order_item_id"]
+            isOneToOne: false
+            referencedRelation: "order_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_diagnostics: {
         Row: {
           answer: string
@@ -5189,6 +5247,8 @@ export type Database = {
         Row: {
           base_price: number | null
           category: string | null
+          checklist_enabled: boolean | null
+          checklist_items: Json | null
           cost_price: number | null
           created_at: string
           created_by: string | null
@@ -5216,6 +5276,8 @@ export type Database = {
         Insert: {
           base_price?: number | null
           category?: string | null
+          checklist_enabled?: boolean | null
+          checklist_items?: Json | null
           cost_price?: number | null
           created_at?: string
           created_by?: string | null
@@ -5243,6 +5305,8 @@ export type Database = {
         Update: {
           base_price?: number | null
           category?: string | null
+          checklist_enabled?: boolean | null
+          checklist_items?: Json | null
           cost_price?: number | null
           created_at?: string
           created_by?: string | null

@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { ChecklistManager } from './ChecklistManager';
 // Removed useRewardSettings import - cashback system eliminated
 
 /** ============================
@@ -90,6 +91,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [dynamicSubcategories, setDynamicSubcategories] = useState(SUBCATEGORY_MAP);
   const [loadingSubcategories, setLoadingSubcategories] = useState(false);
+  const [checklistEnabled, setChecklistEnabled] = useState(false);
+  const [checklistItems, setChecklistItems] = useState<any[]>([]);
 
   const form = useForm<z.infer<typeof serviceSchema>>({
     resolver: zodResolver(serviceSchema),
@@ -148,6 +151,10 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         toast({ title: "Error", description: "No se pudo cargar el servicio.", variant: "destructive" });
         return;
       }
+
+      // Cargar checklist
+      setChecklistEnabled(data.checklist_enabled || false);
+      setChecklistItems((data.checklist_items as any[]) || []);
 
       const hasTiers = Array.isArray(data.profit_margin_tiers) && (data.profit_margin_tiers as any[]).length > 0;
       const rawItemType = (data.item_type as string) || '';
@@ -318,6 +325,8 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
         warranty_duration_days: values.warranty_duration_days,
         warranty_conditions: values.warranty_conditions || 'Sin garantía específica',
         image_url: values.image_url || null,
+        checklist_enabled: checklistEnabled,
+        checklist_items: checklistEnabled ? checklistItems : [],
       };
 
       if (serviceId) {
@@ -1094,6 +1103,14 @@ export function ServiceForm({ serviceId, onSuccess, onCancel }: ServiceFormProps
           )}
 
           {/* Garantía - removed separate component */}
+
+          {/* Checklist Configuration */}
+          <ChecklistManager
+            checklistEnabled={checklistEnabled}
+            checklistItems={checklistItems}
+            onChecklistEnabledChange={setChecklistEnabled}
+            onChecklistItemsChange={setChecklistItems}
+          />
 
           {/* Acciones */}
           <div className="flex justify-end gap-4">

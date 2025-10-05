@@ -22,6 +22,7 @@ import { formatCOPCeilToTen, ceilToTen, formatMXNExact } from '@/utils/currency'
 import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
+import { ServiceChecklist } from './ServiceChecklist';
 interface OrderDetailsProps {
   order: {
     id: string;
@@ -502,6 +503,18 @@ export function OrderDetails({
               
               {expandedSections.services && <div className="mt-3">
                   <OrderServicesList orderItems={orderItems} canEdit={canModifyOrder || ['en_proceso', 'pendiente'].includes(orderStatus)} onItemUpdate={loadOrderItems} showReadyButtons={['en_proceso', 'pendiente'].includes(orderStatus)} orderId={order.id} onBack={onBack} orderStatus={orderStatus} />
+                  
+                  {/* Checklists for each service item */}
+                  {orderItems.map(item => (
+                    <div key={`checklist-${item.id}`} className="mt-4">
+                      <ServiceChecklist
+                        orderItemId={item.id}
+                        serviceTypeId={item.service_type_id}
+                        serviceName={item.service_name}
+                        readonly={isClient && !['administrador', 'tecnico', 'vendedor'].includes(profile?.role || '')}
+                      />
+                    </div>
+                  ))}
                   
                   {/* Total General */}
                   {orderItems.length > 0 && <div className="mt-4 pt-3 border-t border-border">
