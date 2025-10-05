@@ -70,6 +70,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
       services,
       frequency_type,
       frequency_value,
+      day_of_week,
       quantity,
       service_description,
       priority,
@@ -143,6 +144,25 @@ async function createInitialOrders(supabaseClient: any, body: any) {
         while (currentDate <= today) {
           serviceDates.push(currentDate.toISOString().split('T')[0]);
           currentDate.setDate(currentDate.getDate() + 7); // Add 7 days for next week
+        }
+      } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
+        // For weekly interval services with specific day
+        const targetDay = scheduledService.day_of_week || 1; // Default to Monday if not set
+        const weeksInterval = scheduledService.frequency_type === 'cada_1_semana' ? 1 :
+                              scheduledService.frequency_type === 'cada_2_semanas' ? 2 :
+                              scheduledService.frequency_type === 'cada_3_semanas' ? 3 : 4;
+        
+        let currentDate = new Date(startDate);
+        
+        // Find the first occurrence of the target day from start_date
+        while (currentDate.getDay() !== targetDay) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Add all occurrences based on week interval up to today
+        while (currentDate <= today) {
+          serviceDates.push(currentDate.toISOString().split('T')[0]);
+          currentDate.setDate(currentDate.getDate() + (7 * weeksInterval));
         }
       } else if (scheduledService.frequency_type === 'monthly_on_day') {
         // For monthly services, find all monthly occurrences
@@ -277,6 +297,22 @@ async function createInitialOrders(supabaseClient: any, body: any) {
         while (nextRun.getDay() !== targetDay) {
           nextRun.setDate(nextRun.getDate() + 1);
         }
+      } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
+        // For weekly interval services with specific day
+        const targetDay = scheduledService.day_of_week || 1; // Default to Monday if not set
+        const weeksInterval = scheduledService.frequency_type === 'cada_1_semana' ? 1 :
+                              scheduledService.frequency_type === 'cada_2_semanas' ? 2 :
+                              scheduledService.frequency_type === 'cada_3_semanas' ? 3 : 4;
+        
+        // Find next occurrence of the target day
+        while (nextRun.getDay() !== targetDay) {
+          nextRun.setDate(nextRun.getDate() + 1);
+        }
+        
+        // If we're on the target day, move to the next interval
+        if (nextRun.toISOString().split('T')[0] === today.toISOString().split('T')[0]) {
+          nextRun.setDate(nextRun.getDate() + (7 * weeksInterval));
+        }
       } else if (scheduledService.frequency_type === 'monthly_on_day') {
         nextRun.setDate(scheduledService.frequency_value);
         if (nextRun <= today) {
@@ -347,6 +383,7 @@ async function processDueServices(supabaseClient: any) {
       services,
       frequency_type,
       frequency_value,
+      day_of_week,
       next_run,
       quantity,
       service_description,
@@ -503,6 +540,12 @@ async function processDueServices(supabaseClient: any) {
         let daysUntilTarget = (targetDay - currentDay + 7) % 7;
         if (daysUntilTarget === 0) daysUntilTarget = 7; // If today is the target day, schedule for next week
         advanced.setDate(advanced.getDate() + daysUntilTarget);
+      } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
+        // Calculate next occurrence based on week interval
+        const weeksInterval = scheduledService.frequency_type === 'cada_1_semana' ? 1 :
+                              scheduledService.frequency_type === 'cada_2_semanas' ? 2 :
+                              scheduledService.frequency_type === 'cada_3_semanas' ? 3 : 4;
+        advanced.setDate(advanced.getDate() + (7 * weeksInterval));
       } else { // monthly_on_day
         advanced.setMonth(advanced.getMonth() + 1);
         advanced.setDate(scheduledService.frequency_value);
