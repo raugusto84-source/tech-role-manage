@@ -342,9 +342,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .order('client_number');
+        .order('client_number')
+        .limit(1000);
 
       if (error) throw error;
+      console.log('Loaded clients:', data?.length);
       setClients(data || []);
     } catch (error) {
       console.error('Error loading clients:', error);
