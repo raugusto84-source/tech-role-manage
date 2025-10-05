@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
-import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt, formatMXNExact, ceilToTen } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 export interface OrderItem {
   id: string;
@@ -251,8 +251,8 @@ export function OrderItemsList({
     });
   };
   const formatCurrency = (amount: number, isManual: boolean = false): string => {
-    // Para items manuales, usar formato exacto sin redondeo
-    return isManual ? formatMXNInt(amount) : formatCOPCeilToTen(amount);
+    // Para items manuales, usar formato exacto sin redondeo (mostrar centavos)
+    return isManual ? formatMXNExact(amount) : formatCOPCeilToTen(amount);
   };
   const formatHours = (hours: number) => {
     if (hours < 1) {

@@ -42,11 +42,12 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
   const calculateItemCorrectPrice = (item: OrderItem): { subtotal: number; vat_amount: number; total: number } => {
     // CRITICAL: Para items manuales, usar directamente los valores calculados
     const itemWithServiceId = item as any;
-    if (itemWithServiceId.service_type_id === 'manual') {
+    const isManual = itemWithServiceId.service_type_id == null; // manual si no hay service_type_id
+    if (isManual) {
       return {
         subtotal: Number(item.subtotal) || 0,
         vat_amount: Number(item.vat_amount) || 0,
-        total: Number(item.total_amount || ((item as any).total)) || 0
+        total: Number((item as any).total ?? item.total_amount ?? 0)
       };
     }
 
@@ -93,7 +94,7 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
       totalPrice = afterMargin * (1 + salesVatRate / 100);
     }
     
-    // Aplicar redondeo a cada item individualmente
+    // Aplicar redondeo a cada item individualmente (solo para no manuales)
     const roundedTotal = ceilToTen(totalPrice);
     const subtotalWithoutVat = roundedTotal / (1 + salesVatRate / 100);
     const vatAmount = roundedTotal - subtotalWithoutVat;

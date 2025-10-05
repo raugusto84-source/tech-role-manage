@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNExact } from '@/utils/currency';
 import { Wrench, Clock, CheckCircle, AlertCircle, Truck, Play, Save, Package, Edit3, Check, X, Trash2 } from 'lucide-react';
 // Removed useRewardSettings import - cashback system eliminated
 import { ceilToTen } from '@/utils/currency';
@@ -368,7 +368,10 @@ export function OrderServicesList({
     const completedItems = orderItems.filter(item => item.status === 'finalizada').length;
     return Math.round(completedItems / orderItems.length * 100);
   };
-  const formatCurrency = formatCOPCeilToTen;
+  const formatCurrency = (amount: number, item?: OrderItem) => {
+    const isManual = (item as any)?.service_type_id == null;
+    return isManual ? formatMXNExact(amount) : formatCOPCeilToTen(amount);
+  };
   const handleFinishAll = async () => {
     if (!orderId || !canFinishAll) return;
 
@@ -482,7 +485,7 @@ export function OrderServicesList({
                     <div className="text-right flex-shrink-0">
                       <div className="flex items-center gap-2 justify-end mb-1">
                         <div className="text-sm font-medium text-primary break-words text-right">
-                          {formatCurrency(calculateItemCorrectPrice(item))}
+                          {formatCurrency(calculateItemCorrectPrice(item), item)}
                         </div>
                         {/* Delete button for all items in any state */}
                         {!isClient && <Button variant="destructive" size="sm" onClick={() => confirmDeleteItem(item.id, item.service_name)} disabled={deletingItems.has(item.id)} className="h-7 w-7 p-0">
