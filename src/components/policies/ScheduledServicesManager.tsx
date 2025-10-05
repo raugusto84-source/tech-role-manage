@@ -188,6 +188,9 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setDate(formData.frequency_value);
       }
 
+      // Set execution time to 00:01 (12:01 AM) Mexico time
+      nextRun.setHours(0, 1, 0, 0);
+
       const serviceData = {
         policy_client_id: formData.policy_client_id,
         services: formData.selected_services,
@@ -807,7 +810,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        {service.next_run ? new Date(service.next_run).toLocaleString('es-MX') : 'No programado'}
+                        {service.next_run ? `${formatDateMexico(service.next_run.split('T')[0])}, 12:01 a.m.` : 'No programado'}
                       </div>
                     </TableCell>
                     <TableCell>
