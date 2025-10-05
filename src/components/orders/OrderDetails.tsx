@@ -13,6 +13,16 @@ import { es } from 'date-fns/locale';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
 import { SimpleOrderApproval } from './SimpleOrderApproval';
 import { DeliverySignature } from './DeliverySignature';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { WarrantyCard } from '@/components/warranty/WarrantyCard';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { AddOrderItemsDialog } from './AddOrderItemsDialog';
@@ -96,6 +106,7 @@ export function OrderDetails({
     warranties: false,
     signatures: false
   });
+  const [showAdminApprovalDialog, setShowAdminApprovalDialog] = useState(false);
   useEffect(() => {
     loadOrderItems();
     loadOrderEquipment();
@@ -275,6 +286,53 @@ export function OrderDetails({
     return totalHours > 0 ? totalHours : order.average_service_time || 4;
   };
 
+  const handleAdminApproval = async () => {
+    try {
+      setLoading(true);
+
+      // Update order status to en_proceso
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'en_proceso',
+          client_approval: true,
+          client_approved_at: new Date().toISOString()
+        })
+        .eq('id', order.id);
+
+      if (orderError) throw orderError;
+
+      // Log status change
+      await supabase
+        .from('order_status_logs')
+        .insert({
+          order_id: order.id,
+          previous_status: 'pendiente_aprobacion',
+          new_status: 'en_proceso',
+          changed_by: user?.id,
+          notes: 'Aprobado administrativamente por ' + (profile?.full_name || profile?.email)
+        });
+
+      toast({
+        title: "Orden aprobada",
+        description: "La orden ha sido aprobada y está en proceso",
+        variant: "default"
+      });
+
+      setShowAdminApprovalDialog(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Error approving order:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar la orden",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // SIEMPRE usar precio guardado de cotización - NO recalcular nunca
   const calculateItemDisplayPrice = (item: any): number => {
     // Si existe total_amount en BD, es la fuente de verdad SIEMPRE
@@ -399,6 +457,21 @@ export function OrderDetails({
               {formatDate(order.created_at)}
             </div>
           </div>
+
+          {/* Admin Approval Button */}
+          {profile?.role === 'administrador' && orderStatus === 'pendiente_aprobacion' && (
+            <div className="mt-3">
+              <Button 
+                onClick={() => setShowAdminApprovalDialog(true)}
+                className="w-full"
+                variant="default"
+                size="sm"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Aprobar Orden (Admin)
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Contenido Principal */}
@@ -707,5 +780,23 @@ export function OrderDetails({
         onUpdate();
       }
     }} />}
+
+      {/* Admin Approval Dialog */}
+      <AlertDialog open={showAdminApprovalDialog} onOpenChange={setShowAdminApprovalDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aprobar Orden</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Está seguro de aprobar esta orden? La orden pasará a estado "En Proceso" sin requerir firma del cliente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAdminApproval} disabled={loading}>
+              {loading ? 'Aprobando...' : 'Aprobar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>;
 }
