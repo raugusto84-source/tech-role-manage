@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Clock, Trash2, Calendar, Settings } from "lucide-react";
+import { Plus, Clock, Trash2, Calendar, Settings, Pencil } from "lucide-react";
 import { formatDateMexico } from "@/utils/dateUtils";
 
 interface PolicyClient {
@@ -63,6 +63,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<ScheduledService | null>(null);
   
   const [formData, setFormData] = useState({
     policy_client_id: '',
@@ -187,49 +188,67 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         nextRun.setDate(formData.frequency_value);
       }
 
-      // Create single scheduled service record with multiple services
-      const { error: insertError } = await supabase
-        .from('scheduled_services')
-        .insert({
-          policy_client_id: formData.policy_client_id,
-          services: formData.selected_services, // Array of {service_type_id, quantity}
-          frequency_type: formData.frequency_type,
-          frequency_value: formData.frequency_value,
-          day_of_week: ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) 
-            ? formData.day_of_week 
-            : null,
-          next_run: nextRun.toISOString(),
-          next_service_date: nextRun.toISOString().split('T')[0], // Backward compatibility
-          priority: formData.priority,
-          service_description: formData.service_description || null,
-          quantity: formData.selected_services.reduce((total, service) => total + service.quantity, 0),
-          start_date: formData.start_date,
-          is_active: true
+      const serviceData = {
+        policy_client_id: formData.policy_client_id,
+        services: formData.selected_services,
+        frequency_type: formData.frequency_type,
+        frequency_value: formData.frequency_value,
+        day_of_week: ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) 
+          ? formData.day_of_week 
+          : null,
+        next_run: nextRun.toISOString(),
+        next_service_date: nextRun.toISOString().split('T')[0],
+        priority: formData.priority,
+        service_description: formData.service_description || null,
+        quantity: formData.selected_services.reduce((total, service) => total + service.quantity, 0),
+        start_date: formData.start_date,
+        is_active: true
+      };
+
+      if (editingService) {
+        // Update existing service
+        const { error: updateError } = await supabase
+          .from('scheduled_services')
+          .update(serviceData)
+          .eq('id', editingService.id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Éxito",
+          description: "Servicio programado actualizado correctamente"
+        });
+      } else {
+        // Create new service
+        const { error: insertError } = await supabase
+          .from('scheduled_services')
+          .insert(serviceData);
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        // Call edge function to create initial orders and set up automation
+        const { error: functionError } = await supabase.functions.invoke('process-scheduled-services', {
+          body: { 
+            action: 'create_initial_orders',
+            start_date: formData.start_date,
+            policy_client_id: formData.policy_client_id
+          }
         });
 
-      if (insertError) {
-        throw insertError;
-      }
-
-      // Call edge function to create initial orders and set up automation
-      const { error: functionError } = await supabase.functions.invoke('process-scheduled-services', {
-        body: { 
-          action: 'create_initial_orders',
-          start_date: formData.start_date,
-          policy_client_id: formData.policy_client_id
+        if (functionError) {
+          console.warn('Warning: Could not create initial orders:', functionError);
         }
-      });
 
-      if (functionError) {
-        console.warn('Warning: Could not create initial orders:', functionError);
+        toast({
+          title: "Éxito",
+          description: `${formData.selected_services.reduce((total, service) => total + service.quantity, 0)} servicio(s) programado(s) creado(s) correctamente`
+        });
       }
-
-      toast({
-        title: "Éxito",
-        description: `${formData.selected_services.reduce((total, service) => total + service.quantity, 0)} servicio(s) programado(s) creado(s) correctamente`
-      });
 
       setIsDialogOpen(false);
+      setEditingService(null);
       resetForm();
       loadScheduledServices();
       onStatsUpdate();
@@ -282,6 +301,22 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       service_description: '',
       start_date: new Date().toISOString().split('T')[0],
     });
+    setEditingService(null);
+  };
+
+  const handleEdit = (service: ScheduledService) => {
+    setEditingService(service);
+    setFormData({
+      policy_client_id: service.policy_client_id,
+      selected_services: service.services || [],
+      frequency_type: service.frequency_type,
+      frequency_value: service.frequency_value,
+      day_of_week: service.day_of_week || 1,
+      priority: service.priority,
+      service_description: service.service_description || '',
+      start_date: service.start_date || new Date().toISOString().split('T')[0],
+    });
+    setIsDialogOpen(true);
   };
 
   const formatCurrency = (amount: number) => {
@@ -318,9 +353,9 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
           
           <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Programar Nuevo Servicio</DialogTitle>
+              <DialogTitle>{editingService ? 'Editar Servicio Programado' : 'Programar Nuevo Servicio'}</DialogTitle>
               <DialogDescription>
-                Configura un servicio periódico automático para un cliente con póliza
+                {editingService ? 'Modifica la configuración del servicio periódico' : 'Configura un servicio periódico automático para un cliente con póliza'}
               </DialogDescription>
             </DialogHeader>
             
@@ -675,7 +710,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   type="submit" 
                   disabled={!formData.policy_client_id || formData.selected_services.length === 0}
                 >
-                  Programar Servicio(s)
+                  {editingService ? 'Actualizar Servicio(s)' : 'Programar Servicio(s)'}
                 </Button>
               </div>
             </form>
@@ -782,6 +817,13 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(service)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
