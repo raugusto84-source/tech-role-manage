@@ -61,23 +61,13 @@ export function OrderItemsList({
 
   // Calculate display price using the same logic as Sales (includes cashback and rounding)
   const calculateItemDisplayPrice = (item: OrderItem): number => {
-    // Para items manuales, usar directamente el total calculado
-    if (item.service_type_id === 'manual') {
-      return item.total || (item.unit_price * item.quantity);
+    // Usar el total almacenado en el item
+    if (item.total && item.total > 0) {
+      return item.total;
     }
 
-    const quantity = item.quantity || 1;
-    const serviceForPricing = {
-      id: item.service_type_id,
-      name: item.name,
-      base_price: item.unit_price,
-      cost_price: item.cost_price,
-      vat_rate: item.vat_rate,
-      item_type: item.item_type,
-      profit_margin_tiers: item.profit_margin_tiers || (item as any).profit_margin_rate ? [{ min_qty: 1, max_qty: 999, margin: (item as any).profit_margin_rate }] : null
-    } as any;
-
-    return getDisplayPrice(serviceForPricing, quantity);
+    // Fallback: calcular basado en precio unitario
+    return item.unit_price * item.quantity;
   };
   const updateItemQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -132,7 +122,7 @@ export function OrderItemsList({
           quantity: newQuantity,
           subtotal,
           vat_amount: vatAmount,
-          total_amount: total,
+          total: total,
           estimated_hours: totalEstimatedHours
         };
       }
