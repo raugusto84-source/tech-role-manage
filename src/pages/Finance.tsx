@@ -135,7 +135,7 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,created_at").order("income_date", {
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,client_name,created_at").order("income_date", {
         ascending: false
       });
       if (filtersEnabled && startDate) q = q.gte("income_date", startDate);
@@ -1801,6 +1801,7 @@ export default function Finance() {
                        <TableRow>
                          <TableHead>#</TableHead>
                          <TableHead>Fecha y Hora</TableHead>
+                         <TableHead>Cliente</TableHead>
                          <TableHead>Monto</TableHead>
                          <TableHead>IVA</TableHead>
                          <TableHead>ISR</TableHead>
@@ -1812,10 +1813,11 @@ export default function Finance() {
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={11}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
                            <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
+                           <TableCell className="max-w-[150px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
                            <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
                            style: 'currency',
                            currency: 'MXN'
@@ -1894,6 +1896,7 @@ export default function Finance() {
                        <TableRow>
                          <TableHead>#</TableHead>
                          <TableHead>Fecha y Hora</TableHead>
+                         <TableHead>Cliente</TableHead>
                          <TableHead>Monto</TableHead>
                          <TableHead>Categoría</TableHead>
                          <TableHead>Método</TableHead>
@@ -1902,10 +1905,11 @@ export default function Finance() {
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>}
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={8}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
                             <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
+                           <TableCell className="max-w-[150px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
                            <TableCell>{Number(r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
