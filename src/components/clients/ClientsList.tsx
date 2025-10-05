@@ -2,9 +2,27 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Mail, Phone, MapPin, Users, Gift, Star, Users as UsersIcon } from 'lucide-react';
+import { Search, Mail, Phone, MapPin, Users, Gift, Star, Users as UsersIcon, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
 
 interface Client {
   user_id: string;
@@ -27,6 +45,10 @@ export function ClientsList() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [editForm, setEditForm] = useState({ full_name: '', phone: '', email: '' });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -152,6 +174,98 @@ export function ClientsList() {
     }
   };
 
+  const handleEditClick = (client: Client) => {
+    setSelectedClient(client);
+    setEditForm({
+      full_name: client.full_name,
+      phone: client.phone || '',
+      email: client.email
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (!selectedClient) return;
+    
+    try {
+      // Actualizar profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: editForm.full_name,
+          phone: editForm.phone
+        })
+        .eq('user_id', selectedClient.user_id);
+
+      if (profileError) throw profileError;
+
+      // Si hay client_id, actualizar también la tabla clients
+      if (selectedClient.client_id) {
+        const { error: clientError } = await supabase
+          .from('clients')
+          .update({
+            name: editForm.full_name,
+            phone: editForm.phone
+          })
+          .eq('id', selectedClient.client_id);
+
+        if (clientError) throw clientError;
+      }
+
+      toast({
+        title: "Cliente actualizado",
+        description: "Los datos del cliente se actualizaron correctamente"
+      });
+
+      setEditDialogOpen(false);
+      loadClients();
+    } catch (error: any) {
+      console.error('Error updating client:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  };
+
+  const handleDeleteClick = (client: Client) => {
+    setSelectedClient(client);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedClient) return;
+    
+    try {
+      // Llamar a la edge function para eliminar el usuario
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId: selectedClient.user_id }
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al eliminar usuario');
+      }
+
+      toast({
+        title: "Cliente eliminado",
+        description: "El cliente se eliminó correctamente del sistema"
+      });
+
+      setDeleteDialogOpen(false);
+      loadClients();
+    } catch (error: any) {
+      console.error('Error deleting client:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message
+      });
+    }
+  };
+
 
   const filteredClients = clients.filter(client =>
     client.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -225,7 +339,7 @@ export function ClientsList() {
                 </div>
                 
                 <div className="text-right space-y-2">
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-3 gap-4 text-center mb-3">
                     <div>
                       <div className="text-lg font-bold text-primary">{client.quotes_count}</div>
                       <div className="text-xs text-muted-foreground">Cotizaciones</div>
@@ -241,6 +355,25 @@ export function ClientsList() {
                       <div className="text-xs text-muted-foreground">Total gastado</div>
                     </div>
                   </div>
+                  
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditClick(client)}
+                    >
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteClick(client)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Eliminar
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -253,6 +386,66 @@ export function ClientsList() {
           )}
         </div>
       </CardContent>
+
+      {/* Diálogo de edición */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Cliente</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="space-y-2">
+              <Label>Nombre completo</Label>
+              <Input
+                value={editForm.full_name}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input
+                value={editForm.email}
+                disabled
+                className="bg-muted"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Teléfono</Label>
+              <Input
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleEditSubmit}>
+                Guardar cambios
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de confirmación de eliminación */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará permanentemente el cliente "{selectedClient?.full_name}" del sistema.
+              Todas sus órdenes y cotizaciones seguirán disponibles pero el usuario no podrá acceder al sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

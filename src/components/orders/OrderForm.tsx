@@ -347,8 +347,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, full_name, email, phone')
-        .eq('role', 'cliente')
-        .is('deleted_at', null); // Excluir perfiles eliminados
+        .eq('role', 'cliente');
       if (profilesError) throw profilesError;
 
       const emails = (profilesData || []).map((p: any) => p.email).filter(Boolean);
@@ -385,27 +384,38 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const loadClients = async () => {
     try {
-      // Solo cargar clientes cuyos perfiles no estén eliminados
+      // Obtener los emails de perfiles activos con rol cliente
+      const { data: activeProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('email, user_id')
+        .eq('role', 'cliente');
+
+      if (profilesError) throw profilesError;
+
+      if (!activeProfiles || activeProfiles.length === 0) {
+        console.log('No active client profiles found');
+        setClients([]);
+        return;
+      }
+
+      const activeEmails = activeProfiles.map(p => p.email).filter(Boolean);
+      const activeUserIds = activeProfiles.map(p => p.user_id).filter(Boolean);
+
+      // Cargar clientes que corresponden a esos perfiles activos
       const { data, error } = await supabase
         .from('clients')
-        .select(`
-          *,
-          profiles!clients_user_id_fkey(deleted_at)
-        `)
+        .select('*')
+        .or(`email.in.(${activeEmails.join(',')}),user_id.in.(${activeUserIds.join(',')})`)
         .order('client_number')
         .limit(1000);
 
       if (error) throw error;
       
-      // Filtrar clientes con perfiles eliminados
-      const activeClients = (data || []).filter((c: any) => {
-        return !c.profiles?.deleted_at;
-      });
-      
-      console.log('Loaded clients:', activeClients.length);
-      setClients(activeClients);
+      console.log('Loaded active clients:', data?.length);
+      setClients(data || []);
     } catch (error) {
       console.error('Error loading clients:', error);
+      setClients([]);
     }
   };
 
