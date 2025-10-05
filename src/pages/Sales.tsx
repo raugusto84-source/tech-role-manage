@@ -6,7 +6,7 @@ import ProfitMarginConfig from '@/components/sales/ProfitMarginConfig';
 import { UnifiedDiagnosticManager } from '@/components/sales/UnifiedDiagnosticManager';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Package, Settings, Workflow } from 'lucide-react';
+import { Plus, Package, Settings, Workflow, Wrench, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 // Removed useRewardSettings import - cashback system eliminated
@@ -432,200 +432,166 @@ export default function Sales() {
                     </CardHeader>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Sistemas Column */}
-                    <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-                      <CardHeader>
+                  <div className="space-y-6">
+                    {/* Servicios Section */}
+                    <Card className="border-2 border-blue-200 dark:border-blue-800">
+                      <CardHeader className="bg-blue-50 dark:bg-blue-950/20">
                         <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
-                          💻 SISTEMAS
-                           <Badge variant="secondary" className="ml-auto">
-                             {displayedServices.filter(svc => {
-                               // Usar service_category si existe, sino usar lógica de nombres/categorías
-                               if (svc.service_category) {
-                                 return svc.service_category === 'sistemas';
-                               }
-                               const name = svc.name.toLowerCase();
-                               const category = (svc.category || '').toLowerCase();
-                               return name.includes('sistema') || 
-                                      name.includes('software') || 
-                                      name.includes('formateo') || 
-                                      name.includes('instalaci') ||
-                                      name.includes('computadora') ||
-                                      name.includes('pc') ||
-                                      category.includes('computadora');
-                             }).length}
-                           </Badge>
+                          <Wrench className="h-5 w-5" />
+                          SERVICIOS
+                          <Badge variant="secondary" className="ml-auto">
+                            {displayedServices.filter(svc => !isProduct(svc)).length}
+                          </Badge>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 gap-3">
-                           {displayedServices.filter(svc => {
-                             // Usar service_category si existe, sino usar lógica de nombres/categorías
-                             if (svc.service_category) {
-                               return svc.service_category === 'sistemas';
-                             }
-                             const name = svc.name.toLowerCase();
-                             const category = (svc.category || '').toLowerCase();
-                             return name.includes('sistema') || 
-                                    name.includes('software') || 
-                                    name.includes('formateo') || 
-                                    name.includes('instalaci') ||
-                                    name.includes('computadora') ||
-                                    name.includes('pc') ||
-                                    category.includes('computadora');
-                           }).map(svc => (
-                            <Card key={svc.id} className="hover:shadow-md transition-shadow">
-                              <CardHeader>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <CardTitle className="text-lg">{svc.name}</CardTitle>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {typeof svc.vat_rate === 'number' && <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>}
-                                      {svc.item_type && <Badge variant="outline">{svc.item_type}</Badge>}
+                      <CardContent className="pt-6">
+                        {displayedServices.filter(svc => !isProduct(svc)).length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">No hay servicios registrados</p>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {displayedServices.filter(svc => !isProduct(svc)).map(svc => (
+                              <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+                                <CardHeader className="pb-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <CardTitle className="text-base">{svc.name}</CardTitle>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Badge variant="outline" className="text-xs">🔧 Servicio</Badge>
+                                        {svc.service_category && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            {svc.service_category === 'sistemas' ? '💻' : '🛡️'} {svc.service_category}
+                                          </Badge>
+                                        )}
+                                        {typeof svc.vat_rate === 'number' && (
+                                          <Badge variant="outline" className="text-xs">IVA {svc.vat_rate}%</Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <Button variant="outline" size="sm" onClick={() => handleEditService(svc.id)}>
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="outline" size="sm">
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
+                                              Eliminar
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
                                     </div>
                                   </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
-                                {svc.description && <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>}
-                                <div className="flex items-center justify-between">
-                                  <div className="text-xl font-bold">
-                                    {formatCurrency(getDisplayPrice(svc))}
-                                    {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                  {svc.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{svc.description}</p>}
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-lg font-bold text-blue-600">
+                                      {formatCurrency(getDisplayPrice(svc))}
+                                      {svc.unit && <span className="text-xs text-muted-foreground ml-1">/{svc.unit}</span>}
+                                    </div>
                                   </div>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
-                                            Eliminar
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 
-                    {/* Seguridad Column */}
-                    <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800">
-                      <CardHeader>
-                        <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
-                          🛡️ SEGURIDAD
-                           <Badge variant="secondary" className="ml-auto">
-                             {displayedServices.filter(svc => {
-                               // Usar service_category si existe, sino usar lógica de nombres/categorías
-                               if (svc.service_category) {
-                                 return svc.service_category === 'seguridad';
-                               }
-                               const name = svc.name.toLowerCase();
-                               const category = (svc.category || '').toLowerCase();
-                               return name.includes('seguridad') || 
-                                      name.includes('camara') || 
-                                      name.includes('cámara') || 
-                                      name.includes('alarma') || 
-                                      name.includes('videovigilancia') ||
-                                      name.includes('control de acceso') ||
-                                      name.includes('cerca') ||
-                                      name.includes('operador') ||
-                                      category.includes('seguridad') ||
-                                      category.includes('camara') ||
-                                      category.includes('cerca') ||
-                                      category.includes('fraccionamiento') ||
-                                      category.includes('control de acceso');
-                             }).length}
-                           </Badge>
+                    {/* Productos Section */}
+                    <Card className="border-2 border-green-200 dark:border-green-800">
+                      <CardHeader className="bg-green-50 dark:bg-green-950/20">
+                        <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
+                          <Package className="h-5 w-5" />
+                          PRODUCTOS
+                          <Badge variant="secondary" className="ml-auto">
+                            {displayedServices.filter(svc => isProduct(svc)).length}
+                          </Badge>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 gap-3">
-                           {displayedServices.filter(svc => {
-                             // Usar service_category si existe, sino usar lógica de nombres/categorías
-                             if (svc.service_category) {
-                               return svc.service_category === 'seguridad';
-                             }
-                             const name = svc.name.toLowerCase();
-                             const category = (svc.category || '').toLowerCase();
-                             return name.includes('seguridad') || 
-                                    name.includes('camara') || 
-                                    name.includes('cámara') || 
-                                    name.includes('alarma') || 
-                                    name.includes('videovigilancia') ||
-                                    name.includes('control de acceso') ||
-                                    name.includes('cerca') ||
-                                    name.includes('operador') ||
-                                    category.includes('seguridad') ||
-                                    category.includes('camara') ||
-                                    category.includes('cerca') ||
-                                    category.includes('fraccionamiento') ||
-                                    category.includes('control de acceso');
-                           }).map(svc => (
-                            <Card key={svc.id} className="hover:shadow-md transition-shadow">
-                              <CardHeader>
-                                <div className="flex items-start justify-between gap-2">
-                                  <div>
-                                    <CardTitle className="text-lg">{svc.name}</CardTitle>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {typeof svc.vat_rate === 'number' && <Badge variant="secondary">IVA {svc.vat_rate}%</Badge>}
-                                      {svc.item_type && <Badge variant="outline">{svc.item_type}</Badge>}
+                      <CardContent className="pt-6">
+                        {displayedServices.filter(svc => isProduct(svc)).length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">No hay productos registrados</p>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {displayedServices.filter(svc => isProduct(svc)).map(svc => (
+                              <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
+                                <CardHeader className="pb-3">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <CardTitle className="text-base">{svc.name}</CardTitle>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <Badge variant="outline" className="text-xs">📦 Producto</Badge>
+                                        {svc.service_category && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            {svc.service_category === 'sistemas' ? '💻' : '🛡️'} {svc.service_category}
+                                          </Badge>
+                                        )}
+                                        {typeof svc.vat_rate === 'number' && (
+                                          <Badge variant="outline" className="text-xs">IVA {svc.vat_rate}%</Badge>
+                                        )}
+                                        <Badge variant="outline" className="text-xs bg-green-50">
+                                          Margen: {marginFromTiers(svc)}%
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-1">
+                                      <Button variant="outline" size="sm" onClick={() => handleEditService(svc.id)}>
+                                        <Pencil className="h-3 w-3" />
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="outline" size="sm">
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Esta acción no se puede deshacer. El producto "{svc.name}" será eliminado permanentemente.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
+                                              Eliminar
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
                                     </div>
                                   </div>
-                                </div>
-                              </CardHeader>
-                              <CardContent className="space-y-3">
-                                {svc.description && <p className="text-sm text-muted-foreground line-clamp-2">{svc.description}</p>}
-                                <div className="flex items-center justify-between">
-                                  <div className="text-xl font-bold">
-                                    {formatCurrency(getDisplayPrice(svc))}
-                                    {svc.unit ? <span className="text-sm text-muted-foreground ml-1">/{svc.unit}</span> : null}
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                  {svc.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{svc.description}</p>}
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <div className="text-xs text-muted-foreground">Costo: {formatCurrency(svc.cost_price || 0)}</div>
+                                      <div className="text-lg font-bold text-green-600">
+                                        {formatCurrency(getDisplayPrice(svc))}
+                                        {svc.unit && <span className="text-xs text-muted-foreground ml-1">/{svc.unit}</span>}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => handleEditService(svc.id)}>Editar</Button>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button variant="outline" size="sm">
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                          <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
-                                            Eliminar
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>
