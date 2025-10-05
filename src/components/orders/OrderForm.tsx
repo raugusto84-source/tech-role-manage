@@ -28,7 +28,7 @@ import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleS
 // Removed CashbackApplicationDialog import - cashback system eliminated
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
 import { EquipmentList } from './EquipmentList';
 
 interface ServiceType {
@@ -518,17 +518,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   // Use sales pricing calculation for consistent pricing
   const calculateExactDisplayPrice = (service: ServiceType, quantity: number = 1) => {
     console.log('OrderForm calculateExactDisplayPrice called for:', service.name, 'quantity:', quantity);
-    const totalPrice = getDisplayPrice(service, quantity);
-    console.log('Total price from getDisplayPrice:', totalPrice);
+    const rawTotal = getDisplayPrice(service, quantity);
+
+    // Alinear con visual: aplicar redondeo por ítem a múltiplos de 10 para catálogo
+    const roundedTotal = ceilToTen(rawTotal);
     
     const salesVatRate = service.vat_rate ?? 16;
-    const subtotalWithoutVat = totalPrice / (1 + salesVatRate / 100);
-    const vatAmount = totalPrice - subtotalWithoutVat;
+    const subtotalWithoutVat = roundedTotal / (1 + salesVatRate / 100);
+    const vatAmount = roundedTotal - subtotalWithoutVat;
     
     const result = {
       subtotal: subtotalWithoutVat,
       vatAmount: vatAmount,
-      totalAmount: totalPrice
+      totalAmount: roundedTotal
     };
     
     console.log('OrderForm pricing result:', result);

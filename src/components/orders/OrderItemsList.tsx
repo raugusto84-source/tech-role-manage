@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
-import { formatCOPCeilToTen, formatMXNInt } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 export interface OrderItem {
   id: string;
@@ -113,9 +113,10 @@ export function OrderItemsList({
 
         const totalPrice = getDisplayPrice(serviceForPricing, newQuantity);
         const salesVatRate = (item.vat_rate ?? 16);
-        const subtotal = totalPrice / (1 + salesVatRate / 100);
-        const vatAmount = totalPrice - subtotal;
-        const total = totalPrice;
+        const roundedTotal = ceilToTen(totalPrice);
+        const subtotal = roundedTotal / (1 + salesVatRate / 100);
+        const vatAmount = roundedTotal - subtotal;
+        const total = roundedTotal;
 
         return {
           ...item,
