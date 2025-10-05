@@ -48,12 +48,11 @@ export function CollectionsManager() {
 
       if (collectionsError) throw collectionsError;
 
-      // Get policy payments pending
+      // Get policy payments pending (incluye pendientes y vencidos)
       const { data: policyPayments, error: policyError } = await supabase
         .from('policy_payments')
         .select('amount, due_date')
-        .eq('is_paid', false)
-        .eq('payment_status', 'pendiente');
+        .eq('is_paid', false);
 
       if (policyError) throw policyError;
 
