@@ -17,6 +17,7 @@ import { ArrowLeft, Save, Plus, CalendarIcon, MapPin, Crosshair, Gift } from 'lu
 import { cn } from '@/lib/utils';
 import { ClientForm } from '@/components/ClientForm';
 import { FleetSuggestion } from '@/components/orders/FleetSuggestion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
 import { ProductServiceSeparator } from '@/components/orders/ProductServiceSeparator';
@@ -121,6 +122,16 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   const [showTechnicianSuggestions, setShowTechnicianSuggestions] = useState(false);
   const [selectedFleetName, setSelectedFleetName] = useState('');
   const [fleetSuggestionReason, setFleetSuggestionReason] = useState('');
+
+  // Estados para agregar item manual
+  const [showManualItemDialog, setShowManualItemDialog] = useState(false);
+  const [manualItemForm, setManualItemForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    quantity: '1',
+    item_type: 'servicio' as 'servicio' | 'articulo'
+  });
   
   // Hook for pricing calculation
   const pricing = usePricingCalculation(orderItems, formData.client_id);
@@ -600,6 +611,66 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     
     // Asignación automática de flotilla para el servicio
     await autoAssignOptimalFleet(service.id, updatedItems);
+  };
+
+  const handleManualItemAdd = () => {
+    const price = parseFloat(manualItemForm.price);
+    const quantity = parseInt(manualItemForm.quantity);
+
+    if (!manualItemForm.name.trim() || isNaN(price) || price <= 0 || quantity <= 0) {
+      toast({
+        title: "Error",
+        description: "Por favor completa todos los campos correctamente",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Calcular IVA (16%)
+    const vatRate = 16;
+    const totalAmount = price * quantity;
+    const subtotal = totalAmount / (1 + vatRate / 100);
+    const vatAmount = totalAmount - subtotal;
+
+    const newItem: OrderItem = {
+      id: `manual-${Date.now()}-${Math.random()}`,
+      service_type_id: 'manual', // Identificador especial para items manuales
+      name: manualItemForm.name,
+      description: manualItemForm.description || '',
+      quantity,
+      unit_price: price,
+      cost_price: 0,
+      estimated_hours: 0,
+      subtotal: subtotal,
+      original_subtotal: undefined,
+      policy_discount_percentage: 0,
+      policy_discount_amount: 0,
+      policy_name: undefined,
+      vat_rate: vatRate,
+      vat_amount: vatAmount,
+      total: totalAmount,
+      item_type: manualItemForm.item_type,
+      shared_time: false,
+      status: 'pendiente',
+      profit_margin_tiers: []
+    };
+
+    setOrderItems([...orderItems, newItem]);
+    
+    // Resetear formulario y cerrar diálogo
+    setManualItemForm({
+      name: '',
+      description: '',
+      price: '',
+      quantity: '1',
+      item_type: 'servicio'
+    });
+    setShowManualItemDialog(false);
+
+    toast({
+      title: "Item agregado",
+      description: `${manualItemForm.name} ha sido agregado a la orden`,
+    });
   };
 
   const calculateTotalHours = () => {
@@ -1474,9 +1545,16 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                  <div className="space-y-4">
                    <div className="flex items-center justify-between">
                      <Label>Servicios de {formData.service_category.charAt(0).toUpperCase() + formData.service_category.slice(1)} *</Label>
-                     <span className="text-sm text-muted-foreground">
-                       {serviceTypes.length} servicios disponibles
-                     </span>
+                     <Button
+                       type="button"
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setShowManualItemDialog(true)}
+                       className="gap-2"
+                     >
+                       <Plus className="h-4 w-4" />
+                       Item Manual
+                     </Button>
                    </div>
                       <OrderServiceSelection
                         onServiceAdd={(service, quantity = 1) => handleServiceAdd(service, quantity)}
@@ -1690,6 +1768,108 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             </form>
           </CardContent>
         </Card>
+
+        {/* Diálogo para agregar item manual */}
+        <Dialog open={showManualItemDialog} onOpenChange={setShowManualItemDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Agregar Artículo o Servicio Manual</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="manual-item-type">Tipo *</Label>
+                <Select 
+                  value={manualItemForm.item_type} 
+                  onValueChange={(value: 'servicio' | 'articulo') => 
+                    setManualItemForm(prev => ({ ...prev, item_type: value }))
+                  }
+                >
+                  <SelectTrigger id="manual-item-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="servicio">Servicio</SelectItem>
+                    <SelectItem value="articulo">Artículo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual-item-name">Nombre *</Label>
+                <Input
+                  id="manual-item-name"
+                  placeholder="Ej: Instalación personalizada"
+                  value={manualItemForm.name}
+                  onChange={(e) => setManualItemForm(prev => ({ ...prev, name: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="manual-item-description">Descripción</Label>
+                <Textarea
+                  id="manual-item-description"
+                  placeholder="Describe el artículo o servicio..."
+                  rows={3}
+                  value={manualItemForm.description}
+                  onChange={(e) => setManualItemForm(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="manual-item-price">Precio Total (con IVA) *</Label>
+                  <Input
+                    id="manual-item-price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={manualItemForm.price}
+                    onChange={(e) => setManualItemForm(prev => ({ ...prev, price: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="manual-item-quantity">Cantidad *</Label>
+                  <Input
+                    id="manual-item-quantity"
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    value={manualItemForm.quantity}
+                    onChange={(e) => setManualItemForm(prev => ({ ...prev, quantity: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowManualItemDialog(false);
+                  setManualItemForm({
+                    name: '',
+                    description: '',
+                    price: '',
+                    quantity: '1',
+                    item_type: 'servicio'
+                  });
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleManualItemAdd}
+              >
+                Agregar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       </div>
     </div>
