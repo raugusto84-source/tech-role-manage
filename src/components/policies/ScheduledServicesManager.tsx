@@ -37,7 +37,7 @@ interface ScheduledService {
   id: string;
   frequency_days: number;
   next_service_date: string;
-  frequency_type: 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day';
+  frequency_type: 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day' | 'cada_1_semana' | 'cada_2_semanas' | 'cada_3_semanas' | 'cada_4_semanas';
   frequency_value: number;
   next_run: string;
   priority: number;
@@ -66,7 +66,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
   const [formData, setFormData] = useState({
     policy_client_id: '',
     selected_services: [] as Array<{ service_type_id: string; quantity: number }>,
-    frequency_type: 'minutes' as 'minutes' | 'days' | 'weekly_on_day' | 'monthly_on_day',
+    frequency_type: 'minutes' as 'minutes' | 'days' | 'weekly_on_day' | 'monthly_on_day' | 'cada_1_semana' | 'cada_2_semanas' | 'cada_3_semanas' | 'cada_4_semanas',
     frequency_value: 10,
     priority: 2,
     service_description: '',
@@ -157,6 +157,14 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       
       if (formData.frequency_type === 'minutes') {
         nextRun.setMinutes(nextRun.getMinutes() + formData.frequency_value);
+      } else if (formData.frequency_type === 'cada_1_semana') {
+        nextRun.setDate(nextRun.getDate() + 7);
+      } else if (formData.frequency_type === 'cada_2_semanas') {
+        nextRun.setDate(nextRun.getDate() + 14);
+      } else if (formData.frequency_type === 'cada_3_semanas') {
+        nextRun.setDate(nextRun.getDate() + 21);
+      } else if (formData.frequency_type === 'cada_4_semanas') {
+        nextRun.setDate(nextRun.getDate() + 28);
       } else if (formData.frequency_type === 'days') {
         nextRun.setDate(nextRun.getDate() + formData.frequency_value);
       } else if (formData.frequency_type === 'weekly_on_day') {
@@ -296,7 +304,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
             </Button>
           </DialogTrigger>
           
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Programar Nuevo Servicio</DialogTitle>
               <DialogDescription>
@@ -494,7 +502,8 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                   <Select value={formData.frequency_type} onValueChange={(value) => {
                     const newFrequencyValue = value === 'weekly_on_day' ? 1 : // Default to Monday
                                             value === 'monthly_on_day' ? 10 : // Default to day 10
-                                            value === 'minutes' ? 10 : // Default to 10 minutes  
+                                            value === 'minutes' ? 10 : // Default to 10 minutes
+                                            ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(value) ? 0 : // Not needed for fixed weeks
                                             30; // Default to 30 days
                     setFormData({ 
                       ...formData, 
@@ -507,6 +516,10 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="minutes">Cada X minutos (para pruebas)</SelectItem>
+                      <SelectItem value="cada_1_semana">Cada 1 semana</SelectItem>
+                      <SelectItem value="cada_2_semanas">Cada 2 semanas</SelectItem>
+                      <SelectItem value="cada_3_semanas">Cada 3 semanas</SelectItem>
+                      <SelectItem value="cada_4_semanas">Cada 4 semanas</SelectItem>
                       <SelectItem value="days">Cada X días</SelectItem>
                       <SelectItem value="weekly_on_day">Día específico de la semana</SelectItem>
                       <SelectItem value="monthly_on_day">Día X de cada mes</SelectItem>
@@ -516,9 +529,20 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
                 <div className="space-y-2">
                   <Label>
-                    {formData.frequency_type === 'weekly_on_day' ? 'Día de la Semana *' : 'Valor de Frecuencia *'}
+                    {formData.frequency_type === 'weekly_on_day' ? 'Día de la Semana *' : 
+                     ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) ? 'Frecuencia Configurada' :
+                     'Valor de Frecuencia *'}
                   </Label>
-                  {formData.frequency_type === 'weekly_on_day' ? (
+                  {['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) ? (
+                    <div className="p-3 bg-muted rounded-md">
+                      <p className="text-sm text-muted-foreground">
+                        {formData.frequency_type === 'cada_1_semana' ? 'Se ejecutará cada 7 días' :
+                         formData.frequency_type === 'cada_2_semanas' ? 'Se ejecutará cada 14 días' :
+                         formData.frequency_type === 'cada_3_semanas' ? 'Se ejecutará cada 21 días' :
+                         'Se ejecutará cada 28 días'}
+                      </p>
+                    </div>
+                  ) : formData.frequency_type === 'weekly_on_day' ? (
                     <Select value={formData.frequency_value.toString()} onValueChange={(value) => 
                       setFormData({ ...formData, frequency_value: parseInt(value) })
                     }>
@@ -592,6 +616,24 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       <div>
                         <strong>Nota:</strong> Para frecuencias en minutos (solo pruebas),
                         se crearán órdenes EN PROCESO para los intervalos pasados hasta alcanzar el presente.
+                      </div>
+                    )}
+
+                    {['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) && (
+                      <div>
+                        <strong>Ejemplo:</strong> Si seleccionas "{
+                          formData.frequency_type === 'cada_1_semana' ? 'cada 1 semana' :
+                          formData.frequency_type === 'cada_2_semanas' ? 'cada 2 semanas' :
+                          formData.frequency_type === 'cada_3_semanas' ? 'cada 3 semanas' :
+                          'cada 4 semanas'
+                        }" desde hace 2 meses, 
+                        se crearán órdenes EN PROCESO para todos los intervalos ({
+                          formData.frequency_type === 'cada_1_semana' ? '7' :
+                          formData.frequency_type === 'cada_2_semanas' ? '14' :
+                          formData.frequency_type === 'cada_3_semanas' ? '21' :
+                          '28'
+                        } días) desde entonces hasta hoy, 
+                        luego continuará automáticamente según la frecuencia.
                       </div>
                     )}
                   </div>
@@ -692,13 +734,17 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                     </TableCell>
                     <TableCell>
                        <Badge variant="outline">
-                         <Calendar className="h-3 w-3 mr-1" />
-                         {service.frequency_type === 'minutes' ? `${service.frequency_value} min` :
-                          service.frequency_type === 'days' ? `${service.frequency_value} días` :
-                          service.frequency_type === 'weekly_on_day' ? 
-                            ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'][service.frequency_value] :
-                          `Día ${service.frequency_value} del mes`}
-                       </Badge>
+                          <Calendar className="h-3 w-3 mr-1" />
+                          {service.frequency_type === 'minutes' ? `${service.frequency_value} min` :
+                           service.frequency_type === 'cada_1_semana' ? 'Cada semana' :
+                           service.frequency_type === 'cada_2_semanas' ? 'Cada 2 semanas' :
+                           service.frequency_type === 'cada_3_semanas' ? 'Cada 3 semanas' :
+                           service.frequency_type === 'cada_4_semanas' ? 'Cada 4 semanas' :
+                           service.frequency_type === 'days' ? `${service.frequency_value} días` :
+                           service.frequency_type === 'weekly_on_day' ? 
+                             ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'][service.frequency_value] :
+                           `Día ${service.frequency_value} del mes`}
+                        </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
