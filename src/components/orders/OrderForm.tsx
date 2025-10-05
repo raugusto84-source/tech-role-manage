@@ -347,7 +347,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, full_name, email, phone')
-        .eq('role', 'cliente');
+        .eq('role', 'cliente')
+        .is('deleted_at', null); // Excluir perfiles eliminados
       if (profilesError) throw profilesError;
 
       const emails = (profilesData || []).map((p: any) => p.email).filter(Boolean);
@@ -384,15 +385,25 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
   const loadClients = async () => {
     try {
+      // Solo cargar clientes cuyos perfiles no estén eliminados
       const { data, error } = await supabase
         .from('clients')
-        .select('*')
+        .select(`
+          *,
+          profiles!clients_user_id_fkey(deleted_at)
+        `)
         .order('client_number')
         .limit(1000);
 
       if (error) throw error;
-      console.log('Loaded clients:', data?.length);
-      setClients(data || []);
+      
+      // Filtrar clientes con perfiles eliminados
+      const activeClients = (data || []).filter((c: any) => {
+        return !c.profiles?.deleted_at;
+      });
+      
+      console.log('Loaded clients:', activeClients.length);
+      setClients(activeClients);
     } catch (error) {
       console.error('Error loading clients:', error);
     }
