@@ -40,6 +40,16 @@ export function usePricingCalculation(orderItems: OrderItem[], clientId: string)
 
   // Calculate correct price for an item using the same logic as Sales page
   const calculateItemCorrectPrice = (item: OrderItem): { subtotal: number; vat_amount: number; total: number } => {
+    // CRITICAL: Para items manuales, usar directamente los valores calculados
+    const itemWithServiceId = item as any;
+    if (itemWithServiceId.service_type_id === 'manual') {
+      return {
+        subtotal: Number(item.subtotal) || 0,
+        vat_amount: Number(item.vat_amount) || 0,
+        total: Number(item.total_amount || ((item as any).total)) || 0
+      };
+    }
+
     // CRITICAL: Si el item tiene pricing_locked=true, usar los valores guardados directamente
     const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
     const hasStoredSubtotal = typeof item.subtotal === 'number' && item.subtotal > 0;

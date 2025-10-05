@@ -5,11 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield } from 'lucide-react';
+import { Trash2, Package, Clock, Share2, CheckCircle2, Play, Pause, Shield, Pencil } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { useToast } from '@/hooks/use-toast';
 export interface OrderItem {
   id: string;
   service_type_id: string;
@@ -45,9 +48,24 @@ export function OrderItemsList({
   onItemsChange
 }: OrderItemsListProps) {
   const { getDisplayPrice } = useSalesPricingCalculation();
+  const { toast } = useToast();
+  
+  // Estados para edición de items manuales
+  const [editingItem, setEditingItem] = useState<OrderItem | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    quantity: ''
+  });
 
   // Calculate display price using the same logic as Sales (includes cashback and rounding)
   const calculateItemDisplayPrice = (item: OrderItem): number => {
+    // Para items manuales, usar directamente el total calculado
+    if (item.service_type_id === 'manual') {
+      return item.total || (item.unit_price * item.quantity);
+    }
+
     const quantity = item.quantity || 1;
     const serviceForPricing = {
       id: item.service_type_id,
@@ -68,6 +86,24 @@ export function OrderItemsList({
     }
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
+        // Para items manuales, recalcular directamente
+        if (item.service_type_id === 'manual') {
+          const unitPrice = item.unit_price;
+          const vatRate = 16;
+          const totalAmount = unitPrice * newQuantity;
+          const subtotal = totalAmount / (1 + vatRate / 100);
+          const vatAmount = totalAmount - subtotal;
+
+          return {
+            ...item,
+            quantity: newQuantity,
+            subtotal,
+            vat_amount: vatAmount,
+            total: totalAmount
+          };
+        }
+
+        // Para items regulares, usar la lógica existente
         // Calcular las horas base por unidad
         const baseTimePerUnit = item.estimated_hours / item.quantity;
         const totalEstimatedHours = newQuantity * baseTimePerUnit;
@@ -131,6 +167,63 @@ export function OrderItemsList({
   const removeItem = (itemId: string) => {
     const updatedItems = items.filter(item => item.id !== itemId);
     onItemsChange(updatedItems);
+  };
+
+  const handleEditManualItem = (item: OrderItem) => {
+    setEditingItem(item);
+    setEditForm({
+      name: item.name,
+      description: item.description || '',
+      price: item.unit_price.toString(),
+      quantity: item.quantity.toString()
+    });
+  };
+
+  const handleSaveManualItem = () => {
+    if (!editingItem) return;
+
+    const price = parseFloat(editForm.price);
+    const quantity = parseInt(editForm.quantity);
+
+    if (!editForm.name.trim() || isNaN(price) || price <= 0 || quantity <= 0) {
+      toast({
+        title: "Error",
+        description: "Por favor completa todos los campos correctamente",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Calcular IVA (16%)
+    const vatRate = 16;
+    const totalAmount = price * quantity;
+    const subtotal = totalAmount / (1 + vatRate / 100);
+    const vatAmount = totalAmount - subtotal;
+
+    const updatedItems = items.map(item => {
+      if (item.id === editingItem.id) {
+        return {
+          ...item,
+          name: editForm.name,
+          description: editForm.description,
+          quantity,
+          unit_price: price,
+          subtotal,
+          vat_amount: vatAmount,
+          total: totalAmount
+        };
+      }
+      return item;
+    });
+
+    onItemsChange(updatedItems);
+    setEditingItem(null);
+    setEditForm({ name: '', description: '', price: '', quantity: '' });
+
+    toast({
+      title: "Item actualizado",
+      description: "El artículo/servicio manual ha sido actualizado correctamente"
+    });
   };
   const formatCurrency = formatCOPCeilToTen;
   const formatHours = (hours: number) => {
@@ -276,10 +369,28 @@ export function OrderItemsList({
                    </div>
                  </div>
                  
-                 <Button variant="outline" size="sm" onClick={() => removeItem(item.id)} className="text-destructive hover:text-destructive ml-4">
-                   <Trash2 className="h-4 w-4" />
-                 </Button>
-               </div>
+                  <div className="flex gap-2 ml-4">
+                    {/* Mostrar botón de editar solo para items manuales */}
+                    {item.service_type_id === 'manual' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleEditManualItem(item)}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => removeItem(item.id)} 
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
              </div>)}
         </CardContent>
       </Card>
@@ -308,5 +419,79 @@ export function OrderItemsList({
           </div>
         </CardContent>
       </Card>
+
+      {/* Diálogo para editar item manual */}
+      <Dialog open={!!editingItem} onOpenChange={(open) => !open && setEditingItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Artículo/Servicio Manual</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nombre *</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Descripción</Label>
+              <Textarea
+                id="edit-description"
+                rows={3}
+                value={editForm.description}
+                onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-price">Precio Total (con IVA) *</Label>
+                <Input
+                  id="edit-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, price: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-quantity">Cantidad *</Label>
+                <Input
+                  id="edit-quantity"
+                  type="number"
+                  min="1"
+                  value={editForm.quantity}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, quantity: e.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setEditingItem(null);
+                setEditForm({ name: '', description: '', price: '', quantity: '' });
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveManualItem}
+            >
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>;
 }
