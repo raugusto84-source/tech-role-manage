@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
-import { formatCOPCeilToTen } from '@/utils/currency';
+import { formatCOPCeilToTen, formatMXNInt } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 export interface OrderItem {
   id: string;
@@ -225,7 +225,10 @@ export function OrderItemsList({
       description: "El artículo/servicio manual ha sido actualizado correctamente"
     });
   };
-  const formatCurrency = formatCOPCeilToTen;
+  const formatCurrency = (amount: number, isManual: boolean = false): string => {
+    // Para items manuales, usar formato exacto sin redondeo
+    return isManual ? formatMXNInt(amount) : formatCOPCeilToTen(amount);
+  };
   const formatHours = (hours: number) => {
     if (hours < 1) {
       return `${Math.round(hours * 60)} min`;
@@ -360,12 +363,12 @@ export function OrderItemsList({
                        </div>
                      </div>
                      
-                     <div>
-                       <Label className="text-xs">Total</Label>
-                       <div className="font-bold text-primary mt-1">
-                         {formatCurrency(calculateItemDisplayPrice(item))}
-                       </div>
-                     </div>
+                      <div>
+                        <Label className="text-xs">Total</Label>
+                        <div className="font-bold text-primary mt-1">
+                          {formatCurrency(calculateItemDisplayPrice(item), item.service_type_id === 'manual')}
+                        </div>
+                      </div>
                    </div>
                  </div>
                  
@@ -413,7 +416,9 @@ export function OrderItemsList({
              </div>
             
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{formatCurrency(getTotalAmount())}</div>
+              <div className="text-2xl font-bold text-green-600">
+                {formatCurrency(getTotalAmount(), items.some(i => i.service_type_id === 'manual'))}
+              </div>
               <div className="text-sm text-muted-foreground">Total General</div>
             </div>
           </div>
