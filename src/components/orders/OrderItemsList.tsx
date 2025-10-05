@@ -474,7 +474,7 @@ export function OrderItemsList({
             
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(getTotalAmount(), items.some(i => i.service_type_id === 'manual'))}
+                {formatMXNInt(getTotalAmount())}
               </div>
               <div className="text-sm text-muted-foreground">Total General</div>
             </div>
