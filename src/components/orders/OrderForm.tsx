@@ -225,13 +225,17 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     loadCurrentOrders();
     loadTechnicianSchedules();
     
-    if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
-      loadClients();
-      loadTechnicians();
-    } else if (profile?.role === 'cliente') {
-      loadCurrentClient();
-      loadTechnicians();
-    }
+    const init = async () => {
+      if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+        await syncClientsFromProfiles();
+        await loadClients();
+        await loadTechnicians();
+      } else if (profile?.role === 'cliente') {
+        await loadCurrentClient();
+        await loadTechnicians();
+      }
+    };
+    init();
   }, [profile?.role, profile?.email, formData.service_category]); // Recargar cuando cambie la categoría
 
   const loadServiceTypes = async () => {
@@ -334,6 +338,47 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         };
       });
       setTechnicianSchedules(defaultSchedules);
+    }
+  };
+
+  // Sincroniza perfiles con rol "cliente" hacia la tabla clients para que todos aparezcan
+  const syncClientsFromProfiles = async () => {
+    try {
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone')
+        .eq('role', 'cliente');
+      if (profilesError) throw profilesError;
+
+      const emails = (profilesData || []).map((p: any) => p.email).filter(Boolean);
+      if (emails.length === 0) return;
+
+      const { data: existing, error: existingError } = await supabase
+        .from('clients')
+        .select('email')
+        .in('email', emails);
+      if (existingError) throw existingError;
+
+      const existingSet = new Set((existing || []).map((c: any) => c.email).filter(Boolean));
+      const toInsert = (profilesData || [])
+        .filter((p: any) => p.email && !existingSet.has(p.email))
+        .map((p: any) => ({
+          user_id: p.user_id,
+          name: p.full_name || (p.email as string).split('@')[0],
+          email: p.email,
+          phone: p.phone || '',
+          address: 'Dirección no especificada',
+          client_number: '', // trigger handle_new_client will generate the real number
+          created_by: user?.id || null
+        }));
+
+      if (toInsert.length > 0) {
+        const { error: insertError } = await supabase.from('clients').insert(toInsert);
+        if (insertError) throw insertError;
+        console.log('Synced new clients from profiles:', toInsert.length);
+      }
+    } catch (e) {
+      console.error('Error syncing clients from profiles:', e);
     }
   };
 
