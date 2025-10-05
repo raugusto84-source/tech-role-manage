@@ -353,7 +353,7 @@ export default function Sales() {
                 <CardHeader className="pb-3">
                   <CardTitle>Subcategorías</CardTitle>
                   <CardDescription>
-                    Derivadas de <code>service_types.item_type</code> para “{activeMainCategory}”
+                    Derivadas de <code>service_types.item_type</code> para "{activeMainCategory}"
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -381,45 +381,13 @@ export default function Sales() {
               <CardContent>
                 {servicesLoading ? (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <Card className="animate-pulse">
+                    <Card>
                       <CardHeader>
-                        <div className="h-6 w-32 bg-muted rounded" />
+                        <CardTitle className="text-base">Cargando...</CardTitle>
+                        <CardDescription>
+                          Espera un momento, estamos cargando los articulos.
+                        </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 gap-3">
-                          {Array.from({ length: 3 }).map((_, i) => (
-                            <Card key={i} className="animate-pulse">
-                              <CardHeader>
-                                <div className="h-5 w-40 bg-muted rounded" />
-                                <div className="h-4 w-28 bg-muted rounded mt-2" />
-                              </CardHeader>
-                              <CardContent>
-                                <div className="h-8 w-24 bg-muted rounded" />
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card className="animate-pulse">
-                      <CardHeader>
-                        <div className="h-6 w-32 bg-muted rounded" />
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 gap-3">
-                          {Array.from({ length: 3 }).map((_, i) => (
-                            <Card key={i} className="animate-pulse">
-                              <CardHeader>
-                                <div className="h-5 w-40 bg-muted rounded" />
-                                <div className="h-4 w-28 bg-muted rounded mt-2" />
-                              </CardHeader>
-                              <CardContent>
-                                <div className="h-8 w-24 bg-muted rounded" />
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </CardContent>
                     </Card>
                   </div>
                 ) : displayedServices.length === 0 ? (
@@ -433,75 +401,37 @@ export default function Sales() {
                   </Card>
                 ) : (
                   <div className="space-y-6">
-                    {/* Servicios Section */}
+                    {/* Servicios - Sistemas */}
                     <Card className="border-2 border-blue-200 dark:border-blue-800">
                       <CardHeader className="bg-blue-50 dark:bg-blue-950/20">
                         <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
                           <Wrench className="h-5 w-5" />
-                          SERVICIOS
+                          💻 SERVICIOS - SISTEMAS
                           <Badge variant="secondary" className="ml-auto">
-                            {displayedServices.filter(svc => !isProduct(svc)).length}
+                            {displayedServices.filter(svc => !isProduct(svc) && svc.service_category === 'sistemas').length}
                           </Badge>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-6">
-                        {displayedServices.filter(svc => !isProduct(svc)).length === 0 ? (
-                          <p className="text-center text-muted-foreground py-8">No hay servicios registrados</p>
+                        {displayedServices.filter(svc => !isProduct(svc) && svc.service_category === 'sistemas').length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">No hay servicios de sistemas registrados</p>
                         ) : (
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {displayedServices.filter(svc => !isProduct(svc)).map(svc => (
+                            {displayedServices.filter(svc => !isProduct(svc) && svc.service_category === 'sistemas').map(svc => (
                               <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
-                                <CardHeader className="pb-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      <CardTitle className="text-base">{svc.name}</CardTitle>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Badge variant="outline" className="text-xs">🔧 Servicio</Badge>
-                                        {svc.service_category && (
-                                          <Badge variant="secondary" className="text-xs">
-                                            {svc.service_category === 'sistemas' ? '💻' : '🛡️'} {svc.service_category}
-                                          </Badge>
-                                        )}
-                                        {typeof svc.vat_rate === 'number' && (
-                                          <Badge variant="outline" className="text-xs">IVA {svc.vat_rate}%</Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-1">
-                                      <Button variant="outline" size="sm" onClick={() => handleEditService(svc.id)}>
-                                        <Pencil className="h-3 w-3" />
-                                      </Button>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button variant="outline" size="sm">
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Eliminar servicio?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              Esta acción no se puede deshacer. El servicio "{svc.name}" será eliminado permanentemente.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
-                                              Eliminar
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
-                                  </div>
+                                <CardHeader>
+                                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                    {getCategoryIcon(svc.category ?? 'general')} {svc.name}
+                                  </CardTitle>
                                 </CardHeader>
-                                <CardContent className="pt-0">
-                                  {svc.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{svc.description}</p>}
-                                  <div className="flex items-center justify-between">
-                                    <div className="text-lg font-bold text-blue-600">
-                                      {formatCurrency(getDisplayPrice(svc))}
-                                      {svc.unit && <span className="text-xs text-muted-foreground ml-1">/{svc.unit}</span>}
-                                    </div>
+                                <CardContent className="py-2 text-sm text-muted-foreground">
+                                  {svc.description ? <p className="line-clamp-2">{svc.description}</p> : <p>Sin descripción</p>}
+                                  <div className="mt-2 flex items-center justify-between">
+                                    <span className="font-bold">{formatCurrency(getDisplayPrice(svc))}</span>
+                                    <Button size="sm" variant="outline" onClick={() => handleEditService(svc.id)}>
+                                      <Pencil className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </Button>
                                   </div>
                                 </CardContent>
                               </Card>
@@ -511,81 +441,117 @@ export default function Sales() {
                       </CardContent>
                     </Card>
 
-                    {/* Productos Section */}
-                    <Card className="border-2 border-green-200 dark:border-green-800">
-                      <CardHeader className="bg-green-50 dark:bg-green-950/20">
-                        <CardTitle className="text-green-700 dark:text-green-300 flex items-center gap-2">
-                          <Package className="h-5 w-5" />
-                          PRODUCTOS
+                    {/* Servicios - Seguridad */}
+                    <Card className="border-2 border-red-200 dark:border-red-800">
+                      <CardHeader className="bg-red-50 dark:bg-red-950/20">
+                        <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
+                          <Wrench className="h-5 w-5" />
+                          🛡️ SERVICIOS - SEGURIDAD
                           <Badge variant="secondary" className="ml-auto">
-                            {displayedServices.filter(svc => isProduct(svc)).length}
+                            {displayedServices.filter(svc => !isProduct(svc) && svc.service_category === 'seguridad').length}
                           </Badge>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-6">
-                        {displayedServices.filter(svc => isProduct(svc)).length === 0 ? (
-                          <p className="text-center text-muted-foreground py-8">No hay productos registrados</p>
+                        {displayedServices.filter(svc => !isProduct(svc) && svc.service_category === 'seguridad').length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">No hay servicios de seguridad registrados</p>
                         ) : (
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {displayedServices.filter(svc => isProduct(svc)).map(svc => (
-                              <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-green-500">
-                                <CardHeader className="pb-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      <CardTitle className="text-base">{svc.name}</CardTitle>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Badge variant="outline" className="text-xs">📦 Producto</Badge>
-                                        {svc.service_category && (
-                                          <Badge variant="secondary" className="text-xs">
-                                            {svc.service_category === 'sistemas' ? '💻' : '🛡️'} {svc.service_category}
-                                          </Badge>
-                                        )}
-                                        {typeof svc.vat_rate === 'number' && (
-                                          <Badge variant="outline" className="text-xs">IVA {svc.vat_rate}%</Badge>
-                                        )}
-                                        <Badge variant="outline" className="text-xs bg-green-50">
-                                          Margen: {marginFromTiers(svc)}%
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-1">
-                                      <Button variant="outline" size="sm" onClick={() => handleEditService(svc.id)}>
-                                        <Pencil className="h-3 w-3" />
-                                      </Button>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button variant="outline" size="sm">
-                                            <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              Esta acción no se puede deshacer. El producto "{svc.name}" será eliminado permanentemente.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteService(svc.id, svc.name)}>
-                                              Eliminar
-                                            </AlertDialogAction>
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
-                                    </div>
-                                  </div>
+                            {displayedServices.filter(svc => !isProduct(svc) && svc.service_category === 'seguridad').map(svc => (
+                              <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+                                <CardHeader>
+                                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                    {getCategoryIcon(svc.category ?? 'general')} {svc.name}
+                                  </CardTitle>
                                 </CardHeader>
-                                <CardContent className="pt-0">
-                                  {svc.description && <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{svc.description}</p>}
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      <div className="text-xs text-muted-foreground">Costo: {formatCurrency(svc.cost_price || 0)}</div>
-                                      <div className="text-lg font-bold text-green-600">
-                                        {formatCurrency(getDisplayPrice(svc))}
-                                        {svc.unit && <span className="text-xs text-muted-foreground ml-1">/{svc.unit}</span>}
-                                      </div>
-                                    </div>
+                                <CardContent className="py-2 text-sm text-muted-foreground">
+                                  {svc.description ? <p className="line-clamp-2">{svc.description}</p> : <p>Sin descripción</p>}
+                                  <div className="mt-2 flex items-center justify-between">
+                                    <span className="font-bold">{formatCurrency(getDisplayPrice(svc))}</span>
+                                    <Button size="sm" variant="outline" onClick={() => handleEditService(svc.id)}>
+                                      <Pencil className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Productos - Sistemas */}
+                    <Card className="border-2 border-blue-200 dark:border-blue-800">
+                      <CardHeader className="bg-blue-50 dark:bg-blue-950/20">
+                        <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                          <Package className="h-5 w-5" />
+                          💻 PRODUCTOS - SISTEMAS
+                          <Badge variant="secondary" className="ml-auto">
+                            {displayedServices.filter(svc => isProduct(svc) && svc.service_category === 'sistemas').length}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        {displayedServices.filter(svc => isProduct(svc) && svc.service_category === 'sistemas').length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">No hay productos de sistemas registrados</p>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {displayedServices.filter(svc => isProduct(svc) && svc.service_category === 'sistemas').map(svc => (
+                              <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
+                                <CardHeader>
+                                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                    {getCategoryIcon(svc.category ?? 'general')} {svc.name}
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="py-2 text-sm text-muted-foreground">
+                                  {svc.description ? <p className="line-clamp-2">{svc.description}</p> : <p>Sin descripción</p>}
+                                  <div className="mt-2 flex items-center justify-between">
+                                    <span className="font-bold">{formatCurrency(getDisplayPrice(svc))}</span>
+                                    <Button size="sm" variant="outline" onClick={() => handleEditService(svc.id)}>
+                                      <Pencil className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Productos - Seguridad */}
+                    <Card className="border-2 border-red-200 dark:border-red-800">
+                      <CardHeader className="bg-red-50 dark:bg-red-950/20">
+                        <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
+                          <Package className="h-5 w-5" />
+                          🛡️ PRODUCTOS - SEGURIDAD
+                          <Badge variant="secondary" className="ml-auto">
+                            {displayedServices.filter(svc => isProduct(svc) && svc.service_category === 'seguridad').length}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        {displayedServices.filter(svc => isProduct(svc) && svc.service_category === 'seguridad').length === 0 ? (
+                          <p className="text-center text-muted-foreground py-8">No hay productos de seguridad registrados</p>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {displayedServices.filter(svc => isProduct(svc) && svc.service_category === 'seguridad').map(svc => (
+                              <Card key={svc.id} className="hover:shadow-md transition-shadow border-l-4 border-l-red-500">
+                                <CardHeader>
+                                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                    {getCategoryIcon(svc.category ?? 'general')} {svc.name}
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent className="py-2 text-sm text-muted-foreground">
+                                  {svc.description ? <p className="line-clamp-2">{svc.description}</p> : <p>Sin descripción</p>}
+                                  <div className="mt-2 flex items-center justify-between">
+                                    <span className="font-bold">{formatCurrency(getDisplayPrice(svc))}</span>
+                                    <Button size="sm" variant="outline" onClick={() => handleEditService(svc.id)}>
+                                      <Pencil className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </Button>
                                   </div>
                                 </CardContent>
                               </Card>
@@ -627,17 +593,7 @@ export default function Sales() {
 
           {/* MÁRGENES */}
           <TabsContent value="margins" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Configuración de Márgenes</CardTitle>
-                <CardDescription>
-                  Define los porcentajes de ganancia automáticos por rangos de precio
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProfitMarginConfig />
-              </CardContent>
-            </Card>
+            <ProfitMarginConfig />
           </TabsContent>
 
           {/* PROBLEMAS Y DIAGNÓSTICOS UNIFICADO */}
@@ -648,3 +604,4 @@ export default function Sales() {
       </div>
     </AppLayout>;
 }
+
