@@ -245,27 +245,37 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
         .maybeSingle();
 
       if (existingAssignment) {
-        if (existingAssignment.is_active) {
-          toast({
-            title: "Información",
-            description: "Este cliente ya está asignado a esta póliza",
-            variant: "default",
-          });
-          return;
-        } else {
-          // Reactivate existing assignment
-          const { error: updateError } = await supabase
-            .from('policy_clients')
-            .update({ is_active: true })
-            .eq('id', existingAssignment.id);
+        // If already exists, update start_date to the selected value and (re)activate
+        const formatDateForDB = (date: Date): string => {
+          const y = date.getFullYear();
+          const m = String(date.getMonth() + 1).padStart(2, '0');
+          const d = String(date.getDate()).padStart(2, '0');
+          return `${y}-${m}-${d}`;
+        };
+        const newStartDate = startDate ? formatDateForDB(startDate) : null;
 
-          if (updateError) throw updateError;
+        const { error: updateError } = await supabase
+          .from('policy_clients')
+          .update({ 
+            start_date: newStartDate,
+            is_active: true
+          })
+          .eq('id', existingAssignment.id);
 
-          toast({
-            title: 'Éxito',
-            description: 'Cliente reasignado a la póliza correctamente',
-          });
-        }
+        if (updateError) throw updateError;
+
+        // Backfill historical payments from the (possibly updated) start date
+        await generateHistoricalPayments(selectedPolicyId, clientIdToUse, startDate || new Date());
+
+        toast({
+          title: 'Éxito',
+          description: 'Fecha de inicio actualizada y pagos generados desde esa fecha',
+        });
+        setIsDialogOpen(false);
+        resetDialog();
+        loadData();
+        onStatsUpdate();
+        return;
       } else {
         // Calculate next billing run - always 1st of next month
         const nextBillingRun = new Date();
