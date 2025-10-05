@@ -81,6 +81,7 @@ interface OrderFormData {
     longitude?: number;
     address?: string;
   } | null;
+  creation_date: Date;
 }
 
 interface SupportTechnicianEntry {
@@ -111,7 +112,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     estimated_cost: '',
     is_home_service: false,
     service_category: 'sistemas',
-    service_location: null
+    service_location: null,
+    creation_date: new Date()
   });
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [supportTechnicians, setSupportTechnicians] = useState<SupportTechnicianEntry[]>([]);
@@ -203,7 +205,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         })),
         primaryTechnicianSchedule: primarySchedule,
         supportTechnicians: processedSupport,
-        creationDate: new Date(),
+        creationDate: formData.creation_date,
         currentWorkload,
       });
 
@@ -1219,7 +1221,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             })),
             primaryTechnicianSchedule: primarySchedule,
             supportTechnicians: processedSupport,
-            creationDate: new Date(),
+            creationDate: formData.creation_date,
             currentWorkload,
           });
 
@@ -1238,7 +1240,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             })),
             primaryTechnicianSchedule: defaultSchedule,
             supportTechnicians: [],
-            creationDate: new Date(),
+            creationDate: formData.creation_date,
             currentWorkload: 0,
           });
           
@@ -1249,7 +1251,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         console.warn('Auto delivery date calc failed, using basic fallback:', e);
         // Fallback básico: agregar días basados en las horas estimadas
         const daysToAdd = Math.ceil(totalHours / 8); // Asumir 8 horas por día
-        const fallbackDate = new Date();
+        const fallbackDate = new Date(formData.creation_date);
         fallbackDate.setDate(fallbackDate.getDate() + daysToAdd);
         computedDeliveryDate = fallbackDate.toISOString().split('T')[0];
         console.log('Basic fallback delivery date:', computedDeliveryDate);
@@ -1270,6 +1272,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         assigned_fleet: formData.assigned_fleet || null,  // Add fleet assignment to order
         assignment_reason: fleetSuggestionReason || null,
         created_by: user?.id,
+        created_at: formData.creation_date.toISOString(),
         status: initialStatus,
         service_category: formData.service_category,
         is_home_service: formData.is_home_service,
@@ -1541,6 +1544,39 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                   rows={4}
                   required
                 />
+              </div>
+
+              {/* Fecha de Creación de Orden */}
+              <div className="space-y-2">
+                <Label>Fecha de Creación de la Orden</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.creation_date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.creation_date ? format(formData.creation_date, 'PPP', { locale: es }) : "Selecciona fecha"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={formData.creation_date}
+                      onSelect={(date) => date && setFormData(prev => ({ ...prev, creation_date: date }))}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-sm text-muted-foreground">
+                  Puedes registrar órdenes de días pasados seleccionando una fecha anterior
+                </p>
               </div>
 
                {/* Selección de servicios - Solo mostrar si se seleccionó categoría */}
