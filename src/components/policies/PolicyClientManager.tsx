@@ -644,6 +644,7 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Póliza</TableHead>
+                  <TableHead>Fecha de Inicio</TableHead>
                   <TableHead>Cuota Mensual</TableHead>
                   <TableHead>Frecuencia de Cobro</TableHead>
                   <TableHead>Estado</TableHead>
@@ -667,6 +668,14 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
                         <div className="text-sm text-muted-foreground">
                           #{assignment.insurance_policies.policy_number}
                         </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">
+                          {assignment.start_date ? format(new Date(assignment.start_date + 'T00:00:00'), 'dd/MM/yyyy', { locale: es }) : 'No especificada'}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>{formatCurrency(assignment.insurance_policies.monthly_fee)}</TableCell>
