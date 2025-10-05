@@ -15,7 +15,7 @@ import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 export interface OrderItem {
   id: string;
-  service_type_id: string;
+  service_type_id: string | null; // Puede ser null para items manuales
   name: string;
   description?: string;
   quantity: number;

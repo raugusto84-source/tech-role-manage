@@ -636,7 +636,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
     const newItem: OrderItem = {
       id: `manual-${Date.now()}-${Math.random()}`,
-      service_type_id: 'manual', // Identificador especial para items manuales
+      service_type_id: null, // Items manuales no tienen service_type_id
       name: manualItemForm.name,
       description: manualItemForm.description || '',
       quantity,

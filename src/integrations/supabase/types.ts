@@ -2629,7 +2629,7 @@ export type Database = {
           serial_number: string | null
           service_description: string | null
           service_name: string
-          service_type_id: string
+          service_type_id: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           supplier_name: string | null
@@ -2658,7 +2658,7 @@ export type Database = {
           serial_number?: string | null
           service_description?: string | null
           service_name: string
-          service_type_id: string
+          service_type_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal: number
           supplier_name?: string | null
@@ -2687,7 +2687,7 @@ export type Database = {
           serial_number?: string | null
           service_description?: string | null
           service_name?: string
-          service_type_id?: string
+          service_type_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           supplier_name?: string | null
