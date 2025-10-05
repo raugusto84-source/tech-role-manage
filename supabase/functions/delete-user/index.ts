@@ -49,14 +49,21 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // 1) Delete profile row(s) tied to this auth user
+    // 1) Delete client record(s) tied to this auth user
+    const { error: delClientError } = await adminSupabase
+      .from('clients')
+      .delete()
+      .eq('user_id', userId);
+    if (delClientError) throw new Error(`Error deleting client: ${delClientError.message}`);
+
+    // 2) Delete profile row(s) tied to this auth user
     const { error: delProfileError } = await adminSupabase
       .from('profiles')
       .delete()
       .eq('user_id', userId);
     if (delProfileError) throw new Error(`Error deleting profile: ${delProfileError.message}`);
 
-    // 2) Delete auth user
+    // 3) Delete auth user
     const { error: delAuthError } = await adminSupabase.auth.admin.deleteUser(userId);
     if (delAuthError) throw new Error(`Error deleting auth user: ${delAuthError.message}`);
 
