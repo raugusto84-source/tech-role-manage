@@ -1290,7 +1290,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       // Crear los items de la orden
       const orderItemsData = orderItems.map(item => ({
         order_id: orderResult.id,
-        service_type_id: item.service_type_id,
+        service_type_id: item.service_type_id, // Puede ser null para items manuales
         service_name: item.name,
         service_description: item.description,
         quantity: item.quantity,
@@ -1301,7 +1301,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         vat_rate: item.vat_rate,
         vat_amount: item.vat_amount,
         total_amount: item.total,
-        item_type: item.item_type
+        item_type: item.item_type,
+        pricing_locked: true // Bloquear precios para evitar recálculos
       }));
 
       const { error: itemsError } = await supabase
