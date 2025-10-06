@@ -339,9 +339,11 @@ export function OrderServicesList({
   const handleStatusChange = async (itemId: string, newStatus: string) => {
     if (!canEditStatus) return;
 
-    // Validate required fields for products before finishing
+    // Validate required fields and checklist before finishing
     if (newStatus === 'finalizada') {
       const item = orderItems.find(i => i.id === itemId);
+      
+      // Validar campos obligatorios para artículos
       if (item?.item_type === 'articulo') {
         if (!item.serial_number || !item.supplier_name) {
           toast({
@@ -351,17 +353,17 @@ export function OrderServicesList({
           });
           return;
         }
+      }
 
-        // Validar que el checklist esté completo si existe
-        const hasIncompleteChecklist = await checkIncompleteChecklist(itemId, item.service_type_id);
-        if (hasIncompleteChecklist) {
-          toast({
-            title: 'Checklist incompleto',
-            description: 'El artículo tiene items del checklist sin marcar. Complétalo antes de finalizar.',
-            variant: 'destructive'
-          });
-          return;
-        }
+      // Validar checklist para todos los items (servicios y artículos)
+      const hasIncompleteChecklist = await checkIncompleteChecklist(itemId, item?.service_type_id);
+      if (hasIncompleteChecklist) {
+        toast({
+          title: 'Checklist incompleto',
+          description: 'Este item tiene elementos del checklist sin marcar. Complétalo antes de finalizar.',
+          variant: 'destructive'
+        });
+        return;
       }
     }
     setUpdatingItems(prev => new Set(prev).add(itemId));
@@ -451,21 +453,21 @@ export function OrderServicesList({
       return;
     }
 
-    // Validar checklists incompletos en artículos
-    const productsWithIncompleteChecklist: string[] = [];
+    // Validar checklists incompletos en todos los items
+    const itemsWithIncompleteChecklist: string[] = [];
     for (const item of orderItems) {
-      if (item.status !== 'finalizada' && item.item_type === 'articulo') {
+      if (item.status !== 'finalizada') {
         const hasIncomplete = await checkIncompleteChecklist(item.id, item.service_type_id);
         if (hasIncomplete) {
-          productsWithIncompleteChecklist.push(item.service_name);
+          itemsWithIncompleteChecklist.push(item.service_name);
         }
       }
     }
 
-    if (productsWithIncompleteChecklist.length > 0) {
+    if (itemsWithIncompleteChecklist.length > 0) {
       toast({
         title: 'Checklists incompletos',
-        description: `Los siguientes artículos tienen checklists sin completar: ${productsWithIncompleteChecklist.join(', ')}`,
+        description: `Los siguientes items tienen checklists sin completar: ${itemsWithIncompleteChecklist.join(', ')}`,
         variant: 'destructive'
       });
       return;
