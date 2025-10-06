@@ -16,6 +16,7 @@ import { PolicyRealtimeProvider } from "@/components/policies/PolicyRealtimeProv
 import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
+import { AutomationEngine } from "@/components/policies/AutomationEngine";
 
 import { FileText, AlertCircle, Calendar } from "lucide-react";
 interface ContractStats {
@@ -154,6 +155,7 @@ export default function ServiceContracts() {
         </TabsList>
 
         <TabsContent value="summary" className="space-y-6">
+          <AutomationEngine />
           <PolicyDashboardMetrics onRefresh={refreshStats} />
           <PolicyCalendar />
         </TabsContent>
