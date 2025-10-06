@@ -363,23 +363,21 @@ export function OrderDetails({
     if (itemsLoading) {
       return 0;
     }
-    const isPending = orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion';
-
-    // Si NO está en estados pendientes y existe estimated_cost, úsalo
-    if (!isPending && order.estimated_cost && order.estimated_cost > 0) {
-      return order.estimated_cost;
-    }
+    
+    // Priorizar cálculo desde items
     if (orderItems && orderItems.length > 0) {
-      // Sumar items individuales ya redondeados
       return orderItems.reduce((sum, item) => {
         const hasStoredTotal = typeof item.total_amount === 'number' && item.total_amount > 0;
         if (hasStoredTotal) return sum + Number(item.total_amount);
-        // Cada item ya viene redondeado de calculateItemDisplayPrice
         return sum + calculateItemDisplayPrice(item);
       }, 0);
     }
 
-    // Si no hay items, devolver 0
+    // Fallback a estimated_cost solo si no hay items
+    if (order.estimated_cost && order.estimated_cost > 0) {
+      return order.estimated_cost;
+    }
+
     return 0;
   };
   // Calculate payment summary after total calculation
