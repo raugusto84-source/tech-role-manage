@@ -19,6 +19,7 @@ import { MultipleFiscalWithdrawalsDialog } from "@/components/finance/MultipleFi
 import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPanel";
 import { CollectionsManager } from "@/components/finance/CollectionsManager";
 import { PayrollWithdrawals } from "@/components/finance/PayrollWithdrawals";
+import { AccountsConsecutiveReport } from "@/components/finance/AccountsConsecutiveReport";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1778,6 +1779,7 @@ export default function Finance() {
           <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
+          <TabsTrigger value="consecutive" className="text-gray-950">Consecutivo</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
         </TabsList>
 
@@ -3039,6 +3041,10 @@ export default function Finance() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="consecutive">
+          <AccountsConsecutiveReport startDate={startDate} endDate={endDate} />
         </TabsContent>
 
         <TabsContent value="taxes">
