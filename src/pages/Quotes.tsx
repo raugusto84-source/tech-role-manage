@@ -5,7 +5,6 @@ import { toast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { QuoteWizard } from '@/components/quotes/QuoteWizard';
-import { FreeQuoteWizard } from '@/components/quotes/FreeQuoteWizard';
 import { QuoteDetails } from '@/components/quotes/QuoteDetails';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +60,6 @@ export default function Quotes() {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [showWizard, setShowWizard] = useState(false);
-  const [showFreeQuoteWizard, setShowFreeQuoteWizard] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -299,25 +297,6 @@ export default function Quotes() {
     );
   }
 
-  // Vista del wizard libre
-  if (showFreeQuoteWizard) {
-    return (
-      <AppLayout>
-        <FreeQuoteWizard 
-          onSuccess={() => {
-            if (profile?.role === 'cliente') {
-              window.location.href = getDashboardRoute();
-            } else {
-              setShowFreeQuoteWizard(false);
-              loadQuotes();
-            }
-          }}
-          onCancel={() => setShowFreeQuoteWizard(false)}
-        />
-      </AppLayout>
-    );
-  }
-
   return (
     <AppLayout>
       <div className="max-w-7xl mx-auto px-2 sm:px-4">
@@ -367,18 +346,8 @@ export default function Quotes() {
                   variant="default"
                 >
                   <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  <span className="hidden xs:inline">Con Diagnóstico</span>
-                  <span className="xs:hidden">Diag.</span>
-                </Button>
-                <Button 
-                  onClick={() => setShowFreeQuoteWizard(true)}
-                  className="text-xs sm:text-sm"
-                  size="sm"
-                  variant="outline"
-                >
-                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  <span className="hidden xs:inline">Cotización Libre</span>
-                  <span className="xs:hidden">Libre</span>
+                  <span className="hidden xs:inline">Nueva Cotización</span>
+                  <span className="xs:hidden">Nueva</span>
                 </Button>
               </div>
             )}

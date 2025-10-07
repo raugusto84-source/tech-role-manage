@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus, CheckCircle } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
@@ -694,7 +695,44 @@ export function QuoteWizard({
             </CardContent>
           </Card>}
 
-        {/* Step 3: Items Selection */}
+        {/* Step 3: Free Text Description */}
+        {currentStep === 'free_text' && (
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <div className="text-center mb-4">
+                <h2 className="text-xl font-semibold mb-2">Describe lo que necesitas</h2>
+                <p className="text-sm text-muted-foreground">
+                  Escribe con tus propias palabras lo que necesitas cotizar. Nuestro equipo revisará tu solicitud y te enviará una cotización detallada.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="freeDescription">Descripción de tu solicitud *</Label>
+                <Textarea
+                  id="freeDescription"
+                  value={freeTextDescription}
+                  onChange={(e) => setFreeTextDescription(e.target.value)}
+                  placeholder="Ejemplo: Necesito formatear mi computadora y cambiar la pasta térmica del procesador. También quisiera que revisen porque se calienta mucho..."
+                  rows={8}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Incluye todos los detalles que consideres importantes: problema, equipo, marca, modelo, etc.
+                </p>
+              </div>
+
+              {selectedClient && (
+                <div className="p-3 bg-primary/5 rounded-lg border">
+                  <div className="text-sm font-medium">Cliente seleccionado</div>
+                  <div className="text-xs text-muted-foreground">{selectedClient.name}</div>
+                  <div className="text-xs text-muted-foreground">{selectedClient.email}</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Step 4: Items Selection */}
         {currentStep === 'items' && <div className="space-y-4">
             {/* Quote Ready Status */}
             {quoteItems.length > 0 && (
@@ -838,6 +876,8 @@ export function QuoteWizard({
 
           {currentStep === 'items' ? <Button onClick={createQuote} disabled={loading} size="sm">
               {loading ? 'Creando...' : 'Crear Cotización'}
+            </Button> : currentStep === 'free_text' ? <Button onClick={nextStep} disabled={!freeTextDescription.trim() || loading} size="sm">
+              {loading ? 'Creando...' : 'Enviar Solicitud'}
             </Button> : <Button onClick={nextStep} size="sm">
               Siguiente
               <ArrowRight className="h-4 w-4 ml-1" />
