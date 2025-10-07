@@ -108,7 +108,8 @@ export default function Quotes() {
   const canCreateQuotes = profile?.role === 'cliente' || 
     profile?.role === 'vendedor' || 
     profile?.role === 'administrador' || 
-    profile?.role === 'supervisor';
+    profile?.role === 'supervisor' ||
+    profile?.role === 'tecnico';
 
   // Verificar si puede gestionar (eliminar) cotizaciones - solo staff, no clientes
   const canManageQuotes = profile?.role === 'vendedor' || 
