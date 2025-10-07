@@ -41,7 +41,7 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
     enabled: !!localStartDate && !!localEndDate
   });
 
-  // Query para egresos con información de facturas
+  // Query para egresos fiscales (sin JOIN complejo que causa error)
   const expensesQuery = useQuery({
     queryKey: ["consecutive_expenses", localStartDate, localEndDate],
     queryFn: async () => {
@@ -51,17 +51,11 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
       
       const { data, error } = await supabase
         .from("expenses")
-        .select(`
-          *,
-          fiscal_withdrawals!left(
-            related_income_id,
-            incomes(income_number, description)
-          )
-        `)
+        .select("*")
         .eq("account_type", "fiscal")
         .gte("expense_date", localStartDate)
         .lte("expense_date", localEndDate)
-        .order("created_at", { ascending: true });
+        .order("expense_date", { ascending: true });
       
       if (error) {
         console.error('Error fetching expenses:', error);
@@ -133,10 +127,8 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
       ["EGRESOS"],
       ["Factura", "Fecha", "Descripción", "Justificación (Factura)", "IVA", "Total"],
       ...expenses.map(e => {
-        const relatedIncome = (e as any).fiscal_withdrawals?.[0]?.incomes;
-        const justification = relatedIncome 
-          ? `Factura ${relatedIncome.income_number}: ${relatedIncome.description}`
-          : "Sin factura vinculada";
+        // Simplificado: ya no intentamos obtener factura relacionada por ahora
+        const justification = e.description || "Sin descripción";
         
         return [
           e.expense_number || "",
@@ -364,10 +356,8 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
                     </TableRow>
                   ) : (
                     expensesQuery.data?.map((expense) => {
-                      const relatedIncome = (expense as any).fiscal_withdrawals?.[0]?.incomes;
-                      const justification = relatedIncome 
-                        ? `Factura ${relatedIncome.income_number}: ${relatedIncome.description}`
-                        : "Sin factura vinculada";
+                      // Simplificado: mostrar solo la descripción del egreso
+                      const justification = expense.description || "Sin descripción";
                       
                       return (
                         <TableRow key={expense.id}>
