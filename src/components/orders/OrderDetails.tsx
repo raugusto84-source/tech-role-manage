@@ -459,8 +459,8 @@ export function OrderDetails({
             </div>
           </div>
 
-          {/* Admin Approval Button */}
-          {profile?.role === 'administrador' && orderStatus === 'pendiente_aprobacion' && (
+          {/* Admin/Tech Approval Button */}
+          {['administrador', 'tecnico'].includes(profile?.role || '') && orderStatus === 'pendiente_aprobacion' && (
             <div className="mt-3">
               <Button 
                 onClick={() => setShowAdminApprovalDialog(true)}
@@ -469,7 +469,7 @@ export function OrderDetails({
                 size="sm"
               >
                 <CheckCircle className="h-4 w-4 mr-2" />
-                Aprobar Orden (Admin)
+                Aprobar Orden
               </Button>
             </div>
           )}
