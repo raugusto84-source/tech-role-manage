@@ -53,7 +53,8 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
         .from("expenses")
         .select(`
           *,
-          suppliers(supplier_name)
+          suppliers(supplier_name),
+          purchases!purchases_expense_id_fkey(supplier_name)
         `)
         .eq("account_type", "fiscal")
         .gte("expense_date", localStartDate)
@@ -130,8 +131,10 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
       ["EGRESOS"],
       ["Factura", "Fecha", "Descripción", "Justificación (Factura)", "IVA", "Total"],
       ...expenses.map(e => {
-        // Construir justificación con proveedor y número de factura
-        const supplierName = (e as any).suppliers?.supplier_name || "Sin proveedor";
+        // Buscar proveedor desde suppliers o desde purchases
+        const supplierName = (e as any).suppliers?.supplier_name 
+          || (e as any).purchases?.[0]?.supplier_name 
+          || "Sin proveedor";
         const invoiceNumber = e.invoice_number || "Sin factura";
         const justification = `${supplierName} - Factura: ${invoiceNumber}`;
         
@@ -361,8 +364,10 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
                     </TableRow>
                   ) : (
                     expensesQuery.data?.map((expense) => {
-                      // Construir justificación con proveedor y número de factura
-                      const supplierName = (expense as any).suppliers?.supplier_name || "Sin proveedor";
+                      // Buscar proveedor desde suppliers o desde purchases
+                      const supplierName = (expense as any).suppliers?.supplier_name 
+                        || (expense as any).purchases?.[0]?.supplier_name 
+                        || "Sin proveedor";
                       const invoiceNumber = expense.invoice_number || "Sin factura";
                       const justification = `${supplierName} - Factura: ${invoiceNumber}`;
                       

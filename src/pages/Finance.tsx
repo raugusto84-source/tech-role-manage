@@ -745,7 +745,7 @@ export default function Finance() {
       const taxableAmount = purchaseAccount === "fiscal" ? amount / 1.16 : amount;
       const vatAmount = purchaseAccount === "fiscal" ? amount - taxableAmount : 0;
 
-      // Crear el gasto
+      // Crear el gasto (incluyendo supplier_id)
       const {
         data: expense,
         error: expenseError
@@ -761,6 +761,7 @@ export default function Finance() {
         taxable_amount: taxableAmount || null,
         has_invoice: purchaseAccount === 'fiscal' ? true : purchaseHasInvoice,
         invoice_number: purchaseAccount === 'fiscal' ? purchaseInvoiceNumber.trim() : purchaseHasInvoice ? purchaseInvoiceNumber.trim() : null,
+        supplier_id: purchaseSupplier, // Agregado: guardar el supplier_id
         status: "pagado"
       } as any).select().single();
       if (expenseError) throw expenseError;
