@@ -117,6 +117,8 @@ export default function Quotes() {
     profile?.role === 'supervisor';
 
   useEffect(() => {
+    if (!profile) return;
+    
     loadQuotes();
 
     // Auto-open wizard if coming from client dashboard
@@ -146,7 +148,7 @@ export default function Quotes() {
     return () => {
       supabase.removeChannel(quotesChannel);
     };
-  }, []);
+  }, [profile]);
 
   // Filtrar cotizaciones solo por búsqueda (sin filtro de estado)
   const filteredQuotes = quotes.filter(quote => {
