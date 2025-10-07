@@ -93,6 +93,27 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
     const vatBalance = totalVatIncome - totalVatExpense;
     const availableForWithdrawal = totalIncome - totalExpense - Math.abs(totalISR);
 
+    // Calcular totales por proveedor
+    const expensesBySupplier = expenses.reduce((acc, expense) => {
+      const supplierName = (expense as any).suppliers?.supplier_name 
+        || (expense as any).purchases?.[0]?.supplier_name 
+        || "Sin proveedor";
+      
+      if (!acc[supplierName]) {
+        acc[supplierName] = {
+          total: 0,
+          vat: 0,
+          count: 0
+        };
+      }
+      
+      acc[supplierName].total += Number(expense.amount || 0);
+      acc[supplierName].vat += Number(expense.vat_amount || 0);
+      acc[supplierName].count += 1;
+      
+      return acc;
+    }, {} as Record<string, { total: number; vat: number; count: number }>);
+
     return {
       totalIncome,
       totalVatIncome,
@@ -103,7 +124,8 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
       vatStatus: vatBalance > 0 ? "A Pagar" : vatBalance < 0 ? "A Favor" : "Neutral",
       availableForWithdrawal,
       incomeCount: incomes.length,
-      expenseCount: expenses.length
+      expenseCount: expenses.length,
+      expensesBySupplier
     };
   }, [incomesQuery.data, expensesQuery.data]);
 
@@ -464,6 +486,47 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
                       <TableCell className="text-right">{formatMXNExact(summary.totalExpense)}</TableCell>
                     </TableRow>
                   )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Totales por Proveedor */}
+      {localStartDate && localEndDate && summary.expensesBySupplier && Object.keys(summary.expensesBySupplier).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Total Gastado por Proveedor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Proveedor</TableHead>
+                    <TableHead className="text-right">Facturas</TableHead>
+                    <TableHead className="text-right">IVA</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(summary.expensesBySupplier)
+                    .sort(([, a], [, b]) => b.total - a.total)
+                    .map(([supplier, data]) => (
+                      <TableRow key={supplier}>
+                        <TableCell className="font-medium">{supplier}</TableCell>
+                        <TableCell className="text-right">{data.count}</TableCell>
+                        <TableCell className="text-right">{formatMXNExact(data.vat)}</TableCell>
+                        <TableCell className="text-right font-bold">{formatMXNExact(data.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                  <TableRow className="bg-muted font-bold">
+                    <TableCell>TOTAL</TableCell>
+                    <TableCell className="text-right">{summary.expenseCount}</TableCell>
+                    <TableCell className="text-right">{formatMXNExact(summary.totalVatExpense)}</TableCell>
+                    <TableCell className="text-right">{formatMXNExact(summary.totalExpense)}</TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
