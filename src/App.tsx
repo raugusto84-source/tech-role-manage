@@ -60,7 +60,7 @@ const App = () => (
             <Route 
               path="/quotes" 
               element={
-                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'cliente']}>
+                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'tecnico', 'cliente']}>
                   <Quotes />
                 </ProtectedRoute>
               } 
