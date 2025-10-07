@@ -6,12 +6,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { formatMXNExact } from '@/utils/currency';
-import { DollarSign, Calculator } from 'lucide-react';
-import { getCurrentDateTimeMexico } from '@/utils/dateUtils';
+import { DollarSign, Calculator, CalendarIcon } from 'lucide-react';
+import { getCurrentDateTimeMexico, formatDateMexico } from '@/utils/dateUtils';
 import { useOrderPayments } from '@/hooks/useOrderPayments';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface PaymentCollectionDialogProps {
   open: boolean;
@@ -39,6 +44,7 @@ export function PaymentCollectionDialog({
   const [paymentMethod, setPaymentMethod] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [hasISRWithholding, setHasISRWithholding] = useState(false);
+  const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
 
   // Set remaining balance as default amount when dialog opens
@@ -181,7 +187,7 @@ export function PaymentCollectionDialog({
         .from('incomes')
         .insert({
           income_number: incomeNumber,
-          income_date: getCurrentDateTimeMexico(),
+          income_date: format(paymentDate, 'yyyy-MM-dd'),
           amount: finalPaymentAmount,
           account_type: accountType,
           category: 'cobranza',
@@ -215,7 +221,7 @@ export function PaymentCollectionDialog({
           order_number: order.order_number,
           client_name: order.clients?.name || 'Cliente',
           payment_amount: paymentAmount,
-          payment_date: new Date().toISOString().split('T')[0],
+          payment_date: format(paymentDate, 'yyyy-MM-dd'),
           payment_method: paymentMethod,
           account_type: accountType,
           description: `Cobro orden ${order.order_number}${hasISRWithholding ? ' (con retención ISR)' : ''}`,
@@ -247,6 +253,7 @@ export function PaymentCollectionDialog({
       setPaymentMethod('');
       setInvoiceNumber('');
       setHasISRWithholding(false);
+      setPaymentDate(new Date());
 
       // Trigger a small delay to ensure the dialog closes properly before potential refresh
       setTimeout(() => {
@@ -421,6 +428,37 @@ export function PaymentCollectionDialog({
                 <SelectItem value="daviplata">Daviplata</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Fecha de pago</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !paymentDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {paymentDate ? format(paymentDate, "PPP", { locale: es }) : <span>Seleccionar fecha</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={paymentDate}
+                  onSelect={(date) => date && setPaymentDate(date)}
+                  initialFocus
+                  disabled={(date) => date > new Date()}
+                  className="pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <p className="text-xs text-muted-foreground">
+              Selecciona la fecha en que se realizó el pago (no puede ser futura)
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
