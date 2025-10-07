@@ -130,6 +130,7 @@ export function useUnreadCounts() {
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pendiente_entrega')
+        .neq('is_policy_order', true)
         .is('deleted_at', null);
 
       setCounts({
