@@ -541,8 +541,8 @@ export default function Orders() {
               </Button>
             )}
             
-            {/* View Toggle for Admin */}
-            {profile?.role === 'administrador' && (
+            {/* View Toggle for Admin and Tecnico */}
+            {(profile?.role === 'administrador' || profile?.role === 'tecnico') && (
               <div className="flex rounded-lg border p-1 bg-muted/50">
                 <Button
                   variant={viewMode === 'card' ? 'default' : 'ghost'}
