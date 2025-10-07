@@ -313,6 +313,8 @@ export function OrderDetails({
           notes: 'Aprobado administrativamente por ' + (profile?.full_name || profile?.email)
         });
 
+      setOrderStatus('en_proceso');
+      
       toast({
         title: "Orden aprobada",
         description: "La orden ha sido aprobada y está en proceso",
