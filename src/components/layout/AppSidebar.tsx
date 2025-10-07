@@ -110,6 +110,7 @@ export function AppSidebar() {
         return [
           { title: 'Panel Técnico', url: '/technician', icon: Wrench },
           { title: 'Mis Órdenes', url: '/orders', icon: ClipboardList },
+          { title: 'Cotizaciones', url: '/quotes', icon: FileText },
         ];
       case 'cliente':
         return [
