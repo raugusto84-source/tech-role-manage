@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History, Grid3X3, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -119,6 +121,8 @@ export default function Orders() {
   const [activeTab, setActiveTab] = useState('list');
   const [showMinimalForm, setShowMinimalForm] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [showCompletedWithoutBalance, setShowCompletedWithoutBalance] = useState(false);
+  const [orderPaymentStatus, setOrderPaymentStatus] = useState<Record<string, boolean>>({});
   const { canDeleteOrders } = useSoftDelete();
 
   const loadOrders = async () => {
@@ -218,6 +222,25 @@ export default function Orders() {
           };
         })
       );
+
+      // Calculate payment status for finalized orders
+      const paymentStatusMap: Record<string, boolean> = {};
+      const finalizedOrders = ordersWithTechnician.filter(o => o.status === 'finalizada');
+      
+      for (const order of finalizedOrders) {
+        const { data: payments } = await supabase
+          .from('order_payments')
+          .select('payment_amount')
+          .eq('order_id', order.id);
+        
+        const totalPaid = payments?.reduce((sum, p) => sum + (p.payment_amount || 0), 0) || 0;
+        const orderTotal = order.estimated_cost || 0;
+        
+        // Has balance if not fully paid
+        paymentStatusMap[order.id] = totalPaid < orderTotal;
+      }
+      
+      setOrderPaymentStatus(paymentStatusMap);
       
       console.log('Orders after processing:', ordersWithTechnician);
       console.log('Orders filtered:', ordersWithTechnician.filter(o => o.order_number === '0001' || o.order_number === '0002'));
@@ -294,7 +317,12 @@ export default function Orders() {
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Hide finalized orders without pending balance unless checkbox is active
+    const isFinalized = order.status === 'finalizada';
+    const hasBalance = orderPaymentStatus[order.id] !== false; // true if has balance or unknown
+    const shouldShow = !isFinalized || hasBalance || showCompletedWithoutBalance;
+    
+    return matchesSearch && matchesStatus && shouldShow;
   }).sort((a, b) => {
     const dateA = new Date(a.estimated_delivery_date || a.delivery_date);
     const dateB = new Date(b.estimated_delivery_date || b.delivery_date);
@@ -567,6 +595,26 @@ export default function Orders() {
           </div>
         </div>
 
+      </div>
+
+      {/* Filter Checkboxes */}
+      <div className="bg-muted/30 rounded-lg border p-4 mb-4">
+        <div className="flex flex-wrap gap-4 items-center">
+          <Label className="text-sm font-medium">Mostrar:</Label>
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="show-completed"
+              checked={showCompletedWithoutBalance}
+              onCheckedChange={(checked) => setShowCompletedWithoutBalance(checked === true)}
+            />
+            <Label 
+              htmlFor="show-completed" 
+              className="text-sm font-normal cursor-pointer"
+            >
+              Finalizadas sin cobro pendiente
+            </Label>
+          </div>
+        </div>
       </div>
 
       {/* Content Section */}
