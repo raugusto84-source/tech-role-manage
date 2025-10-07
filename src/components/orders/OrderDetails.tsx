@@ -416,7 +416,10 @@ export function OrderDetails({
 
   // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
   const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
-  const canSignDelivery = !deliverySignature && (isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
+  const canSignDelivery = !deliverySignature && (
+    (isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted) ||
+    (['administrador', 'tecnico'].includes(profile?.role || '') && ['pendiente_entrega', 'finalizada'].includes(orderStatus))
+  );
 
   // Si es cliente y la orden está pendiente de aprobación/actualización sin autorización
   if (isClient && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') && !hasAuthorization) {
