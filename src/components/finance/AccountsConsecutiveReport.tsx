@@ -47,11 +47,13 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
     queryFn: async () => {
       if (!localStartDate || !localEndDate) return [];
       
+      console.log('Fetching expenses for period:', localStartDate, 'to', localEndDate);
+      
       const { data, error } = await supabase
         .from("expenses")
         .select(`
           *,
-          fiscal_withdrawals!fiscal_withdrawals_expense_id_fkey(
+          fiscal_withdrawals!left(
             related_income_id,
             incomes(income_number, description)
           )
@@ -59,9 +61,14 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
         .eq("account_type", "fiscal")
         .gte("expense_date", localStartDate)
         .lte("expense_date", localEndDate)
-        .order("expense_number", { ascending: true });
+        .order("created_at", { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching expenses:', error);
+        throw error;
+      }
+      
+      console.log('Expenses fetched:', data?.length || 0, 'records');
       return data || [];
     },
     enabled: !!localStartDate && !!localEndDate
@@ -72,12 +79,16 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
     const incomes = incomesQuery.data || [];
     const expenses = expensesQuery.data || [];
 
+    console.log('Calculating summary - Incomes:', incomes.length, 'Expenses:', expenses.length);
+
     const totalIncome = incomes.reduce((sum, i) => sum + Number(i.amount || 0), 0);
     const totalVatIncome = incomes.reduce((sum, i) => sum + Number(i.vat_amount || 0), 0);
     const totalISR = incomes.reduce((sum, i) => sum + Number(i.isr_withholding_amount || 0), 0);
     
     const totalExpense = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const totalVatExpense = expenses.reduce((sum, e) => sum + Number(e.vat_amount || 0), 0);
+
+    console.log('Totals - Income:', totalIncome, 'Expense:', totalExpense, 'ISR:', totalISR);
 
     const vatBalance = totalVatIncome - totalVatExpense;
     const availableForWithdrawal = totalIncome - totalExpense - Math.abs(totalISR);
