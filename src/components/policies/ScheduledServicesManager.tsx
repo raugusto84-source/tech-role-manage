@@ -191,11 +191,28 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       // Set execution time to 00:01 (12:01 AM) Mexico time
       nextRun.setHours(0, 1, 0, 0);
 
+      // Map "cada_X_semanas" values to database-compatible format
+      let dbFrequencyType = formData.frequency_type;
+      let dbFrequencyValue = formData.frequency_value;
+      let weekInterval = 1;
+
+      if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type)) {
+        // Map to weekly_on_day
+        dbFrequencyType = 'weekly_on_day';
+        dbFrequencyValue = formData.day_of_week; // The day of the week (0-6)
+        
+        // Extract week interval from frequency type
+        weekInterval = formData.frequency_type === 'cada_1_semana' ? 1 :
+                      formData.frequency_type === 'cada_2_semanas' ? 2 :
+                      formData.frequency_type === 'cada_3_semanas' ? 3 : 4;
+      }
+
       const serviceData = {
         policy_client_id: formData.policy_client_id,
         services: formData.selected_services,
-        frequency_type: formData.frequency_type,
-        frequency_value: formData.frequency_value,
+        frequency_type: dbFrequencyType,
+        frequency_value: dbFrequencyValue,
+        week_interval: weekInterval,
         day_of_week: ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) 
           ? formData.day_of_week 
           : null,

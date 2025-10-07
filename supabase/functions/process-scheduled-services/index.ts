@@ -70,6 +70,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
       services,
       frequency_type,
       frequency_value,
+      week_interval,
       day_of_week,
       quantity,
       service_description,
@@ -133,25 +134,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
       if (scheduledService.frequency_type === 'weekly_on_day') {
         // For weekly services, find all occurrences from start_date to today
         const targetDay = scheduledService.frequency_value; // 0=Sunday, 1=Monday, etc.
-        let currentDate = new Date(startDate);
-        
-        // Find the first occurrence of the target day from start_date
-        while (currentDate.getDay() !== targetDay) {
-          currentDate.setDate(currentDate.getDate() + 1);
-        }
-        
-        // Add all weekly occurrences up to today
-        while (currentDate <= today) {
-          serviceDates.push(currentDate.toISOString().split('T')[0]);
-          currentDate.setDate(currentDate.getDate() + 7); // Add 7 days for next week
-        }
-      } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
-        // For weekly interval services with specific day
-        const targetDay = scheduledService.day_of_week || 1; // Default to Monday if not set
-        const weeksInterval = scheduledService.frequency_type === 'cada_1_semana' ? 1 :
-                              scheduledService.frequency_type === 'cada_2_semanas' ? 2 :
-                              scheduledService.frequency_type === 'cada_3_semanas' ? 3 : 4;
-        
+        const weeksInterval = scheduledService.week_interval || 1; // Default to 1 week
         let currentDate = new Date(startDate);
         
         // Find the first occurrence of the target day from start_date
@@ -413,6 +396,7 @@ async function processDueServices(supabaseClient: any) {
       services,
       frequency_type,
       frequency_value,
+      week_interval,
       day_of_week,
       next_run,
       quantity,
@@ -596,16 +580,12 @@ async function processDueServices(supabaseClient: any) {
       } else if (scheduledService.frequency_type === 'weekly_on_day') {
         // Calculate next occurrence of specific day of week
         const targetDay = scheduledService.frequency_value; // 0=Sunday, 1=Monday, etc.
+        const weeksInterval = scheduledService.week_interval || 1; // Default to 1 week if not specified
         const currentDay = advanced.getDay();
         let daysUntilTarget = (targetDay - currentDay + 7) % 7;
-        if (daysUntilTarget === 0) daysUntilTarget = 7; // If today is the target day, schedule for next week
+        if (daysUntilTarget === 0) daysUntilTarget = 7 * weeksInterval; // If today is the target day, schedule for next interval
+        else daysUntilTarget += 7 * (weeksInterval - 1); // Add remaining weeks to interval
         advanced.setDate(advanced.getDate() + daysUntilTarget);
-      } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
-        // Calculate next occurrence based on week interval
-        const weeksInterval = scheduledService.frequency_type === 'cada_1_semana' ? 1 :
-                              scheduledService.frequency_type === 'cada_2_semanas' ? 2 :
-                              scheduledService.frequency_type === 'cada_3_semanas' ? 3 : 4;
-        advanced.setDate(advanced.getDate() + (7 * weeksInterval));
       } else { // monthly_on_day
         advanced.setMonth(advanced.getMonth() + 1);
         advanced.setDate(scheduledService.frequency_value);

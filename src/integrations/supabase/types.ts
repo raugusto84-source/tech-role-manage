@@ -5207,6 +5207,7 @@ export type Database = {
           services: Json | null
           start_date: string | null
           updated_at: string
+          week_interval: number | null
         }
         Insert: {
           created_at?: string
@@ -5228,6 +5229,7 @@ export type Database = {
           services?: Json | null
           start_date?: string | null
           updated_at?: string
+          week_interval?: number | null
         }
         Update: {
           created_at?: string
@@ -5249,6 +5251,7 @@ export type Database = {
           services?: Json | null
           start_date?: string | null
           updated_at?: string
+          week_interval?: number | null
         }
         Relationships: [
           {
