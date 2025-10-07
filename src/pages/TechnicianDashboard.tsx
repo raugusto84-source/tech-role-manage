@@ -6,13 +6,11 @@
  * - Órdenes organizadas por estado: Pendientes, En proceso, Terminadas
  * - Botón "Aceptar Orden" para cambiar de pendiente a en proceso
  * - Oculta órdenes terminadas cuando cliente da conformidad
- * - Permite crear nuevas órdenes para clientes
  * - Interfaz móvil-first optimizada
  * 
  * Componentes reutilizables:
  * - AppLayout: Layout con sidebar
  * - TechnicianOrderCard: Tarjeta con botón aceptar
- * - OrderForm: Formulario para crear órdenes
  * - OrderStatusUpdate: Componente de cambio de estado
  * - OrderNoteForm: Formulario para agregar comentarios
  */
@@ -27,7 +25,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { TechnicianOrderCard } from '@/components/orders/TechnicianOrderCard';
-import { OrderForm } from '@/components/orders/OrderForm';
 import { OrderStatusUpdate } from '@/components/orders/OrderStatusUpdate';
 import { OrderNoteForm } from '@/components/orders/OrderNoteForm';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
@@ -71,7 +68,6 @@ export default function TechnicianDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<TechnicianOrder | null>(null);
   const [showStatusUpdate, setShowStatusUpdate] = useState(false);
   const [showNoteForm, setShowNoteForm] = useState(false);
-  const [showOrderForm, setShowOrderForm] = useState(false);
   const [activeTab, setActiveTab] = useState('pendientes');
   const [orderNotes, setOrderNotes] = useState<Array<{ id: string; note: string; created_at: string; user_id: string; author?: string }>>([]);
   const [notesLoading, setNotesLoading] = useState(false);
@@ -247,7 +243,6 @@ export default function TechnicianDashboard() {
     loadTechnicianOrders();
     setShowStatusUpdate(false);
     setShowNoteForm(false);
-    setShowOrderForm(false);
   };
 
   /**
@@ -443,13 +438,6 @@ export default function TechnicianDashboard() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              onClick={() => setShowOrderForm(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Nueva Orden
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -668,15 +656,6 @@ export default function TechnicianDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
-
-        {/* Modal de formulario para nueva orden */}
-        {showOrderForm && (
-          <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <OrderForm onSuccess={handleOrderUpdate} onCancel={() => setShowOrderForm(false)} />
-            </div>
-          </div>
-        )}
       </div>
     </AppLayout>
   );

@@ -444,7 +444,7 @@ export default function Orders() {
     loadOrders(); // Recargar órdenes después de la eliminación
   };
 
-  const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico' || profile?.role === 'supervisor';
+  const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'supervisor';
   const canCollectPayment = profile?.role === 'administrador' || profile?.role === 'vendedor';
   
   // Debug logging
