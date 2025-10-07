@@ -41,7 +41,7 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
     enabled: !!localStartDate && !!localEndDate
   });
 
-  // Query para egresos fiscales (sin JOIN complejo que causa error)
+  // Query para egresos fiscales con información del proveedor
   const expensesQuery = useQuery({
     queryKey: ["consecutive_expenses", localStartDate, localEndDate],
     queryFn: async () => {
@@ -51,7 +51,10 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
       
       const { data, error } = await supabase
         .from("expenses")
-        .select("*")
+        .select(`
+          *,
+          suppliers(supplier_name)
+        `)
         .eq("account_type", "fiscal")
         .gte("expense_date", localStartDate)
         .lte("expense_date", localEndDate)
@@ -127,8 +130,10 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
       ["EGRESOS"],
       ["Factura", "Fecha", "Descripción", "Justificación (Factura)", "IVA", "Total"],
       ...expenses.map(e => {
-        // Simplificado: ya no intentamos obtener factura relacionada por ahora
-        const justification = e.description || "Sin descripción";
+        // Construir justificación con proveedor y número de factura
+        const supplierName = (e as any).suppliers?.supplier_name || "Sin proveedor";
+        const invoiceNumber = e.invoice_number || "Sin factura";
+        const justification = `${supplierName} - Factura: ${invoiceNumber}`;
         
         return [
           e.expense_number || "",
@@ -356,8 +361,10 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
                     </TableRow>
                   ) : (
                     expensesQuery.data?.map((expense) => {
-                      // Simplificado: mostrar solo la descripción del egreso
-                      const justification = expense.description || "Sin descripción";
+                      // Construir justificación con proveedor y número de factura
+                      const supplierName = (expense as any).suppliers?.supplier_name || "Sin proveedor";
+                      const invoiceNumber = expense.invoice_number || "Sin factura";
+                      const justification = `${supplierName} - Factura: ${invoiceNumber}`;
                       
                       return (
                         <TableRow key={expense.id}>
