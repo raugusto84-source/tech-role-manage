@@ -40,6 +40,139 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState<string | null>(null);
 
+  // Resolve or create a client_id linked to this user
+  const resolveClientId = async (): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      // Try by user_id
+      const { data: byUser } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (byUser?.id) {
+        setClientId(byUser.id);
+        return byUser.id;
+      }
+      // Try by email
+      const { data: byEmail } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('email', profile?.email || '')
+        .maybeSingle();
+      if (byEmail?.id) {
+        setClientId(byEmail.id);
+        return byEmail.id;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error resolving client ID:', err);
+      return null;
+    }
+  };
+
+  const loadMessages = async (cid?: string) => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const currentCid = cid || clientId;
+      if (!currentCid) {
+        console.warn('No client_id available for loading messages');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('general_chats')
+        .select('*,sender:sender_id(full_name,role)')
+        .eq('client_id', currentCid)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+
+      const messagesWithSenderInfo = (data || []).map((msg: any) => ({
+        ...msg,
+        sender_name: msg.sender?.full_name || 'Desconocido',
+        sender_role: msg.sender?.role || 'unknown'
+      }));
+
+      setMessages(messagesWithSenderInfo);
+      
+      // Count unread messages
+      const unread = messagesWithSenderInfo.filter((msg: Message) => 
+        msg.sender_id !== user.id && 
+        !msg.read_by.includes(user.id)
+      ).length;
+      
+      setUnreadCount(unread);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los mensajes",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setupRealtimeSubscription = (cid?: string) => {
+    const currentCid = cid || clientId;
+    if (!currentCid) return;
+
+    const channel = supabase
+      .channel('office-client-chat-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'general_chats',
+          filter: `client_id=eq.${currentCid}`
+        },
+        async (payload) => {
+          console.log('Chat realtime update:', payload);
+          if (payload.eventType === 'INSERT') {
+            const { data: sender } = await supabase
+              .from('profiles')
+              .select('full_name, role')
+              .eq('user_id', (payload.new as any).sender_id)
+              .single();
+
+            setMessages((prev) => [...prev, {
+              ...(payload.new as Message),
+              sender_name: sender?.full_name || 'Desconocido',
+              sender_role: sender?.role || 'unknown'
+            }]);
+            
+            // Update unread count
+            if ((payload.new as Message).sender_id !== user?.id) {
+              setUnreadCount(prev => prev + 1);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages((prev) => 
+              prev.map((msg) => 
+                msg.id === (payload.new as Message).id 
+                  ? { ...msg, ...(payload.new as Message) }
+                  : msg
+              )
+            );
+            
+            // Update unread count
+            const updatedMsg = payload.new as Message;
+            if (updatedMsg.read_by.includes(user?.id || '')) {
+              setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
   useEffect(() => {
     if (user && profile?.role === 'cliente') {
       (async () => {
@@ -77,173 +210,6 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  // Resolve or create a client_id linked to this user
-  const resolveClientId = async (): Promise<string | null> => {
-    if (!user) return null;
-    try {
-      // Try by user_id
-      const { data: byUser } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (byUser?.id) {
-        setClientId(byUser.id);
-        return byUser.id;
-      }
-      // Try by email
-      const { data: byEmail } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('email', profile?.email || '')
-        .maybeSingle();
-      if (byEmail?.id) {
-        setClientId(byEmail.id);
-        return byEmail.id;
-      }
-      // Create minimal client record
-      const { data: clientNumberData } = await supabase.rpc('generate_client_number');
-      const clientNumber = (clientNumberData as unknown as string) || `CLI-${Date.now()}`;
-      const { data: newClient, error: createErr } = await supabase
-        .from('clients')
-        .insert({
-          user_id: user.id,
-          name: profile?.full_name || 'Cliente',
-          email: profile?.email || '',
-          address: 'Sin dirección',
-          client_number: clientNumber,
-        })
-        .select('id')
-        .single();
-      if (createErr) {
-        console.error('Error creating client record:', createErr);
-        return null;
-      }
-      setClientId(newClient.id);
-      return newClient.id;
-    } catch (e) {
-      console.error('resolveClientId error:', e);
-      return null;
-    }
-  };
-
-  const loadMessages = async (idParam?: string) => {
-    if (!user) return;
-
-    try {
-      const id = idParam || clientId || await resolveClientId();
-      if (!id) return;
-
-      let query = supabase
-        .from('general_chats')
-        .select(`
-          id,
-          sender_id,
-          message,
-          message_type,
-          attachment_url,
-          created_at,
-          read_by,
-          client_id
-        `)
-        .order('created_at', { ascending: true })
-        .eq('client_id', id)
-        .limit(100);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      // Fetch sender names and roles separately
-      const formattedMessages = await Promise.all((data || []).map(async (msg) => {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, role')
-          .eq('user_id', msg.sender_id)
-          .single();
-        
-        return {
-          ...msg,
-          read_by: Array.isArray(msg.read_by) ? msg.read_by.map(id => String(id)) : [],
-          sender_name: profile?.full_name || 'Usuario',
-          sender_role: profile?.role || 'cliente'
-        };
-      }));
-
-      setMessages(formattedMessages);
-      
-      // Count unread messages from office staff
-      const unread = formattedMessages.filter(msg => 
-        msg.sender_id !== user.id && 
-        ['administrador', 'supervisor', 'vendedor'].includes(msg.sender_role) &&
-        (!msg.read_by || !msg.read_by.includes(user.id))
-      ).length;
-      
-      setUnreadCount(unread);
-
-      // Mark messages as read
-      if (unread > 0) {
-        markMessagesAsRead();
-      }
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
-  };
-
-  const setupRealtimeSubscription = (idParam?: string) => {
-    if (!user || !profile) return;
-
-    const id = idParam || clientId;
-    if (!id) return;
-
-    const channel = supabase
-      .channel(`client-office-chat-${id}`)
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'general_chats' }, 
-        async (payload) => {
-          const newMsg = payload.new as any;
-
-          // Only show messages for this client's conversation
-          if (newMsg.client_id !== id) return;
-          
-          // Add sender name and role
-          supabase
-            .from('profiles')
-            .select('full_name, role')
-            .eq('user_id', newMsg.sender_id)
-            .single()
-            .then(({ data }) => {
-              const messageWithSender = {
-                ...newMsg,
-                read_by: Array.isArray(newMsg.read_by) ? newMsg.read_by.map((v: any) => String(v)) : [],
-                sender_name: data?.full_name || 'Usuario',
-                sender_role: data?.role || 'cliente'
-              };
-              
-              setMessages(prev => [...prev, messageWithSender]);
-              
-              // If message is from office staff, increment unread count
-              if (messageWithSender.sender_id !== user.id && 
-                  ['administrador', 'supervisor', 'vendedor'].includes(messageWithSender.sender_role)) {
-                setUnreadCount(prev => prev + 1);
-                
-                // Show desktop notification if permission granted
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification('Nuevo mensaje de oficina', {
-                    body: `${messageWithSender.sender_name}: ${newMsg.message}`,
-                    icon: '/favicon.ico'
-                  });
-                }
-              }
-            });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
 
   const markMessagesAsRead = async () => {
     if (!user) return;

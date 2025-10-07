@@ -582,8 +582,8 @@ export default function Orders() {
             </p>
           </div>
         ) : (
-          // Check if admin wants list view
-          profile?.role === 'administrador' && viewMode === 'list' ? (
+          // Check if admin or tecnico wants list view
+          (profile?.role === 'administrador' || profile?.role === 'tecnico') && viewMode === 'list' ? (
             // List view for administrators
             <div className="bg-background rounded-lg border">
               <Table>

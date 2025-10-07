@@ -3277,6 +3277,8 @@ export type Database = {
           client_approval_notes: string | null
           client_approved_at: string | null
           client_id: string | null
+          completed_by: string | null
+          completed_by_name: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
@@ -3321,6 +3323,8 @@ export type Database = {
           client_approval_notes?: string | null
           client_approved_at?: string | null
           client_id?: string | null
+          completed_by?: string | null
+          completed_by_name?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
@@ -3365,6 +3369,8 @@ export type Database = {
           client_approval_notes?: string | null
           client_approved_at?: string | null
           client_id?: string | null
+          completed_by?: string | null
+          completed_by_name?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
