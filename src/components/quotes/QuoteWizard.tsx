@@ -42,7 +42,7 @@ interface QuoteWizardProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
-type WizardStep = 'approach' | 'client' | 'diagnostic' | 'items';
+type WizardStep = 'approach' | 'client' | 'diagnostic' | 'items' | 'free_text';
 export function QuoteWizard({
   onSuccess,
   onCancel
@@ -54,7 +54,7 @@ export function QuoteWizard({
   const [currentStep, setCurrentStep] = useState<WizardStep>('approach');
   const [loading, setLoading] = useState(false);
   const [showServiceSelection, setShowServiceSelection] = useState(false);
-  const [selectedApproach, setSelectedApproach] = useState<'problem' | 'catalog' | null>(null);
+  const [selectedApproach, setSelectedApproach] = useState<'problem' | 'catalog' | 'free' | null>(null);
 
   // Estado del formulario
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -63,6 +63,7 @@ export function QuoteWizard({
   const [clientSearchTerm, setClientSearchTerm] = useState('');
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [diagnosticSolution, setDiagnosticSolution] = useState<any>(null);
+  const [freeTextDescription, setFreeTextDescription] = useState('');
   const [quoteDetails, setQuoteDetails] = useState({
     notes: '',
     marketing_channel: 'web' as const,
@@ -202,6 +203,8 @@ export function QuoteWizard({
           if (profile?.role === 'cliente') {
             if (selectedApproach === 'problem') {
               setCurrentStep('diagnostic');
+            } else if (selectedApproach === 'free') {
+              setCurrentStep('free_text');
             } else {
               setCurrentStep('items');
               setShowServiceSelection(true);
@@ -223,6 +226,8 @@ export function QuoteWizard({
           }
           if (selectedApproach === 'problem') {
             setCurrentStep('diagnostic');
+          } else if (selectedApproach === 'free') {
+            setCurrentStep('free_text');
           } else {
             setCurrentStep('items');
             setShowServiceSelection(true);
@@ -233,6 +238,19 @@ export function QuoteWizard({
         {
           setCurrentStep('items');
           setShowServiceSelection(true);
+          break;
+        }
+      case 'free_text':
+        {
+          if (!freeTextDescription.trim()) {
+            toast({
+              title: 'Error',
+              description: 'Por favor describe lo que necesitas',
+              variant: 'destructive'
+            });
+            return;
+          }
+          createFreeQuote();
           break;
         }
       case 'items':
@@ -354,12 +372,69 @@ export function QuoteWizard({
       setLoading(false);
     }
   };
+
+  // Crear cotización libre (solo texto)
+  const createFreeQuote = async () => {
+    if (!selectedClient || !profile) return;
+    try {
+      setLoading(true);
+      const initialStatus = 'solicitud';
+      const quoteData = {
+        client_name: selectedClient.name,
+        client_email: selectedClient.email,
+        client_phone: selectedClient.phone,
+        service_description: freeTextDescription,
+        estimated_amount: 0,
+        notes: 'Cotización libre - Requiere revisión y estimación',
+        marketing_channel: 'web',
+        sale_type: 'servicio',
+        status: initialStatus,
+        created_by: (profile as any).user_id || undefined,
+        assigned_to: (profile as any).user_id || undefined
+      };
+      
+      const {
+        data: quoteResult,
+        error: quoteError
+      } = await supabase.from('quotes').insert(quoteData as any).select('id').single();
+      
+      if (quoteError) {
+        console.error('Quote creation error:', quoteError);
+        toast({
+          title: "Error",
+          description: `Error al crear la cotización: ${quoteError.message}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const successMessage = profile?.role === 'cliente' 
+        ? "Solicitud de cotización enviada. Pronto recibirás una respuesta con la cotización detallada." 
+        : "Cotización libre creada exitosamente";
+      toast({
+        title: "Éxito",
+        description: successMessage
+      });
+      onSuccess();
+    } catch (error) {
+      console.error('Error creating free quote:', error);
+      toast({
+        title: "Error inesperado",
+        description: "No se pudo crear la cotización",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const formatCurrency = (amount: number) => formatCOPCeilToTen(amount);
   const stepTitles = {
     approach: 'Tipo de Cotización',
     client: 'Cliente',
     diagnostic: 'Diagnóstico',
-    items: 'Servicios'
+    items: 'Servicios',
+    free_text: 'Descripción'
   };
   const stepIcons = {
     approach: CheckSquare,
@@ -458,6 +533,32 @@ export function QuoteWizard({
                       <div className="flex items-center text-xs text-primary font-medium flex-wrap">
                         <Check className="h-3 w-3 mr-1 flex-shrink-0" />
                         <span className="break-words">Ideal para cotizaciones personalizadas</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Free text approach */}
+                <div 
+                  onClick={() => setSelectedApproach('free')}
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    selectedApproach === 'free' 
+                      ? 'border-primary bg-primary/5 shadow-md' 
+                      : 'border-muted hover:border-muted-foreground/20 hover:bg-muted/20'
+                  }`}
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className={`p-3 rounded-lg flex-shrink-0 ${selectedApproach === 'free' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <Plus className="h-6 w-6" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-base mb-1 break-words">Cotización libre</h3>
+                      <p className="text-sm text-muted-foreground mb-2 break-words leading-relaxed">
+                        Describe en tus propias palabras lo que necesitas y te enviaremos una cotización personalizada
+                      </p>
+                      <div className="flex items-center text-xs text-primary font-medium flex-wrap">
+                        <Check className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="break-words">Rápido y sencillo</span>
                       </div>
                     </div>
                   </div>
