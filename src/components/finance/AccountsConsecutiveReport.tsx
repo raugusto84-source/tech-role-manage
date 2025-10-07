@@ -18,6 +18,8 @@ interface AccountsConsecutiveReportProps {
 export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsecutiveReportProps) {
   const [localStartDate, setLocalStartDate] = useState(startDate || "");
   const [localEndDate, setLocalEndDate] = useState(endDate || "");
+  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState<string>("");
 
   // Query para ingresos fiscales con detalles de IVA e ISR
   const incomesQuery = useQuery({
@@ -176,6 +178,34 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
     setLocalEndDate(lastDay);
   };
 
+  const setMonthAndYear = () => {
+    if (!selectedMonth || !selectedYear) return;
+    const month = parseInt(selectedMonth);
+    const year = parseInt(selectedYear);
+    const firstDay = new Date(year, month, 1).toISOString().substring(0, 10);
+    const lastDay = new Date(year, month + 1, 0).toISOString().substring(0, 10);
+    setLocalStartDate(firstDay);
+    setLocalEndDate(lastDay);
+  };
+
+  const months = [
+    { value: "0", label: "Enero" },
+    { value: "1", label: "Febrero" },
+    { value: "2", label: "Marzo" },
+    { value: "3", label: "Abril" },
+    { value: "4", label: "Mayo" },
+    { value: "5", label: "Junio" },
+    { value: "6", label: "Julio" },
+    { value: "7", label: "Agosto" },
+    { value: "8", label: "Septiembre" },
+    { value: "9", label: "Octubre" },
+    { value: "10", label: "Noviembre" },
+    { value: "11", label: "Diciembre" }
+  ];
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
+
   return (
     <div className="space-y-6">
       {/* Filtros de fecha */}
@@ -184,33 +214,77 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
           <CardTitle>Período de Reporte</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="start-date">Fecha Inicio</Label>
-              <Input
-                id="start-date"
-                type="date"
-                value={localStartDate}
-                onChange={(e) => setLocalStartDate(e.target.value)}
-              />
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex-1 min-w-[150px]">
+                <Label htmlFor="month">Mes</Label>
+                <select
+                  id="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Seleccionar mes</option>
+                  {months.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 min-w-[150px]">
+                <Label htmlFor="year">Año</Label>
+                <select
+                  id="year"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Seleccionar año</option>
+                  {years.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button 
+                onClick={setMonthAndYear} 
+                disabled={!selectedMonth || !selectedYear}
+                variant="outline"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Aplicar
+              </Button>
+              <Button onClick={setCurrentMonth} variant="outline">
+                <Calendar className="mr-2 h-4 w-4" />
+                Mes Actual
+              </Button>
             </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="end-date">Fecha Fin</Label>
-              <Input
-                id="end-date"
-                type="date"
-                value={localEndDate}
-                onChange={(e) => setLocalEndDate(e.target.value)}
-              />
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="flex-1 min-w-[200px]">
+                <Label htmlFor="start-date">Fecha Inicio</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={localStartDate}
+                  onChange={(e) => setLocalStartDate(e.target.value)}
+                />
+              </div>
+              <div className="flex-1 min-w-[200px]">
+                <Label htmlFor="end-date">Fecha Fin</Label>
+                <Input
+                  id="end-date"
+                  type="date"
+                  value={localEndDate}
+                  onChange={(e) => setLocalEndDate(e.target.value)}
+                />
+              </div>
+              <Button onClick={exportToCSV} disabled={!localStartDate || !localEndDate}>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar CSV
+              </Button>
             </div>
-            <Button onClick={setCurrentMonth} variant="outline">
-              <Calendar className="mr-2 h-4 w-4" />
-              Mes Actual
-            </Button>
-            <Button onClick={exportToCSV} disabled={!localStartDate || !localEndDate}>
-              <Download className="mr-2 h-4 w-4" />
-              Exportar CSV
-            </Button>
           </div>
         </CardContent>
       </Card>
