@@ -588,7 +588,7 @@ export function OrderDetails({
                         orderItemId={item.id}
                         serviceTypeId={item.service_type_id}
                         serviceName={item.service_name}
-                        readonly={isClient && !['administrador', 'tecnico', 'vendedor'].includes(profile?.role || '')}
+                        readonly={orderStatus === 'finalizada' || (isClient && !['administrador', 'tecnico', 'vendedor'].includes(profile?.role || ''))}
                       />
                     </div>
                   ))}
