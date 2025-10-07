@@ -172,9 +172,8 @@ export default function Orders() {
           setLoading(false);
           return;
         }
-      } else if (profile?.role === 'tecnico') {
-        query = query.eq('assigned_technician', user?.id);
       }
+      // Técnicos pueden ver TODAS las órdenes, no solo las asignadas a ellos
 
       const { data, error } = await query;
       
