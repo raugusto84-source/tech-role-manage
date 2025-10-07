@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
   const [clientId, setClientId] = useState<string | null>(null);
 
   // Resolve or create a client_id linked to this user
-  const resolveClientId = async (): Promise<string | null> => {
+  const resolveClientId = useCallback(async (): Promise<string | null> => {
     if (!user) return null;
     try {
       // Try by user_id
@@ -69,9 +69,9 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
       console.error('Error resolving client ID:', err);
       return null;
     }
-  };
+  }, [user, profile]);
 
-  const loadMessages = async (cid?: string) => {
+  const loadMessages = useCallback(async (cid?: string) => {
     if (!user) return;
     try {
       setLoading(true);
@@ -114,9 +114,9 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, clientId, toast]);
 
-  const setupRealtimeSubscription = (cid?: string) => {
+  const setupRealtimeSubscription = useCallback((cid?: string) => {
     const currentCid = cid || clientId;
     if (!currentCid) return;
 
@@ -171,7 +171,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  };
+  }, [clientId, user]);
 
   useEffect(() => {
     if (user && profile?.role === 'cliente') {
@@ -185,7 +185,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
     return () => {
       supabase.removeAllChannels();
     };
-  }, [user, profile]);
+  }, [user, profile, resolveClientId, loadMessages, setupRealtimeSubscription]);
 
   // Mark messages as read when component becomes visible
   useEffect(() => {
