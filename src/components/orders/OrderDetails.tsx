@@ -412,7 +412,7 @@ export function OrderDetails({
     }
   };
   const isClient = profile?.role === 'cliente';
-  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor') && ['pendiente', 'en_proceso'].includes(orderStatus);
+  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico') && ['pendiente', 'en_proceso'].includes(orderStatus);
 
   // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
   const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
