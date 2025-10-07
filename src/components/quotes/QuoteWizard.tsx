@@ -12,7 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus, CheckCircle } from 'lucide-react';
+import { ClientForm } from '@/components/ClientForm';
 import { formatCOPCeilToTen } from '@/utils/currency';
 interface Client {
   id: string;
@@ -70,6 +72,7 @@ export function QuoteWizard({
     marketing_channel: 'web' as const,
     sale_type: 'servicio' as const
   });
+  const [showNewClientDialog, setShowNewClientDialog] = useState(false);
 
   // Cargar clientes
   useEffect(() => {
@@ -577,6 +580,9 @@ export function QuoteWizard({
                   <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Buscar cliente..." value={clientSearchTerm} onChange={e => setClientSearchTerm(e.target.value)} className="pl-10" />
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setShowNewClientDialog(true)} className="px-3">
+                  <Plus className="h-4 w-4" />
+                </Button>
                 <Button variant="outline" size="sm" onClick={loadClients} className="px-3">
                   ↻
                 </Button>
@@ -887,5 +893,29 @@ export function QuoteWizard({
 
       {/* Bottom spacing for fixed navigation */}
       <div className="h-20"></div>
+
+      {/* New Client Dialog */}
+      <Dialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nuevo Cliente</DialogTitle>
+            <DialogDescription>
+              Crea un nuevo cliente para continuar con la cotización
+            </DialogDescription>
+          </DialogHeader>
+          <ClientForm
+            onSuccess={(newClient) => {
+              setShowNewClientDialog(false);
+              loadClients();
+              setSelectedClient(newClient);
+              toast({
+                title: "Cliente creado",
+                description: "Cliente creado exitosamente y seleccionado",
+              });
+            }}
+            onCancel={() => setShowNewClientDialog(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>;
 }
