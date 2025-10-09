@@ -85,70 +85,72 @@ function LoanPaymentDialog({ payment, loan, onClose }: LoanPaymentDialogProps) {
   };
 
   return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Registrar Pago de Préstamo</DialogTitle>
-        <DialogDescription>
-          Préstamo {loan.loan_number} - Mensualidad {payment.payment_number}/{loan.total_months}
-        </DialogDescription>
-      </DialogHeader>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Registrar Pago de Préstamo</DialogTitle>
+          <DialogDescription>
+            Préstamo {loan.loan_number} - Mensualidad {payment.payment_number}/{loan.total_months}
+          </DialogDescription>
+        </DialogHeader>
 
-      <div className="space-y-4">
-        <div>
-          <Label>Monto a pagar</Label>
-          <div className="text-2xl font-bold text-primary">
-            {formatMXNExact(payment.amount)}
+        <div className="space-y-4">
+          <div>
+            <Label>Monto a pagar</Label>
+            <div className="text-2xl font-bold text-primary">
+              {formatMXNExact(payment.amount)}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="account_type">¿De qué cuenta se paga? *</Label>
+            <Select value={accountType} onValueChange={(v) => setAccountType(v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="fiscal">Cuenta Fiscal</SelectItem>
+                <SelectItem value="no_fiscal">Cuenta No Fiscal</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="payment_method">Método de pago</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="transferencia">Transferencia</SelectItem>
+                <SelectItem value="efectivo">Efectivo</SelectItem>
+                <SelectItem value="cheque">Cheque</SelectItem>
+                <SelectItem value="tarjeta">Tarjeta</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="notes">Notas</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Notas adicionales sobre el pago"
+            />
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="account_type">¿De qué cuenta se paga? *</Label>
-          <Select value={accountType} onValueChange={(v) => setAccountType(v as any)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="fiscal">Cuenta Fiscal</SelectItem>
-              <SelectItem value="no_fiscal">Cuenta No Fiscal</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="payment_method">Método de pago</Label>
-          <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="transferencia">Transferencia</SelectItem>
-              <SelectItem value="efectivo">Efectivo</SelectItem>
-              <SelectItem value="cheque">Cheque</SelectItem>
-              <SelectItem value="tarjeta">Tarjeta</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <Label htmlFor="notes">Notas</Label>
-          <Textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notas adicionales sobre el pago"
-          />
-        </div>
-      </div>
-
-      <DialogFooter>
-        <Button variant="outline" onClick={onClose} disabled={isLoading}>
-          Cancelar
-        </Button>
-        <Button onClick={handlePayment} disabled={isLoading}>
-          {isLoading ? 'Procesando...' : 'Registrar Pago'}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Cancelar
+          </Button>
+          <Button onClick={handlePayment} disabled={isLoading}>
+            {isLoading ? 'Procesando...' : 'Registrar Pago'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
