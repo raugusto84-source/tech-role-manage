@@ -279,6 +279,33 @@ export default function Finance() {
     }
   });
 
+  // Query para préstamos activos
+  const loansQuery = useQuery({
+    queryKey: ["loans_summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("loans")
+        .select("id, loan_number, amount, monthly_payment, status")
+        .eq("status", "activo");
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
+  // Query para pagos de préstamos pendientes
+  const loanPaymentsQuery = useQuery({
+    queryKey: ["loan_payments_summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("loan_payments")
+        .select("id, loan_id, due_date, amount, status")
+        .in("status", ["pendiente", "vencido"])
+        .order("due_date", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
+
   // Query para ISR retenido de ingresos
   const isrRetentionsQuery = useQuery({
     queryKey: ["isr_retentions", startDate, endDate],
@@ -451,6 +478,18 @@ export default function Finance() {
     
     return { genIF, genINF, genEF, genENF };
   }, [generalIncomesQuery.data, generalExpensesQuery.data]);
+
+  // Resumen de préstamos
+  const loansData = useMemo(() => {
+    const activeLoans = loansQuery.data ?? [];
+    const pendingPayments = loanPaymentsQuery.data ?? [];
+    
+    const totalDebt = pendingPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const activeLoansCount = activeLoans.length;
+    const nextPayment = pendingPayments[0]; // Ya están ordenados por fecha
+    
+    return { totalDebt, activeLoansCount, nextPayment };
+  }, [loansQuery.data, loanPaymentsQuery.data]);
 
   const incomesTotal = useMemo(() => incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [incomesQuery.data]);
   const expensesTotal = useMemo(() => expensesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [expensesQuery.data]);
@@ -1585,7 +1624,7 @@ export default function Finance() {
       {/* Resumen General - Sin Filtros */}
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4 text-foreground">Balance General (Total Acumulado)</h2>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-l-4 border-l-orange-500">
             <CardHeader className="bg-orange-50/50 dark:bg-orange-950/20">
               <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
@@ -1649,6 +1688,44 @@ export default function Finance() {
                     style: 'currency',
                     currency: 'MXN'
                   })}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-red-500">
+            <CardHeader className="bg-red-50/50 dark:bg-red-950/20">
+              <CardTitle className="text-red-700 dark:text-red-300 flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                Préstamos Activos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">Activos</div>
+                  <div className="font-semibold text-red-700 dark:text-red-300">{loansData.activeLoansCount}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Deuda Total</div>
+                  <div className="font-semibold text-red-700 dark:text-red-300">{loansData.totalDebt.toLocaleString(undefined, {
+                    style: 'currency',
+                    currency: 'MXN'
+                  })}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Próximo Pago</div>
+                  <div className="font-semibold text-red-700 dark:text-red-300">
+                    {loansData.nextPayment ? loansData.nextPayment.amount.toLocaleString(undefined, {
+                      style: 'currency',
+                      currency: 'MXN'
+                    }) : 'N/A'}
+                  </div>
+                  {loansData.nextPayment && (
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatDateMexico(loansData.nextPayment.due_date)}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
