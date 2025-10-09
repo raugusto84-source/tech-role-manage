@@ -194,7 +194,9 @@ export function LoansManager() {
   });
 
   const handleCreateLoan = async () => {
-    if (!amount || !monthlyPayment || !totalMonths || !startDate || !paymentDay) {
+    if (!amount || amount === '' || !monthlyPayment || monthlyPayment === '' || 
+        !totalMonths || totalMonths === '' || !startDate || startDate === '' || 
+        !paymentDay || paymentDay === '') {
       toast({
         title: "Campos requeridos",
         description: "Por favor completa todos los campos obligatorios",
@@ -507,6 +509,25 @@ export function LoansManager() {
                 placeholder="12"
               />
             </div>
+
+            {amount && monthlyPayment && totalMonths && (
+              <div className="col-span-2 p-4 bg-muted rounded-lg space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Monto del préstamo:</span>
+                  <span className="text-sm">{formatMXNExact(parseFloat(amount))}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Total a pagar:</span>
+                  <span className="text-sm">{formatMXNExact(parseFloat(monthlyPayment) * parseInt(totalMonths))}</span>
+                </div>
+                <div className="flex justify-between text-primary">
+                  <span className="text-sm font-bold">Intereses totales:</span>
+                  <span className="text-sm font-bold">
+                    {formatMXNExact((parseFloat(monthlyPayment) * parseInt(totalMonths)) - parseFloat(amount))}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="start_date">Fecha de Inicio *</Label>
