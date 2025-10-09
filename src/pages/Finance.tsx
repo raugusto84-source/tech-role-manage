@@ -1873,12 +1873,13 @@ export default function Finance() {
                          <TableHead>Total</TableHead>
                          <TableHead>Categoría</TableHead>
                          <TableHead>Método</TableHead>
+                         <TableHead>Factura</TableHead>
                          <TableHead>Descripción</TableHead>
                          <TableHead>Acciones</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={11}>Cargando...</TableCell></TableRow>}
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={12}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
                            <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
@@ -1907,6 +1908,7 @@ export default function Finance() {
                            </TableCell>
                            <TableCell>{r.category}</TableCell>
                            <TableCell>{r.payment_method}</TableCell>
+                           <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
                            <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -1965,12 +1967,13 @@ export default function Finance() {
                          <TableHead>Monto</TableHead>
                          <TableHead>Categoría</TableHead>
                          <TableHead>Método</TableHead>
+                         <TableHead>Factura</TableHead>
                          <TableHead>Descripción</TableHead>
                          <TableHead>Acciones</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={8}>Cargando...</TableCell></TableRow>}
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => <TableRow key={r.id}>
                            <TableCell>{r.income_number}</TableCell>
                             <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
@@ -1981,6 +1984,7 @@ export default function Finance() {
                         })}</TableCell>
                            <TableCell>{r.category}</TableCell>
                            <TableCell>{r.payment_method}</TableCell>
+                           <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
                            <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                              <TableCell>
                                <div className="flex items-center gap-2">
@@ -2044,12 +2048,13 @@ export default function Finance() {
                         <TableHead>Total</TableHead>
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
+                        <TableHead>Factura</TableHead>
                         <TableHead>Descripción</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
                       {!expensesQuery.isLoading && expensesFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                            <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
@@ -2071,6 +2076,7 @@ export default function Finance() {
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
+                          <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                            <TableCell>
                              <div className="flex items-center gap-2">
@@ -2130,12 +2136,13 @@ export default function Finance() {
                         <TableHead>Total</TableHead>
                         <TableHead>Categoría</TableHead>
                         <TableHead>Método</TableHead>
+                        <TableHead>Factura</TableHead>
                         <TableHead>Descripción</TableHead>
                         <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
                       {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => <TableRow key={r.id}>
                           <TableCell>{r.expense_number}</TableCell>
                            <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
@@ -2157,6 +2164,7 @@ export default function Finance() {
                           </TableCell>
                           <TableCell>{r.category}</TableCell>
                           <TableCell>{r.payment_method}</TableCell>
+                          <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
                           <TableCell>
                              <div className="flex items-center gap-2">
