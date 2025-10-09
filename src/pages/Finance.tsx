@@ -2352,6 +2352,7 @@ export default function Finance() {
                       <TableHead>Fecha</TableHead>
                       <TableHead>Proveedor</TableHead>
                       <TableHead>Concepto</TableHead>
+                      <TableHead>Factura</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Cuenta</TableHead>
                       <TableHead>Método</TableHead>
@@ -2362,6 +2363,7 @@ export default function Finance() {
                         <TableCell>{purchase.purchase_date}</TableCell>
                         <TableCell>{purchase.supplier_name}</TableCell>
                         <TableCell>{purchase.concept}</TableCell>
+                        <TableCell>{purchase.invoice_number || 'Sin factura'}</TableCell>
                         <TableCell>${Number(purchase.total_amount).toFixed(2)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -2372,7 +2374,7 @@ export default function Finance() {
                         <TableCell>{purchase.payment_method || '-'}</TableCell>
                       </TableRow>)}
                     {(!purchasesQuery.data || purchasesQuery.data.length === 0) && <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                        <TableCell colSpan={7} className="text-center text-muted-foreground">
                           No hay compras registradas
                         </TableCell>
                       </TableRow>}
