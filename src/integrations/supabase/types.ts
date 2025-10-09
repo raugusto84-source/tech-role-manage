@@ -2131,6 +2131,113 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_payments: {
+        Row: {
+          account_type: string | null
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          loan_id: string
+          notes: string | null
+          paid_amount: number | null
+          paid_by: string | null
+          paid_date: string | null
+          payment_method: string | null
+          payment_number: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_type?: string | null
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          loan_id: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_number: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_type?: string | null
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          loan_id?: string
+          notes?: string | null
+          paid_amount?: number | null
+          paid_by?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          payment_number?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_payments_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loans: {
+        Row: {
+          account_type: string | null
+          amount: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          loan_number: string
+          monthly_payment: number
+          payment_day: number
+          start_date: string
+          status: string
+          total_months: number
+          updated_at: string
+        }
+        Insert: {
+          account_type?: string | null
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          loan_number: string
+          monthly_payment: number
+          payment_day: number
+          start_date: string
+          status?: string
+          total_months: number
+          updated_at?: string
+        }
+        Update: {
+          account_type?: string | null
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          loan_number?: string
+          monthly_payment?: number
+          payment_day?: number
+          start_date?: string
+          status?: string
+          total_months?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       main_service_categories: {
         Row: {
           created_at: string
@@ -6935,6 +7042,14 @@ export type Database = {
       generate_income_number: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      generate_loan_number: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      generate_loan_payments: {
+        Args: { p_loan_id: string }
+        Returns: undefined
       }
       generate_monthly_policy_payments: {
         Args: Record<PropertyKey, never>

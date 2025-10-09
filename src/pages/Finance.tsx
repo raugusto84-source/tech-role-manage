@@ -20,6 +20,7 @@ import { FinancialHistoryPanel } from "@/components/finance/FinancialHistoryPane
 import { CollectionsManager } from "@/components/finance/CollectionsManager";
 import { PayrollWithdrawals } from "@/components/finance/PayrollWithdrawals";
 import { AccountsConsecutiveReport } from "@/components/finance/AccountsConsecutiveReport";
+import { LoansManager } from "@/components/finance/LoansManager";
 import { X, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1776,6 +1777,7 @@ export default function Finance() {
           <TabsTrigger value="expenses">Egresos</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
+          <TabsTrigger value="loans" className="text-gray-950">Préstamos</TabsTrigger>
           <TabsTrigger value="nomina" className="text-gray-950">Nómina</TabsTrigger>
           <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
@@ -2968,6 +2970,10 @@ export default function Finance() {
 
         <TabsContent value="cobranza">
           <CollectionsManager />
+        </TabsContent>
+
+        <TabsContent value="loans">
+          <LoansManager />
         </TabsContent>
 
         <TabsContent value="history">
