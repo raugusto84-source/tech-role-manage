@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, DollarSign, Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import { formatMXNExact } from '@/utils/currency';
 import { formatDateMexico } from '@/utils/dateUtils';
 
@@ -159,6 +160,8 @@ export function LoansManager() {
   const queryClient = useQueryClient();
   const [showNewLoanDialog, setShowNewLoanDialog] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<{ payment: any; loan: any } | null>(null);
+  const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null);
+  const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
 
   // Form state
   const [amount, setAmount] = useState('');
@@ -314,6 +317,65 @@ export function LoansManager() {
     markOverduePayments();
   });
 
+  const handleDeleteLoan = async () => {
+    if (!deleteLoanId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('loans')
+        .delete()
+        .eq('id', deleteLoanId);
+
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ['loans'] });
+      await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
+
+      toast({
+        title: "Préstamo eliminado",
+        description: "El préstamo y sus pagos asociados han sido eliminados",
+      });
+
+      setDeleteLoanId(null);
+    } catch (error: any) {
+      console.error('Error deleting loan:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el préstamo",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletePayment = async () => {
+    if (!deletePaymentId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('loan_payments')
+        .delete()
+        .eq('id', deletePaymentId);
+
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
+
+      toast({
+        title: "Pago eliminado",
+        description: "El pago del préstamo ha sido eliminado",
+      });
+
+      setDeletePaymentId(null);
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo eliminar el pago",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Resumen */}
@@ -381,6 +443,7 @@ export function LoansManager() {
                 <TableHead>Inicio</TableHead>
                 <TableHead>Cuenta</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -401,6 +464,15 @@ export function LoansManager() {
                     <Badge variant={loan.status === 'activo' ? 'default' : loan.status === 'pagado' ? 'secondary' : 'destructive'}>
                       {loan.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteLoanId(loan.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -423,7 +495,7 @@ export function LoansManager() {
                 <TableHead>Fecha Vencimiento</TableHead>
                 <TableHead>Monto</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -451,14 +523,23 @@ export function LoansManager() {
                           )}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => setSelectedPayment({ payment, loan: payment.loans })}
-                        >
-                          <DollarSign className="mr-1 h-4 w-4" />
-                          Pagar
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            onClick={() => setSelectedPayment({ payment, loan: payment.loans })}
+                          >
+                            <DollarSign className="mr-1 h-4 w-4" />
+                            Pagar
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletePaymentId(payment.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -594,12 +675,50 @@ export function LoansManager() {
 
       {/* Diálogo de pago */}
       {selectedPayment && (
-        <LoanPaymentDialog
-          payment={selectedPayment.payment}
-          loan={selectedPayment.loan}
-          onClose={() => setSelectedPayment(null)}
-        />
+        <Dialog open={true} onOpenChange={() => setSelectedPayment(null)}>
+          <LoanPaymentDialog
+            payment={selectedPayment.payment}
+            loan={selectedPayment.loan}
+            onClose={() => setSelectedPayment(null)}
+          />
+        </Dialog>
       )}
+
+      {/* Diálogo de confirmación para eliminar préstamo */}
+      <AlertDialog open={!!deleteLoanId} onOpenChange={() => setDeleteLoanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar préstamo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el préstamo y todos sus pagos asociados. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteLoan} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Diálogo de confirmación para eliminar pago */}
+      <AlertDialog open={!!deletePaymentId} onOpenChange={() => setDeletePaymentId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar pago?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el registro de pago. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePayment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
