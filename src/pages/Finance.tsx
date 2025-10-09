@@ -829,41 +829,24 @@ export default function Finance() {
       if (purchaseError) throw purchaseError;
 
       // Si tiene factura y se pagó de cuenta no fiscal, crear retiro fiscal disponible
-      // Solo crear retiro si el monto es mayor a 0
       if (purchaseHasInvoice && purchaseAccount === 'no_fiscal' && amount > 0) {
         console.log('Creating fiscal withdrawal for invoiced purchase from non-fiscal account');
-
-        // Create a dummy income first since income_id is required
+        
         const {
-          data: dummyIncome,
-          error: incomeError
-        } = await supabase.from("incomes").insert({
-          amount: 0,
-          description: `Referencia fiscal para retiro de compra: ${purchaseConcept}`,
-          category: "referencia",
-          account_type: "fiscal"
+          data: withdrawal,
+          error: withdrawalError
+        } = await supabase.from("fiscal_withdrawals").insert({
+          amount: amount,
+          description: `Factura pendiente: ${purchaseConcept} - ${supplier?.supplier_name || 'Proveedor'}`,
+          withdrawal_status: 'available',
+          income_id: null
         } as any).select().single();
-        if (incomeError) {
-          console.error('Error creating dummy income:', incomeError);
-          throw incomeError;
-        }
-        if (dummyIncome) {
-          console.log('Creating fiscal withdrawal with amount:', amount);
-          const {
-            data: withdrawal,
-            error: withdrawalError
-          } = await supabase.from("fiscal_withdrawals").insert({
-            amount: amount,
-            description: `Factura pendiente: ${purchaseConcept} - ${supplier?.supplier_name || 'Proveedor'}`,
-            withdrawal_status: 'available',
-            income_id: dummyIncome.id
-          } as any).select().single();
-          if (withdrawalError) {
-            console.error("Error creating fiscal withdrawal:", withdrawalError);
-            throw withdrawalError;
-          } else {
-            console.log("Fiscal withdrawal created successfully:", withdrawal);
-          }
+        
+        if (withdrawalError) {
+          console.error("Error creating fiscal withdrawal:", withdrawalError);
+          throw withdrawalError;
+        } else {
+          console.log("Fiscal withdrawal created successfully:", withdrawal);
         }
       }
 

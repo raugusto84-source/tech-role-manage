@@ -1486,7 +1486,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          income_id: string
+          income_id: string | null
           order_id: string | null
           updated_at: string
           withdrawal_status: string
@@ -1498,7 +1498,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
-          income_id: string
+          income_id?: string | null
           order_id?: string | null
           updated_at?: string
           withdrawal_status?: string
@@ -1510,7 +1510,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
-          income_id?: string
+          income_id?: string | null
           order_id?: string | null
           updated_at?: string
           withdrawal_status?: string
