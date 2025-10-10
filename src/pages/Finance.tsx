@@ -1867,19 +1867,77 @@ export default function Finance() {
                          <TableHead>#</TableHead>
                          <TableHead>Fecha y Hora</TableHead>
                          <TableHead>Cliente</TableHead>
-                         <TableHead className="text-right">Monto</TableHead>
+                         <TableHead>Monto</TableHead>
+                         <TableHead>IVA</TableHead>
+                         <TableHead>ISR</TableHead>
+                         <TableHead>Total</TableHead>
+                         <TableHead>Categoría</TableHead>
+                         <TableHead>Método</TableHead>
+                         <TableHead>Factura</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead>Acciones</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>}
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={12}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
-                           <TableCell className="font-mono text-xs">{r.income_number}</TableCell>
-                           <TableCell className="text-sm">{formatDateTimeMexico(r.income_date)}</TableCell>
-                           <TableCell className="max-w-[200px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
-                           <TableCell className="text-right font-semibold">{Number(r.amount).toLocaleString(undefined, {
-                         style: 'currency',
-                         currency: 'MXN'
-                       })}</TableCell>
+                           <TableCell>{r.income_number}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
+                           <TableCell className="max-w-[150px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
+                           <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })}</TableCell>
+                           <TableCell className="text-green-600">
+                             {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })} (${r.vat_rate}%)` : 'Sin IVA'}
+                           </TableCell>
+                           <TableCell className="text-amber-600">
+                             {r.isr_withholding_amount && Number(r.isr_withholding_amount) > 0 ? `-${Number(r.isr_withholding_amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })} (${r.isr_withholding_rate}%)` : 'Sin ISR'}
+                           </TableCell>
+                           <TableCell className="font-semibold">
+                             {Number(r.amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })}
+                           </TableCell>
+                           <TableCell>{r.category}</TableCell>
+                           <TableCell>{r.payment_method}</TableCell>
+                           <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
+                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {isAdmin && <>
+                                    <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar ingreso?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede revertir. El ingreso será eliminado permanentemente del sistema.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteIncome(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>}
+                              </div>
+                            </TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1906,19 +1964,56 @@ export default function Finance() {
                          <TableHead>#</TableHead>
                          <TableHead>Fecha y Hora</TableHead>
                          <TableHead>Cliente</TableHead>
-                         <TableHead className="text-right">Monto</TableHead>
+                         <TableHead>Monto</TableHead>
+                         <TableHead>Categoría</TableHead>
+                         <TableHead>Método</TableHead>
+                         <TableHead>Factura</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead>Acciones</TableHead>
                        </TableRow>
                     </TableHeader>
                     <TableBody>
-                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>}
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
                        {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => <TableRow key={r.id}>
-                           <TableCell className="font-mono text-xs">{r.income_number}</TableCell>
-                            <TableCell className="text-sm">{formatDateTimeMexico(r.income_date)}</TableCell>
-                           <TableCell className="max-w-[200px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
-                           <TableCell className="text-right font-semibold">{Number(r.amount).toLocaleString(undefined, {
+                           <TableCell>{r.income_number}</TableCell>
+                            <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
+                           <TableCell className="max-w-[150px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
+                           <TableCell>{Number(r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
                         })}</TableCell>
+                           <TableCell>{r.category}</TableCell>
+                           <TableCell>{r.payment_method}</TableCell>
+                           <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
+                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                             <TableCell>
+                               <div className="flex items-center gap-2">
+                                 {isAdmin && <>
+                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                     <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar ingreso?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede revertir. El ingreso será eliminado permanentemente del sistema.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteIncome(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>}
+                              </div>
+                            </TableCell>
                          </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1948,22 +2043,69 @@ export default function Finance() {
                       <TableRow>
                         <TableHead>#</TableHead>
                          <TableHead>Fecha y Hora</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Factura</TableHead>
                         <TableHead>Descripción</TableHead>
-                        <TableHead className="text-right">Monto</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>}
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
                       {!expensesQuery.isLoading && expensesFiscal.map((r: any) => <TableRow key={r.id}>
-                          <TableCell className="font-mono text-xs">{r.expense_number}</TableCell>
-                           <TableCell className="text-sm">{formatDateTimeMexico(r.expense_date)}</TableCell>
-                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                          <TableCell className="text-right font-semibold">
+                          <TableCell>{r.expense_number}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
+                          <TableCell className="text-red-600">
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })} (${r.vat_rate}%)` : 'Sin IVA'}
+                          </TableCell>
+                          <TableCell className="font-semibold">
                             {Number(r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
                         })}
                           </TableCell>
+                          <TableCell>{r.category}</TableCell>
+                          <TableCell>{r.payment_method}</TableCell>
+                          <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
+                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                           <TableCell>
+                             <div className="flex items-center gap-2">
+                               {isAdmin && <>
+                                   <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
+                                   <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                         <X className="h-4 w-4" />
+                                       </Button>
+                                     </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Eliminar egreso?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                           Esta acción no se puede revertir. El egreso será eliminado permanentemente del sistema.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={() => deleteExpense(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                           Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
+                                 </>}
+                             </div>
+                           </TableCell>
                         </TableRow>)}
                     </TableBody>
                   </Table>
@@ -1989,21 +2131,68 @@ export default function Finance() {
                       <TableRow>
                         <TableHead>#</TableHead>
                          <TableHead>Fecha y Hora</TableHead>
+                        <TableHead>Monto</TableHead>
+                        <TableHead>IVA</TableHead>
+                        <TableHead>Total</TableHead>
+                        <TableHead>Categoría</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead>Factura</TableHead>
                         <TableHead>Descripción</TableHead>
-                        <TableHead className="text-right">Monto</TableHead>
+                        <TableHead>Acciones</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={4}>Cargando...</TableCell></TableRow>}
+                      {expensesQuery.isLoading && <TableRow><TableCell colSpan={10}>Cargando...</TableCell></TableRow>}
                       {!expensesQuery.isLoading && expensesNoFiscal.map((r: any) => <TableRow key={r.id}>
-                          <TableCell className="font-mono text-xs">{r.expense_number}</TableCell>
-                           <TableCell className="text-sm">{formatDateTimeMexico(r.expense_date)}</TableCell>
-                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
-                          <TableCell className="text-right font-semibold">
+                          <TableCell>{r.expense_number}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.expense_date)}</TableCell>
+                          <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
+                          <TableCell className="text-red-600">
+                            {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })} (${r.vat_rate}%)` : 'Sin IVA'}
+                          </TableCell>
+                          <TableCell className="font-semibold">
                             {Number(r.amount).toLocaleString(undefined, {
                           style: 'currency',
                           currency: 'MXN'
                         })}
+                          </TableCell>
+                          <TableCell>{r.category}</TableCell>
+                          <TableCell>{r.payment_method}</TableCell>
+                          <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
+                          <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                          <TableCell>
+                             <div className="flex items-center gap-2">
+                               {isAdmin && <>
+                                   <Button size="sm" variant="outline" onClick={() => handleRevertExpense(r)}>Revertir</Button>
+                                   <AlertDialog>
+                                     <AlertDialogTrigger asChild>
+                                       <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                         <X className="h-4 w-4" />
+                                       </Button>
+                                     </AlertDialogTrigger>
+                                     <AlertDialogContent>
+                                       <AlertDialogHeader>
+                                         <AlertDialogTitle>¿Eliminar egreso?</AlertDialogTitle>
+                                         <AlertDialogDescription>
+                                           Esta acción no se puede revertir. El egreso será eliminado permanentemente del sistema.
+                                         </AlertDialogDescription>
+                                       </AlertDialogHeader>
+                                       <AlertDialogFooter>
+                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                         <AlertDialogAction onClick={() => deleteExpense(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                           Eliminar
+                                         </AlertDialogAction>
+                                       </AlertDialogFooter>
+                                     </AlertDialogContent>
+                                   </AlertDialog>
+                                 </>}
+                             </div>
                           </TableCell>
                         </TableRow>)}
                     </TableBody>
