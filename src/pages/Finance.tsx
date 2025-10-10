@@ -1831,10 +1831,10 @@ export default function Finance() {
       </section>
       )}
 
-      <Tabs defaultValue="incomes">
+      <Tabs defaultValue="fiscal">
         <TabsList className="bg-lime-400 rounded-none">
-          <TabsTrigger value="incomes" className="text-gray-950">Ingresos</TabsTrigger>
-          <TabsTrigger value="expenses">Egresos</TabsTrigger>
+          <TabsTrigger value="fiscal" className="text-gray-950">Fiscal</TabsTrigger>
+          <TabsTrigger value="no_fiscal" className="text-gray-950">No Fiscal</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="loans" className="text-gray-950">Préstamos</TabsTrigger>
@@ -2023,13 +2023,112 @@ export default function Finance() {
           </div>
         </TabsContent>
 
-        <TabsContent value="expenses">
-          <div className="grid gap-4 md:grid-cols-2">
+        <TabsContent value="fiscal">
+          <div className="space-y-6">
+            {/* Ingresos Fiscales */}
             <Card className="border-l-4 border-l-orange-500">
               <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 dark:bg-orange-950/20">
                 <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
                   <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                  Egresos - Fiscal ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, {
+                  Ingresos Fiscales ({incomesFiscal.length}) · Total: {totIF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
+                </CardTitle>
+                <Button size="sm" onClick={() => exportCsv(`ingresos_fiscal_${startDate}_${endDate}`, incomesFiscal as any)}>Exportar CSV</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                       <TableRow>
+                         <TableHead>#</TableHead>
+                         <TableHead>Fecha y Hora</TableHead>
+                         <TableHead>Cliente</TableHead>
+                         <TableHead>Monto</TableHead>
+                         <TableHead>IVA</TableHead>
+                         <TableHead>ISR</TableHead>
+                         <TableHead>Total</TableHead>
+                         <TableHead>Categoría</TableHead>
+                         <TableHead>Método</TableHead>
+                         <TableHead>Factura</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead>Acciones</TableHead>
+                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={12}>Cargando...</TableCell></TableRow>}
+                       {!incomesQuery.isLoading && incomesFiscal.map((r: any) => <TableRow key={r.id}>
+                           <TableCell>{r.income_number}</TableCell>
+                           <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
+                           <TableCell className="max-w-[150px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
+                           <TableCell>{Number(r.taxable_amount || r.amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })}</TableCell>
+                           <TableCell className="text-green-600">
+                             {r.vat_amount ? `${Number(r.vat_amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })} (${r.vat_rate}%)` : 'Sin IVA'}
+                           </TableCell>
+                           <TableCell className="text-amber-600">
+                             {r.isr_withholding_amount && Number(r.isr_withholding_amount) > 0 ? `-${Number(r.isr_withholding_amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })} (${r.isr_withholding_rate}%)` : 'Sin ISR'}
+                           </TableCell>
+                           <TableCell className="font-semibold">
+                             {Number(r.amount).toLocaleString(undefined, {
+                           style: 'currency',
+                           currency: 'MXN'
+                         })}
+                           </TableCell>
+                           <TableCell>{r.category}</TableCell>
+                           <TableCell>{r.payment_method}</TableCell>
+                           <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
+                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {isAdmin && <>
+                                    <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar ingreso?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede revertir. El ingreso será eliminado permanentemente del sistema.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteIncome(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>}
+                              </div>
+                            </TableCell>
+                        </TableRow>)}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Egresos Fiscales */}
+            <Card className="border-l-4 border-l-orange-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-orange-50/50 dark:bg-orange-950/20">
+                <CardTitle className="text-orange-700 dark:text-orange-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                  Egresos Fiscales ({expensesFiscal.length}) · Total: {totEF.toLocaleString(undefined, {
                   style: 'currency',
                   currency: 'MXN'
                 })}
@@ -2112,12 +2211,94 @@ export default function Finance() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </TabsContent>
 
+        <TabsContent value="no_fiscal">
+          <div className="space-y-6">
+            {/* Ingresos No Fiscales */}
             <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
                 <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
                   <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  Egresos - No Fiscal ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, {
+                  Ingresos No Fiscales ({incomesNoFiscal.length}) · Total: {totINF.toLocaleString(undefined, {
+                  style: 'currency',
+                  currency: 'MXN'
+                })}
+                </CardTitle>
+                <Button size="sm" onClick={() => exportCsv(`ingresos_no_fiscal_${startDate}_${endDate}`, incomesNoFiscal as any)}>Exportar CSV</Button>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                       <TableRow>
+                         <TableHead>#</TableHead>
+                         <TableHead>Fecha y Hora</TableHead>
+                         <TableHead>Cliente</TableHead>
+                         <TableHead>Monto</TableHead>
+                         <TableHead>Categoría</TableHead>
+                         <TableHead>Método</TableHead>
+                         <TableHead>Factura</TableHead>
+                         <TableHead>Descripción</TableHead>
+                         <TableHead>Acciones</TableHead>
+                       </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                       {incomesQuery.isLoading && <TableRow><TableCell colSpan={9}>Cargando...</TableCell></TableRow>}
+                       {!incomesQuery.isLoading && incomesNoFiscal.map((r: any) => <TableRow key={r.id}>
+                           <TableCell>{r.income_number}</TableCell>
+                            <TableCell>{formatDateTimeMexico(r.income_date)}</TableCell>
+                           <TableCell className="max-w-[150px] truncate" title={r.client_name || 'N/A'}>{r.client_name || 'N/A'}</TableCell>
+                           <TableCell>{Number(r.amount).toLocaleString(undefined, {
+                          style: 'currency',
+                          currency: 'MXN'
+                        })}</TableCell>
+                           <TableCell>{r.category}</TableCell>
+                           <TableCell>{r.payment_method}</TableCell>
+                           <TableCell>{r.invoice_number || 'Sin factura'}</TableCell>
+                           <TableCell className="max-w-[320px] truncate" title={r.description}>{r.description}</TableCell>
+                             <TableCell>
+                               <div className="flex items-center gap-2">
+                                 {isAdmin && <>
+                                     <Button size="sm" variant="outline" onClick={() => handleRevertIncome(r)}>Revertir</Button>
+                                     <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive">
+                                          <X className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>¿Eliminar ingreso?</AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Esta acción no se puede revertir. El ingreso será eliminado permanentemente del sistema.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteIncome(r.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Eliminar
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </>}
+                              </div>
+                            </TableCell>
+                         </TableRow>)}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Egresos No Fiscales */}
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="flex flex-row items-center justify-between bg-blue-50/50 dark:bg-blue-950/20">
+                <CardTitle className="text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  Egresos No Fiscales ({expensesNoFiscal.length}) · Total: {totENF.toLocaleString(undefined, {
                   style: 'currency',
                   currency: 'MXN'
                 })}
