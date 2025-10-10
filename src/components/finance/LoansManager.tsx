@@ -321,6 +321,28 @@ export function LoansManager() {
     if (!deleteLoanId) return;
     
     try {
+      // Obtener el préstamo para saber su número y poder buscar el ingreso
+      const { data: loan, error: fetchError } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('id', deleteLoanId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Eliminar el ingreso asociado si existe
+      if (loan.account_type !== 'ninguna') {
+        const { error: incomeError } = await supabase
+          .from('incomes')
+          .delete()
+          .eq('description', `Préstamo ${loan.loan_number} - ${loan.description || 'Sin descripción'}`);
+
+        if (incomeError) {
+          console.error('Error deleting associated income:', incomeError);
+        }
+      }
+
+      // Eliminar el préstamo
       const { error } = await supabase
         .from('loans')
         .delete()
@@ -330,10 +352,11 @@ export function LoansManager() {
 
       await queryClient.invalidateQueries({ queryKey: ['loans'] });
       await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
+      await queryClient.invalidateQueries({ queryKey: ['incomes'] });
 
       toast({
         title: "Préstamo eliminado",
-        description: "El préstamo y sus pagos asociados han sido eliminados",
+        description: "El préstamo, sus pagos e ingreso asociado han sido eliminados",
       });
 
       setDeleteLoanId(null);
