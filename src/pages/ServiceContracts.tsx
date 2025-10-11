@@ -10,13 +10,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { InsurancePolicyManager } from "@/components/policies/InsurancePolicyManager";
-import { PolicyCalendar } from "@/components/policies/PolicyCalendar";
-import { PolicyDashboardMetrics } from "@/components/policies/PolicyDashboardMetrics";
 import { PolicyRealtimeProvider } from "@/components/policies/PolicyRealtimeProvider";
 import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
-import { AutomationEngine } from "@/components/policies/AutomationEngine";
 
 import { FileText, AlertCircle, Calendar } from "lucide-react";
 interface ContractStats {
@@ -27,7 +24,7 @@ interface ContractStats {
 export default function ServiceContracts() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("summary");
+  const [activeTab, setActiveTab] = useState("contracts");
   const [stats, setStats] = useState<ContractStats>({
     active_contracts: 0,
     pending_payments: 0,
@@ -146,19 +143,12 @@ export default function ServiceContracts() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="summary">Resumen</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
           <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
           <TabsTrigger value="services">Servicios Periódicos</TabsTrigger>
           <TabsTrigger value="reports">Reportes</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="summary" className="space-y-6">
-          <AutomationEngine />
-          <PolicyDashboardMetrics onRefresh={refreshStats} />
-          <PolicyCalendar />
-        </TabsContent>
 
         <TabsContent value="contracts" className="space-y-4">
           <InsurancePolicyManager onStatsUpdate={refreshStats} />
