@@ -107,6 +107,23 @@ export function DatabaseAdminPanel() {
     }
   };
 
+  const handleTableSelect = (table: string, categoryKey: string, checked: boolean) => {
+    const category = DATABASE_MODULES_BY_CATEGORY[categoryKey as keyof typeof DATABASE_MODULES_BY_CATEGORY];
+    
+    if (checked) {
+      const newSelectedModules = [...new Set([...selectedModules, table])];
+      setSelectedModules(newSelectedModules);
+      
+      // Check if all tables in category are selected
+      if (category.tables.every(t => newSelectedModules.includes(t))) {
+        setSelectedCategories([...selectedCategories, categoryKey]);
+      }
+    } else {
+      setSelectedModules(selectedModules.filter(id => id !== table));
+      setSelectedCategories(selectedCategories.filter(k => k !== categoryKey));
+    }
+  };
+
   const selectAllModules = () => {
     const allCategories = Object.keys(DATABASE_MODULES_BY_CATEGORY);
     const allTables = Object.values(DATABASE_MODULES_BY_CATEGORY).flatMap(c => c.tables);
@@ -495,18 +512,21 @@ export function DatabaseAdminPanel() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {tablesInCategory} de {totalTables} tablas seleccionadas
                       </p>
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="flex flex-wrap gap-2 mt-3">
                         {category.tables.map(table => (
-                          <span 
-                            key={table}
-                            className={`text-xs px-2 py-0.5 rounded-full ${
-                              selectedModules.includes(table)
-                                ? 'bg-primary/10 text-primary'
-                                : 'bg-muted text-muted-foreground'
-                            }`}
-                          >
-                            {table}
-                          </span>
+                          <div key={table} className="flex items-center gap-2 bg-muted/50 rounded-md px-3 py-1.5">
+                            <Checkbox
+                              id={`${key}-${table}`}
+                              checked={selectedModules.includes(table)}
+                              onCheckedChange={(checked) => handleTableSelect(table, key, checked as boolean)}
+                            />
+                            <label
+                              htmlFor={`${key}-${table}`}
+                              className="text-xs font-medium cursor-pointer"
+                            >
+                              {table}
+                            </label>
+                          </div>
                         ))}
                       </div>
                     </div>
