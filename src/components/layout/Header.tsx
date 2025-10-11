@@ -12,6 +12,7 @@ import { LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { OrderNotifications } from '@/components/notifications/OrderNotifications';
+import { FinancialNotifications } from '@/components/finance/FinancialNotifications';
 
 /**
  * Header de la aplicación con información del usuario y logout
@@ -58,6 +59,9 @@ export function Header() {
 
       <div className="flex items-center gap-4">
         <OrderNotifications />
+        {profile?.role && ['administrador', 'vendedor', 'supervisor'].includes(profile.role) && (
+          <FinancialNotifications />
+        )}
         <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-accent">

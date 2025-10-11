@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PolicyPaymentsPending } from "./PolicyPaymentsPending";
 import { OrderPaymentsPending } from "./OrderPaymentsPending";
-import { DollarSign, FileText, ShoppingCart, TrendingUp } from "lucide-react";
+import { DollarSign, FileText, ShoppingCart, TrendingUp, RefreshCw } from "lucide-react";
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
@@ -31,6 +32,7 @@ export function CollectionsManager() {
     overdue_amount: 0
   });
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     loadCollectionStats();
@@ -40,15 +42,14 @@ export function CollectionsManager() {
     try {
       setLoading(true);
 
-      // Get all pending collections
-      const { data: pendingCollections, error: collectionsError } = await supabase
-        .from('pending_collections')
-        .select('collection_type, amount, due_date, status, order_id')
-        .eq('status', 'pending');
+      // Read from collections_cache for orders
+      const { data: cacheData, error: cacheError } = await supabase
+        .from('collections_cache')
+        .select('*');
 
-      if (collectionsError) throw collectionsError;
+      if (cacheError) throw cacheError;
 
-      // Get policy payments pending (incluye pendientes y vencidos)
+      // Get policy payments pending
       const { data: policyPayments, error: policyError } = await supabase
         .from('policy_payments')
         .select('amount, due_date')
@@ -56,60 +57,25 @@ export function CollectionsManager() {
 
       if (policyError) throw policyError;
 
-      const collections = pendingCollections || [];
+      const cachedCollections = cacheData || [];
       const policies = policyPayments || [];
 
-      // Calculate policy totals
+      // Calculate totals from cache
+      const orderPending = cachedCollections
+        .filter(c => c.source_type === 'order')
+        .reduce((sum, c) => sum + (c.amount_pending || 0), 0);
+
       const policyPending = policies.reduce((sum, p) => sum + (p.amount || 0), 0);
-      
-      // Calculate actual remaining balance for orders
-      const orderCollections = collections.filter(c => c.collection_type === 'order_payment');
-      let orderPending = 0;
-      let overdueOrder = 0;
-      
-      const today = new Date();
-      const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-
-      for (const collection of orderCollections) {
-        // Get order items to calculate actual total
-        const { data: orderItems } = await supabase
-          .from('order_items')
-          .select('total_amount')
-          .eq('order_id', collection.order_id);
-
-        const actualTotal = (orderItems || []).reduce((sum: number, item: any) => 
-          sum + (item.total_amount || 0), 0);
-
-        // Get payments made for this order
-        const { data: payments } = await supabase
-          .from('order_payments')
-          .select('payment_amount, isr_withholding_applied')
-          .eq('order_id', collection.order_id);
-
-        const totalPaid = (payments || []).reduce((sum: number, payment: any) => 
-          sum + (payment.payment_amount || 0), 0);
-
-        // Apply ISR rule if any payment had ISR withholding like the dialog
-        const hasISR = (payments || []).some((p: any) => p.isr_withholding_applied);
-        const finalExactTotal = hasISR
-          ? actualTotal - (actualTotal / 1.16) * 0.0125
-          : actualTotal;
-
-        // Calculate remaining balance in sync with dialog
-        const remainingBalance = Math.max(0, finalExactTotal - totalPaid);
-        orderPending += remainingBalance;
-
-        // Add to overdue if past due date
-        if ((collection as any).due_date < todayKey) {
-          overdueOrder += remainingBalance;
-        }
-      }
-      
       const totalPending = policyPending + orderPending;
 
-      // Calculate overdue amounts for policies
+      // Calculate overdue amounts
+      const overdueOrder = cachedCollections
+        .filter(c => c.source_type === 'order' && c.is_overdue)
+        .reduce((sum, c) => sum + (c.amount_pending || 0), 0);
+
+      const today = new Date().toISOString().split('T')[0];
       const overduePolicy = policies
-        .filter(p => (p as any).due_date < todayKey)
+        .filter(p => p.due_date < today)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
 
       const overdueAmount = overduePolicy + overdueOrder;
@@ -133,6 +99,32 @@ export function CollectionsManager() {
     }
   };
 
+  const updateCache = async () => {
+    try {
+      setUpdating(true);
+      const { error } = await supabase.functions.invoke('update-collections-cache');
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Cache actualizado",
+        description: "Las estadísticas de cobranza se han actualizado",
+      });
+      
+      // Reload stats after update
+      await loadCollectionStats();
+    } catch (error: any) {
+      console.error('Error updating cache:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el cache",
+        variant: "destructive",
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleStatsUpdate = () => {
     loadCollectionStats();
   };
@@ -143,11 +135,22 @@ export function CollectionsManager() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Cobranza Centralizada</h2>
-        <p className="text-muted-foreground">
-          Gestión integral de cobranza para pólizas y órdenes de servicio
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">Cobranza Centralizada</h2>
+          <p className="text-muted-foreground">
+            Gestión integral de cobranza para pólizas y órdenes de servicio
+          </p>
+        </div>
+        <Button 
+          onClick={updateCache} 
+          disabled={updating}
+          variant="outline"
+          size="sm"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
+          Actualizar Cache
+        </Button>
       </div>
 
       {/* Summary Stats */}
