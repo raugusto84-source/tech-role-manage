@@ -65,7 +65,7 @@ export function OrderPaymentsPending() {
 
       if (collectionsError) throw collectionsError;
 
-      // Fetch actual order totals for each pending collection
+      // Fetch actual order totals and calculate remaining balance for each pending collection
       const formattedPaymentsPromises = (pendingCollections || []).map(async (pc: any) => {
         // Get order items to calculate real total
         const { data: orderItems, error: itemsError } = await supabase
@@ -82,6 +82,24 @@ export function OrderPaymentsPending() {
           return sum + (item.total_amount || 0);
         }, 0);
 
+        // Get payments made for this order
+        const { data: payments, error: paymentsError } = await supabase
+          .from('order_payments')
+          .select('payment_amount')
+          .eq('order_id', pc.order_id);
+
+        if (paymentsError) {
+          console.error('Error fetching order payments:', paymentsError);
+        }
+
+        // Calculate total paid
+        const totalPaid = (payments || []).reduce((sum: number, payment: any) => {
+          return sum + (payment.payment_amount || 0);
+        }, 0);
+
+        // Calculate remaining balance
+        const remainingBalance = actualTotal - totalPaid;
+
         return {
           id: pc.id,
           order_id: pc.order_id,
@@ -89,7 +107,7 @@ export function OrderPaymentsPending() {
           client_name: pc.client_name,
           client_email: pc.client_email,
           amount: actualTotal, // Use the actual order total
-          balance: pc.balance,
+          balance: remainingBalance, // Use calculated remaining balance
           created_at: pc.created_at,
           updated_at: pc.updated_at,
           due_date: pc.due_date
