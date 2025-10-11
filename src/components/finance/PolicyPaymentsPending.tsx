@@ -110,7 +110,7 @@ export function PolicyPaymentsPending() {
           )
         `)
         .eq('is_paid', false)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: false });
 
       if (error) throw error;
 

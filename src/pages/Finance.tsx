@@ -302,7 +302,7 @@ export default function Finance() {
         .from("loan_payments")
         .select("id, loan_id, due_date, amount, status")
         .in("status", ["pendiente", "vencido"])
-        .order("due_date", { ascending: true });
+        .order("due_date", { ascending: false });
       if (error) throw error;
       return data ?? [];
     }
@@ -379,7 +379,7 @@ export default function Finance() {
         .neq("category", "referencia") // Excluir referencias
         .gte("income_date", startDate)
         .lte("income_date", endDate)
-        .order("income_date", { ascending: true });
+        .order("income_date", { ascending: false });
       
       if (error) throw error;
       return data ?? [];
@@ -396,7 +396,7 @@ export default function Finance() {
         .eq("account_type", "fiscal")
         .gte("expense_date", startDate)
         .lte("expense_date", endDate)
-        .order("expense_date", { ascending: true });
+        .order("expense_date", { ascending: false });
       
       if (error) throw error;
       return data ?? [];
@@ -435,8 +435,8 @@ export default function Finance() {
       const {
         data,
         error
-      } = await supabase.from("fixed_expenses").select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month").order("next_run_date", {
-        ascending: true
+      } = await supabase.from("fixed_expenses").select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month").order("created_at", {
+        ascending: false
       });
       if (error) throw error;
       return data ?? [];
@@ -448,8 +448,8 @@ export default function Finance() {
       const {
         data,
         error
-      } = await supabase.from("recurring_payrolls").select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active,day_of_month").order("next_run_date", {
-        ascending: true
+      } = await supabase.from("recurring_payrolls").select("id,employee_name,base_salary,net_salary,account_type,payment_method,next_run_date,active,day_of_month").order("created_at", {
+        ascending: false
       });
       if (error) throw error;
       return data ?? [];
@@ -461,8 +461,8 @@ export default function Finance() {
       const {
         data,
         error
-      } = await supabase.from("fixed_incomes").select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month").order("next_run_date", {
-        ascending: true
+      } = await supabase.from("fixed_incomes").select("id,description,amount,account_type,payment_method,next_run_date,active,day_of_month").order("created_at", {
+        ascending: false
       });
       if (error) throw error;
       return data ?? [];

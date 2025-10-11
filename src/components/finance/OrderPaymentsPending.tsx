@@ -61,7 +61,7 @@ export function OrderPaymentsPending() {
         .select('*')
         .eq('collection_type', 'order_payment')
         .eq('status', 'pending')
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: false });
 
       if (collectionsError) throw collectionsError;
 

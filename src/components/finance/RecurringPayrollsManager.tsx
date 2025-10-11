@@ -49,7 +49,7 @@ export function RecurringPayrollsManager() {
       const { data, error } = await supabase
         .from('recurring_payrolls')
         .select('*')
-        .order('next_run_date', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as RecurringPayroll[];
