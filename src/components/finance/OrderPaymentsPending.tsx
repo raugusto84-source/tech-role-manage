@@ -65,19 +65,38 @@ export function OrderPaymentsPending() {
 
       if (collectionsError) throw collectionsError;
 
-      const formattedPayments = (pendingCollections || []).map((pc: any) => ({
-        id: pc.id,
-        order_id: pc.order_id,
-        order_number: pc.order_number,
-        client_name: pc.client_name,
-        client_email: pc.client_email,
-        amount: pc.amount,
-        balance: pc.balance,
-        created_at: pc.created_at,
-        updated_at: pc.updated_at,
-        due_date: pc.due_date
-      }));
+      // Fetch actual order totals for each pending collection
+      const formattedPaymentsPromises = (pendingCollections || []).map(async (pc: any) => {
+        // Get order items to calculate real total
+        const { data: orderItems, error: itemsError } = await supabase
+          .from('order_items')
+          .select('total_amount')
+          .eq('order_id', pc.order_id);
 
+        if (itemsError) {
+          console.error('Error fetching order items:', itemsError);
+        }
+
+        // Calculate the actual order total from items
+        const actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
+          return sum + (item.total_amount || 0);
+        }, 0);
+
+        return {
+          id: pc.id,
+          order_id: pc.order_id,
+          order_number: pc.order_number,
+          client_name: pc.client_name,
+          client_email: pc.client_email,
+          amount: actualTotal, // Use the actual order total
+          balance: pc.balance,
+          created_at: pc.created_at,
+          updated_at: pc.updated_at,
+          due_date: pc.due_date
+        };
+      });
+
+      const formattedPayments = await Promise.all(formattedPaymentsPromises);
       setPayments(formattedPayments);
 
       // Calculate stats
