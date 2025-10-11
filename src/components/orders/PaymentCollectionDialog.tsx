@@ -27,6 +27,7 @@ interface PaymentCollectionDialogProps {
     clients?: {
       name: string;
     } | null;
+    remainingBalance?: number; // Optional pre-calculated balance
   };
   totalAmount: number;
 }
@@ -51,10 +52,13 @@ export function PaymentCollectionDialog({
   useEffect(() => {
     console.log('PaymentCollectionDialog open state changed:', open);
     if (open && !paymentsLoading) {
-      let remainingAmount = paymentSummary.remainingBalance;
+      // Use pre-calculated balance if available, otherwise use hook calculation
+      let remainingAmount = order.remainingBalance !== undefined 
+        ? order.remainingBalance 
+        : paymentSummary.remainingBalance;
       
       // Si hay ISR aplicado, recalcular el remaining balance con el monto exacto
-      if (accountType === 'fiscal' && hasISRWithholding) {
+      if (accountType === 'fiscal' && hasISRWithholding && order.remainingBalance === undefined) {
         const baseAmount = totalAmount / 1.16; // Base sin IVA
         const isrAmount = baseAmount * 0.0125; // ISR 1.25%
         const exactFinalAmount = totalAmount - isrAmount; // Total exacto después de ISR
@@ -69,7 +73,7 @@ export function PaymentCollectionDialog({
         setAccountType(paymentSummary.existingAccountType);
       }
     }
-  }, [open, order.order_number, paymentSummary.remainingBalance, paymentSummary.totalPaid, paymentSummary.existingAccountType, paymentsLoading, accountType, hasISRWithholding, totalAmount]);
+  }, [open, order.order_number, order.remainingBalance, paymentSummary.remainingBalance, paymentSummary.totalPaid, paymentSummary.existingAccountType, paymentsLoading, accountType, hasISRWithholding, totalAmount]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

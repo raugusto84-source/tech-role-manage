@@ -157,14 +157,11 @@ export function OrderPaymentsPending() {
 
       if (orderError) throw orderError;
 
-      // Calculate total amount from order items
-      const totalAmount = (orderData.order_items || []).reduce((sum: number, item: any) => {
-        return sum + (item.total_amount || 0);
-      }, 0);
-
+      // Use the same total and balance calculated in the table
       const orderWithTotal = {
         ...orderData,
-        totalAmount
+        totalAmount: payment.amount, // Use the calculated total from the table
+        remainingBalance: payment.balance // Pass the calculated balance
       };
 
       setSelectedOrder(orderWithTotal);
