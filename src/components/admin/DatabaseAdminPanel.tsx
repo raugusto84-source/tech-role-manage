@@ -10,38 +10,80 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Download, Upload, Trash2, AlertTriangle, RotateCcw, Power, Shield } from 'lucide-react';
 
-const DATABASE_MODULES = [
-  { id: 'profiles', name: 'Perfiles de Usuario', description: 'Información de usuarios del sistema', critical: true },
-  { id: 'clients', name: 'Clientes', description: 'Base de datos de clientes', critical: false },
-  { id: 'orders', name: 'Órdenes', description: 'Órdenes de trabajo y servicios', critical: false },
-  { id: 'order_items', name: 'Items de Órdenes', description: 'Detalles de servicios por orden', critical: false },
-  { id: 'quotes', name: 'Cotizaciones', description: 'Cotizaciones enviadas a clientes', critical: false },
-  { id: 'quote_items', name: 'Items de Cotizaciones', description: 'Detalles de servicios por cotización', critical: false },
-  { id: 'service_types', name: 'Tipos de Servicio', description: 'Catálogo de servicios disponibles', critical: false },
-  { id: 'sales_categories', name: 'Categorías de Ventas', description: 'Categorías de productos y servicios', critical: false },
-  { id: 'sales_products', name: 'Productos de Ventas', description: 'Catálogo de productos', critical: false },
-  { id: 'incomes', name: 'Ingresos', description: 'Registro de ingresos', critical: false },
-  { id: 'expenses', name: 'Egresos', description: 'Registro de gastos', critical: false },
-  { id: 'order_payments', name: 'Pagos de Órdenes', description: 'Pagos realizados por órdenes', critical: false },
-  { id: 'financial_history', name: 'Historial Financiero', description: 'Registro de operaciones financieras', critical: false },
-  { id: 'fiscal_withdrawals', name: 'Retiros Fiscales', description: 'Retiros de montos fiscales', critical: false },
-  { id: 'technician_skills', name: 'Habilidades Técnicas', description: 'Habilidades de técnicos', critical: false },
-  { id: 'time_records', name: 'Registros de Tiempo', description: 'Control de tiempo de empleados', critical: false },
-  { id: 'employee_payments', name: 'Pagos a Empleados', description: 'Comisiones y bonos pagados', critical: false },
-  { id: 'vehicles', name: 'Vehículos', description: 'Flota de vehículos', critical: false },
-  { id: 'insurance_policies', name: 'Pólizas de Seguro', description: 'Pólizas de seguros', critical: false },
-  { id: 'satisfaction_surveys', name: 'Encuestas de Satisfacción', description: 'Encuestas completadas por clientes', critical: false },
-  { id: 'survey_responses', name: 'Respuestas de Encuestas', description: 'Respuestas individuales a encuestas', critical: false },
-  { id: 'order_satisfaction_surveys', name: 'Encuestas de Órdenes', description: 'Encuestas de satisfacción por orden', critical: false },
-  { id: 'technician_satisfaction_surveys', name: 'Encuestas de Técnicos', description: 'Encuestas sobre técnicos', critical: false },
-  { id: 'sales_satisfaction_surveys', name: 'Encuestas de Ventas', description: 'Encuestas sobre vendedores', critical: false },
-  { id: 'survey_configurations', name: 'Configuraciones de Encuestas', description: 'Configuraciones programables de encuestas', critical: false },
-  { id: 'scheduled_surveys', name: 'Encuestas Programadas', description: 'Encuestas programadas automáticamente', critical: false }
-];
+const DATABASE_MODULES_BY_CATEGORY = {
+  usuarios: {
+    name: 'Usuarios y Perfiles',
+    icon: '👥',
+    tables: ['profiles']
+  },
+  clientes: {
+    name: 'Clientes',
+    icon: '🧑‍💼',
+    tables: ['clients']
+  },
+  ordenes: {
+    name: 'Órdenes y Servicios',
+    icon: '📋',
+    tables: ['orders', 'order_items', 'order_diagnostics', 'order_status_logs']
+  },
+  cotizaciones: {
+    name: 'Cotizaciones',
+    icon: '💰',
+    tables: ['quotes', 'quote_items']
+  },
+  catalogos: {
+    name: 'Catálogos de Servicios',
+    icon: '📚',
+    tables: ['service_types', 'sales_categories', 'sales_products', 'main_service_categories', 'service_subcategories']
+  },
+  finanzas: {
+    name: 'Finanzas',
+    icon: '💵',
+    tables: ['incomes', 'expenses', 'order_payments', 'financial_history', 'fiscal_withdrawals', 'purchases']
+  },
+  rrhh: {
+    name: 'Recursos Humanos',
+    icon: '⏰',
+    tables: ['time_records', 'employee_payments', 'work_schedules', 'weekly_reports']
+  },
+  tecnicos: {
+    name: 'Técnicos',
+    icon: '🔧',
+    tables: ['technician_skills', 'technician_workload']
+  },
+  flotilla: {
+    name: 'Flotilla y Vehículos',
+    icon: '🚗',
+    tables: ['vehicles', 'fleet_groups', 'fleet_assignments', 'vehicle_routes']
+  },
+  polizas: {
+    name: 'Pólizas de Seguro',
+    icon: '🛡️',
+    tables: ['insurance_policies', 'policy_clients', 'policy_equipment', 'policy_payments']
+  },
+  encuestas: {
+    name: 'Encuestas',
+    icon: '📊',
+    tables: [
+      'satisfaction_surveys',
+      'survey_responses', 
+      'order_satisfaction_surveys',
+      'technician_satisfaction_surveys',
+      'sales_satisfaction_surveys',
+      'survey_configurations',
+      'scheduled_surveys'
+    ]
+  }
+};
+
+const DATABASE_MODULES = Object.values(DATABASE_MODULES_BY_CATEGORY).flatMap(category => 
+  category.tables.map(table => ({ id: table, name: table, description: '', critical: table === 'profiles' }))
+);
 
 export function DatabaseAdminPanel() {
   const { toast } = useToast();
   const [selectedModules, setSelectedModules] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -54,19 +96,26 @@ export function DatabaseAdminPanel() {
   const [isCleaningWorkflow, setIsCleaningWorkflow] = useState(false);
   const [cleanWorkflowDialogOpen, setCleanWorkflowDialogOpen] = useState(false);
 
-  const handleModuleSelect = (moduleId: string, checked: boolean) => {
+  const handleCategorySelect = (categoryKey: string, checked: boolean) => {
+    const category = DATABASE_MODULES_BY_CATEGORY[categoryKey as keyof typeof DATABASE_MODULES_BY_CATEGORY];
     if (checked) {
-      setSelectedModules([...selectedModules, moduleId]);
+      setSelectedCategories([...selectedCategories, categoryKey]);
+      setSelectedModules([...new Set([...selectedModules, ...category.tables])]);
     } else {
-      setSelectedModules(selectedModules.filter(id => id !== moduleId));
+      setSelectedCategories(selectedCategories.filter(k => k !== categoryKey));
+      setSelectedModules(selectedModules.filter(id => !category.tables.includes(id)));
     }
   };
 
   const selectAllModules = () => {
-    setSelectedModules(DATABASE_MODULES.map(m => m.id));
+    const allCategories = Object.keys(DATABASE_MODULES_BY_CATEGORY);
+    const allTables = Object.values(DATABASE_MODULES_BY_CATEGORY).flatMap(c => c.tables);
+    setSelectedCategories(allCategories);
+    setSelectedModules(allTables);
   };
 
   const deselectAllModules = () => {
+    setSelectedCategories([]);
     setSelectedModules([]);
   };
 
@@ -420,44 +469,72 @@ export function DatabaseAdminPanel() {
             </Button>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {DATABASE_MODULES.map((module) => (
-              <div key={module.id} className={`flex items-start space-x-2 p-3 border rounded-lg ${module.critical ? 'border-amber-200 bg-amber-50' : ''}`}>
-                <Checkbox
-                  id={module.id}
-                  checked={selectedModules.includes(module.id)}
-                  onCheckedChange={(checked) => handleModuleSelect(module.id, checked as boolean)}
-                />
-                <div className="grid gap-1.5 leading-none">
-                  <label
-                    htmlFor={module.id}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-1"
-                  >
-                    {module.name}
-                    {module.critical && <Shield className="h-3 w-3 text-amber-600" />}
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    {module.description}
-                  </p>
+          <div className="space-y-3">
+            {Object.entries(DATABASE_MODULES_BY_CATEGORY).map(([key, category]) => {
+              const isCategorySelected = selectedCategories.includes(key);
+              const tablesInCategory = category.tables.filter(t => selectedModules.includes(t)).length;
+              const totalTables = category.tables.length;
+              
+              return (
+                <div key={key} className="border rounded-lg p-4 hover:border-primary/50 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id={key}
+                      checked={isCategorySelected}
+                      onCheckedChange={(checked) => handleCategorySelect(key, checked as boolean)}
+                    />
+                    <div className="flex-1 cursor-pointer" onClick={() => handleCategorySelect(key, !isCategorySelected)}>
+                      <label
+                        htmlFor={key}
+                        className="text-base font-semibold flex items-center gap-2 cursor-pointer"
+                      >
+                        <span className="text-xl">{category.icon}</span>
+                        {category.name}
+                        {key === 'usuarios' && <Shield className="h-4 w-4 text-amber-600" />}
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {tablesInCategory} de {totalTables} tablas seleccionadas
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {category.tables.map(table => (
+                          <span 
+                            key={table}
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              selectedModules.includes(table)
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {table}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <Button 
-            onClick={exportData} 
-            disabled={selectedModules.length === 0 || isExporting}
-            className="w-full"
-          >
-            {isExporting ? (
-              <>Exportando...</>
-            ) : (
-              <>
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Módulos Seleccionados ({selectedModules.length})
-              </>
-            )}
-          </Button>
+          <div className="pt-4 border-t">
+            <p className="text-sm text-muted-foreground mb-3">
+              Total: {selectedModules.length} tablas seleccionadas
+            </p>
+            <Button 
+              onClick={exportData} 
+              disabled={selectedModules.length === 0 || isExporting}
+              className="w-full"
+            >
+              {isExporting ? (
+                <>Exportando...</>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar Datos Seleccionados
+                </>
+              )}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
