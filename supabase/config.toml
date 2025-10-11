@@ -8,3 +8,21 @@ verify_jwt = true
 
 [functions.reject-order-modification]
 verify_jwt = true
+
+[functions.update-collections-cache]
+verify_jwt = false
+
+[functions.check-fiscal-withdrawals]
+verify_jwt = false
+
+[functions.check-overdue-loans]
+verify_jwt = false
+
+[functions.check-unpaid-payrolls]
+verify_jwt = false
+
+[functions.check-pending-collections]
+verify_jwt = false
+
+[functions.calculate-vat-status]
+verify_jwt = false

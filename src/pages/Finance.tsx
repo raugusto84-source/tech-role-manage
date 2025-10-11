@@ -21,7 +21,8 @@ import { CollectionsManager } from "@/components/finance/CollectionsManager";
 import { PayrollWithdrawals } from "@/components/finance/PayrollWithdrawals";
 import { AccountsConsecutiveReport } from "@/components/finance/AccountsConsecutiveReport";
 import { LoansManager } from "@/components/finance/LoansManager";
-import { X, Plus } from "lucide-react";
+import { RecurringPayrollsManager } from "@/components/finance/RecurringPayrollsManager";
+import { X, Plus, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDateMexico, formatDateTimeMexico } from '@/utils/dateUtils';
@@ -870,6 +871,64 @@ export default function Finance() {
       toast({
         title: "Error",
         description: e?.message || "No fue posible registrar la compra",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deletePurchase = async (purchaseId: string) => {
+    if (!isAdmin) return;
+    try {
+      // Obtener la compra completa con sus relaciones
+      const { data: purchase, error: fetchError } = await supabase
+        .from("purchases")
+        .select("*")
+        .eq("id", purchaseId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      if (!purchase) throw new Error("Compra no encontrada");
+
+      // 1. Eliminar retiros fiscales relacionados
+      if (purchase.fiscal_withdrawal_id) {
+        await supabase.from("fiscal_withdrawals").delete().eq("id", purchase.fiscal_withdrawal_id);
+      }
+
+      // 2. Eliminar el expense relacionado
+      if (purchase.expense_id) {
+        await supabase.from("expenses").delete().eq("id", purchase.expense_id);
+      }
+
+      // 3. Eliminar la compra
+      const { error: deleteError } = await supabase.from("purchases").delete().eq("id", purchaseId);
+      if (deleteError) throw deleteError;
+
+      // 4. Log en historial financiero
+      await logFinancialOperation(
+        'delete',
+        'purchases',
+        purchaseId,
+        purchase,
+        `Eliminación de compra: ${purchase.concept} - ${purchase.supplier_name}`,
+        purchase.total_amount,
+        purchase.account_type,
+        purchase.purchase_date
+      );
+
+      toast({
+        title: "Compra eliminada",
+        description: "Se eliminaron todos los registros relacionados (egreso y retiros fiscales)"
+      });
+
+      // Refrescar todas las queries relacionadas
+      purchasesQuery.refetch();
+      expensesQuery.refetch();
+      fiscalWithdrawalsQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible eliminar la compra",
         variant: "destructive"
       });
     }
@@ -1840,6 +1899,7 @@ export default function Finance() {
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="loans" className="text-gray-950">Préstamos</TabsTrigger>
           <TabsTrigger value="nomina" className="text-gray-950">Nómina</TabsTrigger>
+          <TabsTrigger value="recurring_payrolls" className="text-gray-950">Nóminas Recurrentes</TabsTrigger>
           <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
@@ -2546,6 +2606,7 @@ export default function Finance() {
                       <TableHead>Monto</TableHead>
                       <TableHead>Cuenta</TableHead>
                       <TableHead>Método</TableHead>
+                      <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -2562,9 +2623,35 @@ export default function Finance() {
                           </div>
                         </TableCell>
                         <TableCell>{purchase.payment_method || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          {isAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar compra?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Se eliminará la compra, el egreso relacionado y cualquier retiro fiscal pendiente.
+                                    Esta acción no se puede deshacer.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deletePurchase(purchase.id)}>
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </TableCell>
                       </TableRow>)}
                     {(!purchasesQuery.data || purchasesQuery.data.length === 0) && <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center text-muted-foreground">
                           No hay compras registradas
                         </TableCell>
                       </TableRow>}
@@ -3222,6 +3309,10 @@ export default function Finance() {
 
         <TabsContent value="nomina">
           <PayrollWithdrawals />
+        </TabsContent>
+
+        <TabsContent value="recurring_payrolls">
+          <RecurringPayrollsManager />
         </TabsContent>
 
         <TabsContent value="cobranza">

@@ -782,6 +782,51 @@ export type Database = {
         }
         Relationships: []
       }
+      collections_cache: {
+        Row: {
+          amount_pending: number
+          client_id: string | null
+          client_name: string | null
+          created_at: string | null
+          due_date: string | null
+          id: string
+          is_overdue: boolean | null
+          last_updated: string | null
+          order_number: string | null
+          policy_number: string | null
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          amount_pending?: number
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          is_overdue?: boolean | null
+          last_updated?: string | null
+          order_number?: string | null
+          policy_number?: string | null
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          amount_pending?: number
+          client_id?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          due_date?: string | null
+          id?: string
+          is_overdue?: boolean | null
+          last_updated?: string | null
+          order_number?: string | null
+          policy_number?: string | null
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: []
+      }
       deletion_history: {
         Row: {
           created_at: string | null
@@ -1271,6 +1316,7 @@ export type Database = {
           is_reversed: boolean | null
           payment_method: string | null
           project_id: string | null
+          purchase_id: string | null
           receipt_url: string | null
           reversal_reason: string | null
           reversed_at: string | null
@@ -1303,6 +1349,7 @@ export type Database = {
           is_reversed?: boolean | null
           payment_method?: string | null
           project_id?: string | null
+          purchase_id?: string | null
           receipt_url?: string | null
           reversal_reason?: string | null
           reversed_at?: string | null
@@ -1335,6 +1382,7 @@ export type Database = {
           is_reversed?: boolean | null
           payment_method?: string | null
           project_id?: string | null
+          purchase_id?: string | null
           receipt_url?: string | null
           reversal_reason?: string | null
           reversed_at?: string | null
@@ -1355,6 +1403,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
             referencedColumns: ["id"]
           },
           {
@@ -1444,6 +1499,45 @@ export type Database = {
           record_data?: Json
           record_id?: string
           table_name?: string
+        }
+        Relationships: []
+      }
+      financial_notifications: {
+        Row: {
+          amount: number | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_read: boolean | null
+          notification_type: string
+          priority: string | null
+          read_at: string | null
+          related_id: string | null
+          title: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_read?: boolean | null
+          notification_type: string
+          priority?: string | null
+          read_at?: string | null
+          related_id?: string | null
+          title: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_read?: boolean | null
+          notification_type?: string
+          priority?: string | null
+          read_at?: string | null
+          related_id?: string | null
+          title?: string
         }
         Relationships: []
       }
@@ -2008,6 +2102,7 @@ export type Database = {
           is_reversed: boolean | null
           isr_withholding_amount: number | null
           isr_withholding_rate: number | null
+          loan_id: string | null
           payment_method: string | null
           project_id: string | null
           reversal_reason: string | null
@@ -2038,6 +2133,7 @@ export type Database = {
           is_reversed?: boolean | null
           isr_withholding_amount?: number | null
           isr_withholding_rate?: number | null
+          loan_id?: string | null
           payment_method?: string | null
           project_id?: string | null
           reversal_reason?: string | null
@@ -2068,6 +2164,7 @@ export type Database = {
           is_reversed?: boolean | null
           isr_withholding_amount?: number | null
           isr_withholding_rate?: number | null
+          loan_id?: string | null
           payment_method?: string | null
           project_id?: string | null
           reversal_reason?: string | null
@@ -2080,6 +2177,13 @@ export type Database = {
           vat_rate?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "incomes_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "incomes_project_id_fkey"
             columns: ["project_id"]
@@ -2201,6 +2305,7 @@ export type Database = {
           loan_number: string
           monthly_payment: number
           payment_day: number
+          remaining_amount: number | null
           start_date: string
           status: string
           total_months: number
@@ -2216,6 +2321,7 @@ export type Database = {
           loan_number: string
           monthly_payment: number
           payment_day: number
+          remaining_amount?: number | null
           start_date: string
           status?: string
           total_months: number
@@ -2231,6 +2337,7 @@ export type Database = {
           loan_number?: string
           monthly_payment?: number
           payment_day?: number
+          remaining_amount?: number | null
           start_date?: string
           status?: string
           total_months?: number
@@ -7208,6 +7315,14 @@ export type Database = {
       }
       log_financial_operation: {
         Args:
+          | {
+              p_account_type?: string
+              p_amount: number
+              p_description: string
+              p_operation_type: string
+              p_record_id: string
+              p_table_name: string
+            }
           | {
               p_account_type?: string
               p_amount: number

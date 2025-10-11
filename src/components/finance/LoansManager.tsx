@@ -243,10 +243,11 @@ export function LoansManager() {
       // Si el préstamo tiene cuenta (fiscal o no fiscal), crear el ingreso correspondiente
       if (accountType !== 'ninguna') {
         const { error: incomeError } = await supabase
-          .from('incomes')
+        .from('incomes')
           .insert({
             income_number: '', // Se genera automáticamente
             amount: parseFloat(amount),
+            loan_id: newLoan.id,
             description: `Préstamo ${newLoan.loan_number} - ${description || 'Sin descripción'}`,
             category: 'prestamo',
             account_type: accountType,
@@ -290,7 +291,7 @@ export function LoansManager() {
   // Calcular estadísticas
   const stats = {
     totalActive: loansQuery.data?.filter(l => l.status === 'activo').length || 0,
-    totalAmount: loansQuery.data?.reduce((sum, l) => sum + (l.status === 'activo' ? Number(l.amount) : 0), 0) || 0,
+    totalAmount: loansQuery.data?.reduce((sum, l) => sum + (l.status === 'activo' ? Number(l.remaining_amount || l.amount) : 0), 0) || 0,
     pendingPayments: loanPaymentsQuery.data?.filter(p => p.status === 'pendiente').length || 0,
     overduePayments: loanPaymentsQuery.data?.filter(p => p.status === 'vencido').length || 0,
   };
@@ -460,7 +461,8 @@ export function LoansManager() {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Descripción</TableHead>
-                <TableHead>Monto</TableHead>
+                <TableHead>Monto Original</TableHead>
+                <TableHead>Restante</TableHead>
                 <TableHead>Mensualidad</TableHead>
                 <TableHead>Meses</TableHead>
                 <TableHead>Inicio</TableHead>
@@ -475,6 +477,9 @@ export function LoansManager() {
                   <TableCell className="font-medium">{loan.loan_number}</TableCell>
                   <TableCell>{loan.description || '-'}</TableCell>
                   <TableCell>{formatMXNExact(loan.amount)}</TableCell>
+                  <TableCell className="font-semibold text-orange-600">
+                    {formatMXNExact(loan.remaining_amount || loan.amount)}
+                  </TableCell>
                   <TableCell>{formatMXNExact(loan.monthly_payment)}</TableCell>
                   <TableCell>{loan.total_months}</TableCell>
                   <TableCell>{formatDateMexico(loan.start_date)}</TableCell>
