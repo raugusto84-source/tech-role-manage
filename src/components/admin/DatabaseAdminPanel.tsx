@@ -506,7 +506,7 @@ export function DatabaseAdminPanel() {
                       checked={isCategorySelected}
                       onCheckedChange={(checked) => handleCategorySelect(key, checked as boolean)}
                     />
-                    <div className="flex-1 cursor-pointer" onClick={() => handleCategorySelect(key, !isCategorySelected)}>
+                    <div className="flex-1">
                       <label
                         htmlFor={key}
                         className="text-base font-semibold flex items-center gap-2 cursor-pointer"
