@@ -95,6 +95,7 @@ export function DatabaseAdminPanel() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [isCleaningWorkflow, setIsCleaningWorkflow] = useState(false);
   const [cleanWorkflowDialogOpen, setCleanWorkflowDialogOpen] = useState(false);
+  const [selectedImportModules, setSelectedImportModules] = useState<string[]>([]);
 
   const handleCategorySelect = (categoryKey: string, checked: boolean) => {
     const category = DATABASE_MODULES_BY_CATEGORY[categoryKey as keyof typeof DATABASE_MODULES_BY_CATEGORY];
@@ -226,6 +227,8 @@ export function DatabaseAdminPanel() {
       }
 
       setImportData(data);
+      // Auto-select all available modules for import
+      setSelectedImportModules(modulesToImport);
       setImportDialogOpen(true);
       
     } catch (error) {
@@ -243,12 +246,23 @@ export function DatabaseAdminPanel() {
   const performImport = async () => {
     if (!importData) return;
 
+    if (selectedImportModules.length === 0) {
+      toast({
+        title: "Error",
+        description: "Selecciona al menos un módulo para importar",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsImporting(true);
     try {
       let successCount = 0;
       let errorCount = 0;
 
       for (const [moduleId, data] of Object.entries(importData)) {
+        // Only import selected modules
+        if (!selectedImportModules.includes(moduleId)) continue;
         if (!DATABASE_MODULES.some(m => m.id === moduleId)) continue;
         
         try {
@@ -286,6 +300,7 @@ export function DatabaseAdminPanel() {
       
       setImportDialogOpen(false);
       setImportData(null);
+      setSelectedImportModules([]);
     } catch (error) {
       console.error('Import error:', error);
       toast({
@@ -608,24 +623,67 @@ export function DatabaseAdminPanel() {
               
               {importData && (
                 <div className="space-y-4">
-                  <ul className="list-disc list-inside space-y-1 max-h-40 overflow-y-auto">
+                  <div className="flex gap-2 mb-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const allModules = Object.keys(importData).filter(key => 
+                          DATABASE_MODULES.some(m => m.id === key)
+                        );
+                        setSelectedImportModules(allModules);
+                      }}
+                    >
+                      Seleccionar Todo
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setSelectedImportModules([])}
+                    >
+                      Deseleccionar Todo
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 max-h-64 overflow-y-auto border rounded-lg p-3">
                     {Object.keys(importData).filter(key => 
                       DATABASE_MODULES.some(m => m.id === key)
                     ).map(moduleId => {
                       const module = DATABASE_MODULES.find(m => m.id === moduleId);
                       const recordCount = Array.isArray(importData[moduleId]) ? importData[moduleId].length : 0;
+                      const isSelected = selectedImportModules.includes(moduleId);
+                      
                       return (
-                        <li key={moduleId} className="text-sm">
-                          <strong>{module?.name}</strong> - {recordCount} registros
-                        </li>
+                        <div key={moduleId} className="flex items-center gap-3 p-2 hover:bg-muted/50 rounded">
+                          <Checkbox
+                            id={`import-${moduleId}`}
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedImportModules([...selectedImportModules, moduleId]);
+                              } else {
+                                setSelectedImportModules(selectedImportModules.filter(id => id !== moduleId));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`import-${moduleId}`}
+                            className="text-sm flex-1 cursor-pointer"
+                          >
+                            <strong>{module?.name || moduleId}</strong>
+                            <span className="text-muted-foreground ml-2">
+                              ({recordCount} registros)
+                            </span>
+                          </label>
+                        </div>
                       );
                     })}
-                  </ul>
+                  </div>
 
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Los datos existentes serán sobrescritos o fusionados con los datos del respaldo.
+                      {selectedImportModules.length} tablas seleccionadas. Los datos existentes serán sobrescritos o fusionados.
                     </AlertDescription>
                   </Alert>
                 </div>
@@ -637,15 +695,16 @@ export function DatabaseAdminPanel() {
                   onClick={() => {
                     setImportDialogOpen(false);
                     setImportData(null);
+                    setSelectedImportModules([]);
                   }}
                 >
                   Cancelar
                 </Button>
                 <Button 
                   onClick={performImport}
-                  disabled={isImporting}
+                  disabled={isImporting || selectedImportModules.length === 0}
                 >
-                  {isImporting ? 'Restaurando...' : 'Restaurar Datos'}
+                  {isImporting ? 'Restaurando...' : `Restaurar ${selectedImportModules.length} Tablas`}
                 </Button>
               </DialogFooter>
             </DialogContent>
