@@ -85,7 +85,7 @@ export function OrderPaymentsPending() {
         // Get payments made for this order
         const { data: payments, error: paymentsError } = await supabase
           .from('order_payments')
-          .select('payment_amount')
+          .select('payment_amount, isr_withholding_applied')
           .eq('order_id', pc.order_id);
 
         if (paymentsError) {
@@ -97,8 +97,14 @@ export function OrderPaymentsPending() {
           return sum + (payment.payment_amount || 0);
         }, 0);
 
-        // Calculate remaining balance
-        const remainingBalance = actualTotal - totalPaid;
+        // Apply ISR rule if any payment had ISR withholding like the dialog does
+        const hasISR = (payments || []).some((p: any) => p.isr_withholding_applied);
+        const finalExactTotal = hasISR
+          ? actualTotal - (actualTotal / 1.16) * 0.0125
+          : actualTotal;
+
+        // Calculate remaining balance consistent with dialog
+        const remainingBalance = Math.max(0, finalExactTotal - totalPaid);
 
         return {
           id: pc.id,
