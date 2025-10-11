@@ -116,11 +116,17 @@ export function DatabaseAdminPanel() {
       
       // Check if all tables in category are selected
       if (category.tables.every(t => newSelectedModules.includes(t))) {
-        setSelectedCategories([...selectedCategories, categoryKey]);
+        if (!selectedCategories.includes(categoryKey)) {
+          setSelectedCategories([...selectedCategories, categoryKey]);
+        }
       }
     } else {
       setSelectedModules(selectedModules.filter(id => id !== table));
-      setSelectedCategories(selectedCategories.filter(k => k !== categoryKey));
+      
+      // Remove category if it was selected
+      if (selectedCategories.includes(categoryKey)) {
+        setSelectedCategories(selectedCategories.filter(k => k !== categoryKey));
+      }
     }
   };
 
