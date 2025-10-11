@@ -43,7 +43,7 @@ export function CollectionsManager() {
       // Get all pending collections
       const { data: pendingCollections, error: collectionsError } = await supabase
         .from('pending_collections')
-        .select('collection_type, amount, due_date, status')
+        .select('collection_type, amount, due_date, status, order_id')
         .eq('status', 'pending');
 
       if (collectionsError) throw collectionsError;
@@ -59,24 +59,52 @@ export function CollectionsManager() {
       const collections = pendingCollections || [];
       const policies = policyPayments || [];
 
-      // Calculate totals
+      // Calculate policy totals
       const policyPending = policies.reduce((sum, p) => sum + (p.amount || 0), 0);
-      const orderPending = collections
-        .filter(c => c.collection_type === 'order_payment')
-        .reduce((sum, c) => sum + (c.amount || 0), 0);
+      
+      // Calculate actual remaining balance for orders
+      const orderCollections = collections.filter(c => c.collection_type === 'order_payment');
+      let orderPending = 0;
+      let overdueOrder = 0;
+      
+      const today = new Date();
+      const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+      for (const collection of orderCollections) {
+        // Get order items to calculate actual total
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('total_amount')
+          .eq('order_id', collection.order_id);
+
+        const actualTotal = (orderItems || []).reduce((sum: number, item: any) => 
+          sum + (item.total_amount || 0), 0);
+
+        // Get payments made for this order
+        const { data: payments } = await supabase
+          .from('order_payments')
+          .select('payment_amount')
+          .eq('order_id', collection.order_id);
+
+        const totalPaid = (payments || []).reduce((sum: number, payment: any) => 
+          sum + (payment.payment_amount || 0), 0);
+
+        // Calculate remaining balance
+        const remainingBalance = actualTotal - totalPaid;
+        orderPending += remainingBalance;
+
+        // Add to overdue if past due date
+        if ((collection as any).due_date < todayKey) {
+          overdueOrder += remainingBalance;
+        }
+      }
       
       const totalPending = policyPending + orderPending;
 
-      // Calculate overdue amounts
-      const today = new Date();
-      const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      // Calculate overdue amounts for policies
       const overduePolicy = policies
         .filter(p => (p as any).due_date < todayKey)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
-      
-      const overdueOrder = collections
-        .filter(c => c.collection_type === 'order_payment' && (c as any).due_date < todayKey)
-        .reduce((sum, c) => sum + (c.amount || 0), 0);
 
       const overdueAmount = overduePolicy + overdueOrder;
 
