@@ -217,7 +217,8 @@ export default function Finance() {
           description,
           withdrawal_status,
           created_at,
-          withdrawn_at
+          withdrawn_at,
+          purchases!fiscal_withdrawal_id(invoice_number)
         `).like('description', 'Factura pendiente:%').order("created_at", {
         ascending: false
       });
@@ -2608,6 +2609,7 @@ export default function Finance() {
                     <TableRow>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Descripción</TableHead>
+                      <TableHead>Factura</TableHead>
                       <TableHead>Monto a Retirar</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead>Acciones</TableHead>
@@ -2618,6 +2620,9 @@ export default function Finance() {
                         <TableCell>{new Date(withdrawal.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="max-w-[300px] truncate" title={withdrawal.description}>
                           {withdrawal.description}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {(withdrawal as any).purchases?.[0]?.invoice_number || 'N/A'}
                         </TableCell>
                         <TableCell className="font-medium text-orange-600">
                           ${Number(withdrawal.amount).toFixed(2)}
@@ -2688,7 +2693,7 @@ export default function Finance() {
                         </TableCell>
                       </TableRow>)}
                     {!fiscalWithdrawalsQuery.data?.filter(fw => fw.amount > 0).length && <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           <div className="flex flex-col items-center gap-2">
                             <div className="text-4xl">📋</div>
                             <div className="font-medium">No hay retiros fiscales registrados</div>
