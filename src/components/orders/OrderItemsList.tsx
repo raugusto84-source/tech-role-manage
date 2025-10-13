@@ -32,7 +32,7 @@ export interface OrderItem {
   total: number;
   item_type: string;
   shared_time: boolean; // Nueva propiedad para tiempo compartido
-  status?: 'pendiente' | 'en_proceso' | 'completado'; // Estado individual del artículo
+  status?: 'pendiente_aprobacion' | 'en_proceso' | 'completado'; // Estado individual del artículo
   profit_margin_tiers?: Array<{
     min_qty: number;
     max_qty: number;
@@ -177,7 +177,7 @@ export function OrderItemsList({
     });
     onItemsChange(updatedItems);
   };
-  const updateItemStatus = (itemId: string, status: 'pendiente' | 'en_proceso' | 'completado') => {
+  const updateItemStatus = (itemId: string, status: 'pendiente_aprobacion' | 'en_proceso' | 'completado') => {
     const updatedItems = items.map(item => {
       if (item.id === itemId) {
         return {

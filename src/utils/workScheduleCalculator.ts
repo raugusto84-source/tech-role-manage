@@ -15,7 +15,7 @@ interface OrderItem {
   id: string;
   estimated_hours: number;
   shared_time: boolean;
-  status?: 'pendiente' | 'en_proceso' | 'completado'; // Make status optional to match OrderItemsList
+  status?: 'pendiente_aprobacion' | 'en_proceso' | 'completado'; // Make status optional to match OrderItemsList
   service_type_id?: string;
   quantity?: number;
 }
@@ -433,7 +433,7 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
         )
       `)
       .eq('assigned_technician', technicianId)
-      .in('status', ['pendiente', 'en_proceso', 'en_camino'])
+      .in('status', ['pendiente_aprobacion', 'en_proceso', 'en_camino'])
       .abortSignal(controller.signal);
 
     clearTimeout(timeoutId);

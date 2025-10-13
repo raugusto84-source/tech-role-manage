@@ -7,7 +7,7 @@ interface OrderItem {
   shared_time: boolean;
   service_type_id?: string;
   quantity?: number;
-  status?: 'pendiente' | 'en_proceso' | 'completado';
+  status?: 'pendiente_aprobacion' | 'en_proceso' | 'completado';
 }
 
 interface WorkSchedule {

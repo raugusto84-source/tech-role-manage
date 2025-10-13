@@ -45,7 +45,7 @@ interface OrderDetailsProps {
     estimated_delivery_date?: string | null;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_aprobacion' | 'pendiente_entrega' | 'pendiente_actualizacion' | 'rechazada';
+    status: 'pendiente_aprobacion' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_entrega' | 'pendiente_actualizacion' | 'rechazada';
     assigned_technician?: string;
     assignment_reason?: string;
     evidence_photos?: string[];
@@ -395,8 +395,8 @@ export function OrderDetails({
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'pendiente_actualizacion':
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-      case 'pendiente':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'pendiente_aprobacion':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'en_proceso':
         return 'bg-blue-100 text-blue-800 border-blue-300';
       case 'en_camino':
@@ -414,7 +414,7 @@ export function OrderDetails({
     }
   };
   const isClient = profile?.role === 'cliente';
-  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico') && ['pendiente', 'en_proceso'].includes(orderStatus);
+  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico') && ['pendiente_aprobacion', 'en_proceso'].includes(orderStatus);
 
   // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
   const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
@@ -448,7 +448,7 @@ export function OrderDetails({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge className={getStatusColor(orderStatus)} variant="outline">
-                {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE' : orderStatus === 'pendiente_entrega' ? 'LISTO' : orderStatus === 'pendiente_aprobacion' ? 'PENDIENTE APROBACIÓN' : ['en_proceso', 'pendiente'].includes(orderStatus) ? 'EN PROCESO' : orderStatus.replace('_', ' ').toUpperCase()}
+                {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE APROBACIÓN' : orderStatus === 'pendiente_entrega' ? 'LISTO' : orderStatus === 'pendiente_aprobacion' ? 'PENDIENTE AUTORIZACIÓN' : ['en_proceso'].includes(orderStatus) ? 'EN PROCESO' : orderStatus.replace('_', ' ').toUpperCase()}
               </Badge>
               
               {hasRejection && <Badge variant="destructive" className="bg-red-100 text-red-800 border-red-300">
@@ -462,7 +462,7 @@ export function OrderDetails({
           </div>
 
           {/* Admin/Tech Approval Button */}
-          {['administrador', 'tecnico'].includes(profile?.role || '') && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente') && (
+          {['administrador', 'tecnico'].includes(profile?.role || '') && orderStatus === 'pendiente_aprobacion' && (
             <div className="mt-3">
               <Button 
                 onClick={() => setShowAdminApprovalDialog(true)}
@@ -579,7 +579,7 @@ export function OrderDetails({
               </button>
               
               {expandedSections.services && <div className="mt-3">
-                  <OrderServicesList orderItems={orderItems} canEdit={canModifyOrder || ['en_proceso', 'pendiente'].includes(orderStatus)} onItemUpdate={loadOrderItems} showReadyButtons={['en_proceso', 'pendiente'].includes(orderStatus)} orderId={order.id} onBack={onBack} orderStatus={orderStatus} />
+                  <OrderServicesList orderItems={orderItems} canEdit={canModifyOrder || ['en_proceso'].includes(orderStatus)} onItemUpdate={loadOrderItems} showReadyButtons={['en_proceso'].includes(orderStatus)} orderId={order.id} onBack={onBack} orderStatus={orderStatus} />
                   
                   {/* Checklists for each service item */}
                   {orderItems.map(item => (
@@ -627,7 +627,7 @@ export function OrderDetails({
                     orderId={order.id} 
                     equipment={orderEquipment} 
                     onUpdate={loadOrderEquipment} 
-                    canEdit={!isClient && (canModifyOrder || ['en_proceso', 'pendiente', 'pendiente_aprobacion'].includes(orderStatus))} 
+                    canEdit={!isClient && (canModifyOrder || ['en_proceso', 'pendiente_aprobacion'].includes(orderStatus))} 
                     isPolicyOrder={order.is_policy_order || false}
                   />
                 </div>}
@@ -636,7 +636,7 @@ export function OrderDetails({
 
 
           {/* Botón Terminar Todo - Hidden for clients */}
-          {!isClient && ['en_proceso', 'pendiente'].includes(orderStatus) && orderItems.length > 0 && orderItems.some(item => item.status !== 'finalizada') && <Card>
+          {!isClient && ['en_proceso'].includes(orderStatus) && orderItems.length > 0 && orderItems.some(item => item.status !== 'finalizada') && <Card>
               
             </Card>}
 
@@ -714,7 +714,7 @@ export function OrderDetails({
       {/* Botones de Finalizar y Firmar al final */}
       {(() => {
       const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
-      const canFinishOrder = !isClient && allItemsCompleted && ['en_proceso', 'pendiente'].includes(orderStatus);
+      const canFinishOrder = !isClient && allItemsCompleted && ['en_proceso'].includes(orderStatus);
       const canSignDelivery = !deliverySignature && (isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
       if (canFinishOrder || canSignDelivery) {
         return <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-20">

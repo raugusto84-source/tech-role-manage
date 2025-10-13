@@ -33,7 +33,7 @@ interface OrderStatusUpdateProps {
   order: {
     id: string;
     order_number: string;
-    status: 'pendiente' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada';
+    status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'finalizada';
     clients?: {
       name: string;
     } | null;
@@ -44,15 +44,6 @@ interface OrderStatusUpdateProps {
 
 // Configuración de estados disponibles
 const STATE_TRANSITIONS = {
-  pendiente: [
-    { 
-      value: 'en_proceso', 
-      label: 'En Proceso', 
-      icon: Wrench, 
-      color: 'bg-orange-500 hover:bg-orange-600',
-      description: 'Iniciar trabajo en el proyecto'
-    }
-  ],
   pendiente_aprobacion: [
     { 
       value: 'en_proceso', 
@@ -112,7 +103,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
   /**
    * Maneja el cambio de estado con registro automático
    */
-  const handleStatusChange = async (newStatus: 'pendiente' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada') => {
+  const handleStatusChange = async (newStatus: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'finalizada') => {
     if (loading) return;
     
     // Si el nuevo estado es "pendiente_entrega", mostrar componente de firma
@@ -138,11 +129,11 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
 
       // Mostrar confirmación
       const statusLabels = {
-        'pendiente': 'Pendiente',
-        'pendiente_aprobacion': 'Pendiente Aprobación',
+        'pendiente_aprobacion': 'Pendiente Autorización',
         'en_proceso': 'En Proceso', 
-        'pendiente_actualizacion': 'Pendiente Actualización',
-        'pendiente_entrega': 'Pendiente Entrega'
+        'pendiente_actualizacion': 'Pendiente Aprobación',
+        'pendiente_entrega': 'Pendiente Entrega',
+        'finalizada': 'Finalizada'
       };
 
       toast({
@@ -152,7 +143,6 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
 
       // Disparar seguimiento según el nuevo estado
       const eventMap: Record<string, string> = {
-        pendiente: 'order_created',
         pendiente_aprobacion: 'order_created',
         en_proceso: 'order_in_progress',
         pendiente_actualizacion: 'order_needs_approval',
@@ -185,11 +175,11 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
    */
   const getCurrentStatusColor = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'bg-yellow-100 text-yellow-800';
       case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800';
       case 'en_proceso': return 'bg-orange-100 text-orange-800';
       case 'pendiente_actualizacion': return 'bg-blue-100 text-blue-800';
       case 'pendiente_entrega': return 'bg-green-100 text-green-800';
+      case 'finalizada': return 'bg-gray-100 text-gray-800';
       case 'cancelada': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -197,11 +187,11 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
 
   const getCurrentStatusLabel = (status: string) => {
     switch (status) {
-      case 'pendiente': return 'Pendiente';
-      case 'pendiente_aprobacion': return 'Pendiente Aprobación';
+      case 'pendiente_aprobacion': return 'Pendiente Autorización';
       case 'en_proceso': return 'En Proceso';
-      case 'pendiente_actualizacion': return 'Pendiente Actualización';
+      case 'pendiente_actualizacion': return 'Pendiente Aprobación';
       case 'pendiente_entrega': return 'Pendiente Entrega';
+      case 'finalizada': return 'Finalizada';
       case 'cancelada': return 'Cancelada';
       default: return status;
     }
@@ -262,7 +252,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
                     return (
                       <Button
                         key={transition.value}
-                        onClick={() => handleStatusChange(transition.value as 'pendiente' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada')}
+                        onClick={() => handleStatusChange(transition.value as 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'finalizada')}
                         disabled={loading}
                         className={`w-full h-auto p-4 flex items-center justify-start gap-3 text-left ${transition.color} text-white relative overflow-hidden touch-manipulation`}
                         variant="default"

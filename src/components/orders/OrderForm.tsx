@@ -600,7 +600,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         total: exactPricing.totalAmount, // Este es el precio final correcto con cashback
         item_type: service.item_type,
         shared_time: (service as any).shared_time || false,
-        status: 'pendiente',
+        status: 'pendiente_aprobacion',
         profit_margin_tiers: service.profit_margin_tiers
       };
       
@@ -655,7 +655,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       total: totalAmount,
       item_type: manualItemForm.item_type,
       shared_time: false,
-      status: 'pendiente',
+      status: 'pendiente_aprobacion',
       profit_margin_tiers: []
     };
 
