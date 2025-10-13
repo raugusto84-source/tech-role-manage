@@ -177,10 +177,7 @@ export function PaymentCollectionDialog({
         vatAmount = 0;
       }
       
-      // Generar número de ingreso (simple y único por timestamp)
-      const incomeNumber = `ING-${Date.now()}`;
-
-      // Registrar ingreso (el trigger handle_new_income genera income_number)
+      // Registrar ingreso (número se genera automáticamente con 5 dígitos por trigger)
       console.log('Inserting income (auto-number) with data:', {
         amount: paymentAmount,
         account_type: accountType,
@@ -190,7 +187,7 @@ export function PaymentCollectionDialog({
       const { data: incomeInsert, error: incomeError } = await supabase
         .from('incomes')
         .insert({
-          income_number: incomeNumber,
+          income_number: '', // Se genera automáticamente por trigger
           income_date: format(paymentDate, 'yyyy-MM-dd'),
           amount: finalPaymentAmount,
           account_type: accountType,

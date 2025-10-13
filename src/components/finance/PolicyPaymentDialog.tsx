@@ -117,17 +117,14 @@ export function PolicyPaymentDialog({
         vatAmount = 0;
       }
       
-      // Generar número de ingreso
-      const incomeNumber = `ING-${Date.now()}`;
-      
       // Formatear la fecha seleccionada para income_date (YYYY-MM-DD HH:mm:ss)
       const formattedIncomeDate = format(paymentDate, "yyyy-MM-dd HH:mm:ss");
 
-      // Registrar ingreso
+      // Registrar ingreso (número se genera automáticamente con 5 dígitos)
       const { data: incomeInsert, error: incomeError } = await supabase
         .from('incomes')
         .insert({
-          income_number: incomeNumber,
+          income_number: '', // Se genera automáticamente por trigger
           income_date: formattedIncomeDate,
           amount: finalPaymentAmount,
           account_type: accountType,

@@ -57,16 +57,11 @@ export function PayrollWithdrawals() {
       const employeeName = selectedEmployee?.full_name || "Empleado";
       
       // Generar número de egreso
-      const { data: expenseNumber, error: numberError } = await supabase
-        .rpc('generate_expense_number');
-      
-      if (numberError) throw numberError;
-      
-      // Crear el egreso de nómina
+      // Crear el egreso de nómina (el número se genera automáticamente por trigger)
       const { error } = await supabase
         .from('expenses')
         .insert({
-          expense_number: expenseNumber || `EXP-NOM-${Date.now()}`,
+          expense_number: '', // Se genera automáticamente por trigger con formato de 5 dígitos
           amount: parseFloat(amount),
           description: `[Nómina] ${employeeName} - ${concept}${description ? ': ' + description : ''}`,
           category: 'nomina',

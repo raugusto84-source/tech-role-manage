@@ -146,28 +146,12 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
 
         const taxableAmount = totalAmount - vatAmount;
 
-        // Generar número de ingreso
-        const currentYear = new Date().getFullYear();
-        const { data: existingIncomes } = await supabase
-          .from('incomes')
-          .select('income_number')
-          .like('income_number', `ING-${currentYear}-%`)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        let nextNumber = '0001';
-        if (existingIncomes && existingIncomes.length > 0) {
-          const lastNumber = existingIncomes[0].income_number.split('-')[2];
-          nextNumber = (parseInt(lastNumber) + 1).toString().padStart(4, '0');
-        }
-        const incomeNumber = `ING-${currentYear}-${nextNumber}`;
-
-        // Crear registro de cobranza pendiente
-        console.log('💰 Creando registro de cobranza:', { incomeNumber, totalAmount });
+        // Crear registro de cobranza pendiente (número se genera automáticamente con 5 dígitos)
+        console.log('💰 Creando registro de cobranza:', { totalAmount });
         const { error: incomeError } = await supabase
           .from('incomes')
           .insert({
-            income_number: incomeNumber,
+            income_number: '', // Se genera automáticamente por trigger con formato de 5 dígitos
             amount: totalAmount,
             taxable_amount: taxableAmount,
             vat_amount: vatAmount,
