@@ -323,6 +323,9 @@ export function OrderDetails({
 
       setShowAdminApprovalDialog(false);
       onUpdate();
+      
+      // Redirect to orders page
+      navigate('/orders');
     } catch (error) {
       console.error('Error approving order:', error);
       toast({
