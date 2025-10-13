@@ -165,7 +165,7 @@ export function OrderListItem({
               📋 Póliza
             </Badge>
           ) : (
-            showCollectButton && order.status === 'finalizada' && (
+            showCollectButton && (order.status === 'en_proceso' || order.status === 'finalizada') && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -174,6 +174,7 @@ export function OrderListItem({
                   // Implement collect payment logic
                 }}
                 className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                title="Cobrar orden"
               >
                 <CreditCard className="h-4 w-4" />
               </Button>

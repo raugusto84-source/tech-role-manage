@@ -20,6 +20,7 @@ const getNotificationIcon = (type: string) => {
     case 'loan_overdue': return AlertCircle;
     case 'payroll_unpaid': return Users;
     case 'collection_pending': return DollarSign;
+    case 'overdue_payment': return AlertCircle;
     case 'vat_status': return TrendingUp;
     default: return Bell;
   }

@@ -7092,6 +7092,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      check_overdue_payments: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       clean_expired_rewards: {
         Args: Record<PropertyKey, never>
         Returns: undefined

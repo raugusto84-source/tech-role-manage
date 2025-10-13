@@ -121,16 +121,19 @@ export function OrderPaymentsPending() {
       });
 
       const formattedPayments = await Promise.all(formattedPaymentsPromises);
-      setPayments(formattedPayments);
+      
+      // Filter out payments that are fully paid (balance <= 0)
+      const pendingPayments = formattedPayments.filter(p => p.balance > 0);
+      setPayments(pendingPayments);
 
-      // Calculate stats
-      const totalAmount = formattedPayments.reduce((sum, p) => sum + p.balance, 0);
+      // Calculate stats from filtered pending payments only
+      const totalAmount = pendingPayments.reduce((sum, p) => sum + p.balance, 0);
       const today = new Date();
-      const overdue = formattedPayments.filter((p: any) => new Date(p.due_date) < today);
+      const overdue = pendingPayments.filter((p: any) => new Date(p.due_date) < today);
       const overdueAmount = overdue.reduce((sum, p) => sum + p.balance, 0);
 
       setStats({
-        total_pending: formattedPayments.length,
+        total_pending: pendingPayments.length,
         total_amount: totalAmount,
         overdue_count: overdue.length,
         overdue_amount: overdueAmount
