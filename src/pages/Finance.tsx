@@ -138,7 +138,7 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,client_name,created_at").order("income_date", {
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,client_name,invoice_number,created_at").order("income_date", {
         ascending: false
       });
       if (filtersEnabled && startDate) q = q.gte("income_date", startDate);
