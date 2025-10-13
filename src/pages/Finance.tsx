@@ -22,7 +22,7 @@ import { PayrollWithdrawals } from "@/components/finance/PayrollWithdrawals";
 import { AccountsConsecutiveReport } from "@/components/finance/AccountsConsecutiveReport";
 import { LoansManager } from "@/components/finance/LoansManager";
 import { RecurringPayrollsManager } from "@/components/finance/RecurringPayrollsManager";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Edit } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDateMexico, formatDateTimeMexico } from '@/utils/dateUtils';
@@ -568,6 +568,7 @@ export default function Finance() {
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().substring(0, 10));
   const [purchaseHasInvoice, setPurchaseHasInvoice] = useState(false);
   const [purchaseInvoiceNumber, setPurchaseInvoiceNumber] = useState("");
+  const [editingPurchase, setEditingPurchase] = useState<any>(null);
 
   // Estados para proveedores
   const [supplierName, setSupplierName] = useState("");
@@ -871,6 +872,98 @@ export default function Finance() {
       toast({
         title: "Error",
         description: e?.message || "No fue posible registrar la compra",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const updatePurchase = async () => {
+    if (!editingPurchase) return;
+    try {
+      const amount = Number(purchaseAmount);
+      if (!purchaseSupplier || !purchaseConcept || !amount) throw new Error("Completa todos los campos obligatorios");
+
+      // Validar que si no tiene factura, solo se puede pagar desde cuenta no fiscal
+      if (!purchaseHasInvoice && purchaseAccount === 'fiscal') {
+        throw new Error("Sin factura solo se puede pagar desde cuenta no fiscal");
+      }
+
+      // Si es fiscal con factura, validar número de factura
+      if (purchaseHasInvoice && purchaseAccount === 'fiscal' && !purchaseInvoiceNumber.trim()) {
+        throw new Error("Debe ingresar un número de factura para compras fiscales");
+      }
+
+      // Calcular IVA si es cuenta fiscal
+      const vatRate = purchaseAccount === "fiscal" ? 16 : 0;
+      const taxableAmount = purchaseAccount === "fiscal" ? amount / 1.16 : amount;
+      const vatAmount = purchaseAccount === "fiscal" ? amount - taxableAmount : 0;
+
+      // Actualizar el gasto relacionado
+      const { error: expenseError } = await supabase.from("expenses").update({
+        amount: amount,
+        description: `Compra - ${purchaseConcept}`,
+        account_type: purchaseAccount as any,
+        payment_method: purchaseMethod || null,
+        expense_date: purchaseDate,
+        vat_rate: vatRate || null,
+        vat_amount: vatAmount || null,
+        taxable_amount: taxableAmount || null,
+        has_invoice: purchaseAccount === 'fiscal' ? true : purchaseHasInvoice,
+        invoice_number: purchaseAccount === 'fiscal' ? purchaseInvoiceNumber.trim() : purchaseHasInvoice ? purchaseInvoiceNumber.trim() : null,
+        supplier_id: purchaseSupplier
+      } as any).eq("id", editingPurchase.expense_id);
+      
+      if (expenseError) throw expenseError;
+
+      // Buscar el proveedor seleccionado
+      const supplier = suppliersQuery.data?.find(s => s.id === purchaseSupplier);
+
+      // Actualizar el registro de compra
+      const purchaseData = {
+        supplier_id: purchaseSupplier,
+        supplier_name: supplier?.supplier_name || 'Proveedor',
+        concept: purchaseConcept,
+        total_amount: amount,
+        has_invoice: purchaseHasInvoice,
+        invoice_number: purchaseHasInvoice ? purchaseInvoiceNumber : null,
+        account_type: purchaseAccount,
+        payment_method: purchaseMethod || null,
+        purchase_date: purchaseDate
+      };
+      
+      const { data: purchase, error: purchaseError } = await supabase
+        .from("purchases")
+        .update(purchaseData)
+        .eq("id", editingPurchase.id)
+        .select()
+        .single();
+        
+      if (purchaseError) throw purchaseError;
+
+      // Log en historial financiero
+      await logFinancialOperation('update', 'purchases', purchase.id, purchase, `Compra actualizada: ${supplier?.supplier_name || 'Proveedor'} - ${purchaseConcept}`, amount, purchaseAccount, purchaseDate);
+      
+      toast({
+        title: "Compra actualizada"
+      });
+      
+      // Resetear estados
+      setPurchaseSupplier("");
+      setPurchaseConcept("");
+      setPurchaseAmount("");
+      setPurchaseMethod("");
+      setPurchaseHasInvoice(false);
+      setPurchaseInvoiceNumber("");
+      setEditingPurchase(null);
+      
+      expensesQuery.refetch();
+      purchasesQuery.refetch();
+      fiscalWithdrawalsQuery.refetch();
+      financialHistoryQuery.refetch();
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.message || "No fue posible actualizar la compra",
         variant: "destructive"
       });
     }
@@ -2451,7 +2544,7 @@ export default function Finance() {
             {/* Formulario de registro de compras */}
             <Card>
               <CardHeader>
-                <CardTitle>Registrar Compra</CardTitle>
+                <CardTitle>{editingPurchase ? 'Editar Compra' : 'Registrar Compra'}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
@@ -2540,9 +2633,30 @@ export default function Finance() {
                   <label className="text-sm font-medium">Fecha</label>
                   <Input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
                 </div>
-                <Button onClick={addPurchase} className="w-full">
-                  Registrar Compra
-                </Button>
+                <div className="flex gap-2">
+                  {editingPurchase ? (
+                    <>
+                      <Button onClick={updatePurchase} className="flex-1" disabled={!purchaseSupplier || !purchaseConcept || !purchaseAmount}>
+                        Actualizar Compra
+                      </Button>
+                      <Button variant="outline" onClick={() => {
+                        setEditingPurchase(null);
+                        setPurchaseSupplier("");
+                        setPurchaseConcept("");
+                        setPurchaseAmount("");
+                        setPurchaseMethod("");
+                        setPurchaseHasInvoice(false);
+                        setPurchaseInvoiceNumber("");
+                      }}>
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={addPurchase} className="w-full" disabled={!purchaseSupplier || !purchaseConcept || !purchaseAmount}>
+                      Registrar Compra
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -2625,28 +2739,48 @@ export default function Finance() {
                         <TableCell>{purchase.payment_method || '-'}</TableCell>
                         <TableCell className="text-right">
                           {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>¿Eliminar compra?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Se eliminará la compra, el egreso relacionado y cualquier retiro fiscal pendiente.
-                                    Esta acción no se puede deshacer.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deletePurchase(purchase.id)}>
-                                    Eliminar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <div className="flex gap-1 justify-end">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => {
+                                  setEditingPurchase(purchase);
+                                  setPurchaseSupplier(purchase.supplier_id);
+                                  setPurchaseConcept(purchase.concept);
+                                  setPurchaseAmount(purchase.total_amount.toString());
+                                  setPurchaseAccount(purchase.account_type as "fiscal" | "no_fiscal");
+                                  setPurchaseMethod(purchase.payment_method || "");
+                                  setPurchaseDate(purchase.purchase_date);
+                                  setPurchaseHasInvoice(purchase.has_invoice || false);
+                                  setPurchaseInvoiceNumber(purchase.invoice_number || "");
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar compra?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Se eliminará la compra, el egreso relacionado y cualquier retiro fiscal pendiente.
+                                      Esta acción no se puede deshacer.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deletePurchase(purchase.id)}>
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           )}
                         </TableCell>
                       </TableRow>)}
