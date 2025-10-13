@@ -189,7 +189,7 @@ export default function Finance() {
   const expensesQuery = useQuery({
     queryKey: ["expenses", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
-      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,created_at").order("expense_date", {
+      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,invoice_number,created_at").order("expense_date", {
         ascending: false
       });
       if (filtersEnabled && startDate) q = q.gte("expense_date", startDate);
