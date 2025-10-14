@@ -182,6 +182,14 @@ export function AppSidebar() {
                       </Badge>
                     </div>
                   )}
+                  {unreadCounts.ordersPendingDelivery > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Truck className="h-3 w-3 text-purple-600" />
+                      <Badge variant="secondary" className="h-4 px-1 text-xs">
+                        {unreadCounts.ordersPendingDelivery}
+                      </Badge>
+                    </div>
+                  )}
                   {unreadCounts.ordersFinalized > 0 && (
                     <div className="flex items-center gap-1">
                       <CheckCircle className="h-3 w-3 text-green-600" />
@@ -212,7 +220,7 @@ export function AppSidebar() {
           {/* Show dots for collapsed state */}
           {collapsed && (
             <>
-              {item.url === '/orders' && (unreadCounts.ordersPendingAuth > 0 || unreadCounts.ordersInProcess > 0 || unreadCounts.ordersFinalized > 0) && (
+              {item.url === '/orders' && (unreadCounts.ordersPendingAuth > 0 || unreadCounts.ordersInProcess > 0 || unreadCounts.ordersPendingDelivery > 0 || unreadCounts.ordersFinalized > 0) && (
                 <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
               )}
               {item.url === '/quotes' && unreadCounts.quotes > 0 && (
