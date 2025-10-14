@@ -20,7 +20,7 @@ export default function Settings() {
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="database" className="flex items-center gap-2">
                 <Database className="h-4 w-4" />
-                Base de Datos
+                Respaldos
               </TabsTrigger>
               <TabsTrigger value="general" className="flex items-center gap-2">
                 <SettingsIcon className="h-4 w-4" />
