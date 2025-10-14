@@ -190,14 +190,6 @@ export function AppSidebar() {
                       </Badge>
                     </div>
                   )}
-                  {unreadCounts.ordersFinalized > 0 && (
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <Badge variant="secondary" className="h-4 px-1 text-xs">
-                        {unreadCounts.ordersFinalized}
-                      </Badge>
-                    </div>
-                  )}
                 </div>
               )}
               {item.url === '/quotes' && unreadCounts.quotes > 0 && (
@@ -210,17 +202,29 @@ export function AppSidebar() {
                   {unreadCounts.warranties > 99 ? '99+' : unreadCounts.warranties}
                 </Badge>
               )}
-              {item.url === '/finanzas' && unreadCounts.collections > 0 && (
-                <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
-                  {unreadCounts.collections > 99 ? '99+' : unreadCounts.collections}
-                </Badge>
+              {item.url === '/finanzas' && (
+                <div className="flex items-center gap-1">
+                  {unreadCounts.collections > 0 && (
+                    <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                      {unreadCounts.collections > 99 ? '99+' : unreadCounts.collections}
+                    </Badge>
+                  )}
+                  {unreadCounts.ordersFinalized > 0 && (
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3 text-green-600" />
+                      <Badge variant="secondary" className="h-4 px-1 text-xs">
+                        {unreadCounts.ordersFinalized}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
               )}
             </span>
           )}
           {/* Show dots for collapsed state */}
           {collapsed && (
             <>
-              {item.url === '/orders' && (unreadCounts.ordersPendingAuth > 0 || unreadCounts.ordersInProcess > 0 || unreadCounts.ordersPendingDelivery > 0 || unreadCounts.ordersFinalized > 0) && (
+              {item.url === '/orders' && (unreadCounts.ordersPendingAuth > 0 || unreadCounts.ordersInProcess > 0 || unreadCounts.ordersPendingDelivery > 0) && (
                 <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
               )}
               {item.url === '/quotes' && unreadCounts.quotes > 0 && (
@@ -229,7 +233,7 @@ export function AppSidebar() {
               {item.url === '/garantias' && unreadCounts.warranties > 0 && (
                 <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
               )}
-              {item.url === '/finanzas' && unreadCounts.collections > 0 && (
+              {item.url === '/finanzas' && (unreadCounts.collections > 0 || unreadCounts.ordersFinalized > 0) && (
                 <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full"></div>
               )}
             </>
