@@ -1994,7 +1994,6 @@ export default function Finance() {
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="loans" className="text-gray-950">Préstamos</TabsTrigger>
           <TabsTrigger value="nomina" className="text-gray-950">Nómina</TabsTrigger>
-          <TabsTrigger value="recurring_payrolls" className="text-gray-950">Nóminas Recurrentes</TabsTrigger>
           <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
           <TabsTrigger value="taxes" className="text-gray-950">IVA e ISR</TabsTrigger>
           <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
@@ -3444,11 +3443,10 @@ export default function Finance() {
         </TabsContent>
 
         <TabsContent value="nomina">
-          <PayrollWithdrawals />
-        </TabsContent>
-
-        <TabsContent value="recurring_payrolls">
-          <RecurringPayrollsManager />
+          <div className="space-y-6">
+            <PayrollWithdrawals />
+            <RecurringPayrollsManager />
+          </div>
         </TabsContent>
 
         <TabsContent value="cobranza">

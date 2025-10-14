@@ -4926,6 +4926,7 @@ export type Database = {
           created_by: string | null
           cutoff_weekday: number
           day_of_month: number | null
+          day_of_week: number | null
           default_bonus: number | null
           employee_name: string
           frequency: string
@@ -4944,6 +4945,7 @@ export type Database = {
           created_by?: string | null
           cutoff_weekday?: number
           day_of_month?: number | null
+          day_of_week?: number | null
           default_bonus?: number | null
           employee_name: string
           frequency?: string
@@ -4962,6 +4964,7 @@ export type Database = {
           created_by?: string | null
           cutoff_weekday?: number
           day_of_month?: number | null
+          day_of_week?: number | null
           default_bonus?: number | null
           employee_name?: string
           frequency?: string

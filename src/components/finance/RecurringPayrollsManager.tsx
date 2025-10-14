@@ -22,6 +22,7 @@ interface RecurringPayroll {
   payment_method: string;
   frequency: string;
   day_of_month: number;
+  day_of_week?: number;
   next_run_date: string;
   last_run_date?: string;
   active: boolean;
@@ -38,7 +39,18 @@ export function RecurringPayrollsManager() {
     payment_method: 'transferencia',
     frequency: 'mensual',
     day_of_month: 15,
+    day_of_week: 1, // Lunes por defecto
   });
+
+  const weekDays = [
+    { value: 0, label: 'Domingo' },
+    { value: 1, label: 'Lunes' },
+    { value: 2, label: 'Martes' },
+    { value: 3, label: 'Miércoles' },
+    { value: 4, label: 'Jueves' },
+    { value: 5, label: 'Viernes' },
+    { value: 6, label: 'Sábado' },
+  ];
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -60,9 +72,21 @@ export function RecurringPayrollsManager() {
     mutationFn: async (data: any) => {
       // Calcular next_run_date
       const now = new Date();
-      const nextRun = new Date(now.getFullYear(), now.getMonth(), data.day_of_month);
-      if (nextRun < now) {
-        nextRun.setMonth(nextRun.getMonth() + 1);
+      let nextRun: Date;
+      
+      if (data.frequency === 'semanal') {
+        // Para semanal, calcular el próximo día de la semana especificado
+        nextRun = new Date(now);
+        const currentDay = now.getDay();
+        const targetDay = data.day_of_week;
+        const daysUntilTarget = (targetDay - currentDay + 7) % 7;
+        nextRun.setDate(now.getDate() + (daysUntilTarget === 0 ? 7 : daysUntilTarget));
+      } else {
+        // Para quincenal y mensual, usar day_of_month
+        nextRun = new Date(now.getFullYear(), now.getMonth(), data.day_of_month);
+        if (nextRun < now) {
+          nextRun.setMonth(nextRun.getMonth() + 1);
+        }
       }
 
       const { error } = await supabase.from('recurring_payrolls').insert({
@@ -143,6 +167,7 @@ export function RecurringPayrollsManager() {
       payment_method: 'transferencia',
       frequency: 'mensual',
       day_of_month: 15,
+      day_of_week: 1,
     });
     setEditingPayroll(null);
   };
@@ -157,6 +182,7 @@ export function RecurringPayrollsManager() {
       payment_method: payroll.payment_method,
       frequency: payroll.frequency,
       day_of_month: payroll.day_of_month,
+      day_of_week: payroll.day_of_week || 1,
     });
     setDialogOpen(true);
   };
@@ -170,7 +196,8 @@ export function RecurringPayrollsManager() {
       account_type: formData.account_type,
       payment_method: formData.payment_method,
       frequency: formData.frequency,
-      day_of_month: formData.day_of_month,
+      day_of_month: formData.frequency === 'semanal' ? null : formData.day_of_month,
+      day_of_week: formData.frequency === 'semanal' ? formData.day_of_week : null,
     };
 
     if (editingPayroll) {
@@ -204,7 +231,7 @@ export function RecurringPayrollsManager() {
                   <TableHead>Empleado</TableHead>
                   <TableHead>Salario Neto</TableHead>
                   <TableHead>Frecuencia</TableHead>
-                  <TableHead>Día del Mes</TableHead>
+                  <TableHead>Día/Periodicidad</TableHead>
                   <TableHead>Próxima Fecha</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Acciones</TableHead>
@@ -216,7 +243,12 @@ export function RecurringPayrollsManager() {
                     <TableCell className="font-medium">{payroll.employee_name}</TableCell>
                     <TableCell>${payroll.net_salary.toFixed(2)}</TableCell>
                     <TableCell className="capitalize">{payroll.frequency}</TableCell>
-                    <TableCell>{payroll.day_of_month}</TableCell>
+                    <TableCell>
+                      {payroll.frequency === 'semanal' 
+                        ? weekDays.find(d => d.value === payroll.day_of_week)?.label || '-'
+                        : `Día ${payroll.day_of_month}`
+                      }
+                    </TableCell>
                     <TableCell>
                       {new Date(payroll.next_run_date).toLocaleDateString('es-MX')}
                     </TableCell>
@@ -335,23 +367,43 @@ export function RecurringPayrollsManager() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="frequency">Frecuencia</Label>
+              <Select
+                value={formData.frequency}
+                onValueChange={(value) => setFormData({ ...formData, frequency: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="semanal">Semanal</SelectItem>
+                  <SelectItem value="quincenal">Quincenal</SelectItem>
+                  <SelectItem value="mensual">Mensual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {formData.frequency === 'semanal' ? (
               <div>
-                <Label htmlFor="frequency">Frecuencia</Label>
+                <Label htmlFor="day_of_week">Día de la Semana</Label>
                 <Select
-                  value={formData.frequency}
-                  onValueChange={(value) => setFormData({ ...formData, frequency: value })}
+                  value={formData.day_of_week.toString()}
+                  onValueChange={(value) => setFormData({ ...formData, day_of_week: parseInt(value) })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="semanal">Semanal</SelectItem>
-                    <SelectItem value="quincenal">Quincenal</SelectItem>
-                    <SelectItem value="mensual">Mensual</SelectItem>
+                    {weekDays.map((day) => (
+                      <SelectItem key={day.value} value={day.value.toString()}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+            ) : (
               <div>
                 <Label htmlFor="day_of_month">Día del Mes</Label>
                 <Input
@@ -364,7 +416,7 @@ export function RecurringPayrollsManager() {
                   required
                 />
               </div>
-            </div>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => {
                 setDialogOpen(false);
