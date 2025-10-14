@@ -6875,6 +6875,7 @@ export type Database = {
           related_type: string
           sent_at: string
           status: string
+          twilio_sid: string | null
         }
         Insert: {
           client_email: string
@@ -6888,6 +6889,7 @@ export type Database = {
           related_type: string
           sent_at?: string
           status?: string
+          twilio_sid?: string | null
         }
         Update: {
           client_email?: string
@@ -6901,6 +6903,7 @@ export type Database = {
           related_type?: string
           sent_at?: string
           status?: string
+          twilio_sid?: string | null
         }
         Relationships: []
       }
