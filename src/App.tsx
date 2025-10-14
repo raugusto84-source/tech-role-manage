@@ -19,7 +19,6 @@ import ClientDashboard from "./pages/ClientDashboard";
 import Finance from "./pages/Finance";
 import Users from "./pages/Users";
 import Surveys from "./pages/Surveys";
-import Settings from "./pages/Settings";
 import Clients from "./pages/Clients";
 import ServiceContracts from "./pages/ServiceContracts";
 
@@ -135,16 +134,8 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route 
-              path="/settings" 
-              element={
-                <ProtectedRoute allowedRoles={['administrador']}>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route 
-              path="/garantias" 
+             <Route 
+               path="/garantias"
               element={
                 <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
                   <Warranties />
@@ -160,7 +151,7 @@ const App = () => (
                }
              />
              <Route 
-               path="/seguimiento" 
+               path="/seguimiento"
                element={
                  <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
                    <FollowUpPage />
