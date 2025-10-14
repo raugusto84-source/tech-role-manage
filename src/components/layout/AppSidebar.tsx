@@ -20,8 +20,7 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Activity,
-  Timer
+  Activity
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -75,7 +74,6 @@ export function AppSidebar() {
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
            { title: 'Finanzas', url: '/finanzas', icon: Banknote },
            { title: 'Seguimiento', url: '/seguimiento', icon: Bell },
-           { title: 'Control Carga', url: '/carga-trabajo', icon: Timer },
            { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
           { title: 'Configuración', url: '/settings', icon: Settings },
         ];
@@ -101,7 +99,6 @@ export function AppSidebar() {
           { title: 'Ventas', url: '/ventas', icon: ShoppingCart },
            { title: 'Finanzas', url: '/finanzas', icon: Banknote },
            { title: 'Seguimiento', url: '/seguimiento', icon: Bell },
-           { title: 'Control Carga', url: '/carga-trabajo', icon: Timer },
            { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
         ];
       case 'tecnico':

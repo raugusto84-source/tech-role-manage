@@ -26,7 +26,6 @@ import ServiceContracts from "./pages/ServiceContracts";
 import Warranties from "./pages/Warranties";
 import Fleets from "./pages/Fleets";
 import FollowUpPage from "./pages/FollowUp";
-import WorkloadManagement from "./pages/WorkloadManagement";
 
 const queryClient = new QueryClient();
 
@@ -165,14 +164,6 @@ const App = () => (
                element={
                  <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
                    <FollowUpPage />
-                 </ProtectedRoute>
-               }
-             />
-             <Route 
-               path="/carga-trabajo"
-               element={
-                 <ProtectedRoute allowedRoles={['administrador', 'supervisor']}>
-                   <WorkloadManagement />
                  </ProtectedRoute>
                }
              />
