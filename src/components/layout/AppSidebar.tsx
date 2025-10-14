@@ -235,24 +235,6 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              
-              {/* Chat Panel for all users except clients */}
-              {profile?.role !== 'cliente' && (
-                <SidebarMenuItem key="chat">
-                  <SidebarMenuButton asChild className="touch-target">
-                    <div className="flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group text-sidebar-foreground hover:text-sidebar-accent-foreground">
-                      <MessageSquare className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
-                        !collapsed ? '' : 'mx-auto'
-                      }`} />
-                      {!collapsed && (
-                        <span className="font-medium transition-all duration-200">
-                          Chat General
-                        </span>
-                      )}
-                    </div>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
