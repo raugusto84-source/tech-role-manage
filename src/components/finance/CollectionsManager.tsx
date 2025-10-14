@@ -42,12 +42,14 @@ export function CollectionsManager() {
     try {
       setLoading(true);
 
-      // Read from collections_cache for orders
-      const { data: cacheData, error: cacheError } = await supabase
-        .from('collections_cache')
-        .select('*');
+      // Get pending collections for orders
+      const { data: pendingOrders, error: ordersError } = await supabase
+        .from('pending_collections')
+        .select('*')
+        .eq('collection_type', 'order_payment')
+        .eq('status', 'pending');
 
-      if (cacheError) throw cacheError;
+      if (ordersError) throw ordersError;
 
       // Get policy payments pending
       const { data: policyPayments, error: policyError } = await supabase
@@ -57,22 +59,50 @@ export function CollectionsManager() {
 
       if (policyError) throw policyError;
 
-      const cachedCollections = cacheData || [];
+      const orders = pendingOrders || [];
       const policies = policyPayments || [];
 
-      // Calculate totals from cache
-      const orderPending = cachedCollections
-        .filter(c => c.source_type === 'order')
-        .reduce((sum, c) => sum + (c.amount_pending || 0), 0);
+      // Calculate order pending amounts
+      const orderPendingPromises = orders.map(async (order: any) => {
+        // Get order items to calculate real total
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('total_amount')
+          .eq('order_id', order.order_id);
+
+        const actualTotal = (orderItems || []).reduce((sum: number, item: any) => 
+          sum + (item.total_amount || 0), 0);
+
+        // Get payments made
+        const { data: payments } = await supabase
+          .from('order_payments')
+          .select('payment_amount, isr_withholding_applied')
+          .eq('order_id', order.order_id);
+
+        const totalPaid = (payments || []).reduce((sum: number, p: any) => 
+          sum + (p.payment_amount || 0), 0);
+
+        // Apply ISR if needed
+        const hasISR = (payments || []).some((p: any) => p.isr_withholding_applied);
+        const finalTotal = hasISR ? actualTotal - (actualTotal / 1.16) * 0.0125 : actualTotal;
+        const balance = Math.max(0, finalTotal - totalPaid);
+
+        return {
+          balance,
+          isOverdue: order.due_date ? new Date(order.due_date) < new Date() : false
+        };
+      });
+
+      const orderBalances = await Promise.all(orderPendingPromises);
+      const orderPending = orderBalances.reduce((sum, o) => sum + o.balance, 0);
+      const overdueOrder = orderBalances
+        .filter(o => o.isOverdue)
+        .reduce((sum, o) => sum + o.balance, 0);
 
       const policyPending = policies.reduce((sum, p) => sum + (p.amount || 0), 0);
       const totalPending = policyPending + orderPending;
 
-      // Calculate overdue amounts
-      const overdueOrder = cachedCollections
-        .filter(c => c.source_type === 'order' && c.is_overdue)
-        .reduce((sum, c) => sum + (c.amount_pending || 0), 0);
-
+      // Calculate overdue policy amounts
       const today = new Date().toISOString().split('T')[0];
       const overduePolicy = policies
         .filter(p => p.due_date < today)
@@ -102,22 +132,17 @@ export function CollectionsManager() {
   const updateCache = async () => {
     try {
       setUpdating(true);
-      const { error } = await supabase.functions.invoke('update-collections-cache');
-      
-      if (error) throw error;
+      await loadCollectionStats();
       
       toast({
-        title: "Cache actualizado",
+        title: "Actualizado",
         description: "Las estadísticas de cobranza se han actualizado",
       });
-      
-      // Reload stats after update
-      await loadCollectionStats();
     } catch (error: any) {
-      console.error('Error updating cache:', error);
+      console.error('Error updating stats:', error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar el cache",
+        description: "No se pudieron actualizar las estadísticas",
         variant: "destructive",
       });
     } finally {
