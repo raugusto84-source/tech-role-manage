@@ -5,6 +5,7 @@ import { Eye, Trash2, CreditCard, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useOrderElapsedTime } from "@/hooks/useOrderElapsedTime";
+import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel } from "@/utils/priorityCalculator";
 
 interface Order {
   id: string;
@@ -109,25 +110,12 @@ export function OrderListItem({
     return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const variants = {
-      'baja': 'bg-slate-100 text-slate-800 border-slate-200',
-      'media': 'bg-blue-100 text-blue-800 border-blue-200',
-      'alta': 'bg-orange-100 text-orange-800 border-orange-200',
-      'critica': 'bg-red-100 text-red-800 border-red-200'
-    };
-    return variants[priority as keyof typeof variants] || variants.media;
-  };
-
-  const getPriorityLabel = (priority: string) => {
-    const labels = {
-      'baja': 'Baja',
-      'media': 'Media',
-      'alta': 'Alta',
-      'critica': 'Crítica'
-    };
-    return labels[priority as keyof typeof labels] || priority;
-  };
+  // Calcular prioridad dinámica basada en tiempo transcurrido
+  const calculatedPriority = calculateOrderPriority(
+    order.created_at,
+    order.estimated_delivery_date,
+    order.delivery_date
+  );
 
   return (
     <TableRow className="hover:bg-muted/50 cursor-pointer">
@@ -141,8 +129,8 @@ export function OrderListItem({
         </div>
       </TableCell>
       <TableCell onClick={onClick}>
-        <Badge className={getPriorityBadge(order.priority)} variant="outline">
-          {getPriorityLabel(order.priority)}
+        <Badge className={getPriorityBadgeClass(calculatedPriority)} variant="outline">
+          {getPriorityLabel(calculatedPriority)}
         </Badge>
       </TableCell>
       <TableCell onClick={onClick}>
