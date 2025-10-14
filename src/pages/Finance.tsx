@@ -22,6 +22,7 @@ import { PayrollWithdrawals } from "@/components/finance/PayrollWithdrawals";
 import { AccountsConsecutiveReport } from "@/components/finance/AccountsConsecutiveReport";
 import { LoansManager } from "@/components/finance/LoansManager";
 import { RecurringPayrollsManager } from "@/components/finance/RecurringPayrollsManager";
+import { FixedExpensesManager } from "@/components/finance/FixedExpensesManager";
 import { X, Plus, Trash2, Edit } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -1991,6 +1992,7 @@ export default function Finance() {
           <TabsTrigger value="fiscal" className="text-gray-950">Fiscal</TabsTrigger>
           <TabsTrigger value="no_fiscal" className="text-gray-950">No Fiscal</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
+          <TabsTrigger value="fixed_expenses">Gastos Fijos</TabsTrigger>
           <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
           <TabsTrigger value="loans" className="text-gray-950">Préstamos</TabsTrigger>
           <TabsTrigger value="nomina" className="text-gray-950">Nómina</TabsTrigger>
@@ -2795,6 +2797,11 @@ export default function Finance() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Gastos Fijos */}
+        <TabsContent value="fixed_expenses" className="space-y-4">
+          <FixedExpensesManager />
         </TabsContent>
 
         <TabsContent value="withdrawals">
