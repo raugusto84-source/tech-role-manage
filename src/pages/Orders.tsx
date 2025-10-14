@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History, Grid3X3, List } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -120,7 +120,6 @@ export default function Orders() {
   const [selectedDateSeguridad, setSelectedDateSeguridad] = useState<Date | undefined>();
   const [activeTab, setActiveTab] = useState('list');
   const [showMinimalForm, setShowMinimalForm] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [showCompletedWithoutBalance, setShowCompletedWithoutBalance] = useState(false);
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<Record<string, boolean>>({});
   const { canDeleteOrders } = useSoftDelete();
@@ -568,30 +567,6 @@ export default function Orders() {
                 Nueva Orden
               </Button>
             )}
-            
-            {/* View Toggle for Admin and Tecnico */}
-            {(profile?.role === 'administrador' || profile?.role === 'tecnico') && (
-              <div className="flex rounded-lg border p-1 bg-muted/50">
-                <Button
-                  variant={viewMode === 'card' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('card')}
-                  className="h-8 px-3"
-                >
-                  <Grid3X3 className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Tarjetas</span>
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="h-8 px-3"
-                >
-                  <List className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">Lista</span>
-                </Button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -630,163 +605,37 @@ export default function Orders() {
             </p>
           </div>
         ) : (
-          // Check if admin or tecnico wants list view
-          (profile?.role === 'administrador' || profile?.role === 'tecnico') && viewMode === 'list' ? (
-            // List view for administrators
-            <div className="bg-background rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead># Orden</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Servicio</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Técnico</TableHead>
-                    <TableHead>Fecha Entrega</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-center">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.map((order) => (
-                    <OrderListItem
-                      key={order.id}
-                      order={order}
-                      onClick={() => setSelectedOrder(order)}
-                       onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
-                       canDelete={canDeleteOrders}
-                      getStatusColor={getStatusColor}
-                      showCollectButton={canCollectPayment}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            // Vista original por categorías para otros roles o vista de tarjetas
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-            {/* Sistemas Column */}
-            <div className="space-y-2">
-              {(() => {
-                const sistemasInfo = getServiceCategoryInfo('sistemas');
-                return (
-                  <Card className={sistemasInfo.colors.fullCard}>
-                    <CardHeader>
-                      <CardTitle className={`${sistemasInfo.colors.titleText} flex items-center gap-2`}>
-                        {sistemasInfo.icon} {sistemasInfo.label}
-                     <Badge variant="secondary" className="ml-auto">
-                      {filteredOrders.filter(order => {
-                        // Usar SOLO la categoría original del service_type principal
-                        const serviceCategory = order.service_types?.service_category || "sistemas";
-                        return serviceCategory === "sistemas";
-                      }).length}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                     {Object.entries(groupedOrders).map(([status, orders]) => {
-                      const sistemasOrders = orders.filter(order => {
-                        // Usar SOLO la categoría original del service_type principal
-                        const serviceCategory = order.service_types?.service_category || "sistemas";
-                        return serviceCategory === "sistemas";
-                      });
-                      
-                      if (sistemasOrders.length === 0) return null;
-                      
-                      return (
-                        <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              {sistemasOrders.length}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                             {sistemasOrders.map((order) => (
-                                <OrderCard
-                                  key={order.id}
-                                  order={order}
-                                  onClick={() => setSelectedOrder(order)}
-                                   onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
-                                   canDelete={canDeleteOrders}
-                                  getStatusColor={getStatusColor}
-                                  showCollectButton={canCollectPayment}
-                                />
-                             ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-            </div>
-
-            {/* Seguridad Column */}
-            <div className="space-y-2">
-              {(() => {
-                const seguridadInfo = getServiceCategoryInfo('seguridad');
-                return (
-                  <Card className={seguridadInfo.colors.fullCard}>
-                    <CardHeader>
-                      <CardTitle className={`${seguridadInfo.colors.titleText} flex items-center gap-2`}>
-                        {seguridadInfo.icon} {seguridadInfo.label}
-                     <Badge variant="secondary" className="ml-auto">
-                      {filteredOrders.filter(order => {
-                        // Usar SOLO la categoría original del service_type principal
-                        const serviceCategory = order.service_types?.service_category || "sistemas";
-                        return serviceCategory === "seguridad";
-                      }).length}
-                     </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                     {Object.entries(groupedOrders).map(([status, orders]) => {
-                      const seguridadOrders = orders.filter(order => {
-                        // Usar SOLO la categoría original del service_type principal
-                        const serviceCategory = order.service_types?.service_category || "sistemas";
-                        return serviceCategory === "seguridad";
-                      });
-                      
-                      if (seguridadOrders.length === 0) return null;
-                      
-                      return (
-                        <div key={status} className="bg-white/60 dark:bg-slate-900/60 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="text-sm font-medium">{getStatusTitle(status)}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              {seguridadOrders.length}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1">
-                             {seguridadOrders.map((order) => (
-                                 <OrderCard
-                                   key={order.id}
-                                   order={order}
-                                   onClick={() => setSelectedOrder(order)}
-                                   onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
-                                   canDelete={canDeleteOrders}
-                                   getStatusColor={getStatusColor}
-                                   showCollectButton={canCollectPayment}
-                                 />
-                             ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-            </div>
-            </div>
-          )
+          // List view
+          <div className="bg-background rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead># Orden</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Servicio</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Técnico</TableHead>
+                  <TableHead>Fecha Entrega</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-center">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredOrders.map((order) => (
+                  <OrderListItem
+                    key={order.id}
+                    order={order}
+                    onClick={() => setSelectedOrder(order)}
+                     onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
+                     canDelete={canDeleteOrders}
+                    getStatusColor={getStatusColor}
+                    showCollectButton={canCollectPayment}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 
