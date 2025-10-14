@@ -61,6 +61,7 @@ interface Order {
   created_at: string;
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
+  priority: 'baja' | 'media' | 'alta' | 'critica';
   service_types?: {
     name: string;
     description?: string;
@@ -612,7 +613,7 @@ export default function Orders() {
                 <TableRow>
                   <TableHead># Orden</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead>Servicio</TableHead>
+                  <TableHead>Prioridad</TableHead>
                   <TableHead>Descripción</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Técnico</TableHead>

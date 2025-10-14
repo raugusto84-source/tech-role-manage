@@ -3515,6 +3515,7 @@ export type Database = {
           pdf_url: string | null
           policy_id: string | null
           policy_name: string | null
+          priority: string
           requested_date: string | null
           service_category: string | null
           service_location: Json | null
@@ -3561,6 +3562,7 @@ export type Database = {
           pdf_url?: string | null
           policy_id?: string | null
           policy_name?: string | null
+          priority?: string
           requested_date?: string | null
           service_category?: string | null
           service_location?: Json | null
@@ -3607,6 +3609,7 @@ export type Database = {
           pdf_url?: string | null
           policy_id?: string | null
           policy_name?: string | null
+          priority?: string
           requested_date?: string | null
           service_category?: string | null
           service_location?: Json | null

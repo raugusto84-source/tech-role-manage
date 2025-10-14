@@ -24,6 +24,7 @@ interface Order {
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
   is_policy_order?: boolean;
+  priority: 'baja' | 'media' | 'alta' | 'critica';
   service_types?: {
     name: string;
     description?: string;
@@ -108,6 +109,26 @@ export function OrderListItem({
     return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
   };
 
+  const getPriorityBadge = (priority: string) => {
+    const variants = {
+      'baja': 'bg-slate-100 text-slate-800 border-slate-200',
+      'media': 'bg-blue-100 text-blue-800 border-blue-200',
+      'alta': 'bg-orange-100 text-orange-800 border-orange-200',
+      'critica': 'bg-red-100 text-red-800 border-red-200'
+    };
+    return variants[priority as keyof typeof variants] || variants.media;
+  };
+
+  const getPriorityLabel = (priority: string) => {
+    const labels = {
+      'baja': 'Baja',
+      'media': 'Media',
+      'alta': 'Alta',
+      'critica': 'Crítica'
+    };
+    return labels[priority as keyof typeof labels] || priority;
+  };
+
   return (
     <TableRow className="hover:bg-muted/50 cursor-pointer">
       <TableCell onClick={onClick} className="font-medium">
@@ -120,12 +141,9 @@ export function OrderListItem({
         </div>
       </TableCell>
       <TableCell onClick={onClick}>
-        <div>
-          <div className="font-medium">{order.service_types?.name}</div>
-          <div className="text-sm text-muted-foreground capitalize">
-            {order.service_types?.service_category}
-          </div>
-        </div>
+        <Badge className={getPriorityBadge(order.priority)} variant="outline">
+          {getPriorityLabel(order.priority)}
+        </Badge>
       </TableCell>
       <TableCell onClick={onClick}>
         <div className="max-w-[200px] truncate" title={order.failure_description}>
