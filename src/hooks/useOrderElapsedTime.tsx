@@ -5,8 +5,9 @@ import { Database } from '@/integrations/supabase/types';
 
 type OrderStatus = Database['public']['Enums']['order_status'];
 
-export function useOrderElapsedTime(orderId: string, currentStatus: string) {
+export function useOrderElapsedTime(orderId: string, currentStatus: string, orderCreatedAt: string) {
   const [elapsedTime, setElapsedTime] = useState<string>('');
+  const [totalTime, setTotalTime] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export function useOrderElapsedTime(orderId: string, currentStatus: string) {
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
-  }, [orderId, currentStatus]);
+  }, [orderId, currentStatus, orderCreatedAt]);
 
   const loadElapsedTime = async () => {
     try {
@@ -51,22 +52,29 @@ export function useOrderElapsedTime(orderId: string, currentStatus: string) {
 
       if (!logs || logs.length === 0) {
         setElapsedTime('');
-        return;
+      } else {
+        const startTime = new Date(logs[0].changed_at);
+        const now = new Date();
+        const durationMs = now.getTime() - startTime.getTime();
+        const durationHours = durationMs / (1000 * 60 * 60);
+        setElapsedTime(formatHoursAndMinutes(durationHours));
       }
 
-      const startTime = new Date(logs[0].changed_at);
+      // Calculate total time from order creation
+      const createdTime = new Date(orderCreatedAt);
       const now = new Date();
-      const durationMs = now.getTime() - startTime.getTime();
-      const durationHours = durationMs / (1000 * 60 * 60);
+      const totalDurationMs = now.getTime() - createdTime.getTime();
+      const totalDurationHours = totalDurationMs / (1000 * 60 * 60);
+      setTotalTime(formatHoursAndMinutes(totalDurationHours));
 
-      setElapsedTime(formatHoursAndMinutes(durationHours));
     } catch (error) {
       console.error('Error loading elapsed time:', error);
       setElapsedTime('');
+      setTotalTime('');
     } finally {
       setLoading(false);
     }
   };
 
-  return { elapsedTime, loading };
+  return { elapsedTime, totalTime, loading };
 }

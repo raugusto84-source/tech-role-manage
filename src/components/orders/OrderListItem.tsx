@@ -86,7 +86,7 @@ export function OrderListItem({
   getStatusColor,
   showCollectButton
 }: OrderListItemProps) {
-  const { elapsedTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status);
+  const { elapsedTime, totalTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status, order.created_at);
   
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -137,10 +137,20 @@ export function OrderListItem({
           <Badge className={getStatusColor(order.status)} variant="outline">
             {getStatusLabel(order.status)}
           </Badge>
-          {!timeLoading && elapsedTime && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              {elapsedTime}
+          {!timeLoading && (
+            <div className="space-y-0.5">
+              {elapsedTime && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span className="font-medium">Estado:</span> {elapsedTime}
+                </div>
+              )}
+              {totalTime && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  <span className="font-medium">Total:</span> {totalTime}
+                </div>
+              )}
             </div>
           )}
         </div>

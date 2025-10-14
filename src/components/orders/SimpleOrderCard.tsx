@@ -75,7 +75,7 @@ export function SimpleOrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const { elapsedTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status);
+  const { elapsedTime, totalTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status, order.created_at);
   // Removed useRewardSettings and useOrderCashback - cashback system eliminated
 
   const loadOrderItems = async () => {
@@ -238,10 +238,20 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
             <Badge className={`${getStatusColor(order.status)} text-xs`}>
               {getStatusText(order.status)}
             </Badge>
-            {!timeLoading && elapsedTime && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {elapsedTime}
+            {!timeLoading && (
+              <div className="flex flex-col items-end gap-0.5">
+                {elapsedTime && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span className="font-medium">Estado:</span> {elapsedTime}
+                  </div>
+                )}
+                {totalTime && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span className="font-medium">Total:</span> {totalTime}
+                  </div>
+                )}
               </div>
             )}
           </div>
