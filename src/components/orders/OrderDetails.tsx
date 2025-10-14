@@ -296,20 +296,40 @@ export function OrderDetails({
     try {
       setLoading(true);
 
+      console.log('=== ADMIN APPROVAL START ===');
+      console.log('Order ID:', order.id);
+      console.log('Current status:', order.status);
+      console.log('User ID:', user?.id);
+
       // Update order status to en_proceso
-      const { error: orderError } = await supabase
+      const { data: updateData, error: orderError } = await supabase
         .from('orders')
         .update({
           status: 'en_proceso',
           client_approval: true,
           client_approved_at: new Date().toISOString()
         })
-        .eq('id', order.id);
+        .eq('id', order.id)
+        .select();
 
-      if (orderError) throw orderError;
+      console.log('Update result:', { data: updateData, error: orderError });
+
+      if (orderError) {
+        console.error('Error updating order:', orderError);
+        throw orderError;
+      }
+
+      // Verify the update was successful
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('orders')
+        .select('id, status')
+        .eq('id', order.id)
+        .single();
+
+      console.log('Verification after update:', { data: verifyData, error: verifyError });
 
       // Log status change
-      await supabase
+      const { error: logError } = await supabase
         .from('order_status_logs')
         .insert({
           order_id: order.id,
@@ -318,6 +338,10 @@ export function OrderDetails({
           changed_by: user?.id,
           notes: 'Aprobado administrativamente por ' + (profile?.full_name || profile?.email)
         });
+
+      if (logError) {
+        console.error('Error logging status change:', logError);
+      }
 
       setOrderStatus('en_proceso');
       
@@ -329,6 +353,8 @@ export function OrderDetails({
 
       setShowAdminApprovalDialog(false);
       onUpdate();
+      
+      console.log('=== ADMIN APPROVAL COMPLETE ===');
       
       // Redirect to orders page
       navigate('/orders');
