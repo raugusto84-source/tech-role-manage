@@ -822,13 +822,14 @@ export function FollowUpManager() {
               <div className="bg-muted p-4 rounded-lg">
                 <h4 className="font-medium mb-2 flex items-center gap-2">
                   <Bell className="h-4 w-4" />
-                  Información Importante
+                  Configuración de Twilio WhatsApp
                 </h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Necesita una cuenta de WhatsApp Business API activa</li>
-                  <li>• El token debe tener permisos para enviar mensajes</li>
-                  <li>• Verifique que el webhook esté configurado correctamente</li>
-                  <li>• Los mensajes están sujetos a las políticas de WhatsApp</li>
+                  <li>• <strong>Account SID y Auth Token</strong>: Obtener de la consola de Twilio</li>
+                  <li>• <strong>Número WhatsApp</strong>: Debe incluir código de país (ej: +14155238886)</li>
+                  <li>• El número debe ser un <strong>WhatsApp Business API</strong> aprobado por Twilio</li>
+                  <li>• Para pruebas, usa el <strong>Twilio Sandbox for WhatsApp</strong></li>
+                  <li>• Los números deben estar en formato internacional con +</li>
                 </ul>
               </div>
             </CardContent>

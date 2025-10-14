@@ -62,13 +62,19 @@ const handler = async (req: Request): Promise<Response> => {
     // Add whatsapp: prefix for Twilio
     const twilioTo = `whatsapp:${formattedPhone}`;
     
+    // Ensure From number has whatsapp: prefix
+    let twilioFrom = twilioWhatsAppNumber;
+    if (!twilioFrom.startsWith('whatsapp:')) {
+      twilioFrom = `whatsapp:${twilioFrom}`;
+    }
+    
     // Prepare Twilio API request
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilioAccountSid}/Messages.json`;
     const auth = btoa(`${twilioAccountSid}:${twilioAuthToken}`);
     
     const body = new URLSearchParams({
       To: twilioTo,
-      From: twilioWhatsAppNumber,
+      From: twilioFrom,
       Body: message,
     });
 
