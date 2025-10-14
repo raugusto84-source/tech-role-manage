@@ -78,7 +78,6 @@ export function AppSidebar() {
            { title: 'Gestión Procesos', url: '/gestion-procesos', icon: Activity },
            { title: 'Control Carga', url: '/carga-trabajo', icon: Timer },
            { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
-          { title: 'Reportes', url: '/reports', icon: FileText },
           { title: 'Configuración', url: '/settings', icon: Settings },
         ];
       case 'vendedor':
