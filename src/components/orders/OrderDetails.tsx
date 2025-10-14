@@ -107,6 +107,12 @@ export function OrderDetails({
     signatures: false
   });
   const [showAdminApprovalDialog, setShowAdminApprovalDialog] = useState(false);
+  
+  // Sync orderStatus with order.status prop changes
+  useEffect(() => {
+    setOrderStatus(order.status);
+  }, [order.status]);
+  
   useEffect(() => {
     loadOrderItems();
     loadOrderEquipment();
