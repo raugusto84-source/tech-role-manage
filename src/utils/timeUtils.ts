@@ -10,6 +10,24 @@
 export function formatHoursAndMinutes(hours: number): string {
   if (hours === 0) return '0h 0m';
   
+  // Si son más de 24 horas, mostrar en días
+  if (hours >= 24) {
+    const days = Math.floor(hours / 24);
+    const remainingHours = Math.floor(hours % 24);
+    const minutes = Math.round((hours - Math.floor(hours)) * 60);
+    
+    if (remainingHours === 0 && minutes === 0) {
+      return `${days}d`;
+    }
+    if (remainingHours === 0) {
+      return `${days}d ${minutes}m`;
+    }
+    if (minutes === 0) {
+      return `${days}d ${remainingHours}h`;
+    }
+    return `${days}d ${remainingHours}h ${minutes}m`;
+  }
+  
   const wholeHours = Math.floor(hours);
   const minutes = Math.round((hours - wholeHours) * 60);
   
