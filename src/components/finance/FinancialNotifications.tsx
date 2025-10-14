@@ -55,7 +55,27 @@ export function FinancialNotifications() {
     refetchInterval: 60000, // Refetch every minute
   });
 
+  // Query para órdenes con pagos vencidos
+  const { data: overdueOrders } = useQuery({
+    queryKey: ['overdue-order-payments'],
+    queryFn: async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('pending_collections')
+        .select('*')
+        .eq('collection_type', 'order_payment')
+        .eq('status', 'pending')
+        .lt('due_date', today);
+
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 60000, // Refetch every minute
+  });
+
   const unreadCount = notifications?.filter(n => !n.is_read).length || 0;
+  const overdueCount = overdueOrders?.length || 0;
+  const totalNotifications = unreadCount + (overdueCount > 0 ? 1 : 0);
 
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: string) => {
@@ -90,12 +110,12 @@ export function FinancialNotifications() {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+          {totalNotifications > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
             >
-              {unreadCount}
+              {totalNotifications}
             </Badge>
           )}
         </Button>
@@ -118,9 +138,39 @@ export function FinancialNotifications() {
             <div className="p-4 text-center text-muted-foreground">
               Cargando notificaciones...
             </div>
-          ) : notifications && notifications.length > 0 ? (
+          ) : (notifications && notifications.length > 0) || overdueCount > 0 ? (
             <div className="divide-y">
-              {notifications.map((notification) => {
+              {/* Mostrar notificación de pagos vencidos primero */}
+              {overdueCount > 0 && (
+                <Card className="border-0 rounded-none bg-destructive/10">
+                  <CardContent className="p-4">
+                    <div className="flex gap-3">
+                      <div className="text-destructive mt-1">
+                        <AlertCircle className="h-5 w-5" />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm text-destructive">
+                              {overdueCount} {overdueCount === 1 ? 'Orden' : 'Órdenes'} con Pagos Vencidos
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Requiere atención inmediata en la gestión de cobranza
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Ahora
+                            </p>
+                          </div>
+                          <Badge variant="destructive">
+                            urgent
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {notifications?.map((notification) => {
                 const Icon = getNotificationIcon(notification.notification_type);
                 return (
                   <Card
