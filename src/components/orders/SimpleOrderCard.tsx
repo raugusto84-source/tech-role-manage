@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrderElapsedTime } from '@/hooks/useOrderElapsedTime';
 // Removed useRewardSettings and useOrderCashback imports - cashback system eliminated
 import { formatCOPCeilToTen, formatMXNExact, formatMXNInt, ceilToTen } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -74,6 +75,7 @@ export function SimpleOrderCard({
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const { elapsedTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status);
   // Removed useRewardSettings and useOrderCashback - cashback system eliminated
 
   const loadOrderItems = async () => {
@@ -232,9 +234,17 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
               )}
             </div>
           </div>
-          <Badge className={`${getStatusColor(order.status)} text-xs`}>
-            {getStatusText(order.status)}
-          </Badge>
+          <div className="flex flex-col items-end gap-1">
+            <Badge className={`${getStatusColor(order.status)} text-xs`}>
+              {getStatusText(order.status)}
+            </Badge>
+            {!timeLoading && elapsedTime && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {elapsedTime}
+              </div>
+            )}
+          </div>
         </div>
       </CardHeader>
       
