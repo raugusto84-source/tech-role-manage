@@ -1989,17 +1989,17 @@ export default function Finance() {
 
       <Tabs defaultValue="fiscal">
         <TabsList className="bg-lime-400 rounded-none">
-          <TabsTrigger value="fiscal" className="text-gray-950 font-bold">Fiscal</TabsTrigger>
-          <TabsTrigger value="no_fiscal" className="text-gray-950 font-bold">No Fiscal</TabsTrigger>
-          <TabsTrigger value="purchases" className="font-bold">Compras</TabsTrigger>
-          <TabsTrigger value="fixed_expenses" className="font-bold">Gastos Fijos</TabsTrigger>
-          <TabsTrigger value="withdrawals" className="font-bold">Retiros</TabsTrigger>
-          <TabsTrigger value="loans" className="text-gray-950 font-bold">Préstamos</TabsTrigger>
-          <TabsTrigger value="nomina" className="text-gray-950 font-bold">Nómina</TabsTrigger>
-          <TabsTrigger value="cobranza" className="text-gray-950 font-bold">Cobranza</TabsTrigger>
-          <TabsTrigger value="report" className="text-gray-950 font-bold">Reporte</TabsTrigger>
-          <TabsTrigger value="consecutive" className="text-gray-950 font-bold">Consecutivo</TabsTrigger>
-          <TabsTrigger value="history" className="font-bold">Historial</TabsTrigger>
+          <TabsTrigger value="fiscal" className="text-black font-bold">Fiscal</TabsTrigger>
+          <TabsTrigger value="no_fiscal" className="text-black font-bold">No Fiscal</TabsTrigger>
+          <TabsTrigger value="purchases" className="text-black font-bold">Compras</TabsTrigger>
+          <TabsTrigger value="fixed_expenses" className="text-black font-bold">Gastos Fijos</TabsTrigger>
+          <TabsTrigger value="withdrawals" className="text-black font-bold">Retiros</TabsTrigger>
+          <TabsTrigger value="loans" className="text-black font-bold">Préstamos</TabsTrigger>
+          <TabsTrigger value="nomina" className="text-black font-bold">Nómina</TabsTrigger>
+          <TabsTrigger value="cobranza" className="text-black font-bold">Cobranza</TabsTrigger>
+          <TabsTrigger value="report" className="text-black font-bold">Reporte</TabsTrigger>
+          <TabsTrigger value="consecutive" className="text-black font-bold">Consecutivo</TabsTrigger>
+          <TabsTrigger value="history" className="text-black font-bold">Historial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="incomes">
