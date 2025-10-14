@@ -2,7 +2,7 @@ import {
   Home, 
   Users, 
   ShoppingCart, 
-  Settings, 
+  Database,
   ClipboardList,
   UserCheck,
   FileText,
@@ -75,7 +75,7 @@ export function AppSidebar() {
            { title: 'Finanzas', url: '/finanzas', icon: Banknote },
            { title: 'Seguimiento', url: '/seguimiento', icon: Bell },
            { title: 'Encuestas', url: '/surveys', icon: BarChart3 },
-          { title: 'Configuración', url: '/settings', icon: Settings },
+          { title: 'Respaldos', url: '/settings', icon: Database },
         ];
       case 'vendedor':
         return [
