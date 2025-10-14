@@ -76,6 +76,7 @@ interface Order {
   } | null;
   technician_profile?: {
     full_name: string;
+    fleet_name?: string;
   } | null;
   support_technicians?: Array<{
     technician_id: string;
@@ -203,7 +204,28 @@ export default function Orders() {
               .select('full_name')
               .eq('user_id', order.assigned_technician)
               .single();
-            technicianProfile = techProfile;
+            
+            // Obtener la flotilla del técnico
+            let fleetName = null;
+            if (techProfile) {
+              const { data: fleetAssignment } = await supabase
+                .from('fleet_assignments')
+                .select(`
+                  fleet_groups!inner(name)
+                `)
+                .eq('technician_id', order.assigned_technician)
+                .eq('is_active', true)
+                .maybeSingle();
+              
+              if (fleetAssignment?.fleet_groups) {
+                fleetName = fleetAssignment.fleet_groups.name;
+              }
+            }
+            
+            technicianProfile = {
+              ...techProfile,
+              fleet_name: fleetName
+            };
           }
 
           const { data: supportTechnicians } = await supabase

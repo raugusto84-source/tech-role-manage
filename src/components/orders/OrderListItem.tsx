@@ -40,6 +40,7 @@ interface Order {
   } | null;
   technician_profile?: {
     full_name: string;
+    fleet_name?: string;
   } | null;
   support_technicians?: Array<{
     technician_id: string;
@@ -162,7 +163,20 @@ export function OrderListItem({
         </div>
       </TableCell>
       <TableCell onClick={onClick}>
-        {order.technician_profile?.full_name || '-'}
+        {order.technician_profile?.full_name ? (
+          <div className="space-y-0.5">
+            <div className="font-medium">{order.technician_profile.full_name}</div>
+            {order.technician_profile.fleet_name && (
+              <div className="text-xs text-muted-foreground">
+                <Badge variant="outline" className="text-xs">
+                  {order.technician_profile.fleet_name}
+                </Badge>
+              </div>
+            )}
+          </div>
+        ) : (
+          '-'
+        )}
       </TableCell>
       <TableCell onClick={onClick}>
         {order.estimated_delivery_date 
