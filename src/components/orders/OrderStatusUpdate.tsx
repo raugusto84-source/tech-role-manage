@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { X, ArrowRight, CheckCircle2, Truck, Wrench } from 'lucide-react';
+import { X, ArrowRight, CheckCircle2, Truck, Wrench, Shield, Clock, AlertCircle, XCircle } from 'lucide-react';
 import { DeliverySignature } from './DeliverySignature';
 import { triggerOrderFollowUp } from '@/utils/followUp';
 
@@ -89,16 +89,68 @@ const STATE_TRANSITIONS = {
   cancelada: []   // No se puede cambiar desde cancelada
 };
 
+// Estados disponibles para administradores (acceso completo)
+const ALL_STATES = [
+  { 
+    value: 'pendiente_aprobacion', 
+    label: 'Pendiente Aprobación', 
+    icon: Clock, 
+    color: 'bg-yellow-500 hover:bg-yellow-600',
+    description: 'Esperando aprobación del cliente'
+  },
+  { 
+    value: 'en_proceso', 
+    label: 'En Proceso', 
+    icon: Wrench, 
+    color: 'bg-orange-500 hover:bg-orange-600',
+    description: 'Trabajo en progreso'
+  },
+  { 
+    value: 'pendiente_actualizacion', 
+    label: 'Pendiente Actualización', 
+    icon: AlertCircle, 
+    color: 'bg-blue-500 hover:bg-blue-600',
+    description: 'Requiere aprobación de cambios'
+  },
+  { 
+    value: 'pendiente_entrega', 
+    label: 'Pendiente Entrega', 
+    icon: Truck, 
+    color: 'bg-green-500 hover:bg-green-600',
+    description: 'Listo para entregar'
+  },
+  { 
+    value: 'finalizada', 
+    label: 'Finalizada', 
+    icon: CheckCircle2, 
+    color: 'bg-gray-500 hover:bg-gray-600',
+    description: 'Orden completada'
+  },
+  { 
+    value: 'cancelada', 
+    label: 'Cancelada', 
+    icon: XCircle, 
+    color: 'bg-red-500 hover:bg-red-600',
+    description: 'Orden cancelada'
+  }
+];
+
 export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdateProps) {
   const { toast } = useToast();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
 
+  const isAdmin = profile?.role === 'administrador';
+
   /**
    * Obtiene las transiciones disponibles para el estado actual
+   * Si es administrador, muestra todos los estados
    */
-  const availableTransitions = STATE_TRANSITIONS[order.status] || [];
+  const availableTransitions = isAdmin 
+    ? ALL_STATES.filter(state => state.value !== order.status)
+    : STATE_TRANSITIONS[order.status] || [];
 
   /**
    * Maneja el cambio de estado con registro automático
@@ -240,6 +292,14 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {isAdmin && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+                      <Shield className="h-4 w-4 text-primary" />
+                      <p className="text-xs text-primary font-medium">
+                        Modo Administrador: Todos los estados disponibles
+                      </p>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     Selecciona el nuevo estado:
                   </p>
