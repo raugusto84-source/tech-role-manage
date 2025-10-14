@@ -165,7 +165,12 @@ export function OrderListItem({
               📋 Póliza
             </Badge>
           ) : (
-            showCollectButton && (order.status === 'en_proceso' || order.status === 'finalizada') && (
+            showCollectButton && (
+              order.status === 'en_proceso' || 
+              order.status === 'pendiente_actualizacion' || 
+              order.status === 'pendiente_entrega' || 
+              order.status === 'finalizada'
+            ) && (
               <Button
                 variant="ghost"
                 size="sm"
