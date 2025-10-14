@@ -770,6 +770,8 @@ export function OrderDetails({
                 });
                 setOrderStatus('pendiente_entrega');
                 onUpdate();
+                // Redirigir a la lista de órdenes
+                navigate('/orders');
               } catch (error) {
                 console.error('Error finishing order:', error);
                 toast({
@@ -812,12 +814,8 @@ export function OrderDetails({
       setShowDeliverySignature(false);
       loadAuthorizationSignatures(); // Recargar firmas después de firmar entrega
       loadDeliverySignature(); // Recargar firma de entrega
-      // If client, redirect to client dashboard, otherwise just update
-      if (isClient) {
-        navigate('/client');
-      } else {
-        onUpdate();
-      }
+      // Redirigir a la lista de órdenes después de firmar entrega
+      navigate('/orders');
     }} />}
 
       {/* Admin Approval Dialog */}
