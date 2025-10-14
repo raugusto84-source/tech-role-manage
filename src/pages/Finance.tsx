@@ -1989,17 +1989,17 @@ export default function Finance() {
 
       <Tabs defaultValue="fiscal">
         <TabsList className="bg-lime-400 rounded-none">
-          <TabsTrigger value="fiscal" className="text-gray-950">Fiscal</TabsTrigger>
-          <TabsTrigger value="no_fiscal" className="text-gray-950">No Fiscal</TabsTrigger>
-          <TabsTrigger value="purchases">Compras</TabsTrigger>
-          <TabsTrigger value="fixed_expenses">Gastos Fijos</TabsTrigger>
-          <TabsTrigger value="withdrawals">Retiros</TabsTrigger>
-          <TabsTrigger value="loans" className="text-gray-950">Préstamos</TabsTrigger>
-          <TabsTrigger value="nomina" className="text-gray-950">Nómina</TabsTrigger>
-          <TabsTrigger value="cobranza" className="text-gray-950">Cobranza</TabsTrigger>
-          <TabsTrigger value="report" className="text-gray-950">Reporte</TabsTrigger>
-          <TabsTrigger value="consecutive" className="text-gray-950">Consecutivo</TabsTrigger>
-          <TabsTrigger value="history">Historial</TabsTrigger>
+          <TabsTrigger value="fiscal" className="text-gray-950 font-bold">Fiscal</TabsTrigger>
+          <TabsTrigger value="no_fiscal" className="text-gray-950 font-bold">No Fiscal</TabsTrigger>
+          <TabsTrigger value="purchases" className="font-bold">Compras</TabsTrigger>
+          <TabsTrigger value="fixed_expenses" className="font-bold">Gastos Fijos</TabsTrigger>
+          <TabsTrigger value="withdrawals" className="font-bold">Retiros</TabsTrigger>
+          <TabsTrigger value="loans" className="text-gray-950 font-bold">Préstamos</TabsTrigger>
+          <TabsTrigger value="nomina" className="text-gray-950 font-bold">Nómina</TabsTrigger>
+          <TabsTrigger value="cobranza" className="text-gray-950 font-bold">Cobranza</TabsTrigger>
+          <TabsTrigger value="report" className="text-gray-950 font-bold">Reporte</TabsTrigger>
+          <TabsTrigger value="consecutive" className="text-gray-950 font-bold">Consecutivo</TabsTrigger>
+          <TabsTrigger value="history" className="font-bold">Historial</TabsTrigger>
         </TabsList>
 
         <TabsContent value="incomes">
