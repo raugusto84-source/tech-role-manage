@@ -33,7 +33,7 @@ import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { ServiceChecklist } from './ServiceChecklist';
-import { OrderStatusTimeline } from './OrderStatusTimeline';
+
 interface OrderDetailsProps {
   order: {
     id: string;
@@ -576,9 +576,6 @@ export function OrderDetails({
                 </div>}
             </CardContent>
           </Card>
-
-          {/* Tiempo Transcurrido */}
-          <OrderStatusTimeline orderId={order.id} />
 
           {/* Problema */}
           <Card>
