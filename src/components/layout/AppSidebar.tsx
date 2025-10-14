@@ -233,22 +233,24 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={`${collapsed ? "w-14" : "w-60"} border-r border-sidebar-border bg-sidebar`} collapsible="icon">
-      <SidebarTrigger className="m-2 self-end text-sidebar-foreground hover:bg-sidebar-accent hidden md:flex" />
+      {/* Header con logo y trigger */}
+      <div className="flex items-center justify-between p-2 border-b border-sidebar-border">
+        {!collapsed ? (
+          <div className="flex items-center gap-2 pl-1">
+            <div className="w-6 h-6 rounded bg-gradient-primary flex items-center justify-center">
+              <span className="text-xs font-bold text-white">S</span>
+            </div>
+            <span className="font-semibold text-sidebar-foreground">SYSLAG</span>
+          </div>
+        ) : (
+          <div className="w-6 h-6 rounded bg-gradient-primary flex items-center justify-center mx-auto">
+            <span className="text-xs font-bold text-white">S</span>
+          </div>
+        )}
+        <SidebarTrigger className="text-sidebar-foreground hover:bg-sidebar-accent hidden md:flex" />
+      </div>
       
       <SidebarContent className="bg-sidebar">
-        {/* Logo */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/70 font-semibold">
-            {!collapsed && (
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-gradient-primary flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">S</span>
-                </div>
-                <span>SYSLAG</span>
-              </div>
-            )}
-          </SidebarGroupLabel>
-        </SidebarGroup>
 
         {/* Administración */}
         {sections.administracion && (
