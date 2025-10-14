@@ -36,9 +36,10 @@ interface FollowUpReminder {
 }
 
 interface WhatsAppConfig {
-  api_token: string;
-  phone_number: string;
-  webhook_url: string;
+  id?: string;
+  provider: string;
+  business_phone_number: string;
+  phone_number_id: string;
   is_active: boolean;
 }
 
@@ -59,11 +60,12 @@ export function FollowUpManager() {
   
   // WhatsApp Configuration
   const [whatsappConfig, setWhatsappConfig] = useState<WhatsAppConfig>({
-    api_token: "",
-    phone_number: "",
-    webhook_url: "",
+    provider: "twilio",
+    business_phone_number: "",
+    phone_number_id: "",
     is_active: false
   });
+  const [testingConnection, setTestingConnection] = useState(false);
 
   // Time Simulation
   const [timeSimulation, setTimeSimulation] = useState<TimeSimulation>({
@@ -108,6 +110,7 @@ export function FollowUpManager() {
 
   useEffect(() => {
     loadData();
+    loadWhatsAppConfig();
   }, []);
 
   const loadData = async () => {
@@ -247,8 +250,59 @@ export function FollowUpManager() {
   // WhatsApp Functions
   const saveWhatsAppConfig = async () => {
     try {
-      // Save to localStorage for now - in a real app this should be in database with encryption
-      localStorage.setItem('whatsapp_config', JSON.stringify(whatsappConfig));
+      if (!whatsappConfig.business_phone_number) {
+        toast({ 
+          title: "Error", 
+          description: "Por favor ingresa el número de negocio", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Validate phone format
+      if (!whatsappConfig.business_phone_number.startsWith('+')) {
+        toast({ 
+          title: "Error", 
+          description: "El número debe incluir el código de país (+52 para México)", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Check if config exists
+      const { data: existing } = await supabase
+        .from('whatsapp_config')
+        .select('id')
+        .single();
+
+      if (existing) {
+        // Update existing config
+        const { error } = await supabase
+          .from('whatsapp_config')
+          .update({
+            provider: whatsappConfig.provider,
+            business_phone_number: whatsappConfig.business_phone_number,
+            phone_number_id: whatsappConfig.phone_number_id,
+            is_active: whatsappConfig.is_active,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existing.id);
+
+        if (error) throw error;
+      } else {
+        // Insert new config
+        const { error } = await supabase
+          .from('whatsapp_config')
+          .insert({
+            provider: whatsappConfig.provider,
+            business_phone_number: whatsappConfig.business_phone_number,
+            phone_number_id: whatsappConfig.phone_number_id,
+            is_active: whatsappConfig.is_active
+          });
+
+        if (error) throw error;
+      }
+
       toast({ 
         title: "Configuración guardada", 
         description: "La configuración de WhatsApp se ha guardado correctamente" 
@@ -263,14 +317,68 @@ export function FollowUpManager() {
     }
   };
 
-  const loadWhatsAppConfig = () => {
+  const loadWhatsAppConfig = async () => {
     try {
-      const saved = localStorage.getItem('whatsapp_config');
-      if (saved) {
-        setWhatsappConfig(JSON.parse(saved));
+      const { data } = await supabase
+        .from('whatsapp_config')
+        .select('*')
+        .single();
+
+      if (data) {
+        setWhatsappConfig({
+          id: data.id,
+          provider: data.provider,
+          business_phone_number: data.business_phone_number,
+          phone_number_id: data.phone_number_id || "",
+          is_active: data.is_active
+        });
       }
     } catch (error) {
       console.error('Error loading WhatsApp config:', error);
+    }
+  };
+
+  const testWhatsAppConnection = async () => {
+    try {
+      setTestingConnection(true);
+
+      if (!whatsappConfig.business_phone_number) {
+        toast({ 
+          title: "Error", 
+          description: "Por favor configura el número de negocio primero", 
+          variant: "destructive" 
+        });
+        return;
+      }
+
+      // Send test message
+      const { data, error } = await supabase.functions.invoke('send-whatsapp-notification', {
+        body: {
+          phone: whatsappConfig.business_phone_number,
+          message: '¡Prueba exitosa! Tu conexión con WhatsApp está funcionando correctamente. 🎉',
+          message_type: 'test',
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({ 
+          title: "Conexión exitosa", 
+          description: `Mensaje de prueba enviado a ${whatsappConfig.business_phone_number}`,
+        });
+      } else {
+        throw new Error(data.error || 'Error desconocido');
+      }
+    } catch (error: any) {
+      console.error('Error testing WhatsApp connection:', error);
+      toast({ 
+        title: "Error en la prueba", 
+        description: error.message || "No se pudo enviar el mensaje de prueba", 
+        variant: "destructive" 
+      });
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -649,34 +757,41 @@ export function FollowUpManager() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="whatsapp-token">Token de API</Label>
-                  <Input
-                    id="whatsapp-token"
-                    type="password"
-                    placeholder="Token de WhatsApp Business API"
-                    value={whatsappConfig.api_token}
-                    onChange={(e) => setWhatsappConfig({...whatsappConfig, api_token: e.target.value})}
-                  />
+                  <Label htmlFor="provider">Proveedor</Label>
+                  <Select
+                    value={whatsappConfig.provider}
+                    onValueChange={(value) => setWhatsappConfig({...whatsappConfig, provider: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="twilio">Twilio</SelectItem>
+                      <SelectItem value="meta" disabled>Meta (próximamente)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
-                  <Label htmlFor="whatsapp-phone">Número de Teléfono</Label>
+                  <Label htmlFor="whatsapp-phone">Número de Negocio</Label>
                   <Input
                     id="whatsapp-phone"
                     placeholder="+52 XXX XXX XXXX"
-                    value={whatsappConfig.phone_number}
-                    onChange={(e) => setWhatsappConfig({...whatsappConfig, phone_number: e.target.value})}
+                    value={whatsappConfig.business_phone_number}
+                    onChange={(e) => setWhatsappConfig({...whatsappConfig, business_phone_number: e.target.value})}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Debe incluir código de país (ej: +52 para México)
+                  </p>
                 </div>
               </div>
               
-              <div>
-                <Label htmlFor="webhook-url">URL del Webhook</Label>
-                <Input
-                  id="webhook-url"
-                  placeholder="https://api.whatsapp.com/webhook"
-                  value={whatsappConfig.webhook_url}
-                  onChange={(e) => setWhatsappConfig({...whatsappConfig, webhook_url: e.target.value})}
-                />
+              <div className="bg-muted/50 p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">
+                  💡 <strong>Credenciales de Twilio:</strong> Las credenciales (Account SID, Auth Token, Número WhatsApp) ya están configuradas de forma segura en el sistema.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Solo necesitas ingresar el número de negocio y probar la conexión.
+                </p>
               </div>
 
               <div className="flex items-center justify-between">
@@ -689,10 +804,19 @@ export function FollowUpManager() {
                   <Label htmlFor="whatsapp-active">Activar integración de WhatsApp</Label>
                 </div>
                 
-                <Button onClick={saveWhatsAppConfig}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Guardar Configuración
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={testWhatsAppConnection}
+                    variant="outline"
+                    disabled={testingConnection || !whatsappConfig.business_phone_number}
+                  >
+                    {testingConnection ? "Probando..." : "Probar Conexión"}
+                  </Button>
+                  <Button onClick={saveWhatsAppConfig}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Guardar Configuración
+                  </Button>
+                </div>
               </div>
 
               <div className="bg-muted p-4 rounded-lg">

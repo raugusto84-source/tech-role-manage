@@ -1,5 +1,8 @@
 project_id = "exunjybsermnxvrvyxnj"
 
+[functions.send-whatsapp-notification]
+verify_jwt = false
+
 [functions.run-fixed-expenses]
 verify_jwt = true
 
