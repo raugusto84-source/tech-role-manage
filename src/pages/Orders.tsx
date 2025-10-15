@@ -37,6 +37,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { OrderHistoryPanel } from "@/components/orders/OrderHistoryPanel";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSoftDelete } from "@/hooks/useSoftDelete";
+import { PaymentCollectionDialog } from "@/components/orders/PaymentCollectionDialog";
 
 /**
  * Página principal del módulo de órdenes
@@ -125,6 +126,8 @@ export default function Orders() {
   const [showCompletedWithoutBalance, setShowCompletedWithoutBalance] = useState(false);
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<Record<string, boolean>>({});
   const { canDeleteOrders } = useSoftDelete();
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [orderForPayment, setOrderForPayment] = useState<Order | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -466,6 +469,18 @@ export default function Orders() {
     loadOrders(); // Recargar órdenes después de la eliminación
   };
 
+  const handleCollectPayment = (order: Order) => {
+    setOrderForPayment(order);
+    setPaymentDialogOpen(true);
+  };
+
+  const calculateOrderTotal = (order: Order) => {
+    if (!order.order_items || order.order_items.length === 0) {
+      return order.estimated_cost || 0;
+    }
+    return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+  };
+
   const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'supervisor';
   const canCollectPayment = profile?.role === 'administrador' || profile?.role === 'vendedor';
   
@@ -650,10 +665,11 @@ export default function Orders() {
                     key={order.id}
                     order={order}
                     onClick={() => setSelectedOrder(order)}
-                     onDelete={canDeleteOrders ? handleOrderDeleted : undefined}
-                     canDelete={canDeleteOrders}
+                    onDelete={() => setOrderToDelete(order.id)}
+                    canDelete={canDeleteOrders}
                     getStatusColor={getStatusColor}
                     showCollectButton={canCollectPayment}
+                    onCollect={() => handleCollectPayment(order)}
                   />
                 ))}
               </TableBody>
@@ -679,6 +695,22 @@ export default function Orders() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Payment Collection Dialog */}
+      {orderForPayment && (
+        <PaymentCollectionDialog
+          open={paymentDialogOpen}
+          onOpenChange={(open) => {
+            setPaymentDialogOpen(open);
+            if (!open) {
+              setOrderForPayment(null);
+              loadOrders(); // Reload orders after payment
+            }
+          }}
+          order={orderForPayment}
+          totalAmount={calculateOrderTotal(orderForPayment)}
+        />
+      )}
     </AppLayout>
   );
 }

@@ -79,6 +79,7 @@ interface OrderListItemProps {
   canDelete: boolean;
   getStatusColor: (status: string) => string;
   showCollectButton: boolean;
+  onCollect?: () => void;
 }
 
 export function OrderListItem({
@@ -87,7 +88,8 @@ export function OrderListItem({
   onDelete,
   canDelete,
   getStatusColor,
-  showCollectButton
+  showCollectButton,
+  onCollect
 }: OrderListItemProps) {
   const { elapsedTime, totalTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status, order.created_at);
   
@@ -206,7 +208,7 @@ export function OrderListItem({
               📋 Póliza
             </Badge>
           ) : (
-            showCollectButton && (
+            showCollectButton && onCollect && (
               order.status === 'en_proceso' || 
               order.status === 'pendiente_actualizacion' || 
               order.status === 'pendiente_entrega' || 
@@ -217,7 +219,7 @@ export function OrderListItem({
                 size="sm"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Implement collect payment logic
+                  onCollect();
                 }}
                 className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
                 title="Cobrar orden"
