@@ -1627,6 +1627,7 @@ export type Database = {
           last_run_date: string | null
           next_run_date: string
           payment_method: string | null
+          supplier_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1642,6 +1643,7 @@ export type Database = {
           last_run_date?: string | null
           next_run_date?: string
           payment_method?: string | null
+          supplier_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1657,9 +1659,18 @@ export type Database = {
           last_run_date?: string | null
           next_run_date?: string
           payment_method?: string | null
+          supplier_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fixed_expenses_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fixed_incomes: {
         Row: {

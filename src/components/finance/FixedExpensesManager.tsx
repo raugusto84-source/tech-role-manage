@@ -6,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, Edit, X } from "lucide-react";
+import { Plus, Trash2, Edit, X, Building2, Loader2 } from "lucide-react";
 import { formatCOPCeilToTen } from "@/utils/currency";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface FixedExpense {
   id: string;
@@ -18,18 +19,36 @@ interface FixedExpense {
   amount: number;
   account_type: string;
   payment_method: string | null;
+  supplier_id: string | null;
   created_at: string;
+}
+
+interface Supplier {
+  id: string;
+  supplier_name: string;
+  contact_person: string | null;
+  email: string | null;
+  phone: string | null;
+  status: string;
 }
 
 export function FixedExpensesManager() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Form states
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [accountType, setAccountType] = useState<"fiscal" | "no_fiscal">("no_fiscal");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [supplierId, setSupplierId] = useState<string>("");
   const [editingExpense, setEditingExpense] = useState<FixedExpense | null>(null);
+  
+  // Supplier dialog states
+  const [showSupplierDialog, setShowSupplierDialog] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [newSupplierEmail, setNewSupplierEmail] = useState("");
+  const [newSupplierPhone, setNewSupplierPhone] = useState("");
 
   // Query gastos fijos
   const fixedExpensesQuery = useQuery({
@@ -43,6 +62,62 @@ export function FixedExpensesManager() {
       
       if (error) throw error;
       return data || [];
+    }
+  });
+
+  // Query suppliers
+  const suppliersQuery = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("suppliers")
+        .select("*")
+        .eq("status", "activo")
+        .order("supplier_name");
+      
+      if (error) throw error;
+      return data as Supplier[];
+    }
+  });
+
+  // Add supplier mutation
+  const addSupplierMutation = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data, error } = await supabase
+        .from("suppliers")
+        .insert({
+          supplier_name: newSupplierName,
+          email: newSupplierEmail || null,
+          phone: newSupplierPhone || null,
+          status: "activo",
+          created_by: user?.id
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (newSupplier) => {
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      setSupplierId(newSupplier.id);
+      setNewSupplierName("");
+      setNewSupplierEmail("");
+      setNewSupplierPhone("");
+      setShowSupplierDialog(false);
+      toast({
+        title: "Proveedor agregado",
+        description: "El proveedor ha sido agregado exitosamente",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "No se pudo agregar el proveedor",
+        variant: "destructive",
+      });
     }
   });
 
@@ -64,6 +139,7 @@ export function FixedExpensesManager() {
         category: "gasto_fijo",
         account_type: accountType,
         payment_method: paymentMethod || null,
+        supplier_id: supplierId || null,
         expense_date: new Date().toISOString(),
         status: "pagado",
         vat_rate: vatRate,
@@ -83,6 +159,7 @@ export function FixedExpensesManager() {
       setDescription("");
       setAmount("");
       setPaymentMethod("");
+      setSupplierId("");
       setAccountType("no_fiscal");
       fixedExpensesQuery.refetch();
     } catch (e: any) {
@@ -115,6 +192,7 @@ export function FixedExpensesManager() {
           description: `[Gasto Fijo] ${description}`,
           account_type: accountType,
           payment_method: paymentMethod || null,
+          supplier_id: supplierId || null,
           vat_rate: vatRate,
           vat_amount: vatAmount,
           taxable_amount: taxableAmount,
@@ -132,6 +210,7 @@ export function FixedExpensesManager() {
       setDescription("");
       setAmount("");
       setPaymentMethod("");
+      setSupplierId("");
       setAccountType("no_fiscal");
       setEditingExpense(null);
       fixedExpensesQuery.refetch();
@@ -174,6 +253,7 @@ export function FixedExpensesManager() {
     setAmount(expense.amount.toString());
     setAccountType(expense.account_type as "fiscal" | "no_fiscal");
     setPaymentMethod(expense.payment_method || "");
+    setSupplierId(expense.supplier_id || "");
   };
 
   const cancelEdit = () => {
@@ -181,7 +261,20 @@ export function FixedExpensesManager() {
     setDescription("");
     setAmount("");
     setPaymentMethod("");
+    setSupplierId("");
     setAccountType("no_fiscal");
+  };
+
+  const handleAddSupplier = () => {
+    if (!newSupplierName.trim()) {
+      toast({
+        title: "Error",
+        description: "El nombre del proveedor es requerido",
+        variant: "destructive",
+      });
+      return;
+    }
+    addSupplierMutation.mutate();
   };
 
   return (
@@ -254,6 +347,34 @@ export function FixedExpensesManager() {
               </Select>
             </div>
 
+            <div>
+              <Label htmlFor="supplier">Proveedor</Label>
+              <div className="flex gap-2">
+                <Select value={supplierId} onValueChange={setSupplierId}>
+                  <SelectTrigger id="supplier" className="flex-1">
+                    <SelectValue placeholder="Seleccionar proveedor (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Sin proveedor</SelectItem>
+                    {suppliersQuery.data?.map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.supplier_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSupplierDialog(true)}
+                  title="Agregar nuevo proveedor"
+                >
+                  <Building2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
             <div className="flex gap-2">
               <Button onClick={editingExpense ? updateFixedExpense : addFixedExpense} className="flex-1">
                 {editingExpense ? "Actualizar" : "Registrar"}
@@ -283,6 +404,7 @@ export function FixedExpensesManager() {
                       <TableHead>Descripción</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Cuenta</TableHead>
+                      <TableHead>Proveedor</TableHead>
                       <TableHead>Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -299,6 +421,12 @@ export function FixedExpensesManager() {
                           <span className={expense.account_type === 'fiscal' ? 'text-orange-600' : 'text-blue-600'}>
                             {expense.account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {expense.supplier_id 
+                            ? suppliersQuery.data?.find(s => s.id === expense.supplier_id)?.supplier_name || 'N/A'
+                            : '-'
+                          }
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -349,6 +477,72 @@ export function FixedExpensesManager() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Supplier Dialog */}
+      <Dialog open={showSupplierDialog} onOpenChange={setShowSupplierDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
+            <DialogDescription>
+              Ingresa los datos del proveedor para gastos fijos (agua, luz, etc.)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="supplier-name">Nombre del Proveedor *</Label>
+              <Input
+                id="supplier-name"
+                value={newSupplierName}
+                onChange={(e) => setNewSupplierName(e.target.value)}
+                placeholder="Ej: CFE, Agua Municipal, Telmex"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="supplier-email">Email (opcional)</Label>
+              <Input
+                id="supplier-email"
+                type="email"
+                value={newSupplierEmail}
+                onChange={(e) => setNewSupplierEmail(e.target.value)}
+                placeholder="contacto@proveedor.com"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="supplier-phone">Teléfono (opcional)</Label>
+              <Input
+                id="supplier-phone"
+                value={newSupplierPhone}
+                onChange={(e) => setNewSupplierPhone(e.target.value)}
+                placeholder="555-1234"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSupplierDialog(false);
+                setNewSupplierName("");
+                setNewSupplierEmail("");
+                setNewSupplierPhone("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAddSupplier}
+              disabled={addSupplierMutation.isPending}
+            >
+              {addSupplierMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Agregar Proveedor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
