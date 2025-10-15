@@ -48,66 +48,66 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
   };
 
   return (
-    <div className="bg-muted/30 rounded-lg border p-2 mb-4">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="bg-muted/30 rounded-lg border p-3 mb-4">
+      <div className="flex flex-wrap items-center gap-3">
         {/* Total */}
-        <Badge variant="outline" className="gap-1">
-          <Clock className="h-3 w-3" />
-          <span className="font-bold">{activeOrders.length}</span>
+        <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+          <Clock className="h-4 w-4" />
+          <span className="font-bold text-sm">{activeOrders.length}</span>
         </Badge>
         
-        <span className="text-muted-foreground text-xs">|</span>
+        <span className="text-muted-foreground text-sm">|</span>
         
         {/* Priorities */}
-        <Badge variant="destructive" className="gap-1 text-xs px-2 py-0.5" title="Crítica">
-          <AlertCircle className="h-3 w-3" />
+        <Badge variant="destructive" className="gap-1.5 text-sm px-3 py-1" title="Crítica">
+          <AlertCircle className="h-4 w-4" />
           {priorityCounts.critica}
         </Badge>
-        <Badge className="gap-1 text-xs px-2 py-0.5 bg-orange-600 hover:bg-orange-700" title="Alta">
-          <Zap className="h-3 w-3" />
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-orange-600 hover:bg-orange-700" title="Alta">
+          <Zap className="h-4 w-4" />
           {priorityCounts.alta}
         </Badge>
-        <Badge className="gap-1 text-xs px-2 py-0.5 bg-yellow-600 hover:bg-yellow-700" title="Media">
-          <Clock className="h-3 w-3" />
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-yellow-600 hover:bg-yellow-700" title="Media">
+          <Clock className="h-4 w-4" />
           {priorityCounts.media}
         </Badge>
-        <Badge className="gap-1 text-xs px-2 py-0.5 bg-green-600 hover:bg-green-700" title="Baja">
-          <TrendingUp className="h-3 w-3" />
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-green-600 hover:bg-green-700" title="Baja">
+          <TrendingUp className="h-4 w-4" />
           {priorityCounts.baja}
         </Badge>
         
-        <span className="text-muted-foreground text-xs">|</span>
+        <span className="text-muted-foreground text-sm">|</span>
         
         {/* Categories */}
-        <Badge className="gap-1 text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-700" title="Sistemas">
-          <Monitor className="h-3 w-3" />
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-blue-600 hover:bg-blue-700" title="Sistemas">
+          <Monitor className="h-4 w-4" />
           {categoryCounts.sistemas}
         </Badge>
-        <Badge className="gap-1 text-xs px-2 py-0.5 bg-purple-600 hover:bg-purple-700" title="Seguridad">
-          <Shield className="h-3 w-3" />
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-purple-600 hover:bg-purple-700" title="Seguridad">
+          <Shield className="h-4 w-4" />
           {categoryCounts.seguridad}
         </Badge>
         
-        <span className="text-muted-foreground text-xs">|</span>
+        <span className="text-muted-foreground text-sm">|</span>
         
         {/* Status */}
         {statusCounts.pendiente_aprobacion > 0 && (
-          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-yellow-50" title="Pendientes de Aprobación">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-yellow-50" title="Pendientes de Aprobación">
             {statusCounts.pendiente_aprobacion} PA
           </Badge>
         )}
         {statusCounts.en_proceso > 0 && (
-          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-blue-50" title="En Proceso">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-blue-50" title="En Proceso">
             {statusCounts.en_proceso} EP
           </Badge>
         )}
         {statusCounts.pendiente_actualizacion > 0 && (
-          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-orange-50" title="Pendientes de Actualización">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-orange-50" title="Pendientes de Actualización">
             {statusCounts.pendiente_actualizacion} PAc
           </Badge>
         )}
         {statusCounts.pendiente_entrega > 0 && (
-          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-green-50" title="Pendientes de Entrega">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-green-50" title="Pendientes de Entrega">
             {statusCounts.pendiente_entrega} PE
           </Badge>
         )}
