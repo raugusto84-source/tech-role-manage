@@ -43,6 +43,7 @@ export function FixedExpensesManager() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [supplierId, setSupplierId] = useState<string>("");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [hasInvoice, setHasInvoice] = useState(false);
   const [editingExpense, setEditingExpense] = useState<FixedExpense | null>(null);
   
   // Supplier dialog states
@@ -134,7 +135,7 @@ export function FixedExpensesManager() {
       const taxableAmount = accountType === "fiscal" ? amountNum / 1.16 : amountNum;
       const vatAmount = accountType === "fiscal" ? amountNum - taxableAmount : 0;
 
-      const { error } = await supabase.from("expenses").insert({
+      const { data: expenseData, error } = await supabase.from("expenses").insert({
         amount: amountNum,
         description: `[Gasto Fijo] ${description}`,
         category: "gasto_fijo",
@@ -146,10 +147,26 @@ export function FixedExpensesManager() {
         vat_rate: vatRate,
         vat_amount: vatAmount,
         taxable_amount: taxableAmount,
+        has_invoice: hasInvoice,
         withdrawal_status: "retirado"
       } as any).select().single();
 
       if (error) throw error;
+
+      // Si tiene factura pero fue pagado con cuenta no fiscal, crear retiro pendiente
+      if (hasInvoice && accountType === "no_fiscal" && expenseData) {
+        const { error: withdrawalError } = await supabase.from("fiscal_withdrawals").insert({
+          amount: amountNum,
+          description: `Retiro por factura - ${description}`,
+          expense_id: expenseData.id,
+          withdrawal_date: new Date(expenseDate).toISOString(),
+          status: "pendiente"
+        });
+
+        if (withdrawalError) {
+          console.error("Error creando retiro:", withdrawalError);
+        }
+      }
 
       toast({
         title: "Gasto fijo registrado",
@@ -162,6 +179,7 @@ export function FixedExpensesManager() {
       setPaymentMethod("");
       setSupplierId("");
       setExpenseDate(new Date().toISOString().split('T')[0]);
+      setHasInvoice(false);
       setAccountType("no_fiscal");
       fixedExpensesQuery.refetch();
     } catch (e: any) {
@@ -198,6 +216,7 @@ export function FixedExpensesManager() {
           vat_rate: vatRate,
           vat_amount: vatAmount,
           taxable_amount: taxableAmount,
+          has_invoice: hasInvoice,
         })
         .eq("id", editingExpense.id);
 
@@ -214,6 +233,7 @@ export function FixedExpensesManager() {
       setPaymentMethod("");
       setSupplierId("");
       setExpenseDate(new Date().toISOString().split('T')[0]);
+      setHasInvoice(false);
       setAccountType("no_fiscal");
       setEditingExpense(null);
       fixedExpensesQuery.refetch();
@@ -257,6 +277,7 @@ export function FixedExpensesManager() {
     setAccountType(expense.account_type as "fiscal" | "no_fiscal");
     setPaymentMethod(expense.payment_method || "");
     setSupplierId(expense.supplier_id || "");
+    setHasInvoice((expense as any).has_invoice || false);
   };
 
   const cancelEdit = () => {
@@ -266,6 +287,7 @@ export function FixedExpensesManager() {
     setPaymentMethod("");
     setSupplierId("");
     setExpenseDate(new Date().toISOString().split('T')[0]);
+    setHasInvoice(false);
     setAccountType("no_fiscal");
   };
 
@@ -345,6 +367,24 @@ export function FixedExpensesManager() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="hasInvoice"
+                checked={hasInvoice}
+                onChange={(e) => setHasInvoice(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              <Label htmlFor="hasInvoice" className="text-sm font-normal cursor-pointer">
+                ¿Tiene factura?
+              </Label>
+            </div>
+            {hasInvoice && accountType === "no_fiscal" && (
+              <p className="text-xs text-orange-600">
+                Se creará un retiro fiscal pendiente automáticamente
+              </p>
+            )}
 
             <div>
               <Label htmlFor="method">Método de Pago</Label>
