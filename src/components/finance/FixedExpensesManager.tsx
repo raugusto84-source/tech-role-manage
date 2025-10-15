@@ -44,6 +44,7 @@ export function FixedExpensesManager() {
   const [supplierId, setSupplierId] = useState<string>("");
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
   const [hasInvoice, setHasInvoice] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [editingExpense, setEditingExpense] = useState<FixedExpense | null>(null);
   
   // Supplier dialog states
@@ -148,6 +149,7 @@ export function FixedExpensesManager() {
         vat_amount: vatAmount,
         taxable_amount: taxableAmount,
         has_invoice: hasInvoice,
+        invoice_number: hasInvoice && invoiceNumber ? invoiceNumber : null,
         withdrawal_status: "retirado"
       } as any).select().single();
 
@@ -180,6 +182,7 @@ export function FixedExpensesManager() {
       setSupplierId("");
       setExpenseDate(new Date().toISOString().split('T')[0]);
       setHasInvoice(false);
+      setInvoiceNumber("");
       setAccountType("no_fiscal");
       fixedExpensesQuery.refetch();
     } catch (e: any) {
@@ -217,6 +220,7 @@ export function FixedExpensesManager() {
           vat_amount: vatAmount,
           taxable_amount: taxableAmount,
           has_invoice: hasInvoice,
+          invoice_number: hasInvoice && invoiceNumber ? invoiceNumber : null,
         })
         .eq("id", editingExpense.id);
 
@@ -234,6 +238,7 @@ export function FixedExpensesManager() {
       setSupplierId("");
       setExpenseDate(new Date().toISOString().split('T')[0]);
       setHasInvoice(false);
+      setInvoiceNumber("");
       setAccountType("no_fiscal");
       setEditingExpense(null);
       fixedExpensesQuery.refetch();
@@ -278,6 +283,7 @@ export function FixedExpensesManager() {
     setPaymentMethod(expense.payment_method || "");
     setSupplierId(expense.supplier_id || "");
     setHasInvoice((expense as any).has_invoice || false);
+    setInvoiceNumber((expense as any).invoice_number || "");
   };
 
   const cancelEdit = () => {
@@ -288,6 +294,7 @@ export function FixedExpensesManager() {
     setSupplierId("");
     setExpenseDate(new Date().toISOString().split('T')[0]);
     setHasInvoice(false);
+    setInvoiceNumber("");
     setAccountType("no_fiscal");
   };
 
@@ -380,6 +387,19 @@ export function FixedExpensesManager() {
                 ¿Tiene factura?
               </Label>
             </div>
+
+            {hasInvoice && (
+              <div>
+                <Label htmlFor="invoiceNumber">Número de Factura</Label>
+                <Input
+                  id="invoiceNumber"
+                  value={invoiceNumber}
+                  onChange={(e) => setInvoiceNumber(e.target.value)}
+                  placeholder="Ej: F-12345"
+                />
+              </div>
+            )}
+
             {hasInvoice && accountType === "no_fiscal" && (
               <p className="text-xs text-orange-600">
                 Se creará un retiro fiscal pendiente automáticamente
