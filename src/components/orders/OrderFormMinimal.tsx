@@ -66,6 +66,7 @@ export function OrderFormMinimal({ onClose }: OrderFormMinimalProps) {
       selectClient(client);
       setShowNewClientDialog(false);
       setNewClient({ name: '', email: '', phone: '', address: '' });
+      setSearchTerm(''); // Clear search to show new client
     }
   };
 
