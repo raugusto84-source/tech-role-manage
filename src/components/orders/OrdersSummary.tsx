@@ -1,11 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield } from "lucide-react";
+import { calculateOrderPriority } from "@/utils/priorityCalculator";
 
 interface Order {
   id: string;
+  created_at: string;
+  delivery_date: string;
+  estimated_delivery_date?: string | null;
   status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
-  priority: 'baja' | 'media' | 'alta' | 'critica';
+  // Campo opcional: si existe lo ignoramos para el resumen y calculamos dinámicamente
+  priority?: 'baja' | 'media' | 'alta' | 'critica';
   service_types?: {
     service_category?: string;
   } | null;
@@ -21,13 +26,16 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
     order => !['finalizada', 'cancelada', 'rechazada'].includes(order.status)
   );
 
-  // Count by priority
-  const priorityCounts = {
-    critica: activeOrders.filter(o => o.priority === 'critica').length,
-    alta: activeOrders.filter(o => o.priority === 'alta').length,
-    media: activeOrders.filter(o => o.priority === 'media').length,
-    baja: activeOrders.filter(o => o.priority === 'baja').length,
-  };
+// Count by priority (calculated from dates to stay in sync with row badges)
+const calculatedPriorities = activeOrders.map(o =>
+  calculateOrderPriority(o.created_at, o.estimated_delivery_date ?? null, o.delivery_date)
+);
+const priorityCounts = {
+  critica: calculatedPriorities.filter(p => p === 'critica').length,
+  alta: calculatedPriorities.filter(p => p === 'alta').length,
+  media: calculatedPriorities.filter(p => p === 'media').length,
+  baja: calculatedPriorities.filter(p => p === 'baja').length,
+};
 
   // Count by category
   const categoryCounts = {
