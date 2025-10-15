@@ -54,14 +54,14 @@ All colors MUST be HSL.
     --info-light: 199 89% 95%;
     --info-border: 199 89% 85%;
 
-    /* Priority colors */
-    --priority-baja: 142 76% 36%;
+    /* Priority colors - visually distinct */
+    --priority-baja: 142 71% 45%;      /* Green - calm */
     --priority-baja-foreground: 0 0% 100%;
-    --priority-media: 38 92% 50%;
+    --priority-media: 45 93% 47%;      /* Yellow/amber - attention */
     --priority-media-foreground: 0 0% 100%;
-    --priority-alta: 25 95% 53%;
+    --priority-alta: 24 100% 50%;      /* Orange - urgent */
     --priority-alta-foreground: 0 0% 100%;
-    --priority-critica: 0 84% 60%;
+    --priority-critica: 0 72% 51%;     /* Red - critical */
     --priority-critica-foreground: 0 0% 100%;
 
     /* Destructive alias for compatibility */
@@ -153,14 +153,14 @@ All colors MUST be HSL.
     --info-light: 199 89% 25%;
     --info-border: 199 89% 35%;
 
-    /* Priority colors - dark mode */
-    --priority-baja: 142 76% 46%;
+    /* Priority colors - dark mode - visually distinct */
+    --priority-baja: 142 71% 50%;      /* Brighter green for dark mode */
     --priority-baja-foreground: 0 0% 100%;
-    --priority-media: 38 92% 60%;
+    --priority-media: 45 93% 55%;      /* Brighter yellow/amber */
     --priority-media-foreground: 0 0% 100%;
-    --priority-alta: 25 95% 63%;
+    --priority-alta: 24 100% 58%;      /* Brighter orange */
     --priority-alta-foreground: 0 0% 100%;
-    --priority-critica: 0 84% 70%;
+    --priority-critica: 0 72% 60%;     /* Brighter red */
     --priority-critica-foreground: 0 0% 100%;
 
     --destructive: 0 84% 70%;
