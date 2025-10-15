@@ -42,6 +42,7 @@ export function FixedExpensesManager() {
   const [accountType, setAccountType] = useState<"fiscal" | "no_fiscal">("no_fiscal");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [supplierId, setSupplierId] = useState<string>("");
+  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0]);
   const [editingExpense, setEditingExpense] = useState<FixedExpense | null>(null);
   
   // Supplier dialog states
@@ -140,7 +141,7 @@ export function FixedExpensesManager() {
         account_type: accountType,
         payment_method: paymentMethod || null,
         supplier_id: supplierId || null,
-        expense_date: new Date().toISOString(),
+        expense_date: new Date(expenseDate).toISOString(),
         status: "pagado",
         vat_rate: vatRate,
         vat_amount: vatAmount,
@@ -160,6 +161,7 @@ export function FixedExpensesManager() {
       setAmount("");
       setPaymentMethod("");
       setSupplierId("");
+      setExpenseDate(new Date().toISOString().split('T')[0]);
       setAccountType("no_fiscal");
       fixedExpensesQuery.refetch();
     } catch (e: any) {
@@ -211,6 +213,7 @@ export function FixedExpensesManager() {
       setAmount("");
       setPaymentMethod("");
       setSupplierId("");
+      setExpenseDate(new Date().toISOString().split('T')[0]);
       setAccountType("no_fiscal");
       setEditingExpense(null);
       fixedExpensesQuery.refetch();
@@ -262,6 +265,7 @@ export function FixedExpensesManager() {
     setAmount("");
     setPaymentMethod("");
     setSupplierId("");
+    setExpenseDate(new Date().toISOString().split('T')[0]);
     setAccountType("no_fiscal");
   };
 
@@ -314,6 +318,16 @@ export function FixedExpensesManager() {
                   {(Number(amount) - Number(amount) / 1.16).toFixed(2)}
                 </div>
               )}
+            </div>
+
+            <div>
+              <Label htmlFor="expenseDate">Fecha*</Label>
+              <Input
+                id="expenseDate"
+                type="date"
+                value={expenseDate}
+                onChange={(e) => setExpenseDate(e.target.value)}
+              />
             </div>
 
             <div>
@@ -402,6 +416,7 @@ export function FixedExpensesManager() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Descripción</TableHead>
+                      <TableHead>Fecha</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Cuenta</TableHead>
                       <TableHead>Proveedor</TableHead>
@@ -413,6 +428,9 @@ export function FixedExpensesManager() {
                       <TableRow key={expense.id}>
                         <TableCell className="max-w-[200px] truncate" title={expense.description}>
                           {expense.description}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(expense.created_at).toLocaleDateString('es-CO')}
                         </TableCell>
                         <TableCell className="font-semibold">
                           {formatCOPCeilToTen(expense.amount)}
