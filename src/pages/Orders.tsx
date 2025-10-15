@@ -631,17 +631,13 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Main Content Grid with Summary Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-        {/* Summary Sidebar - Shows on top in mobile, sidebar in desktop */}
-        <div className="lg:col-span-1 order-2 lg:order-1">
-          <div className="sticky top-4">
-            <OrdersSummary orders={orders} />
-          </div>
-        </div>
+      {/* Orders Summary - Top Section */}
+      <div className="mb-4 sm:mb-6">
+        <OrdersSummary orders={orders} />
+      </div>
 
-        {/* Orders List - Main Content */}
-        <div className="lg:col-span-3 order-1 lg:order-2">
+      {/* Orders List - Main Content */}
+      <div>
           {filteredOrders.length === 0 ? (
             <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
               <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
@@ -686,7 +682,6 @@ export default function Orders() {
               </Table>
             </div>
           )}
-        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
