@@ -350,12 +350,12 @@ export function FixedExpensesManager() {
             <div>
               <Label htmlFor="supplier">Proveedor</Label>
               <div className="flex gap-2">
-                <Select value={supplierId} onValueChange={setSupplierId}>
+                <Select value={supplierId || "none"} onValueChange={(value) => setSupplierId(value === "none" ? "" : value)}>
                   <SelectTrigger id="supplier" className="flex-1">
                     <SelectValue placeholder="Seleccionar proveedor (opcional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin proveedor</SelectItem>
+                    <SelectItem value="none">Sin proveedor</SelectItem>
                     {suppliersQuery.data?.map((supplier) => (
                       <SelectItem key={supplier.id} value={supplier.id}>
                         {supplier.supplier_name}
