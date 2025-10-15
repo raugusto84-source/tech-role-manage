@@ -37,10 +37,10 @@ export function calculateOrderPriority(
 
 export function getPriorityBadgeClass(priority: OrderPriority): string {
   const variants = {
-    'baja': 'bg-green-100 text-green-800 border-green-200',
-    'media': 'bg-orange-100 text-orange-800 border-orange-200',
-    'alta': 'bg-orange-600 text-white border-orange-700',
-    'critica': 'bg-red-600 text-white border-red-700'
+    'baja': 'bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90',
+    'media': 'bg-priority-media text-priority-media-foreground hover:bg-priority-media/90',
+    'alta': 'bg-priority-alta text-priority-alta-foreground hover:bg-priority-alta/90',
+    'critica': 'bg-priority-critica text-priority-critica-foreground hover:bg-priority-critica/90'
   };
   return variants[priority];
 }

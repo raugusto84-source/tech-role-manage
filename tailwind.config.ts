@@ -92,7 +92,18 @@ export default {
 				// Interactive states
 				hover: 'hsl(var(--hover))',
 				active: 'hsl(var(--active))',
-				focus: 'hsl(var(--focus))'
+				focus: 'hsl(var(--focus))',
+				// Priority colors
+				priority: {
+					baja: 'hsl(var(--priority-baja))',
+					'baja-foreground': 'hsl(var(--priority-baja-foreground))',
+					media: 'hsl(var(--priority-media))',
+					'media-foreground': 'hsl(var(--priority-media-foreground))',
+					alta: 'hsl(var(--priority-alta))',
+					'alta-foreground': 'hsl(var(--priority-alta-foreground))',
+					critica: 'hsl(var(--priority-critica))',
+					'critica-foreground': 'hsl(var(--priority-critica-foreground))'
+				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

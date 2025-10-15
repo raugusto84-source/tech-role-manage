@@ -59,19 +59,19 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
         <span className="text-muted-foreground text-sm">|</span>
         
         {/* Priorities */}
-        <Badge variant="destructive" className="gap-1.5 text-sm px-3 py-1" title="Crítica">
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-critica text-priority-critica-foreground hover:bg-priority-critica/90" title="Crítica">
           <AlertCircle className="h-4 w-4" />
           {priorityCounts.critica}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-orange-600 hover:bg-orange-700" title="Alta">
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-alta text-priority-alta-foreground hover:bg-priority-alta/90" title="Alta">
           <Zap className="h-4 w-4" />
           {priorityCounts.alta}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-yellow-600 hover:bg-yellow-700" title="Media">
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-media text-priority-media-foreground hover:bg-priority-media/90" title="Media">
           <Clock className="h-4 w-4" />
           {priorityCounts.media}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-green-600 hover:bg-green-700" title="Baja">
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90" title="Baja">
           <TrendingUp className="h-4 w-4" />
           {priorityCounts.baja}
         </Badge>
@@ -79,11 +79,11 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
         <span className="text-muted-foreground text-sm">|</span>
         
         {/* Categories */}
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-blue-600 hover:bg-blue-700" title="Sistemas">
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-info text-info-foreground hover:bg-info/90" title="Sistemas">
           <Monitor className="h-4 w-4" />
           {categoryCounts.sistemas}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-purple-600 hover:bg-purple-700" title="Seguridad">
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-primary text-primary-foreground hover:bg-primary/90" title="Seguridad">
           <Shield className="h-4 w-4" />
           {categoryCounts.seguridad}
         </Badge>
@@ -92,22 +92,22 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
         
         {/* Status */}
         {statusCounts.pendiente_aprobacion > 0 && (
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-yellow-50" title="Pendientes de Aprobación">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-warning-light text-warning-foreground border-warning-border" title="Pendientes de Aprobación">
             {statusCounts.pendiente_aprobacion} PA
           </Badge>
         )}
         {statusCounts.en_proceso > 0 && (
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-blue-50" title="En Proceso">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-info-light text-info-foreground border-info-border" title="En Proceso">
             {statusCounts.en_proceso} EP
           </Badge>
         )}
         {statusCounts.pendiente_actualizacion > 0 && (
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-orange-50" title="Pendientes de Actualización">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-warning-light text-warning-foreground border-warning-border" title="Pendientes de Actualización">
             {statusCounts.pendiente_actualizacion} PAc
           </Badge>
         )}
         {statusCounts.pendiente_entrega > 0 && (
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-green-50" title="Pendientes de Entrega">
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-success-light text-success-foreground border-success-border" title="Pendientes de Entrega">
             {statusCounts.pendiente_entrega} PE
           </Badge>
         )}
