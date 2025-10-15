@@ -47,112 +47,71 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
     pendiente_entrega: activeOrders.filter(o => o.status === 'pendiente_entrega').length,
   };
 
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'critica':
-        return <AlertCircle className="h-5 w-5 text-red-600" />;
-      case 'alta':
-        return <Zap className="h-5 w-5 text-orange-600" />;
-      case 'media':
-        return <Clock className="h-5 w-5 text-yellow-600" />;
-      case 'baja':
-        return <TrendingUp className="h-5 w-5 text-green-600" />;
-      default:
-        return <Clock className="h-5 w-5" />;
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critica':
-        return 'text-red-600 bg-red-50 border-red-200';
-      case 'alta':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'media':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'baja':
-        return 'text-green-600 bg-green-50 border-green-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
-
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-          <Clock className="h-4 w-4 text-primary" />
-          Resumen: {activeOrders.length} Activas
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Priority Grid */}
-        <div>
-          <h3 className="text-xs font-semibold text-muted-foreground mb-2">PRIORIDAD</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('critica')}`}>
-              {getPriorityIcon('critica')}
-              <div className="text-lg font-bold mt-1">{priorityCounts.critica}</div>
-              <div className="text-xs font-medium">Crítica</div>
-            </div>
-            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('alta')}`}>
-              {getPriorityIcon('alta')}
-              <div className="text-lg font-bold mt-1">{priorityCounts.alta}</div>
-              <div className="text-xs font-medium">Alta</div>
-            </div>
-            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('media')}`}>
-              {getPriorityIcon('media')}
-              <div className="text-lg font-bold mt-1">{priorityCounts.media}</div>
-              <div className="text-xs font-medium">Media</div>
-            </div>
-            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('baja')}`}>
-              {getPriorityIcon('baja')}
-              <div className="text-lg font-bold mt-1">{priorityCounts.baja}</div>
-              <div className="text-xs font-medium">Baja</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Category Grid */}
-        <div>
-          <h3 className="text-xs font-semibold text-muted-foreground mb-2">CATEGORÍA</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="p-2 rounded-lg border bg-blue-50 border-blue-200 text-center">
-              <Monitor className="h-4 w-4 text-blue-600 mx-auto" />
-              <div className="text-lg font-bold text-blue-900 mt-1">{categoryCounts.sistemas}</div>
-              <div className="text-xs font-medium text-blue-700">Sistemas</div>
-            </div>
-            <div className="p-2 rounded-lg border bg-purple-50 border-purple-200 text-center">
-              <Shield className="h-4 w-4 text-purple-600 mx-auto" />
-              <div className="text-lg font-bold text-purple-900 mt-1">{categoryCounts.seguridad}</div>
-              <div className="text-xs font-medium text-purple-700">Seguridad</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Grid */}
-        <div>
-          <h3 className="text-xs font-semibold text-muted-foreground mb-2">ESTADO</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-2 rounded-lg border bg-yellow-50 border-yellow-200 text-center">
-              <div className="text-lg font-bold text-yellow-900">{statusCounts.pendiente_aprobacion}</div>
-              <div className="text-xs text-yellow-700">P. Aprobación</div>
-            </div>
-            <div className="p-2 rounded-lg border bg-blue-50 border-blue-200 text-center">
-              <div className="text-lg font-bold text-blue-900">{statusCounts.en_proceso}</div>
-              <div className="text-xs text-blue-700">En Proceso</div>
-            </div>
-            <div className="p-2 rounded-lg border bg-orange-50 border-orange-200 text-center">
-              <div className="text-lg font-bold text-orange-900">{statusCounts.pendiente_actualizacion}</div>
-              <div className="text-xs text-orange-700">P. Actualización</div>
-            </div>
-            <div className="p-2 rounded-lg border bg-green-50 border-green-200 text-center">
-              <div className="text-lg font-bold text-green-900">{statusCounts.pendiente_entrega}</div>
-              <div className="text-xs text-green-700">P. Entrega</div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="bg-muted/30 rounded-lg border p-2 mb-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Total */}
+        <Badge variant="outline" className="gap-1">
+          <Clock className="h-3 w-3" />
+          <span className="font-bold">{activeOrders.length}</span>
+        </Badge>
+        
+        <span className="text-muted-foreground text-xs">|</span>
+        
+        {/* Priorities */}
+        <Badge variant="destructive" className="gap-1 text-xs px-2 py-0.5" title="Crítica">
+          <AlertCircle className="h-3 w-3" />
+          {priorityCounts.critica}
+        </Badge>
+        <Badge className="gap-1 text-xs px-2 py-0.5 bg-orange-600 hover:bg-orange-700" title="Alta">
+          <Zap className="h-3 w-3" />
+          {priorityCounts.alta}
+        </Badge>
+        <Badge className="gap-1 text-xs px-2 py-0.5 bg-yellow-600 hover:bg-yellow-700" title="Media">
+          <Clock className="h-3 w-3" />
+          {priorityCounts.media}
+        </Badge>
+        <Badge className="gap-1 text-xs px-2 py-0.5 bg-green-600 hover:bg-green-700" title="Baja">
+          <TrendingUp className="h-3 w-3" />
+          {priorityCounts.baja}
+        </Badge>
+        
+        <span className="text-muted-foreground text-xs">|</span>
+        
+        {/* Categories */}
+        <Badge className="gap-1 text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-700" title="Sistemas">
+          <Monitor className="h-3 w-3" />
+          {categoryCounts.sistemas}
+        </Badge>
+        <Badge className="gap-1 text-xs px-2 py-0.5 bg-purple-600 hover:bg-purple-700" title="Seguridad">
+          <Shield className="h-3 w-3" />
+          {categoryCounts.seguridad}
+        </Badge>
+        
+        <span className="text-muted-foreground text-xs">|</span>
+        
+        {/* Status */}
+        {statusCounts.pendiente_aprobacion > 0 && (
+          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-yellow-50" title="Pendientes de Aprobación">
+            {statusCounts.pendiente_aprobacion} PA
+          </Badge>
+        )}
+        {statusCounts.en_proceso > 0 && (
+          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-blue-50" title="En Proceso">
+            {statusCounts.en_proceso} EP
+          </Badge>
+        )}
+        {statusCounts.pendiente_actualizacion > 0 && (
+          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-orange-50" title="Pendientes de Actualización">
+            {statusCounts.pendiente_actualizacion} PAc
+          </Badge>
+        )}
+        {statusCounts.pendiente_entrega > 0 && (
+          <Badge variant="outline" className="text-xs px-2 py-0.5 bg-green-50" title="Pendientes de Entrega">
+            {statusCounts.pendiente_entrega} PE
+          </Badge>
+        )}
+      </div>
+    </div>
   );
 }
