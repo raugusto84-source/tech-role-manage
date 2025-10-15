@@ -756,7 +756,7 @@ export type Database = {
         }
         Insert: {
           address: string
-          client_number: string
+          client_number?: string
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -7191,10 +7191,6 @@ export type Database = {
       generate_automatic_orders_from_policies: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      generate_client_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
       }
       generate_expense_number: {
         Args: Record<PropertyKey, never>
