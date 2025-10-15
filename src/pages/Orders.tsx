@@ -38,6 +38,7 @@ import { OrderHistoryPanel } from "@/components/orders/OrderHistoryPanel";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSoftDelete } from "@/hooks/useSoftDelete";
 import { PaymentCollectionDialog } from "@/components/orders/PaymentCollectionDialog";
+import { OrdersSummary } from "@/components/orders/OrdersSummary";
 
 /**
  * Página principal del módulo de órdenes
@@ -630,52 +631,62 @@ export default function Orders() {
         </div>
       </div>
 
-      {/* Content Section */}
-      <div className="space-y-4 sm:space-y-6">
-        {filteredOrders.length === 0 ? (
-          <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
-              <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+      {/* Main Content Grid with Summary Sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+        {/* Summary Sidebar - Shows on top in mobile, sidebar in desktop */}
+        <div className="lg:col-span-1 order-2 lg:order-1">
+          <div className="sticky top-4">
+            <OrdersSummary orders={orders} />
+          </div>
+        </div>
+
+        {/* Orders List - Main Content */}
+        <div className="lg:col-span-3 order-1 lg:order-2">
+          {filteredOrders.length === 0 ? (
+            <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
+              <p className="text-sm sm:text-base text-muted-foreground px-4">
+                Aún no hay órdenes registradas
+              </p>
             </div>
-            <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
-            <p className="text-sm sm:text-base text-muted-foreground px-4">
-              Aún no hay órdenes registradas
-            </p>
-          </div>
-        ) : (
-          // List view
-          <div className="bg-background rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead># Orden</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Prioridad</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Técnico</TableHead>
-                  <TableHead>Fecha Entrega</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOrders.map((order) => (
-                  <OrderListItem
-                    key={order.id}
-                    order={order}
-                    onClick={() => setSelectedOrder(order)}
-                    onDelete={() => setOrderToDelete(order.id)}
-                    canDelete={canDeleteOrders}
-                    getStatusColor={getStatusColor}
-                    showCollectButton={canCollectPayment}
-                    onCollect={() => handleCollectPayment(order)}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+          ) : (
+            // List view
+            <div className="bg-background rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead># Orden</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Prioridad</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Técnico</TableHead>
+                    <TableHead>Fecha Entrega</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-center">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredOrders.map((order) => (
+                    <OrderListItem
+                      key={order.id}
+                      order={order}
+                      onClick={() => setSelectedOrder(order)}
+                      onDelete={() => setOrderToDelete(order.id)}
+                      canDelete={canDeleteOrders}
+                      getStatusColor={getStatusColor}
+                      showCollectButton={canCollectPayment}
+                      onCollect={() => handleCollectPayment(order)}
+                    />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Delete Confirmation Dialog */}
