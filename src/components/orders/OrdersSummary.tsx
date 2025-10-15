@@ -78,157 +78,81 @@ export function OrdersSummary({ orders }: OrdersSummaryProps) {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Total Active Orders */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" />
-            Resumen de Trabajo Pendiente
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold text-primary">
-            {activeOrders.length}
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            órdenes activas
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Priority Summary */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Por Prioridad</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Critical Priority */}
-          <div className={`flex items-center justify-between p-3 rounded-lg border ${getPriorityColor('critica')}`}>
-            <div className="flex items-center gap-3">
+    <Card className="w-full">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Clock className="h-4 w-4 text-primary" />
+          Resumen: {activeOrders.length} Activas
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Priority Grid */}
+        <div>
+          <h3 className="text-xs font-semibold text-muted-foreground mb-2">PRIORIDAD</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('critica')}`}>
               {getPriorityIcon('critica')}
-              <div>
-                <div className="font-semibold text-sm">Crítica</div>
-                <div className="text-xs opacity-75">Requiere atención inmediata</div>
-              </div>
+              <div className="text-lg font-bold mt-1">{priorityCounts.critica}</div>
+              <div className="text-xs font-medium">Crítica</div>
             </div>
-            <Badge variant="destructive" className="text-base px-3 py-1">
-              {priorityCounts.critica}
-            </Badge>
-          </div>
-
-          {/* High Priority */}
-          <div className={`flex items-center justify-between p-3 rounded-lg border ${getPriorityColor('alta')}`}>
-            <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('alta')}`}>
               {getPriorityIcon('alta')}
-              <div>
-                <div className="font-semibold text-sm">Alta</div>
-                <div className="text-xs opacity-75">Atender pronto</div>
-              </div>
+              <div className="text-lg font-bold mt-1">{priorityCounts.alta}</div>
+              <div className="text-xs font-medium">Alta</div>
             </div>
-            <Badge variant="secondary" className="text-base px-3 py-1 bg-orange-600 text-white">
-              {priorityCounts.alta}
-            </Badge>
-          </div>
-
-          {/* Medium Priority */}
-          <div className={`flex items-center justify-between p-3 rounded-lg border ${getPriorityColor('media')}`}>
-            <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('media')}`}>
               {getPriorityIcon('media')}
-              <div>
-                <div className="font-semibold text-sm">Media</div>
-                <div className="text-xs opacity-75">Seguimiento normal</div>
-              </div>
+              <div className="text-lg font-bold mt-1">{priorityCounts.media}</div>
+              <div className="text-xs font-medium">Media</div>
             </div>
-            <Badge variant="secondary" className="text-base px-3 py-1 bg-yellow-600 text-white">
-              {priorityCounts.media}
-            </Badge>
-          </div>
-
-          {/* Low Priority */}
-          <div className={`flex items-center justify-between p-3 rounded-lg border ${getPriorityColor('baja')}`}>
-            <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg border text-center ${getPriorityColor('baja')}`}>
               {getPriorityIcon('baja')}
-              <div>
-                <div className="font-semibold text-sm">Baja</div>
-                <div className="text-xs opacity-75">Sin urgencia</div>
-              </div>
+              <div className="text-lg font-bold mt-1">{priorityCounts.baja}</div>
+              <div className="text-xs font-medium">Baja</div>
             </div>
-            <Badge variant="secondary" className="text-base px-3 py-1 bg-green-600 text-white">
-              {priorityCounts.baja}
-            </Badge>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Category Summary */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Por Categoría</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Sistemas */}
-          <div className="flex items-center justify-between p-3 rounded-lg border bg-blue-50 border-blue-200">
-            <div className="flex items-center gap-3">
-              <Monitor className="h-5 w-5 text-blue-600" />
-              <div>
-                <div className="font-semibold text-sm text-blue-900">Sistemas</div>
-                <div className="text-xs text-blue-700">Equipos de cómputo</div>
-              </div>
+        {/* Category Grid */}
+        <div>
+          <h3 className="text-xs font-semibold text-muted-foreground mb-2">CATEGORÍA</h3>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-2 rounded-lg border bg-blue-50 border-blue-200 text-center">
+              <Monitor className="h-4 w-4 text-blue-600 mx-auto" />
+              <div className="text-lg font-bold text-blue-900 mt-1">{categoryCounts.sistemas}</div>
+              <div className="text-xs font-medium text-blue-700">Sistemas</div>
             </div>
-            <Badge className="text-base px-3 py-1 bg-blue-600 text-white">
-              {categoryCounts.sistemas}
-            </Badge>
+            <div className="p-2 rounded-lg border bg-purple-50 border-purple-200 text-center">
+              <Shield className="h-4 w-4 text-purple-600 mx-auto" />
+              <div className="text-lg font-bold text-purple-900 mt-1">{categoryCounts.seguridad}</div>
+              <div className="text-xs font-medium text-purple-700">Seguridad</div>
+            </div>
           </div>
+        </div>
 
-          {/* Seguridad */}
-          <div className="flex items-center justify-between p-3 rounded-lg border bg-purple-50 border-purple-200">
-            <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-purple-600" />
-              <div>
-                <div className="font-semibold text-sm text-purple-900">Seguridad</div>
-                <div className="text-xs text-purple-700">Cámaras y vigilancia</div>
-              </div>
+        {/* Status Grid */}
+        <div>
+          <h3 className="text-xs font-semibold text-muted-foreground mb-2">ESTADO</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="p-2 rounded-lg border bg-yellow-50 border-yellow-200 text-center">
+              <div className="text-lg font-bold text-yellow-900">{statusCounts.pendiente_aprobacion}</div>
+              <div className="text-xs text-yellow-700">P. Aprobación</div>
             </div>
-            <Badge className="text-base px-3 py-1 bg-purple-600 text-white">
-              {categoryCounts.seguridad}
-            </Badge>
+            <div className="p-2 rounded-lg border bg-blue-50 border-blue-200 text-center">
+              <div className="text-lg font-bold text-blue-900">{statusCounts.en_proceso}</div>
+              <div className="text-xs text-blue-700">En Proceso</div>
+            </div>
+            <div className="p-2 rounded-lg border bg-orange-50 border-orange-200 text-center">
+              <div className="text-lg font-bold text-orange-900">{statusCounts.pendiente_actualizacion}</div>
+              <div className="text-xs text-orange-700">P. Actualización</div>
+            </div>
+            <div className="p-2 rounded-lg border bg-green-50 border-green-200 text-center">
+              <div className="text-lg font-bold text-green-900">{statusCounts.pendiente_entrega}</div>
+              <div className="text-xs text-green-700">P. Entrega</div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Status Summary */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Por Estado</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {statusCounts.pendiente_aprobacion > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Pendientes de Aprobación</span>
-              <Badge variant="outline">{statusCounts.pendiente_aprobacion}</Badge>
-            </div>
-          )}
-          {statusCounts.en_proceso > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">En Proceso</span>
-              <Badge variant="outline" className="bg-blue-50">{statusCounts.en_proceso}</Badge>
-            </div>
-          )}
-          {statusCounts.pendiente_actualizacion > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Pendientes de Actualización</span>
-              <Badge variant="outline">{statusCounts.pendiente_actualizacion}</Badge>
-            </div>
-          )}
-          {statusCounts.pendiente_entrega > 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Pendientes de Entrega</span>
-              <Badge variant="outline" className="bg-green-50">{statusCounts.pendiente_entrega}</Badge>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
