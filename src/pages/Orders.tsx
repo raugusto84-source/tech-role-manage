@@ -287,7 +287,7 @@ export default function Orders() {
     if (profile) {
       loadOrders();
     }
-  }, [profile]);
+  }, [profile?.user_id, profile?.role]); // Evita recargar por cambios de referencia del perfil (p. ej. refresh de token)
 
   // Suscripción en tiempo real para actualizar órdenes automáticamente
   useEffect(() => {
