@@ -456,6 +456,35 @@ export default function Finance() {
       return data ?? [];
     }
   });
+  
+  const payrollsQuery = useQuery({
+    queryKey: ["payrolls", startDate, endDate, filtersEnabled],
+    queryFn: async () => {
+      let q = supabase.from("payrolls").select("*").order("created_at", {
+        ascending: false
+      });
+      if (filtersEnabled && startDate) {
+        const startMonth = new Date(startDate).getMonth() + 1;
+        const startYear = new Date(startDate).getFullYear();
+        q = q.gte("period_year", startYear);
+        if (startMonth > 1) {
+          q = q.gte("period_month", startMonth);
+        }
+      }
+      if (filtersEnabled && endDate) {
+        const endMonth = new Date(endDate).getMonth() + 1;
+        const endYear = new Date(endDate).getFullYear();
+        q = q.lte("period_year", endYear);
+        q = q.lte("period_month", endMonth);
+      }
+      const {
+        data,
+        error
+      } = await q;
+      if (error) throw error;
+      return data ?? [];
+    }
+  });
   const fixedIncomesQuery = useQuery({
     queryKey: ["fixed_incomes"],
     queryFn: async () => {
@@ -3450,6 +3479,58 @@ export default function Finance() {
 
         <TabsContent value="nomina">
           <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Nóminas Registradas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Empleado</TableHead>
+                        <TableHead>Período</TableHead>
+                        <TableHead>Salario Base</TableHead>
+                        <TableHead>Bonos</TableHead>
+                        <TableHead>Pagos Extra</TableHead>
+                        <TableHead>Salario Neto</TableHead>
+                        <TableHead>Estado</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payrollsQuery.isLoading && <TableRow><TableCell colSpan={7}>Cargando...</TableCell></TableRow>}
+                      {!payrollsQuery.isLoading && (payrollsQuery.data ?? []).map((p: any) => <TableRow key={p.id}>
+                          <TableCell className="font-medium">{p.employee_name}</TableCell>
+                          <TableCell>
+                            {p.period_month}/{p.period_year}
+                            {p.period_week && ` - Semana ${p.period_week}`}
+                          </TableCell>
+                          <TableCell>${Number(p.base_salary || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}</TableCell>
+                          <TableCell>
+                            {p.bonus_amount ? (
+                              <div>
+                                <div>${Number(p.bonus_amount).toLocaleString('es-MX', {minimumFractionDigits: 2})}</div>
+                                {p.bonus_description && <div className="text-xs text-muted-foreground">{p.bonus_description}</div>}
+                              </div>
+                            ) : '-'}
+                          </TableCell>
+                          <TableCell>
+                            {p.extra_payments ? `$${Number(p.extra_payments).toLocaleString('es-MX', {minimumFractionDigits: 2})}` : '-'}
+                          </TableCell>
+                          <TableCell className="font-semibold">${Number(p.net_salary || 0).toLocaleString('es-MX', {minimumFractionDigits: 2})}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${p.status === 'pagado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                              {p.status === 'pagado' ? 'Pagado' : 'Pendiente'}
+                            </span>
+                          </TableCell>
+                        </TableRow>)}
+                      {!payrollsQuery.isLoading && (payrollsQuery.data ?? []).length === 0 && <TableRow><TableCell colSpan={7}>No hay nóminas registradas</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+            
             <PayrollWithdrawals />
             <RecurringPayrollsManager />
           </div>
