@@ -293,17 +293,22 @@ export default function Orders() {
   useEffect(() => {
     if (!profile) return;
 
+    // Solo recargar si la página está visible
+    const handleRealtimeUpdate = (payload: any, source: string) => {
+      console.log(`${source} realtime update:`, payload);
+      // Solo recargar si el documento está visible
+      if (document.visibilityState === 'visible') {
+        loadOrders();
+      }
+    };
+
     const ordersChannel = supabase
       .channel('orders-realtime')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'orders'
-      }, (payload) => {
-        console.log('Order realtime update:', payload);
-        // Recargar órdenes cuando hay cambios
-        loadOrders();
-      })
+      }, (payload) => handleRealtimeUpdate(payload, 'Order'))
       .subscribe();
 
     // También escuchar cambios en order_items por si cambian estados
@@ -313,11 +318,7 @@ export default function Orders() {
         event: '*',
         schema: 'public',
         table: 'order_items'
-      }, (payload) => {
-        console.log('Order items realtime update:', payload);
-        // Recargar órdenes cuando hay cambios en items
-        loadOrders();
-      })
+      }, (payload) => handleRealtimeUpdate(payload, 'Order items'))
       .subscribe();
 
     return () => {
