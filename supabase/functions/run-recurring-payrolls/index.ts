@@ -29,13 +29,22 @@ Deno.serve(async (req) => {
     });
 
     const today = new Date().toISOString().substring(0, 10);
+    
+    // Check if this is a manual execution (force parameter)
+    const { force } = await req.json().catch(() => ({ force: false }));
 
     // Get due recurring payrolls
-    const { data: rec, error: rpErr } = await supabase
+    let query = supabase
       .from('recurring_payrolls')
       .select('id, employee_name, base_salary, net_salary, account_type, payment_method, next_run_date')
-      .eq('active', true)
-      .lte('next_run_date', today);
+      .eq('active', true);
+    
+    // Only filter by date if not forced (manual execution)
+    if (!force) {
+      query = query.lte('next_run_date', today);
+    }
+    
+    const { data: rec, error: rpErr } = await query;
 
     if (rpErr) throw rpErr;
 

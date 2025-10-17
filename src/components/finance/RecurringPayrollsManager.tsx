@@ -160,7 +160,9 @@ export function RecurringPayrollsManager() {
 
   const runPayrollsMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('run-recurring-payrolls');
+      const { data, error } = await supabase.functions.invoke('run-recurring-payrolls', {
+        body: { force: true }
+      });
       if (error) throw error;
       return data;
     },
