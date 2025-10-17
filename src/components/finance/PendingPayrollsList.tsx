@@ -88,9 +88,7 @@ export function PendingPayrollsList() {
       const { error: payrollError } = await supabase
         .from('payrolls')
         .update({ 
-          status: 'pagado',
-          account_type: data.account_type,
-          payment_method: data.payment_method,
+          status: 'pagado'
         })
         .eq('id', payrollId);
 
