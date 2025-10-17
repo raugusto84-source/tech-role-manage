@@ -2027,7 +2027,6 @@ export default function Finance() {
           <TabsTrigger value="withdrawals" className="text-black font-bold">Retiros</TabsTrigger>
           <TabsTrigger value="loans" className="text-black font-bold">Préstamos</TabsTrigger>
           <TabsTrigger value="nomina" className="text-black font-bold">Nómina</TabsTrigger>
-          <TabsTrigger value="pending_payrolls" className="text-black font-bold">Nóminas Pendientes</TabsTrigger>
           <TabsTrigger value="cobranza" className="text-black font-bold">Cobranza</TabsTrigger>
           <TabsTrigger value="report" className="text-black font-bold">Reporte</TabsTrigger>
           <TabsTrigger value="consecutive" className="text-black font-bold">Consecutivo</TabsTrigger>
@@ -3482,6 +3481,8 @@ export default function Finance() {
 
         <TabsContent value="nomina">
           <div className="space-y-6">
+            <PendingPayrollsList />
+            
             <Card>
               <CardHeader>
                 <CardTitle>Nóminas Registradas</CardTitle>
@@ -3527,10 +3528,6 @@ export default function Finance() {
             <PayrollWithdrawals />
             <RecurringPayrollsManager />
           </div>
-        </TabsContent>
-
-        <TabsContent value="pending_payrolls">
-          <PendingPayrollsList />
         </TabsContent>
 
         <TabsContent value="cobranza">
