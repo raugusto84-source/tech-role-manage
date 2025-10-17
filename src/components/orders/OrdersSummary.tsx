@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield } from "lucide-react";
+import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield, DollarSign } from "lucide-react";
 import { calculateOrderPriority } from "@/utils/priorityCalculator";
 interface Order {
   id: string;
@@ -16,9 +16,11 @@ interface Order {
 }
 interface OrdersSummaryProps {
   orders: Order[];
+  finalizedWithPendingPayment?: number;
 }
 export function OrdersSummary({
-  orders
+  orders,
+  finalizedWithPendingPayment = 0
 }: OrdersSummaryProps) {
   // Filter active orders (not finalized or cancelled)
   const activeOrders = orders.filter(order => !['finalizada', 'cancelada', 'rechazada'].includes(order.status));
@@ -100,6 +102,14 @@ export function OrdersSummary({
         {statusCounts.pendiente_entrega > 0 && <Badge variant="outline" title="Pendientes de Entrega" className="text-sm px-3 py-1 text-success-foreground border-success-border bg-[#a2f6d0]">
             {statusCounts.pendiente_entrega} PE
           </Badge>}
+        
+        {finalizedWithPendingPayment > 0 && <>
+          <span className="text-muted-foreground text-sm">|</span>
+          <Badge variant="outline" title="Finalizadas con Cobro Pendiente" className="text-sm px-3 py-1 bg-warning text-warning-foreground border-warning-border">
+            <DollarSign className="h-4 w-4" />
+            {finalizedWithPendingPayment}
+          </Badge>
+        </>}
       </div>
     </div>;
 }

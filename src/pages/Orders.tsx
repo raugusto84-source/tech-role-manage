@@ -634,7 +634,12 @@ export default function Orders() {
 
       {/* Orders Summary - Top Section */}
       <div className="mb-4 sm:mb-6">
-        <OrdersSummary orders={orders} />
+        <OrdersSummary 
+          orders={orders} 
+          finalizedWithPendingPayment={
+            orders.filter(o => o.status === 'finalizada' && orderPaymentStatus[o.id] === true).length
+          }
+        />
       </div>
 
       {/* Orders List - Main Content */}
