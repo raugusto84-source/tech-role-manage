@@ -105,7 +105,7 @@ export function OrdersSummary({
         
         {finalizedWithPendingPayment > 0 && <>
           <span className="text-muted-foreground text-sm">|</span>
-          <Badge variant="outline" title="Finalizadas con Cobro Pendiente" className="text-sm px-3 py-1 bg-warning text-warning-foreground border-warning-border">
+          <Badge variant="outline" title="Finalizadas con Cobro Pendiente" className="text-sm px-3 py-1 bg-warning text-warning-foreground border-warning-border animate-pulse">
             <DollarSign className="h-4 w-4" />
             {finalizedWithPendingPayment}
           </Badge>
