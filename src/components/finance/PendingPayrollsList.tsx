@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getCurrentDateMexico } from "@/utils/dateUtils";
 
@@ -36,6 +37,13 @@ export function PendingPayrollsList() {
   const [paymentDialog, setPaymentDialog] = useState<PaymentDialogData>({
     payroll: null,
     open: false,
+  });
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    payrollId: string | null;
+  }>({
+    open: false,
+    payrollId: null,
   });
   const [paymentData, setPaymentData] = useState({
     account_type: 'no_fiscal',
@@ -109,6 +117,29 @@ export function PendingPayrollsList() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (payrollId: string) => {
+      const { error } = await supabase
+        .from('payrolls')
+        .delete()
+        .eq('id', payrollId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-payrolls'] });
+      toast({ title: "Nómina eliminada exitosamente" });
+      setDeleteDialog({ open: false, payrollId: null });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al eliminar nómina",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleOpenPaymentDialog = (payroll: PendingPayroll) => {
     setPaymentData({
       account_type: payroll.account_type || 'no_fiscal',
@@ -124,6 +155,15 @@ export function PendingPayrollsList() {
       payrollId: paymentDialog.payroll.id,
       data: paymentData,
     });
+  };
+
+  const handleDelete = (payrollId: string) => {
+    setDeleteDialog({ open: true, payrollId });
+  };
+
+  const confirmDelete = () => {
+    if (!deleteDialog.payrollId) return;
+    deleteMutation.mutate(deleteDialog.payrollId);
   };
 
   return (
@@ -158,13 +198,22 @@ export function PendingPayrollsList() {
                       <Badge variant="secondary">Pendiente</Badge>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        size="sm"
-                        onClick={() => handleOpenPaymentDialog(payroll)}
-                      >
-                        <DollarSign className="h-4 w-4 mr-1" />
-                        Pagar
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleOpenPaymentDialog(payroll)}
+                        >
+                          <DollarSign className="h-4 w-4 mr-1" />
+                          Pagar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(payroll.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -253,6 +302,26 @@ export function PendingPayrollsList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar nómina pendiente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción no se puede deshacer. La nómina pendiente será eliminada permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
