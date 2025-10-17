@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     const details: any[] = [];
 
     for (const row of rec ?? []) {
-      // Insert payroll record
+      // Insert payroll record with status 'pendiente' - NO crear expense automáticamente
       const month = new Date().getUTCMonth() + 1;
       const year = new Date().getUTCFullYear();
       const { error: payErr } = await supabase.from('payrolls').insert({
@@ -53,23 +53,12 @@ Deno.serve(async (req) => {
         period_month: month,
         period_year: year,
         status: 'pendiente',
+        recurring_payroll_id: row.id,
+        account_type: row.account_type,
+        payment_method: row.payment_method,
       } as any);
       if (payErr) {
         details.push({ id: row.id, status: 'error', message: payErr.message });
-        continue;
-      }
-
-      // Create expense entry for payroll
-      const { error: expErr } = await supabase.from('expenses').insert({
-        amount: row.net_salary,
-        description: `[Recurrente Nómina] ${row.employee_name} ${month}/${year}`,
-        category: 'nomina',
-        account_type: row.account_type,
-        payment_method: row.payment_method ?? null,
-        expense_date: today,
-      } as any);
-      if (expErr) {
-        details.push({ id: row.id, status: 'partial', message: expErr.message });
         continue;
       }
 

@@ -23,6 +23,7 @@ import { AccountsConsecutiveReport } from "@/components/finance/AccountsConsecut
 import { LoansManager } from "@/components/finance/LoansManager";
 import { RecurringPayrollsManager } from "@/components/finance/RecurringPayrollsManager";
 import { FixedExpensesManager } from "@/components/finance/FixedExpensesManager";
+import { PendingPayrollsList } from "@/components/finance/PendingPayrollsList";
 import { X, Plus, Trash2, Edit } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -2026,6 +2027,7 @@ export default function Finance() {
           <TabsTrigger value="withdrawals" className="text-black font-bold">Retiros</TabsTrigger>
           <TabsTrigger value="loans" className="text-black font-bold">Préstamos</TabsTrigger>
           <TabsTrigger value="nomina" className="text-black font-bold">Nómina</TabsTrigger>
+          <TabsTrigger value="pending_payrolls" className="text-black font-bold">Nóminas Pendientes</TabsTrigger>
           <TabsTrigger value="cobranza" className="text-black font-bold">Cobranza</TabsTrigger>
           <TabsTrigger value="report" className="text-black font-bold">Reporte</TabsTrigger>
           <TabsTrigger value="consecutive" className="text-black font-bold">Consecutivo</TabsTrigger>
@@ -3525,6 +3527,10 @@ export default function Finance() {
             <PayrollWithdrawals />
             <RecurringPayrollsManager />
           </div>
+        </TabsContent>
+
+        <TabsContent value="pending_payrolls">
+          <PendingPayrollsList />
         </TabsContent>
 
         <TabsContent value="cobranza">
