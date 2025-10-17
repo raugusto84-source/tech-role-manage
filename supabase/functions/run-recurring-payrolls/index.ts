@@ -43,6 +43,30 @@ Deno.serve(async (req) => {
     const details: any[] = [];
 
     for (const row of rec ?? []) {
+      // Check if payroll already exists for this week/employee
+      const weekStart = new Date(today);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6); // End of week (Saturday)
+      
+      const { data: existing, error: checkErr } = await supabase
+        .from('payrolls')
+        .select('id')
+        .eq('recurring_payroll_id', row.id)
+        .gte('created_at', weekStart.toISOString())
+        .lte('created_at', weekEnd.toISOString())
+        .limit(1);
+      
+      if (checkErr) {
+        details.push({ id: row.id, status: 'error', message: checkErr.message });
+        continue;
+      }
+      
+      if (existing && existing.length > 0) {
+        details.push({ id: row.id, status: 'skipped', message: 'Nómina ya existe para esta semana' });
+        continue;
+      }
+
       // Insert payroll record with status 'pendiente' - NO crear expense automáticamente
       const month = new Date().getUTCMonth() + 1;
       const year = new Date().getUTCFullYear();

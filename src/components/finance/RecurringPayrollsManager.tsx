@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface RecurringPayroll {
@@ -158,6 +158,30 @@ export function RecurringPayrollsManager() {
     },
   });
 
+  const runPayrollsMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke('run-recurring-payrolls');
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-payrolls'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-payrolls'] });
+      const skipped = data.details?.filter((d: any) => d.status === 'skipped').length || 0;
+      toast({
+        title: "Nóminas generadas",
+        description: `${data.created} nóminas creadas${skipped > 0 ? `, ${skipped} ya existían` : ''}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error al generar nóminas",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       employee_name: '',
@@ -211,10 +235,20 @@ export function RecurringPayrollsManager() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Nóminas Recurrentes</h2>
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nueva Nómina Recurrente
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => runPayrollsMutation.mutate()}
+            disabled={runPayrollsMutation.isPending}
+            variant="outline"
+          >
+            <PlayCircle className="h-4 w-4 mr-2" />
+            {runPayrollsMutation.isPending ? 'Ejecutando...' : 'Ejecutar Ahora'}
+          </Button>
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Nómina Recurrente
+          </Button>
+        </div>
       </div>
 
       <Card>
