@@ -66,11 +66,11 @@ export function OrdersSummary({
           <Zap className="h-4 w-4" />
           {priorityCounts.alta}
         </Badge>}
-        {priorityCounts.media > 0 && <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-media text-priority-media-foreground hover:bg-priority-media/90" title="Media">
+        {priorityCounts.media > 0 && <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-media text-priority-media-foreground hover:bg-priority-media/90 animate-pulse" title="Media">
           <Clock className="h-4 w-4" />
           {priorityCounts.media}
         </Badge>}
-        {priorityCounts.baja > 0 && <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90" title="Baja">
+        {priorityCounts.baja > 0 && <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90 animate-pulse" title="Baja">
           <TrendingUp className="h-4 w-4" />
           {priorityCounts.baja}
         </Badge>}
