@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
       const { data: existing, error: checkErr } = await supabase
         .from('payrolls')
         .select('id')
-        .eq('recurring_payroll_id', row.id)
+        .eq('employee_name', row.employee_name)
         .gte('created_at', weekStart.toISOString())
         .lte('created_at', weekEnd.toISOString())
         .limit(1);
@@ -86,9 +86,6 @@ Deno.serve(async (req) => {
         period_month: month,
         period_year: year,
         status: 'pendiente',
-        recurring_payroll_id: row.id,
-        account_type: row.account_type,
-        payment_method: row.payment_method,
       } as any);
       if (payErr) {
         details.push({ id: row.id, status: 'error', message: payErr.message });
