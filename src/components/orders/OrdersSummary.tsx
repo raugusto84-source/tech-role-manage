@@ -58,19 +58,19 @@ export function OrdersSummary({
         <span className="text-muted-foreground text-sm">|</span>
         
         {/* Priorities */}
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-critica text-priority-critica-foreground hover:bg-priority-critica/90 animate-pulse" title="Crítica">
+        <Badge className={`gap-1.5 text-sm px-3 py-1 bg-priority-critica text-priority-critica-foreground hover:bg-priority-critica/90 ${priorityCounts.critica > 0 ? 'animate-pulse' : ''}`} title="Crítica">
           <AlertCircle className="h-4 w-4" />
           {priorityCounts.critica}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-alta text-priority-alta-foreground hover:bg-priority-alta/90 animate-pulse" title="Alta">
+        <Badge className={`gap-1.5 text-sm px-3 py-1 bg-priority-alta text-priority-alta-foreground hover:bg-priority-alta/90 ${priorityCounts.alta > 0 ? 'animate-pulse' : ''}`} title="Alta">
           <Zap className="h-4 w-4" />
           {priorityCounts.alta}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-media text-priority-media-foreground hover:bg-priority-media/90 animate-pulse" title="Media">
+        <Badge className={`gap-1.5 text-sm px-3 py-1 bg-priority-media text-priority-media-foreground hover:bg-priority-media/90 ${priorityCounts.media > 0 ? 'animate-pulse' : ''}`} title="Media">
           <Clock className="h-4 w-4" />
           {priorityCounts.media}
         </Badge>
-        <Badge className="gap-1.5 text-sm px-3 py-1 bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90 animate-pulse" title="Baja">
+        <Badge className={`gap-1.5 text-sm px-3 py-1 bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90 ${priorityCounts.baja > 0 ? 'animate-pulse' : ''}`} title="Baja">
           <TrendingUp className="h-4 w-4" />
           {priorityCounts.baja}
         </Badge>
