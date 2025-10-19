@@ -459,9 +459,8 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
       
-      // Determine target service date from next_run (normalize to date portion)
-      const nextRunDate = new Date(scheduledService.next_run || new Date());
-      const targetDateStr = nextRunDate.toISOString().split('T')[0];
+      // Use the exact date from next_run (already in ISO format)
+      const targetDateStr = scheduledService.next_run.split('T')[0];
 
       // Check if order already exists for that date
       const { data: existingOrders } = await supabaseClient
