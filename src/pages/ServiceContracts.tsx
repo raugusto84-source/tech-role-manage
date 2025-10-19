@@ -15,7 +15,7 @@ import { PolicyClientManager } from "@/components/policies/PolicyClientManager";
 import { ScheduledServicesManager } from "@/components/policies/ScheduledServicesManager";
 import { PolicyReportsManager } from "@/components/policies/PolicyReportsManager";
 
-import { FileText, AlertCircle, Calendar } from "lucide-react";
+import { FileText, AlertCircle, Calendar, PlayCircle } from "lucide-react";
 interface ContractStats {
   active_contracts: number;
   pending_payments: number;
@@ -83,6 +83,34 @@ export default function ServiceContracts() {
   const refreshStats = () => {
     loadStats();
   };
+
+  const handleGenerateWeeklyOrders = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('process-scheduled-services', {
+        body: { action: 'process_due_services' }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Órdenes generadas",
+        description: `Se crearon ${data?.orders_created || 0} órdenes de servicios programados`,
+      });
+
+      refreshStats();
+    } catch (error: any) {
+      console.error('Error generating weekly orders:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron generar las órdenes de la semana",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   if (!user) {
     return <div>Cargando...</div>;
   }
@@ -98,6 +126,17 @@ export default function ServiceContracts() {
             Gestión integral de contratos de servicios tecnológicos
           </p>
         </div>
+        {(profile?.role === 'administrador' || profile?.role === 'supervisor') && (
+          <Button 
+            onClick={handleGenerateWeeklyOrders}
+            disabled={loading}
+            variant="default"
+            className="gap-2"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Generar Órdenes Semanales
+          </Button>
+        )}
       </div>
 
       {/* Personal Time Clock for vendedor role */}
