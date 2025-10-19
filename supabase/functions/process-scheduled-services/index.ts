@@ -580,6 +580,8 @@ async function processDueServices(supabaseClient: any) {
       const currentNext = new Date(scheduledService.next_run || new Date());
       const advanced = new Date(currentNext);
       
+      console.log(`Calculating next run for service ${scheduledService.id}, current next_run: ${currentNext.toISOString()}, frequency: ${scheduledService.frequency_type}`);
+      
       if (scheduledService.frequency_type === 'minutes') {
         advanced.setMinutes(advanced.getMinutes() + scheduledService.frequency_value);
       } else if (scheduledService.frequency_type === 'days') {
@@ -588,18 +590,44 @@ async function processDueServices(supabaseClient: any) {
         // Calculate next occurrence of specific day of week
         const targetDay = scheduledService.frequency_value; // 0=Sunday, 1=Monday, etc.
         const weeksInterval = scheduledService.week_interval || 1; // Default to 1 week if not specified
-        const currentDay = advanced.getDay();
-        let daysUntilTarget = (targetDay - currentDay + 7) % 7;
-        if (daysUntilTarget === 0) daysUntilTarget = 7 * weeksInterval; // If today is the target day, schedule for next interval
-        else daysUntilTarget += 7 * (weeksInterval - 1); // Add remaining weeks to interval
-        advanced.setDate(advanced.getDate() + daysUntilTarget);
-      } else { // monthly_on_day
+        
+        // Move to the next occurrence of the target day
+        advanced.setDate(advanced.getDate() + 1); // Start from tomorrow
+        while (advanced.getDay() !== targetDay) {
+          advanced.setDate(advanced.getDate() + 1);
+        }
+        
+        // If week_interval > 1, add the extra weeks
+        if (weeksInterval > 1) {
+          advanced.setDate(advanced.getDate() + (7 * (weeksInterval - 1)));
+        }
+      } else if (scheduledService.frequency_type === 'monthly_on_day') {
+        // Move to next month and set the specific day
         advanced.setMonth(advanced.getMonth() + 1);
         advanced.setDate(scheduledService.frequency_value);
+      } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
+        // Legacy weekly frequencies with specific day of week
+        const targetDay = scheduledService.day_of_week || 1; // Default to Monday
+        const weeksInterval = scheduledService.frequency_type === 'cada_1_semana' ? 1 :
+                              scheduledService.frequency_type === 'cada_2_semanas' ? 2 :
+                              scheduledService.frequency_type === 'cada_3_semanas' ? 3 : 4;
+        
+        // Move to the next occurrence of the target day
+        advanced.setDate(advanced.getDate() + 1); // Start from tomorrow
+        while (advanced.getDay() !== targetDay) {
+          advanced.setDate(advanced.getDate() + 1);
+        }
+        
+        // Add extra weeks if needed
+        if (weeksInterval > 1) {
+          advanced.setDate(advanced.getDate() + (7 * (weeksInterval - 1)));
+        }
       }
       
       // Ensure execution time at 00:01 local time
       advanced.setHours(0, 1, 0, 0);
+      
+      console.log(`Next run calculated for service ${scheduledService.id}: ${advanced.toISOString()}`);
       
       await supabaseClient
         .from('scheduled_services')
@@ -608,8 +636,9 @@ async function processDueServices(supabaseClient: any) {
           next_service_date: advanced.toISOString().split('T')[0] 
         })
         .eq('id', scheduledService.id);
+        
       ordersCreated++;
-      console.log(`Order created: ${orderData.order_number} for scheduled service ${scheduledService.id} on ${targetDateStr} with ${scheduledService.services.length} services`);
+      console.log(`✅ Order created: ${orderData.order_number} for service ${scheduledService.id} on ${targetDateStr}. Next run: ${advanced.toISOString().split('T')[0]}`);
 
     } catch (serviceError) {
       console.error(`Error processing scheduled service ${scheduledService.id}:`, serviceError);
