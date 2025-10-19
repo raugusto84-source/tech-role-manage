@@ -171,6 +171,7 @@ export function LoansManager() {
   const [paymentDay, setPaymentDay] = useState('15');
   const [accountType, setAccountType] = useState<'fiscal' | 'no_fiscal' | 'ninguna'>('ninguna');
   const [description, setDescription] = useState('');
+  const [loanType, setLoanType] = useState<'prestamo' | 'inversion'>('prestamo');
   const [isLoading, setIsLoading] = useState(false);
 
   // Queries
@@ -214,18 +215,22 @@ export function LoansManager() {
     try {
       const { data: user } = await supabase.auth.getUser();
 
+      const loanAmount = parseFloat(amount);
+      const payment = parseFloat(monthlyPayment);
+      const months = parseInt(totalMonths);
+
       // Crear el préstamo (loan_number se genera automáticamente con el trigger)
       const { data: newLoan, error: loanError } = await supabase
         .from('loans')
         .insert({
           loan_number: '', // Se genera automáticamente
-          amount: parseFloat(amount),
-          monthly_payment: parseFloat(monthlyPayment),
-          total_months: parseInt(totalMonths),
+          amount: loanAmount,
+          monthly_payment: payment,
+          total_months: months,
           start_date: startDate,
           payment_day: parseInt(paymentDay),
           account_type: accountType,
-          description,
+          description: `[${loanType === 'prestamo' ? 'PRÉSTAMO' : 'INVERSIÓN'}] ${description}`,
           created_by: user.user?.id,
         })
         .select()
@@ -240,15 +245,32 @@ export function LoansManager() {
 
       if (paymentsError) throw paymentsError;
 
+      // Calcular si hay diferencia en el último pago
+      const totalToPay = payment * months;
+      const difference = totalToPay - loanAmount;
+      
+      if (Math.abs(difference) > 0.01) {
+        // Ajustar el último pago
+        const lastPaymentAmount = payment - difference;
+        
+        const { error: updateError } = await supabase
+          .from('loan_payments')
+          .update({ amount: lastPaymentAmount })
+          .eq('loan_id', newLoan.id)
+          .eq('payment_number', months);
+
+        if (updateError) console.error('Error adjusting last payment:', updateError);
+      }
+
       // Si el préstamo tiene cuenta (fiscal o no fiscal), crear el ingreso correspondiente
       if (accountType !== 'ninguna') {
         const { error: incomeError } = await supabase
         .from('incomes')
           .insert({
             income_number: '', // Se genera automáticamente
-            amount: parseFloat(amount),
+            amount: loanAmount,
             loan_id: newLoan.id,
-            description: `Préstamo ${newLoan.loan_number} - ${description || 'Sin descripción'}`,
+            description: `${loanType === 'prestamo' ? 'Préstamo' : 'Inversión'} ${newLoan.loan_number} - ${description || 'Sin descripción'}`,
             category: 'prestamo',
             account_type: accountType,
             payment_method: 'transferencia',
@@ -262,9 +284,10 @@ export function LoansManager() {
       await queryClient.invalidateQueries({ queryKey: ['loans'] });
       await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
 
+      const typeLabel = loanType === 'prestamo' ? 'préstamo' : 'inversión';
       toast({
-        title: "Préstamo creado",
-        description: `Se creó el préstamo ${newLoan.loan_number} con ${totalMonths} mensualidades`,
+        title: `${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} ${loanType === 'prestamo' ? 'creado' : 'creada'}`,
+        description: `Se creó ${loanType === 'prestamo' ? 'el préstamo' : 'la inversión'} ${newLoan.loan_number} con ${months} mensualidades`,
       });
 
       // Reset form
@@ -275,6 +298,7 @@ export function LoansManager() {
       setPaymentDay('15');
       setAccountType('ninguna');
       setDescription('');
+      setLoanType('prestamo');
       setShowNewLoanDialog(false);
     } catch (error: any) {
       console.error('Error creating loan:', error);
@@ -579,17 +603,30 @@ export function LoansManager() {
 
       {/* Diálogo nuevo préstamo */}
       <Dialog open={showNewLoanDialog} onOpenChange={setShowNewLoanDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nuevo Préstamo</DialogTitle>
+            <DialogTitle>Nuevo Préstamo o Inversión</DialogTitle>
             <DialogDescription>
-              Registra un nuevo préstamo con sus mensualidades
+              Registra un nuevo préstamo (con intereses) o inversión (sin intereses) con sus mensualidades
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Label htmlFor="loan_type">Tipo *</Label>
+              <Select value={loanType} onValueChange={(v) => setLoanType(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prestamo">Préstamo (genera intereses)</SelectItem>
+                  <SelectItem value="inversion">Inversión (sin intereses)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
-              <Label htmlFor="amount">Monto del Préstamo *</Label>
+              <Label htmlFor="amount">Monto {loanType === 'prestamo' ? 'del Préstamo' : 'de la Inversión'} *</Label>
               <Input
                 id="amount"
                 type="number"
@@ -621,24 +658,56 @@ export function LoansManager() {
               />
             </div>
 
-            {amount && monthlyPayment && totalMonths && (
-              <div className="col-span-2 p-4 bg-muted rounded-lg space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Monto del préstamo:</span>
-                  <span className="text-sm">{formatMXNExact(parseFloat(amount))}</span>
+            {amount && monthlyPayment && totalMonths && (() => {
+              const loanAmount = parseFloat(amount);
+              const payment = parseFloat(monthlyPayment);
+              const months = parseInt(totalMonths);
+              const totalToPay = payment * months;
+              const difference = totalToPay - loanAmount;
+              const lastPaymentAmount = payment - difference;
+              const hasAdjustment = Math.abs(difference) > 0.01;
+              
+              return (
+                <div className="col-span-2 p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Monto {loanType === 'prestamo' ? 'del préstamo' : 'de la inversión'}:</span>
+                    <span className="text-sm">{formatMXNExact(loanAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Mensualidad normal ({months - (hasAdjustment ? 1 : 0)} {hasAdjustment ? 'pagos' : `pago${months > 1 ? 's' : ''}`}):</span>
+                    <span className="text-sm">{formatMXNExact(payment)}</span>
+                  </div>
+                  {hasAdjustment && (
+                    <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                      <span className="text-sm font-medium">Último pago (ajustado):</span>
+                      <span className="text-sm font-medium">{formatMXNExact(lastPaymentAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Total a {loanType === 'prestamo' ? 'pagar' : 'devolver'}:</span>
+                    <span className="text-sm">{formatMXNExact(totalToPay)}</span>
+                  </div>
+                  {loanType === 'prestamo' && (
+                    <div className="flex justify-between text-primary">
+                      <span className="text-sm font-bold">Intereses totales:</span>
+                      <span className="text-sm font-bold">
+                        {formatMXNExact(totalToPay - loanAmount)}
+                      </span>
+                    </div>
+                  )}
+                  {loanType === 'inversion' && difference !== 0 && (
+                    <div className="flex justify-between text-orange-600 dark:text-orange-400">
+                      <span className="text-sm font-medium">
+                        {difference > 0 ? 'Ganancia total:' : 'Pérdida total:'}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {formatMXNExact(Math.abs(difference))}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium">Total a pagar:</span>
-                  <span className="text-sm">{formatMXNExact(parseFloat(monthlyPayment) * parseInt(totalMonths))}</span>
-                </div>
-                <div className="flex justify-between text-primary">
-                  <span className="text-sm font-bold">Intereses totales:</span>
-                  <span className="text-sm font-bold">
-                    {formatMXNExact((parseFloat(monthlyPayment) * parseInt(totalMonths)) - parseFloat(amount))}
-                  </span>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div>
               <Label htmlFor="start_date">Fecha de Inicio *</Label>
