@@ -245,14 +245,11 @@ export function LoansManager() {
 
       if (paymentsError) throw paymentsError;
 
-      // Calcular si hay diferencia en el último pago
-      const totalToPay = payment * months;
-      const difference = totalToPay - loanAmount;
+      // Ajustar el último pago para que el total sea exactamente el monto del préstamo
+      const normalPaymentsTotal = payment * (months - 1);
+      const lastPaymentAmount = loanAmount - normalPaymentsTotal;
       
-      if (Math.abs(difference) > 0.01) {
-        // Ajustar el último pago
-        const lastPaymentAmount = payment - difference;
-        
+      if (Math.abs(lastPaymentAmount - payment) > 0.01) {
         const { error: updateError } = await supabase
           .from('loan_payments')
           .update({ amount: lastPaymentAmount })
@@ -662,10 +659,16 @@ export function LoansManager() {
               const loanAmount = parseFloat(amount);
               const payment = parseFloat(monthlyPayment);
               const months = parseInt(totalMonths);
-              const totalToPay = payment * months;
-              const difference = totalToPay - loanAmount;
-              const lastPaymentAmount = payment - difference;
-              const hasAdjustment = Math.abs(difference) > 0.01;
+              
+              // Calcular el total de los pagos normales (todos menos el último)
+              const normalPaymentsTotal = payment * (months - 1);
+              // El último pago es lo que falta para completar el monto del préstamo
+              const lastPaymentAmount = loanAmount - normalPaymentsTotal;
+              const hasAdjustment = Math.abs(lastPaymentAmount - payment) > 0.01;
+              
+              // Para préstamos: calcular intereses basado en la mensualidad sugerida
+              const suggestedTotal = payment * months;
+              const totalInterest = suggestedTotal - loanAmount;
               
               return (
                 <div className="col-span-2 p-4 bg-muted rounded-lg space-y-2">
@@ -674,7 +677,7 @@ export function LoansManager() {
                     <span className="text-sm">{formatMXNExact(loanAmount)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm font-medium">Mensualidad normal ({months - (hasAdjustment ? 1 : 0)} {hasAdjustment ? 'pagos' : `pago${months > 1 ? 's' : ''}`}):</span>
+                    <span className="text-sm font-medium">Mensualidad normal ({months - 1} {months > 1 ? 'pagos' : 'pago'}):</span>
                     <span className="text-sm">{formatMXNExact(payment)}</span>
                   </div>
                   {hasAdjustment && (
@@ -683,26 +686,14 @@ export function LoansManager() {
                       <span className="text-sm font-medium">{formatMXNExact(lastPaymentAmount)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Total a {loanType === 'prestamo' ? 'pagar' : 'devolver'}:</span>
-                    <span className="text-sm">{formatMXNExact(totalToPay)}</span>
+                  <div className="flex justify-between border-t pt-2 mt-2">
+                    <span className="text-sm font-bold">Total a {loanType === 'prestamo' ? 'pagar' : 'devolver'}:</span>
+                    <span className="text-sm font-bold">{formatMXNExact(loanAmount)}</span>
                   </div>
-                  {loanType === 'prestamo' && (
-                    <div className="flex justify-between text-primary">
-                      <span className="text-sm font-bold">Intereses totales:</span>
-                      <span className="text-sm font-bold">
-                        {formatMXNExact(totalToPay - loanAmount)}
-                      </span>
-                    </div>
-                  )}
-                  {loanType === 'inversion' && difference !== 0 && (
-                    <div className="flex justify-between text-orange-600 dark:text-orange-400">
-                      <span className="text-sm font-medium">
-                        {difference > 0 ? 'Ganancia total:' : 'Pérdida total:'}
-                      </span>
-                      <span className="text-sm font-medium">
-                        {formatMXNExact(Math.abs(difference))}
-                      </span>
+                  {loanType === 'prestamo' && totalInterest > 0 && (
+                    <div className="flex justify-between text-muted-foreground text-xs">
+                      <span>Intereses si no se ajustara:</span>
+                      <span>{formatMXNExact(totalInterest)}</span>
                     </div>
                   )}
                 </div>
