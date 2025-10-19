@@ -193,7 +193,7 @@ export function LoansManager() {
       const { data, error } = await supabase
         .from('loan_payments')
         .select('*, loans(*)')
-        .order('due_date', { ascending: false });
+        .order('due_date', { ascending: true });
       if (error) throw error;
       return data || [];
     },
