@@ -555,7 +555,7 @@ export default function Orders() {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Header - Mobile First */}
         <div className="mb-4 sm:mb-6">
           <div className="mb-4">
