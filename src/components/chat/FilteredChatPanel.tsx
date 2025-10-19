@@ -185,7 +185,7 @@ export function FilteredChatPanel({
           read_by,
           client_id
         `)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(500);
 
       // Filter by client_id for truly independent chats

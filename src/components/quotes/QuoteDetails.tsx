@@ -111,7 +111,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             service_types!left(image_url, item_type, cost_price, base_price, vat_rate)
           `)
           .eq('quote_id', quote.id)
-          .order('created_at', { ascending: true });
+          .order('created_at', { ascending: false });
 
         if (itemsError) {
           console.error('Error loading quote items:', itemsError);
@@ -125,7 +125,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
               .from('quote_items')
               .select('*')
               .eq('quote_id', quote.id)
-              .order('created_at', { ascending: true });
+              .order('created_at', { ascending: false });
             
             if (simpleError) {
               console.error('Error with simple query:', simpleError);

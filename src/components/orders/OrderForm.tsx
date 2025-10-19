@@ -151,7 +151,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           )
         `)
         .eq('order_id', orderId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       setOrderEquipment(data || []);

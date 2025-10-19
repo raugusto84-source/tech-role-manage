@@ -85,7 +85,7 @@ export function ClientOfficeChat({ className }: ClientOfficeChatProps) {
         .from('general_chats')
         .select('*,sender:sender_id(full_name,role)')
         .eq('client_id', currentCid)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 

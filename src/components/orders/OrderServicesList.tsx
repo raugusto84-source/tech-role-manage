@@ -153,8 +153,8 @@ export function OrderServicesList({
         data: modifications,
         error
       } = await supabase.from('order_modifications').select('items_added, created_at').eq('order_id', orderId).order('created_at', {
-        ascending: true
-      }); // Ascending to get correct numbering
+        ascending: false
+      });
 
       if (error) {
         console.error('loadAddedItems: Supabase error:', error);

@@ -114,7 +114,7 @@ export function PolicyPaymentManager({ onStatsUpdate }: PolicyPaymentManagerProp
             insurance_policies(policy_name, policy_number)
           )
         `)
-        .order('due_date', { ascending: true });
+        .order('due_date', { ascending: false });
 
       if (paymentsError) throw paymentsError;
       setPayments(paymentsData || []);

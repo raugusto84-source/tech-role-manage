@@ -67,7 +67,7 @@ export function GeneralChatPanel({ className }: GeneralChatPanelProps) {
           created_at,
           read_by
         `)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;

@@ -113,7 +113,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
         )
       `)
       .eq('is_active', true)
-      .order('next_service_date', { ascending: true });
+      .order('next_service_date', { ascending: false });
 
     if (error) throw error;
     setScheduledServices(data as ScheduledService[] || []);

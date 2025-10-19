@@ -235,7 +235,7 @@ export function OrderDetails({
           total_amount,
           status
         `).eq('order_id', order.id).order('created_at', {
-        ascending: true
+        ascending: false
       });
       if (error) throw error;
       setOrderItems(data || []);
@@ -258,7 +258,7 @@ export function OrderDetails({
             icon
           )
         `).eq('order_id', order.id).order('created_at', {
-        ascending: true
+        ascending: false
       });
       if (error) throw error;
       setOrderEquipment(data || []);

@@ -35,7 +35,7 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
         .neq("category", "referencia")
         .gte("income_date", localStartDate)
         .lte("income_date", localEndDate)
-        .order("income_number", { ascending: true });
+        .order("income_date", { ascending: false });
       
       if (error) throw error;
       return data || [];
@@ -61,7 +61,7 @@ export function AccountsConsecutiveReport({ startDate, endDate }: AccountsConsec
         .eq("account_type", "fiscal")
         .gte("expense_date", localStartDate)
         .lte("expense_date", localEndDate)
-        .order("expense_date", { ascending: true });
+        .order("expense_date", { ascending: false });
       
       if (error) {
         console.error('Error fetching expenses:', error);

@@ -140,7 +140,7 @@ export function FollowUpManager() {
         *,
         follow_up_configurations!inner(name)
       `)
-      .order('scheduled_at', { ascending: true })
+      .order('scheduled_at', { ascending: false })
       .limit(50);
 
     if (data) {

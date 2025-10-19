@@ -152,7 +152,7 @@ export default function Finance() {
   const incomesQuery = useQuery({
     queryKey: ["incomes", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
-      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,client_name,invoice_number,created_at").order("income_date", {
+      let q = supabase.from("incomes").select("id,income_number,income_date,amount,account_type,category,description,payment_method,vat_rate,vat_amount,taxable_amount,isr_withholding_rate,isr_withholding_amount,client_name,invoice_number,created_at").order("created_at", {
         ascending: false
       });
       if (filtersEnabled && startDate) q = q.gte("income_date", startDate);
@@ -187,7 +187,7 @@ export default function Finance() {
       let q = supabase.from("purchases").select(`
           *,
           supplier:suppliers(supplier_name)
-        `).order("purchase_date", {
+        `).order("created_at", {
         ascending: false
       });
       if (startDate) q = q.gte("purchase_date", startDate);
@@ -203,7 +203,7 @@ export default function Finance() {
   const expensesQuery = useQuery({
     queryKey: ["expenses", startDate, endDate, accountType, filtersEnabled],
     queryFn: async () => {
-      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,invoice_number,created_at").order("expense_date", {
+      let q = supabase.from("expenses").select("id,expense_number,expense_date,amount,account_type,category,description,payment_method,withdrawal_status,vat_rate,vat_amount,taxable_amount,invoice_number,created_at").order("created_at", {
         ascending: false
       });
       if (filtersEnabled && startDate) q = q.gte("expense_date", startDate);

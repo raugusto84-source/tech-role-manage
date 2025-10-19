@@ -83,7 +83,7 @@ export function WarrantiesAndAchievements() {
       `)
       .not('warranty_start_date', 'is', null)
       .not('warranty_end_date', 'is', null)
-      .order('warranty_end_date', { ascending: true });
+      .order('warranty_start_date', { ascending: false });
 
     if (data) {
       const warrantySummary = data.map((item: any) => {

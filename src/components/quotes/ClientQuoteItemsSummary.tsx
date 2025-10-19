@@ -51,7 +51,7 @@ export function ClientQuoteItemsSummary({
             item_type
           )
         `).eq('quote_id', quoteId).order('created_at', {
-        ascending: true
+        ascending: false
       });
       if (error) {
         console.error('Error loading quote items:', error);
