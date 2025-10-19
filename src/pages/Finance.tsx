@@ -532,9 +532,13 @@ export default function Finance() {
     
     const totalDebt = pendingPayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
     const activeLoansCount = activeLoans.length;
-    const nextPayment = pendingPayments[0]; // Ya están ordenados por fecha
     
-    return { totalDebt, activeLoansCount, nextPayment };
+    // Calcular pagos vencidos
+    const overduePayments = pendingPayments.filter(p => p.status === 'vencido');
+    const overdueAmount = overduePayments.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const overdueCount = overduePayments.length;
+    
+    return { totalDebt, activeLoansCount, overdueAmount, overdueCount };
   }, [loansQuery.data, loanPaymentsQuery.data]);
 
   const incomesTotal = useMemo(() => incomesQuery.data?.reduce((s, r) => s + (Number(r.amount) || 0), 0) ?? 0, [incomesQuery.data]);
@@ -1896,16 +1900,16 @@ export default function Finance() {
                   })}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Próximo Pago</div>
+                  <div className="text-muted-foreground">Pagos Vencidos</div>
                   <div className="font-semibold text-red-700 dark:text-red-300">
-                    {loansData.nextPayment ? loansData.nextPayment.amount.toLocaleString(undefined, {
+                    {loansData.overdueAmount.toLocaleString(undefined, {
                       style: 'currency',
                       currency: 'MXN'
-                    }) : 'N/A'}
+                    })}
                   </div>
-                  {loansData.nextPayment && (
+                  {loansData.overdueCount > 0 && (
                     <div className="text-xs text-muted-foreground mt-1">
-                      {formatDateMexico(loansData.nextPayment.due_date)}
+                      {loansData.overdueCount} pago{loansData.overdueCount > 1 ? 's' : ''} vencido{loansData.overdueCount > 1 ? 's' : ''}
                     </div>
                   )}
                 </div>
