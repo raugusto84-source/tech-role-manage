@@ -17,8 +17,9 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     queryFn: async () => {
       let query = supabase
         .from("expenses")
-        .select("amount")
-        .eq("category", "gasto_fijo");
+        .select("amount, expense_date, description")
+        .eq("category", "gasto_fijo")
+        .order("expense_date", { ascending: false });
 
       if (startDate) query = query.gte("expense_date", startDate);
       if (endDate) query = query.lte("expense_date", endDate);
@@ -27,7 +28,7 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      return { total, count: data?.length || 0 };
+      return { total, count: data?.length || 0, items: data || [] };
     },
     enabled: !!startDate && !!endDate,
   });
@@ -171,8 +172,8 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
             </div>
             
             <div className="space-y-3 bg-red-50/50 dark:bg-red-950/20 p-4 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Gastos Fijos</span>
+              <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-sm font-semibold text-muted-foreground">Gastos Fijos</span>
                 <div className="text-right">
                   <div className="font-semibold">{formatMXNExact(totalFixedExpenses)}</div>
                   <div className="text-xs text-muted-foreground">
@@ -180,6 +181,18 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
                   </div>
                 </div>
               </div>
+              
+              {fixedExpensesQuery.data?.items.map((expense, idx) => (
+                <div key={idx} className="flex justify-between items-start text-sm">
+                  <div className="flex-1">
+                    <div className="text-muted-foreground line-clamp-1">{expense.description}</div>
+                    <div className="text-xs text-muted-foreground/70">
+                      {new Date(expense.expense_date).toLocaleDateString('es-MX')}
+                    </div>
+                  </div>
+                  <div className="font-medium ml-2">{formatMXNExact(expense.amount)}</div>
+                </div>
+              ))}
               
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Nóminas</span>
