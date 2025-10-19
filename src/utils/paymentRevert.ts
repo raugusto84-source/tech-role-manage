@@ -34,7 +34,16 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
 
     const orderNumbers = relatedPayments?.map(p => p.order_number) || [];
 
-    // 3. Eliminar los pagos de órdenes y actualizar el estado de las órdenes
+    // 3. Buscar pagos de pólizas relacionados con este ingreso
+    const { data: policyPayments, error: policyPaymentsError } = await supabase
+      .from('policy_payments')
+      .select('id, policy_client_id, amount, payment_month, payment_year')
+      .eq('invoice_number', income.income_number)
+      .eq('is_paid', true);
+
+    if (policyPaymentsError) throw policyPaymentsError;
+
+    // 4. Eliminar los pagos de órdenes y actualizar el estado de las órdenes
     if (relatedPayments && relatedPayments.length > 0) {
       const { error: deletePaymentsError } = await supabase
         .from('order_payments')
@@ -43,7 +52,7 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
 
       if (deletePaymentsError) throw deletePaymentsError;
 
-      // 3.1. Actualizar las órdenes para que muestren la deuda restaurada
+      // 4.1. Actualizar las órdenes para que muestren la deuda restaurada
       for (const payment of relatedPayments) {
         await supabase
           .from('orders')
@@ -54,7 +63,23 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
       }
     }
 
-    // 4. Registrar la operación de reverso en el historial financiero
+    // 5. Revertir pagos de pólizas a estado pendiente
+    if (policyPayments && policyPayments.length > 0) {
+      const { error: updatePolicyPaymentsError } = await supabase
+        .from('policy_payments')
+        .update({ 
+          is_paid: false,
+          payment_date: null,
+          payment_method: null,
+          invoice_number: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('invoice_number', income.income_number);
+
+      if (updatePolicyPaymentsError) throw updatePolicyPaymentsError;
+    }
+
+    // 6. Registrar la operación de reverso en el historial financiero
     const logDescription = description || `Reverso de ${income.account_type === 'fiscal' ? 'ingreso fiscal' : 'ingreso no fiscal'} ${income.income_number || ''} - ${income.description || ''}`.trim();
     
     try {
@@ -73,7 +98,7 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
       // Continue with the reversal even if logging fails
     }
 
-    // 5. Eliminar el ingreso original
+    // 7. Eliminar el ingreso original
     const { error: deleteIncomeError } = await supabase
       .from('incomes')
       .delete()
@@ -81,11 +106,17 @@ export async function revertPaymentByIncomeId(incomeId: string, description?: st
 
     if (deleteIncomeError) throw deleteIncomeError;
 
+    // Construir mensaje de éxito
+    let successMessage = 'Pago revertido exitosamente.';
+    if (orderNumbers.length > 0) {
+      successMessage = `Pago revertido exitosamente. Órdenes ${orderNumbers.join(', ')} regresaron a pendientes de cobro.`;
+    } else if (policyPayments && policyPayments.length > 0) {
+      successMessage = `Pago revertido exitosamente. ${policyPayments.length} pago(s) de póliza regresaron a estado pendiente.`;
+    }
+
     return {
       success: true,
-      message: orderNumbers.length > 0 
-        ? `Pago revertido exitosamente. Órdenes ${orderNumbers.join(', ')} regresaron a pendientes de cobro.`
-        : 'Pago revertido exitosamente.',
+      message: successMessage,
       revertedOrderNumbers: orderNumbers
     };
 
