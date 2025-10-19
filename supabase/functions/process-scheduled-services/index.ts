@@ -444,8 +444,8 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
 
-      const nextRunDate = new Date(scheduledService.next_run).toISOString().split('T')[0];
-      console.log(`Processing scheduled service for client: ${client.name}, scheduled for: ${nextRunDate}, services: ${scheduledService.services.length}`);
+      const nextRunDateStr = new Date(scheduledService.next_run).toISOString().split('T')[0];
+      console.log(`Processing scheduled service for client: ${client.name}, scheduled for: ${nextRunDateStr}, services: ${scheduledService.services.length}`);
 
       // Get service types information for all services
       const serviceTypeIds = scheduledService.services.map((s: any) => s.service_type_id);
