@@ -11,88 +11,74 @@ interface FixedCostsVsPoliciesPanelProps {
 }
 
 export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPoliciesPanelProps) {
-  // Query para gastos fijos del período
+  // Query para gastos fijos recurrentes activos
   const fixedExpensesQuery = useQuery({
-    queryKey: ["fixed_costs_period", startDate, endDate],
+    queryKey: ["fixed_costs_active"],
     queryFn: async () => {
-      let query = supabase
-        .from("expenses")
-        .select("amount")
-        .eq("category", "gasto_fijo");
+      const { data, error } = await supabase
+        .from("fixed_expenses")
+        .select("amount, description")
+        .eq("active", true);
 
-      if (startDate) query = query.gte("expense_date", startDate);
-      if (endDate) query = query.lte("expense_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
-  // Query para nóminas del período
+  // Query para nóminas recurrentes activas
   const payrollsQuery = useQuery({
-    queryKey: ["payrolls_period", startDate, endDate],
+    queryKey: ["payrolls_active"],
     queryFn: async () => {
-      let query = supabase
-        .from("expenses")
-        .select("amount")
-        .or("category.eq.nomina,category.eq.nómina");
+      const { data, error } = await supabase
+        .from("recurring_payrolls")
+        .select("net_salary, employee_name")
+        .eq("active", true);
 
-      if (startDate) query = query.gte("expense_date", startDate);
-      if (endDate) query = query.lte("expense_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
-      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const total = (data || []).reduce((sum, item) => sum + (Number(item.net_salary) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
-  // Query para pagos de préstamos del período
+  // Query para préstamos activos - suma del pago mensual
   const loanPaymentsQuery = useQuery({
-    queryKey: ["loan_payments_period", startDate, endDate],
+    queryKey: ["loans_monthly_average"],
     queryFn: async () => {
-      let query = supabase
-        .from("loan_payments")
-        .select("amount")
-        .eq("status", "pagado");
+      const { data, error } = await supabase
+        .from("loans")
+        .select("monthly_payment")
+        .eq("status", "activo");
 
-      if (startDate) query = query.gte("payment_date", startDate);
-      if (endDate) query = query.lte("payment_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
-      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const total = (data || []).reduce((sum, item) => sum + (Number(item.monthly_payment) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
-  // Query para ingresos por pólizas del período
+  // Query para ingresos mensuales de pólizas activas
   const policyIncomesQuery = useQuery({
-    queryKey: ["policy_incomes_period", startDate, endDate],
+    queryKey: ["policy_clients_monthly"],
     queryFn: async () => {
-      let query = supabase
-        .from("policy_payments")
-        .select("amount")
-        .eq("is_paid", true);
+      const { data, error } = await supabase
+        .from("policy_clients")
+        .select(`
+          id,
+          insurance_policies(monthly_fee)
+        `)
+        .eq("is_active", true);
 
-      if (startDate) query = query.gte("payment_date", startDate);
-      if (endDate) query = query.lte("payment_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
-      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      const total = (data || []).reduce((sum, item) => {
+        const fee = (item as any).insurance_policies?.monthly_fee || 0;
+        return sum + Number(fee);
+      }, 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
   const isLoading =
@@ -101,20 +87,6 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     loanPaymentsQuery.isLoading ||
     policyIncomesQuery.isLoading;
 
-  if (!startDate || !endDate) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumen: Gastos Recurrentes vs Pólizas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Selecciona un período de fechas para ver el resumen</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -149,13 +121,16 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     <Card className="border-2">
       <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
         <CardTitle className="flex items-center justify-between">
-          <span>Resumen: Gastos Recurrentes vs Pólizas</span>
+          <span>Resumen Mensual: Gastos Recurrentes vs Pólizas</span>
           {coveragePercentage > 0 && (
             <Badge variant={coveragePercentage >= 100 ? "default" : "destructive"}>
               {coveragePercentage.toFixed(1)}% cobertura
             </Badge>
           )}
         </CardTitle>
+        <p className="text-sm text-muted-foreground mt-2">
+          Comparación de gastos recurrentes activos vs ingresos mensuales esperados
+        </p>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="grid md:grid-cols-3 gap-6">
@@ -196,7 +171,7 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
                 <div className="text-right">
                   <div className="font-semibold">{formatMXNExact(totalLoanPayments)}</div>
                   <div className="text-xs text-muted-foreground">
-                    {loanPaymentsQuery.data?.count || 0} pagos
+                    {loanPaymentsQuery.data?.count || 0} préstamos
                   </div>
                 </div>
               </div>
@@ -224,11 +199,11 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
             
             <div className="bg-green-50/50 dark:bg-green-950/20 p-4 rounded-lg">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Pagos Cobrados</span>
+                <span className="text-sm text-muted-foreground">Ingreso Mensual</span>
                 <div className="text-right">
                   <div className="font-semibold">{formatMXNExact(totalPolicyIncomes)}</div>
                   <div className="text-xs text-muted-foreground">
-                    {policyIncomesQuery.data?.count || 0} pagos
+                    {policyIncomesQuery.data?.count || 0} pólizas activas
                   </div>
                 </div>
               </div>
@@ -254,9 +229,9 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
           
           <div className="mt-2 text-sm text-muted-foreground text-center">
             {isPositive ? (
-              <p>✓ Los ingresos por pólizas cubren los gastos recurrentes del período</p>
+              <p>✓ Los ingresos mensuales de pólizas cubren los gastos recurrentes</p>
             ) : (
-              <p>⚠️ Los gastos recurrentes exceden los ingresos por pólizas en este período</p>
+              <p>⚠️ Los gastos recurrentes mensuales exceden los ingresos por pólizas</p>
             )}
           </div>
         </div>
