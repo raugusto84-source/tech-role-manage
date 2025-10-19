@@ -469,8 +469,8 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
       
-      // Use TODAY as the delivery date for the order (when it should be executed)
-      const targetDateStr = todayStr;
+      // Use the exact date from next_run (already in ISO format)
+      const targetDateStr = scheduledService.next_run.split('T')[0];
       
       // Get policy info for unique identification
       const { data: policyInfo } = await supabaseClient
@@ -516,9 +516,9 @@ async function processDueServices(supabaseClient: any) {
           client_id: client.id,
           service_type: serviceTypeIds[0], // Use first service as primary
           service_location: 'domicilio',
-          delivery_date: targetDateStr, // Use today's date
+          delivery_date: targetDateStr,
           estimated_cost: totalCost,
-          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} - Póliza: ${policyNumber} ${policyName ? '(' + policyName + ')' : ''}`,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} - Póliza: ${policyNumber} ${policyName ? '(' + policyName + ')' : ''} (${targetDateStr})`,
           status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
