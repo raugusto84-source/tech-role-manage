@@ -114,6 +114,16 @@ async function createInitialOrders(supabaseClient: any, body: any) {
 
       console.log(`Creating initial orders for client: ${client.name}, services: ${scheduledService.services.length}`);
 
+      // Get policy info for unique identification
+      const { data: policyInfo } = await supabaseClient
+        .from('policy_clients')
+        .select('insurance_policies(policy_number, policy_name)')
+        .eq('id', scheduledService.policy_client_id)
+        .single();
+      
+      const policyNumber = policyInfo?.insurance_policies?.policy_number || 'Sin Póliza';
+      const policyName = policyInfo?.insurance_policies?.policy_name || '';
+
       // Get service types information for all services
       const serviceTypeIds = scheduledService.services.map((s: any) => s.service_type_id);
       const { data: serviceTypes, error: serviceTypesError } = await supabaseClient
@@ -174,17 +184,17 @@ async function createInitialOrders(supabaseClient: any, body: any) {
       // Create orders for each calculated date
       for (const serviceDate of serviceDates) {
         try {
-          // Check if order already exists for this date
+          // Check if order already exists for THIS SPECIFIC policy on this date
           const { data: existingOrders } = await supabaseClient
             .from('orders')
             .select('id')
             .eq('is_policy_order', true)
-            .like('failure_description', `%Servicio programado%`)
+            .like('failure_description', `%${policyNumber}%`)
             .eq('client_id', client.id)
             .eq('delivery_date', serviceDate);
 
           if (existingOrders && existingOrders.length > 0) {
-            console.log(`Order already exists for scheduled service ${scheduledService.id} on ${serviceDate}`);
+            console.log(`Order already exists for policy ${policyNumber} on ${serviceDate}`);
             continue;
           }
 
@@ -199,7 +209,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
       if (numberError) throw numberError;
       const orderNumber = numberData as string;
 
-      // Create order for this date
+      // Create order for this date - include policy info
       const { data: orderData, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
@@ -209,7 +219,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
           service_location: 'domicilio',
           delivery_date: serviceDate,
           estimated_cost: totalCost,
-          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (${serviceDate})`,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} - Póliza: ${policyNumber} ${policyName ? '(' + policyName + ')' : ''} (${serviceDate})`,
           status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
@@ -461,18 +471,29 @@ async function processDueServices(supabaseClient: any) {
       
       // Use the exact date from next_run (already in ISO format)
       const targetDateStr = scheduledService.next_run.split('T')[0];
+      
+      // Get policy info for unique identification
+      const { data: policyInfo } = await supabaseClient
+        .from('policy_clients')
+        .select('insurance_policies(policy_number, policy_name)')
+        .eq('id', scheduledService.policy_client_id)
+        .single();
+      
+      const policyNumber = policyInfo?.insurance_policies?.policy_number || 'Sin Póliza';
+      const policyName = policyInfo?.insurance_policies?.policy_name || '';
 
-      // Check if order already exists for that date
+      // Check if order already exists for THIS SPECIFIC policy_client on that date
+      // Now we check by policy number to distinguish between different contracts for same client
       const { data: existingOrders } = await supabaseClient
         .from('orders')
         .select('id')
         .eq('is_policy_order', true)
-        .like('failure_description', `%Servicio programado%`)
+        .like('failure_description', `%${policyNumber}%`)
         .eq('client_id', client.id)
         .eq('delivery_date', targetDateStr);
 
       if (existingOrders && existingOrders.length > 0) {
-        console.log(`Order already exists for scheduled service ${scheduledService.id} on ${targetDateStr}`);
+        console.log(`Order already exists for policy ${policyNumber} on ${targetDateStr}`);
         continue;
       }
 
@@ -487,7 +508,7 @@ async function processDueServices(supabaseClient: any) {
       if (numberError) throw numberError;
       const orderNumber = numberData as string;
 
-      // Create single order with all services
+      // Create single order with all services - include policy info for tracking
       const { data: orderData, error: orderError } = await supabaseClient
         .from('orders')
         .insert({
@@ -497,7 +518,7 @@ async function processDueServices(supabaseClient: any) {
           service_location: 'domicilio',
           delivery_date: targetDateStr,
           estimated_cost: totalCost,
-          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (${targetDateStr})`,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} - Póliza: ${policyNumber} ${policyName ? '(' + policyName + ')' : ''} (${targetDateStr})`,
           status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
