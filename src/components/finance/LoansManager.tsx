@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, DollarSign, Calendar, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { Plus, DollarSign, Calendar, AlertCircle, Edit, Trash2 } from 'lucide-react';
 import { formatMXNExact } from '@/utils/currency';
 import { formatDateMexico } from '@/utils/dateUtils';
 
@@ -578,14 +578,13 @@ export function LoansManager() {
                   <TableCell>
                     <div className="flex gap-2 items-center">
                       <Button
-                        variant="default"
+                        variant="outline"
                         size="sm"
                         onClick={() => adjustLastPayment(loan.id)}
-                        title="Ajustar último pago"
-                        className="bg-green-600 hover:bg-green-700"
+                        title="Editar préstamo"
                       >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Ajustar
+                        <Edit className="h-4 w-4 mr-1" />
+                        Editar
                       </Button>
                       <Button
                         variant="ghost"
