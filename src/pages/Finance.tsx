@@ -1994,11 +1994,9 @@ export default function Finance() {
       </section>
 
       {/* Resumen de Gastos Fijos vs Pólizas */}
-      {filtersEnabled && (
-        <section className="mb-6">
-          <FixedCostsVsPoliciesPanel startDate={startDate} endDate={endDate} />
-        </section>
-      )}
+      <section className="mb-6">
+        <FixedCostsVsPoliciesPanel startDate={startDate} endDate={endDate} />
+      </section>
 
       {/* Resumen Filtrado */}
       {filtersEnabled && (
