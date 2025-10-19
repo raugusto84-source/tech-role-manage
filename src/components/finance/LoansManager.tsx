@@ -576,14 +576,16 @@ export function LoansManager() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
                         onClick={() => adjustLastPayment(loan.id)}
-                        title="Ajustar último pago para que el total sea correcto"
+                        title="Ajustar último pago"
+                        className="bg-green-600 hover:bg-green-700"
                       >
-                        <CheckCircle className="h-4 w-4" />
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Ajustar
                       </Button>
                       <Button
                         variant="ghost"
