@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,13 @@ export function PolicyPaymentDialog({
   const [paymentDate, setPaymentDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
 
+  // Actualizar el monto cuando el diálogo se abre o cuando cambia el payment
+  useEffect(() => {
+    if (open) {
+      setAmount(payment.amount.toString());
+    }
+  }, [open, payment.amount]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -79,6 +86,16 @@ export function PolicyPaymentDialog({
       toast({
         title: "Error", 
         description: "El monto debe ser un número válido mayor a 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validar que no se cobre más del monto pendiente
+    if (paymentAmount > payment.amount) {
+      toast({
+        title: "Error",
+        description: `El monto a cobrar no puede ser mayor al monto pendiente (${formatCOPCeilToTen(payment.amount)})`,
         variant: "destructive"
       });
       return;
