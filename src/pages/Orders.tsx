@@ -344,10 +344,8 @@ export default function Orders() {
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
-    // Hide finalized orders without pending balance unless checkbox is active
-    const isFinalized = order.status === 'finalizada';
-    const hasBalance = orderPaymentStatus[order.id] !== false; // true if has balance or unknown
-    const shouldShow = !isFinalized || hasBalance || showCompletedWithoutBalance;
+    // Hide all finalized orders from the list
+    const shouldShow = order.status !== 'finalizada';
     
     return matchesSearch && matchesStatus && shouldShow;
   }).sort((a, b) => {
