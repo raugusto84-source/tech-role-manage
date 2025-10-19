@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Eye, Trash2, CreditCard, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { format, isToday, isBefore, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useOrderElapsedTime } from "@/hooks/useOrderElapsedTime";
 import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel } from "@/utils/priorityCalculator";
@@ -120,8 +120,20 @@ export function OrderListItem({
     order.delivery_date
   );
 
+  // Determinar el color de fondo según la fecha de creación
+  const orderDate = new Date(order.created_at);
+  const isOrderToday = isToday(orderDate);
+  const isOrderPast = isBefore(orderDate, startOfDay(new Date()));
+
+  // Clases CSS condicionales para el fondo
+  const rowClassName = isOrderToday 
+    ? "hover:bg-muted/50 cursor-pointer bg-blue-50 dark:bg-blue-950/20" 
+    : isOrderPast 
+    ? "hover:bg-muted/50 cursor-pointer bg-amber-50 dark:bg-amber-950/20"
+    : "hover:bg-muted/50 cursor-pointer";
+
   return (
-    <TableRow className="hover:bg-muted/50 cursor-pointer">
+    <TableRow className={rowClassName}>
       <TableCell onClick={onClick} className="font-medium">
         {order.order_number}
       </TableCell>
