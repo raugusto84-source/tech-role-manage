@@ -106,6 +106,17 @@ export default function Finance() {
     setFiltersEnabled(true);
   };
   
+  // Función para establecer un mes específico
+  const setSpecificMonth = (monthValue: string) => {
+    if (!monthValue) return;
+    const [year, month] = monthValue.split('-').map(Number);
+    const firstDay = new Date(year, month - 1, 1).toISOString().substring(0, 10);
+    const lastDay = new Date(year, month, 0).toISOString().substring(0, 10);
+    setStartDate(firstDay);
+    setEndDate(lastDay);
+    setFiltersEnabled(true);
+  };
+  
   const clearFilters = () => {
     setStartDate("");
     setEndDate("");
@@ -1907,6 +1918,41 @@ export default function Finance() {
       {/* Filtros de Fecha */}
       <section className="mb-6">
         <h2 className="text-xl font-semibold mb-4 text-foreground">Filtros {filtersEnabled && <span className="text-sm font-normal text-muted-foreground">(Activos)</span>}</h2>
+        
+        {/* Selector rápido de mes */}
+        <div className="mb-4">
+          <label className="text-sm text-muted-foreground mb-2 block">Seleccionar Mes</label>
+          <Select onValueChange={setSpecificMonth}>
+            <SelectTrigger className="w-full md:w-64">
+              <SelectValue placeholder="Elige un mes..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(() => {
+                const months = [];
+                const currentDate = new Date();
+                const currentYear = currentDate.getFullYear();
+                
+                // Generar últimos 12 meses
+                for (let i = 0; i < 12; i++) {
+                  const date = new Date(currentYear, currentDate.getMonth() - i, 1);
+                  const year = date.getFullYear();
+                  const month = date.getMonth() + 1;
+                  const monthName = date.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                  const value = `${year}-${month.toString().padStart(2, '0')}`;
+                  
+                  months.push(
+                    <SelectItem key={value} value={value}>
+                      {monthName.charAt(0).toUpperCase() + monthName.slice(1)}
+                    </SelectItem>
+                  );
+                }
+                return months;
+              })()}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Filtros manuales */}
         <div className="grid gap-3 md:grid-cols-4 mb-4">
           <div>
             <label className="text-sm text-muted-foreground">Desde</label>
