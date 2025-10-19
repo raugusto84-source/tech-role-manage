@@ -11,91 +11,68 @@ interface FixedCostsVsPoliciesPanelProps {
 }
 
 export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPoliciesPanelProps) {
-  // Query para gastos fijos del período
+  // Query para gastos fijos totales (sin filtro de fecha)
   const fixedExpensesQuery = useQuery({
-    queryKey: ["fixed_costs_period", startDate, endDate],
+    queryKey: ["fixed_costs_total"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("expenses")
-        .select("amount, expense_date, description")
-        .eq("category", "gasto_fijo")
-        .order("expense_date", { ascending: false });
-
-      if (startDate) query = query.gte("expense_date", startDate);
-      if (endDate) query = query.lte("expense_date", endDate);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      return { total, count: data?.length || 0, items: data || [] };
-    },
-    enabled: !!startDate && !!endDate,
-  });
-
-  // Query para nóminas del período
-  const payrollsQuery = useQuery({
-    queryKey: ["payrolls_period", startDate, endDate],
-    queryFn: async () => {
-      let query = supabase
-        .from("expenses")
-        .select("amount, expense_date, description")
-        .or("category.eq.nomina,category.eq.nómina")
-        .order("expense_date", { ascending: false });
-
-      if (startDate) query = query.gte("expense_date", startDate);
-      if (endDate) query = query.lte("expense_date", endDate);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      return { total, count: data?.length || 0, items: data || [] };
-    },
-    enabled: !!startDate && !!endDate,
-  });
-
-  // Query para pagos de préstamos del período
-  const loanPaymentsQuery = useQuery({
-    queryKey: ["loan_payments_period", startDate, endDate],
-    queryFn: async () => {
-      let query = supabase
-        .from("loan_payments")
-        .select("amount, due_date, loans!inner(loan_number)")
-        .eq("status", "pagado")
-        .order("due_date", { ascending: false });
-
-      if (startDate) query = query.gte("due_date", startDate);
-      if (endDate) query = query.lte("due_date", endDate);
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      return { total, count: data?.length || 0, items: data || [] };
-    },
-    enabled: !!startDate && !!endDate,
-  });
-
-  // Query para ingresos por pólizas del período
-  const policyIncomesQuery = useQuery({
-    queryKey: ["policy_incomes_period", startDate, endDate],
-    queryFn: async () => {
-      let query = supabase
-        .from("policy_payments")
         .select("amount")
-        .eq("is_paid", true);
+        .eq("category", "gasto_fijo");
 
-      if (startDate) query = query.gte("payment_date", startDate);
-      if (endDate) query = query.lte("payment_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
+  });
+
+  // Query para nóminas totales (sin filtro de fecha)
+  const payrollsQuery = useQuery({
+    queryKey: ["payrolls_total"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("amount")
+        .or("category.eq.nomina,category.eq.nómina");
+
+      if (error) throw error;
+
+      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      return { total, count: data?.length || 0 };
+    },
+  });
+
+  // Query para pagos de préstamos totales (sin filtro de fecha)
+  const loanPaymentsQuery = useQuery({
+    queryKey: ["loan_payments_total"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("loan_payments")
+        .select("amount")
+        .eq("status", "pagado");
+
+      if (error) throw error;
+
+      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      return { total, count: data?.length || 0 };
+    },
+  });
+
+  // Query para ingresos por pólizas totales (sin filtro de fecha)
+  const policyIncomesQuery = useQuery({
+    queryKey: ["policy_incomes_total"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("policy_payments")
+        .select("amount")
+        .eq("is_paid", true);
+
+      if (error) throw error;
+
+      const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      return { total, count: data?.length || 0 };
+    },
   });
 
   const isLoading =
@@ -103,21 +80,6 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     payrollsQuery.isLoading ||
     loanPaymentsQuery.isLoading ||
     policyIncomesQuery.isLoading;
-
-  if (!startDate || !endDate) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumen: Gastos Recurrentes vs Pólizas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Selecciona un período de fechas para ver el resumen</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -152,7 +114,7 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     <Card className="border-2">
       <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
         <CardTitle className="flex items-center justify-between">
-          <span>Resumen: Gastos Recurrentes vs Pólizas</span>
+          <span>Resumen General: Gastos Recurrentes vs Pólizas</span>
           {coveragePercentage > 0 && (
             <Badge variant={coveragePercentage >= 100 ? "default" : "destructive"}>
               {coveragePercentage.toFixed(1)}% cobertura
@@ -174,8 +136,8 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
             </div>
             
             <div className="space-y-3 bg-red-50/50 dark:bg-red-950/20 p-4 rounded-lg">
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-sm font-semibold text-muted-foreground">Gastos Fijos</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Gastos Fijos</span>
                 <div className="text-right">
                   <div className="font-semibold">{formatMXNExact(totalFixedExpenses)}</div>
                   <div className="text-xs text-muted-foreground">
@@ -184,20 +146,8 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
                 </div>
               </div>
               
-              {fixedExpensesQuery.data?.items.map((expense, idx) => (
-                <div key={idx} className="flex justify-between items-start text-sm">
-                  <div className="flex-1">
-                    <div className="text-muted-foreground line-clamp-1">{expense.description}</div>
-                    <div className="text-xs text-muted-foreground/70">
-                      {new Date(expense.expense_date).toLocaleDateString('es-MX')}
-                    </div>
-                  </div>
-                  <div className="font-medium ml-2">{formatMXNExact(expense.amount)}</div>
-                </div>
-              ))}
-              
-              <div className="flex justify-between items-center border-b pb-2">
-                <span className="text-sm font-semibold text-muted-foreground">Nóminas</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Nóminas</span>
                 <div className="text-right">
                   <div className="font-semibold">{formatMXNExact(totalPayrolls)}</div>
                   <div className="text-xs text-muted-foreground">
@@ -206,20 +156,8 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
                 </div>
               </div>
               
-              {payrollsQuery.data?.items.map((payroll, idx) => (
-                <div key={idx} className="flex justify-between items-start text-sm">
-                  <div className="flex-1">
-                    <div className="text-muted-foreground line-clamp-1">{payroll.description}</div>
-                    <div className="text-xs text-muted-foreground/70">
-                      {new Date(payroll.expense_date).toLocaleDateString('es-MX')}
-                    </div>
-                  </div>
-                  <div className="font-medium ml-2">{formatMXNExact(payroll.amount)}</div>
-                </div>
-              ))}
-              
-              <div className="flex justify-between items-center border-b pb-2 mt-3">
-                <span className="text-sm font-semibold text-muted-foreground">Préstamos</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Préstamos</span>
                 <div className="text-right">
                   <div className="font-semibold">{formatMXNExact(totalLoanPayments)}</div>
                   <div className="text-xs text-muted-foreground">
@@ -227,20 +165,6 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
                   </div>
                 </div>
               </div>
-              
-              {loanPaymentsQuery.data?.items.map((payment, idx) => (
-                <div key={idx} className="flex justify-between items-start text-sm">
-                  <div className="flex-1">
-                    <div className="text-muted-foreground line-clamp-1">
-                      {payment.loans?.loan_number || 'Préstamo'}
-                    </div>
-                    <div className="text-xs text-muted-foreground/70">
-                      {new Date(payment.due_date).toLocaleDateString('es-MX')}
-                    </div>
-                  </div>
-                  <div className="font-medium ml-2">{formatMXNExact(payment.amount)}</div>
-                </div>
-              ))}
             </div>
           </div>
 
