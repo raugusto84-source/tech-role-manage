@@ -378,15 +378,20 @@ async function createInitialOrders(supabaseClient: any, body: any) {
 }
 
 async function processDueServices(supabaseClient: any) {
-  console.log('Processing due scheduled services...');
+  console.log('Processing due scheduled services for the week...');
 
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
-  const nextDayStr = new Date(today.getTime() + 86400000).toISOString().split('T')[0];
   
-  console.log(`Processing date: ${todayStr}`);
+  // Calculate end of week (7 days from today)
+  const endOfWeek = new Date(today);
+  endOfWeek.setDate(endOfWeek.getDate() + 7);
+  endOfWeek.setHours(23, 59, 59, 999);
+  const endOfWeekStr = endOfWeek.toISOString();
+  
+  console.log(`Processing services from ${todayStr} to ${endOfWeek.toISOString().split('T')[0]} (next 7 days)`);
 
-  // Get scheduled services due now or earlier
+  // Get scheduled services due within the next 7 days
   const nowStr = new Date().toISOString();
   const { data: dueServices, error: servicesError } = await supabaseClient
     .from('scheduled_services')
@@ -411,14 +416,15 @@ async function processDueServices(supabaseClient: any) {
       )
     `)
     .eq('is_active', true)
-    .lte('next_run', nowStr);
+    .gte('next_run', nowStr)
+    .lte('next_run', endOfWeekStr);
 
   if (servicesError) {
     console.error('Error fetching due services:', servicesError);
     throw servicesError;
   }
 
-  console.log(`Found ${dueServices?.length || 0} due services`);
+  console.log(`Found ${dueServices?.length || 0} services to process for the week`);
 
   let ordersCreated = 0;
   const errors: any[] = [];
@@ -438,7 +444,8 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
 
-      console.log(`Processing scheduled service for client: ${client.name}, services: ${scheduledService.services.length}`);
+      const nextRunDate = new Date(scheduledService.next_run).toISOString().split('T')[0];
+      console.log(`Processing scheduled service for client: ${client.name}, scheduled for: ${nextRunDate}, services: ${scheduledService.services.length}`);
 
       // Get service types information for all services
       const serviceTypeIds = scheduledService.services.map((s: any) => s.service_type_id);
@@ -491,7 +498,7 @@ async function processDueServices(supabaseClient: any) {
           service_location: 'domicilio',
           delivery_date: targetDateStr,
           estimated_cost: totalCost,
-          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')}`,
+          failure_description: `Servicio programado: ${serviceTypes?.map((st: any) => st.name).join(', ')} (${targetDateStr})`,
           status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
@@ -602,7 +609,7 @@ async function processDueServices(supabaseClient: any) {
         })
         .eq('id', scheduledService.id);
       ordersCreated++;
-      console.log(`Order created: ${orderData.order_number} for scheduled service ${scheduledService.id} with ${scheduledService.services.length} services`);
+      console.log(`Order created: ${orderData.order_number} for scheduled service ${scheduledService.id} on ${targetDateStr} with ${scheduledService.services.length} services`);
 
     } catch (serviceError) {
       console.error(`Error processing scheduled service ${scheduledService.id}:`, serviceError);
