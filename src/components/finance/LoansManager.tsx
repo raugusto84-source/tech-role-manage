@@ -429,6 +429,59 @@ export function LoansManager() {
     }
   };
 
+  // Función para ajustar manualmente el último pago de un préstamo
+  const adjustLastPayment = async (loanId: string) => {
+    try {
+      // Obtener el préstamo
+      const { data: loan, error: loanError } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('id', loanId)
+        .single();
+
+      if (loanError) throw loanError;
+
+      // Obtener todos los pagos del préstamo
+      const { data: payments, error: paymentsError } = await supabase
+        .from('loan_payments')
+        .select('*')
+        .eq('loan_id', loanId)
+        .order('payment_number', { ascending: true });
+
+      if (paymentsError) throw paymentsError;
+
+      if (!payments || payments.length === 0) return;
+
+      // Calcular el último pago correcto
+      const normalPaymentsTotal = loan.monthly_payment * (loan.total_months - 1);
+      const lastPaymentAmount = loan.amount - normalPaymentsTotal;
+
+      // Actualizar el último pago
+      const lastPayment = payments[payments.length - 1];
+      const { error: updateError } = await supabase
+        .from('loan_payments')
+        .update({ amount: lastPaymentAmount })
+        .eq('id', lastPayment.id);
+
+      if (updateError) throw updateError;
+
+      await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
+      await queryClient.invalidateQueries({ queryKey: ['loans'] });
+
+      toast({
+        title: "Pago ajustado",
+        description: `El último pago fue ajustado a ${formatMXNExact(lastPaymentAmount)}`,
+      });
+    } catch (error: any) {
+      console.error('Error adjusting last payment:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo ajustar el último pago",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Resumen */}
@@ -523,13 +576,23 @@ export function LoansManager() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteLoanId(loan.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => adjustLastPayment(loan.id)}
+                        title="Ajustar último pago para que el total sea correcto"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteLoanId(loan.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
