@@ -159,6 +159,8 @@ export function LoansManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showNewLoanDialog, setShowNewLoanDialog] = useState(false);
+  const [showEditLoanDialog, setShowEditLoanDialog] = useState(false);
+  const [editingLoan, setEditingLoan] = useState<any | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<{ payment: any; loan: any } | null>(null);
   const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null);
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
@@ -429,56 +431,128 @@ export function LoansManager() {
     }
   };
 
-  // Función para ajustar manualmente el último pago de un préstamo
-  const adjustLastPayment = async (loanId: string) => {
+  // Función para abrir el diálogo de edición
+  const openEditDialog = async (loanId: string) => {
     try {
-      // Obtener el préstamo
-      const { data: loan, error: loanError } = await supabase
+      const { data: loan, error } = await supabase
         .from('loans')
         .select('*')
         .eq('id', loanId)
         .single();
 
-      if (loanError) throw loanError;
+      if (error) throw error;
 
-      // Obtener todos los pagos del préstamo
-      const { data: payments, error: paymentsError } = await supabase
-        .from('loan_payments')
-        .select('*')
-        .eq('loan_id', loanId)
-        .order('due_date', { ascending: false });
+      setEditingLoan(loan);
+      setAmount(loan.amount.toString());
+      setMonthlyPayment(loan.monthly_payment.toString());
+      setTotalMonths(loan.total_months.toString());
+      setStartDate(loan.start_date);
+      setPaymentDay(loan.payment_day.toString());
+      setAccountType(loan.account_type as 'fiscal' | 'no_fiscal' | 'ninguna');
+      setDescription(loan.description?.replace(/^\[(PRÉSTAMO|INVERSIÓN)\]\s*/, '') || '');
+      setLoanType(loan.description?.startsWith('[PRÉSTAMO]') ? 'prestamo' : 'inversion');
+      setShowEditLoanDialog(true);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo cargar el préstamo",
+        variant: "destructive",
+      });
+    }
+  };
 
-      if (paymentsError) throw paymentsError;
+  // Función para actualizar el préstamo y recalcular pagos
+  const handleUpdateLoan = async () => {
+    if (!editingLoan || !amount || !monthlyPayment || !totalMonths || !startDate || !paymentDay) {
+      toast({
+        title: "Campos requeridos",
+        description: "Por favor completa todos los campos obligatorios",
+        variant: "destructive",
+      });
+      return;
+    }
 
-      if (!payments || payments.length === 0) return;
+    setIsLoading(true);
+    try {
+      const loanAmount = parseFloat(amount);
+      const payment = parseFloat(monthlyPayment);
+      const months = parseInt(totalMonths);
 
-      // Calcular el último pago correcto
-      const normalPaymentsTotal = loan.monthly_payment * (loan.total_months - 1);
-      const lastPaymentAmount = loan.amount - normalPaymentsTotal;
-
-      // Actualizar el último pago
-      const lastPayment = payments[payments.length - 1];
+      // Actualizar el préstamo
       const { error: updateError } = await supabase
-        .from('loan_payments')
-        .update({ amount: lastPaymentAmount })
-        .eq('id', lastPayment.id);
+        .from('loans')
+        .update({
+          amount: loanAmount,
+          monthly_payment: payment,
+          total_months: months,
+          start_date: startDate,
+          payment_day: parseInt(paymentDay),
+          account_type: accountType,
+          description: `[${loanType === 'prestamo' ? 'PRÉSTAMO' : 'INVERSIÓN'}] ${description}`,
+        })
+        .eq('id', editingLoan.id);
 
       if (updateError) throw updateError;
 
-      await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
-      await queryClient.invalidateQueries({ queryKey: ['loans'] });
+      // Eliminar pagos existentes
+      const { error: deleteError } = await supabase
+        .from('loan_payments')
+        .delete()
+        .eq('loan_id', editingLoan.id);
+
+      if (deleteError) throw deleteError;
+
+      // Regenerar pagos
+      const { error: paymentsError } = await supabase.rpc('generate_loan_payments', {
+        p_loan_id: editingLoan.id,
+      });
+
+      if (paymentsError) throw paymentsError;
+
+      // Ajustar el último pago
+      const normalPaymentsTotal = payment * (months - 1);
+      const lastPaymentAmount = loanAmount - normalPaymentsTotal;
+      
+      if (Math.abs(lastPaymentAmount - payment) > 0.01) {
+        const { error: adjustError } = await supabase
+          .from('loan_payments')
+          .update({ amount: lastPaymentAmount })
+          .eq('loan_id', editingLoan.id)
+          .eq('payment_number', months);
+
+        if (adjustError) throw adjustError;
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['loans'] }),
+        queryClient.invalidateQueries({ queryKey: ['loan_payments'] }),
+      ]);
 
       toast({
-        title: "Pago ajustado",
-        description: `El último pago fue ajustado a ${formatMXNExact(lastPaymentAmount)}`,
+        title: "Préstamo actualizado",
+        description: "El préstamo y sus pagos han sido actualizados exitosamente",
       });
+
+      // Reset form
+      setAmount('');
+      setMonthlyPayment('');
+      setTotalMonths('');
+      setStartDate('');
+      setPaymentDay('15');
+      setAccountType('ninguna');
+      setDescription('');
+      setLoanType('prestamo');
+      setEditingLoan(null);
+      setShowEditLoanDialog(false);
     } catch (error: any) {
-      console.error('Error adjusting last payment:', error);
+      console.error('Error updating loan:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo ajustar el último pago",
+        description: error.message || "No se pudo actualizar el préstamo",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -580,7 +654,7 @@ export function LoansManager() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => adjustLastPayment(loan.id)}
+                        onClick={() => openEditDialog(loan.id)}
                         title="Editar préstamo"
                       >
                         <Edit className="h-4 w-4 mr-1" />
@@ -732,13 +806,10 @@ export function LoansManager() {
               const payment = parseFloat(monthlyPayment);
               const months = parseInt(totalMonths);
               
-              // Calcular el total de los pagos normales (todos menos el último)
               const normalPaymentsTotal = payment * (months - 1);
-              // El último pago es lo que falta para completar el monto del préstamo
               const lastPaymentAmount = loanAmount - normalPaymentsTotal;
               const hasAdjustment = Math.abs(lastPaymentAmount - payment) > 0.01;
               
-              // Para préstamos: calcular intereses basado en la mensualidad sugerida
               const suggestedTotal = payment * months;
               const totalInterest = suggestedTotal - loanAmount;
               
@@ -828,6 +899,179 @@ export function LoansManager() {
             </Button>
             <Button onClick={handleCreateLoan} disabled={isLoading}>
               {isLoading ? 'Creando...' : 'Crear Préstamo'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo editar préstamo */}
+      <Dialog open={showEditLoanDialog} onOpenChange={(open) => {
+        setShowEditLoanDialog(open);
+        if (!open) {
+          setEditingLoan(null);
+          setAmount('');
+          setMonthlyPayment('');
+          setTotalMonths('');
+          setStartDate('');
+          setPaymentDay('15');
+          setAccountType('ninguna');
+          setDescription('');
+          setLoanType('prestamo');
+        }
+      }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Préstamo o Inversión</DialogTitle>
+            <DialogDescription>
+              Modifica los datos del préstamo. Los pagos se recalcularán automáticamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Label htmlFor="edit_loan_type">Tipo *</Label>
+              <Select value={loanType} onValueChange={(v) => setLoanType(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="prestamo">Préstamo (genera intereses)</SelectItem>
+                  <SelectItem value="inversion">Inversión (sin intereses)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="edit_amount">Monto {loanType === 'prestamo' ? 'del Préstamo' : 'de la Inversión'} *</Label>
+              <Input
+                id="edit_amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="50000"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit_monthly_payment">Mensualidad *</Label>
+              <Input
+                id="edit_monthly_payment"
+                type="number"
+                value={monthlyPayment}
+                onChange={(e) => setMonthlyPayment(e.target.value)}
+                placeholder="5000"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit_total_months">Número de Meses *</Label>
+              <Input
+                id="edit_total_months"
+                type="number"
+                value={totalMonths}
+                onChange={(e) => setTotalMonths(e.target.value)}
+                placeholder="12"
+              />
+            </div>
+
+            {amount && monthlyPayment && totalMonths && (() => {
+              const loanAmount = parseFloat(amount);
+              const payment = parseFloat(monthlyPayment);
+              const months = parseInt(totalMonths);
+              
+              const normalPaymentsTotal = payment * (months - 1);
+              const lastPaymentAmount = loanAmount - normalPaymentsTotal;
+              const hasAdjustment = Math.abs(lastPaymentAmount - payment) > 0.01;
+              
+              const suggestedTotal = payment * months;
+              const totalInterest = suggestedTotal - loanAmount;
+              
+              return (
+                <div className="col-span-2 p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Monto {loanType === 'prestamo' ? 'del préstamo' : 'de la inversión'}:</span>
+                    <span className="text-sm">{formatMXNExact(loanAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">Mensualidad normal ({months - 1} {months > 1 ? 'pagos' : 'pago'}):</span>
+                    <span className="text-sm">{formatMXNExact(payment)}</span>
+                  </div>
+                  {hasAdjustment && (
+                    <div className="flex justify-between text-blue-600 dark:text-blue-400">
+                      <span className="text-sm font-medium">Último pago (ajustado):</span>
+                      <span className="text-sm font-medium">{formatMXNExact(lastPaymentAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t pt-2 mt-2">
+                    <span className="text-sm font-bold">Total a {loanType === 'prestamo' ? 'pagar' : 'devolver'}:</span>
+                    <span className="text-sm font-bold">{formatMXNExact(loanAmount)}</span>
+                  </div>
+                  {loanType === 'prestamo' && totalInterest > 0 && (
+                    <div className="flex justify-between text-muted-foreground text-xs">
+                      <span>Intereses si no se ajustara:</span>
+                      <span>{formatMXNExact(totalInterest)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div>
+              <Label htmlFor="edit_start_date">Fecha de Inicio *</Label>
+              <Input
+                id="edit_start_date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit_payment_day">Día de Pago (1-31) *</Label>
+              <Input
+                id="edit_payment_day"
+                type="number"
+                min="1"
+                max="31"
+                value={paymentDay}
+                onChange={(e) => setPaymentDay(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="edit_account_type">¿A qué cuenta entra el dinero? *</Label>
+              <Select value={accountType} onValueChange={(v) => setAccountType(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fiscal">Cuenta Fiscal</SelectItem>
+                  <SelectItem value="no_fiscal">Cuenta No Fiscal</SelectItem>
+                  <SelectItem value="ninguna">Ninguna (Crédito ya usado)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="col-span-2">
+              <Label htmlFor="edit_description">Descripción</Label>
+              <Textarea
+                id="edit_description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Préstamo para equipamiento"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowEditLoanDialog(false);
+              setEditingLoan(null);
+            }} disabled={isLoading}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateLoan} disabled={isLoading}>
+              {isLoading ? 'Actualizando...' : 'Actualizar Préstamo'}
             </Button>
           </DialogFooter>
         </DialogContent>
