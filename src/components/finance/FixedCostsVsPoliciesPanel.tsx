@@ -11,88 +11,68 @@ interface FixedCostsVsPoliciesPanelProps {
 }
 
 export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPoliciesPanelProps) {
-  // Query para gastos fijos del período
+  // Query para gastos fijos (sin filtro de fecha)
   const fixedExpensesQuery = useQuery({
-    queryKey: ["fixed_costs_period", startDate, endDate],
+    queryKey: ["fixed_costs_all"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("expenses")
         .select("amount")
         .eq("category", "gasto_fijo");
 
-      if (startDate) query = query.gte("expense_date", startDate);
-      if (endDate) query = query.lte("expense_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
-  // Query para nóminas del período
+  // Query para nóminas (sin filtro de fecha)
   const payrollsQuery = useQuery({
-    queryKey: ["payrolls_period", startDate, endDate],
+    queryKey: ["payrolls_all"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("expenses")
         .select("amount")
         .or("category.eq.nomina,category.eq.nómina");
 
-      if (startDate) query = query.gte("expense_date", startDate);
-      if (endDate) query = query.lte("expense_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
-  // Query para pagos de préstamos del período
+  // Query para pagos de préstamos (sin filtro de fecha)
   const loanPaymentsQuery = useQuery({
-    queryKey: ["loan_payments_period", startDate, endDate],
+    queryKey: ["loan_payments_all"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("loan_payments")
         .select("amount")
         .eq("status", "pagado");
 
-      if (startDate) query = query.gte("payment_date", startDate);
-      if (endDate) query = query.lte("payment_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
-  // Query para ingresos por pólizas del período
+  // Query para ingresos por pólizas (sin filtro de fecha)
   const policyIncomesQuery = useQuery({
-    queryKey: ["policy_incomes_period", startDate, endDate],
+    queryKey: ["policy_incomes_all"],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("policy_payments")
         .select("amount")
         .eq("is_paid", true);
 
-      if (startDate) query = query.gte("payment_date", startDate);
-      if (endDate) query = query.lte("payment_date", endDate);
-
-      const { data, error } = await query;
       if (error) throw error;
 
       const total = (data || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
       return { total, count: data?.length || 0 };
     },
-    enabled: !!startDate && !!endDate,
   });
 
   const isLoading =
@@ -101,20 +81,6 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     loanPaymentsQuery.isLoading ||
     policyIncomesQuery.isLoading;
 
-  if (!startDate || !endDate) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Resumen: Gastos Recurrentes vs Pólizas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Selecciona un período de fechas para ver el resumen</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -149,7 +115,7 @@ export function FixedCostsVsPoliciesPanel({ startDate, endDate }: FixedCostsVsPo
     <Card className="border-2">
       <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/20 dark:to-blue-950/20">
         <CardTitle className="flex items-center justify-between">
-          <span>Resumen: Gastos Recurrentes vs Pólizas</span>
+          <span>Resumen Total: Gastos Recurrentes vs Pólizas</span>
           {coveragePercentage > 0 && (
             <Badge variant={coveragePercentage >= 100 ? "default" : "destructive"}>
               {coveragePercentage.toFixed(1)}% cobertura
