@@ -123,10 +123,13 @@ export function OrderListItem({
   // Determinar el color de fondo según la fecha de entrega
   const deliveryDate = new Date(order.estimated_delivery_date || order.delivery_date);
   const isDeliveryToday = isToday(deliveryDate);
-  const isDeliveryFuture = !isDeliveryToday && !isBefore(deliveryDate, startOfDay(new Date()));
+  const isDeliveryPast = isBefore(deliveryDate, startOfDay(new Date()));
+  const isDeliveryFuture = !isDeliveryToday && !isDeliveryPast;
 
   // Clases CSS condicionales para el fondo
-  const rowClassName = isDeliveryToday 
+  const rowClassName = isDeliveryPast
+    ? "hover:bg-muted/50 cursor-pointer bg-red-50 dark:bg-red-950/20"
+    : isDeliveryToday 
     ? "hover:bg-muted/50 cursor-pointer bg-blue-50 dark:bg-blue-950/20" 
     : isDeliveryFuture 
     ? "hover:bg-muted/50 cursor-pointer bg-green-50 dark:bg-green-950/20"
