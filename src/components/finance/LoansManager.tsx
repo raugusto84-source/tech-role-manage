@@ -256,7 +256,10 @@ export function LoansManager() {
           .eq('loan_id', newLoan.id)
           .eq('payment_number', months);
 
-        if (updateError) console.error('Error adjusting last payment:', updateError);
+        if (updateError) {
+          console.error('Error adjusting last payment:', updateError);
+          throw updateError;
+        }
       }
 
       // Si el préstamo tiene cuenta (fiscal o no fiscal), crear el ingreso correspondiente
@@ -278,8 +281,13 @@ export function LoansManager() {
         if (incomeError) throw incomeError;
       }
 
-      await queryClient.invalidateQueries({ queryKey: ['loans'] });
-      await queryClient.invalidateQueries({ queryKey: ['loan_payments'] });
+      // Invalidar todas las queries relacionadas para refrescar los datos
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['loans'] }),
+        queryClient.invalidateQueries({ queryKey: ['loan_payments'] }),
+        queryClient.invalidateQueries({ queryKey: ['loans_summary'] }),
+        queryClient.invalidateQueries({ queryKey: ['loan_payments_summary'] }),
+      ]);
 
       const typeLabel = loanType === 'prestamo' ? 'préstamo' : 'inversión';
       toast({
