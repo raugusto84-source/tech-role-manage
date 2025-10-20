@@ -19,20 +19,30 @@ export function QuickPriceCalculator() {
   const vatRetentionRate = 6.67; // Fixed 6.67% VAT retention for services with ISR
 
   // Calculations
-  const purchaseVATAmount = baseCost * (purchaseVAT / 100);
-  const afterPurchaseVAT = baseCost + purchaseVATAmount;
-  const marginAmount = afterPurchaseVAT * (margin / 100);
-  const afterMargin = afterPurchaseVAT + marginAmount;
+  let finalPrice: number;
+  let priceForInvoice: number;
+  let purchaseVATAmount = 0;
+  let marginAmount = 0;
+  let salesVATAmount = 0;
   
-  // Price for invoice (base + purchase VAT + margin) - used when ISR applies
-  const priceForInvoice = afterMargin;
-  
-  // Sales VAT and final price
-  const salesVATAmount = afterMargin * (salesVAT / 100);
-  const finalPrice = afterMargin + salesVATAmount;
+  if (itemType === 'service') {
+    // For services: fixed price + sales VAT
+    priceForInvoice = baseCost;
+    salesVATAmount = baseCost * (salesVAT / 100);
+    finalPrice = baseCost + salesVATAmount;
+  } else {
+    // For products: base cost + purchase VAT + margin + sales VAT
+    purchaseVATAmount = baseCost * (purchaseVAT / 100);
+    const afterPurchaseVAT = baseCost + purchaseVATAmount;
+    marginAmount = afterPurchaseVAT * (margin / 100);
+    const afterMargin = afterPurchaseVAT + marginAmount;
+    priceForInvoice = afterMargin;
+    salesVATAmount = afterMargin * (salesVAT / 100);
+    finalPrice = afterMargin + salesVATAmount;
+  }
   
   // VAT retention (only for services with ISR)
-  const vatRetentionAmount = hasISR && itemType === 'service' ? afterMargin * (vatRetentionRate / 100) : 0;
+  const vatRetentionAmount = hasISR && itemType === 'service' ? priceForInvoice * (vatRetentionRate / 100) : 0;
 
   return (
     <Card>
@@ -49,31 +59,6 @@ export function QuickPriceCalculator() {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Input Section */}
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="baseCost">Costo Base</Label>
-              <Input
-                id="baseCost"
-                type="number"
-                min="0"
-                step="10"
-                value={baseCost || ''}
-                onChange={(e) => setBaseCost(Number(e.target.value))}
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="margin">Margen de Ganancia (%)</Label>
-              <Input
-                id="margin"
-                type="number"
-                min="0"
-                step="10"
-                value={margin || ''}
-                onChange={(e) => setMargin(Number(e.target.value))}
-                placeholder="100"
-              />
-            </div>
-            
             <div className="space-y-3">
               <Label>Tipo de Item</Label>
               <RadioGroup value={itemType} onValueChange={(value) => setItemType(value as 'product' | 'service')}>
@@ -91,6 +76,36 @@ export function QuickPriceCalculator() {
                 </div>
               </RadioGroup>
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="baseCost">
+                {itemType === 'service' ? 'Precio del Servicio' : 'Costo Base'}
+              </Label>
+              <Input
+                id="baseCost"
+                type="number"
+                min="0"
+                step="10"
+                value={baseCost || ''}
+                onChange={(e) => setBaseCost(Number(e.target.value))}
+                placeholder="0"
+              />
+            </div>
+            
+            {itemType === 'product' && (
+              <div className="space-y-2">
+                <Label htmlFor="margin">Margen de Ganancia (%)</Label>
+                <Input
+                  id="margin"
+                  type="number"
+                  min="0"
+                  step="10"
+                  value={margin || ''}
+                  onChange={(e) => setMargin(Number(e.target.value))}
+                  placeholder="100"
+                />
+              </div>
+            )}
             
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -107,19 +122,25 @@ export function QuickPriceCalculator() {
           {/* Calculation Breakdown */}
           <div className="bg-muted/50 p-4 rounded-lg space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm">Costo Base:</span>
+              <span className="text-sm">
+                {itemType === 'service' ? 'Precio del Servicio:' : 'Costo Base:'}
+              </span>
               <span className="font-semibold">{formatMXNInt(baseCost)}</span>
             </div>
 
-            <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
-              <span className="text-sm">+ IVA de compra (16%):</span>
-              <span className="font-semibold">{formatMXNInt(purchaseVATAmount)}</span>
-            </div>
+            {itemType === 'product' && (
+              <>
+                <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
+                  <span className="text-sm">+ IVA de compra (16%):</span>
+                  <span className="font-semibold">{formatMXNInt(purchaseVATAmount)}</span>
+                </div>
 
-            <div className="flex justify-between items-center text-green-600 dark:text-green-400">
-              <span className="text-sm">+ Margen ({margin}%):</span>
-              <span className="font-semibold">{formatMXNInt(marginAmount)}</span>
-            </div>
+                <div className="flex justify-between items-center text-green-600 dark:text-green-400">
+                  <span className="text-sm">+ Margen ({margin}%):</span>
+                  <span className="font-semibold">{formatMXNInt(marginAmount)}</span>
+                </div>
+              </>
+            )}
 
             {!hasISR && (
               <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
@@ -146,7 +167,9 @@ export function QuickPriceCalculator() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Base + IVA compra + Margen (sin IVA de venta)
+                    {itemType === 'service' 
+                      ? 'Precio fijo del servicio (sin IVA)' 
+                      : 'Base + IVA compra + Margen (sin IVA de venta)'}
                   </p>
                 </div>
               </>
