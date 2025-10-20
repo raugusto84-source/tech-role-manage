@@ -41,6 +41,10 @@ export function QuickPriceCalculator() {
     finalPrice = afterMargin + salesVATAmount;
   }
   
+  // ISR calculation (10% retention from invoice price)
+  const isrAmount = hasISR ? priceForInvoice * (isrRate / 100) : 0;
+  const priceAfterISR = hasISR ? priceForInvoice - isrAmount : priceForInvoice;
+  
   // VAT retention (only for services with ISR)
   const vatRetentionAmount = hasISR && itemType === 'service' ? priceForInvoice * (vatRetentionRate / 100) : 0;
 
@@ -151,18 +155,12 @@ export function QuickPriceCalculator() {
 
             {hasISR && (
               <>
-                {itemType === 'service' && vatRetentionAmount > 0 && (
-                  <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
-                    <span className="text-sm">- Retención IVA (6.67%):</span>
-                    <span className="font-semibold">{formatMXNInt(vatRetentionAmount)}</span>
-                  </div>
-                )}
-                <div className="border-t pt-3 mb-3">
+                <div className="border-t pt-3 mb-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-base font-bold text-orange-600 dark:text-orange-400">
-                      Precio para Factura:
+                    <span className="text-sm font-semibold">
+                      Precio para Factura (Base):
                     </span>
-                    <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                    <span className="font-semibold">
                       {formatMXNInt(priceForInvoice)}
                     </span>
                   </div>
@@ -171,6 +169,29 @@ export function QuickPriceCalculator() {
                       ? 'Precio fijo del servicio (sin IVA)' 
                       : 'Base + IVA compra + Margen (sin IVA de venta)'}
                   </p>
+                </div>
+                
+                <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
+                  <span className="text-sm">- Retención ISR (10%):</span>
+                  <span className="font-semibold">{formatMXNInt(isrAmount)}</span>
+                </div>
+                
+                {itemType === 'service' && vatRetentionAmount > 0 && (
+                  <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
+                    <span className="text-sm">- Retención IVA (6.67%):</span>
+                    <span className="font-semibold">{formatMXNInt(vatRetentionAmount)}</span>
+                  </div>
+                )}
+                
+                <div className="border-t pt-3 mb-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-bold text-orange-600 dark:text-orange-400">
+                      A Recibir (con retenciones):
+                    </span>
+                    <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                      {formatMXNInt(priceAfterISR - vatRetentionAmount)}
+                    </span>
+                  </div>
                 </div>
               </>
             )}
