@@ -41,12 +41,9 @@ export function QuickPriceCalculator() {
     finalPrice = afterMargin + salesVATAmount;
   }
   
-  // ISR calculation (10% retention from invoice price)
+  // ISR calculation (1.25% retention from invoice price)
   const isrAmount = hasISR ? priceForInvoice * (isrRate / 100) : 0;
   const priceAfterISR = hasISR ? priceForInvoice - isrAmount : priceForInvoice;
-  
-  // VAT retention (only for services with ISR)
-  const vatRetentionAmount = hasISR && itemType === 'service' ? priceForInvoice * (vatRetentionRate / 100) : 0;
 
   return (
     <Card>
@@ -176,20 +173,13 @@ export function QuickPriceCalculator() {
                   <span className="font-semibold">{formatMXNInt(isrAmount)}</span>
                 </div>
                 
-                {itemType === 'service' && vatRetentionAmount > 0 && (
-                  <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
-                    <span className="text-sm">- Retención IVA (6.67%):</span>
-                    <span className="font-semibold">{formatMXNInt(vatRetentionAmount)}</span>
-                  </div>
-                )}
-                
                 <div className="border-t pt-3 mb-3">
                   <div className="flex justify-between items-center">
                     <span className="text-base font-bold text-orange-600 dark:text-orange-400">
-                      A Recibir (con retenciones):
+                      A Recibir (con retención):
                     </span>
                     <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                      {formatMXNInt(priceAfterISR - vatRetentionAmount)}
+                      {formatMXNInt(priceAfterISR)}
                     </span>
                   </div>
                 </div>
