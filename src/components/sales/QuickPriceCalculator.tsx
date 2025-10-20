@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calculator } from 'lucide-react';
 import { formatMXNInt } from '@/utils/currency';
 
@@ -10,10 +11,12 @@ export function QuickPriceCalculator() {
   const [baseCost, setBaseCost] = useState<number>(0);
   const [margin, setMargin] = useState<number>(100);
   const [hasISR, setHasISR] = useState<boolean>(false);
+  const [itemType, setItemType] = useState<'product' | 'service'>('product');
 
   const purchaseVAT = 16; // Fixed 16%
   const salesVAT = 16; // Fixed 16%
   const isrRate = 10; // Fixed 10% ISR
+  const vatRetentionRate = 6.67; // Fixed 6.67% VAT retention for services with ISR
 
   // Calculations
   const purchaseVATAmount = baseCost * (purchaseVAT / 100);
@@ -27,6 +30,9 @@ export function QuickPriceCalculator() {
   // Sales VAT and final price
   const salesVATAmount = afterMargin * (salesVAT / 100);
   const finalPrice = afterMargin + salesVATAmount;
+  
+  // VAT retention (only for services with ISR)
+  const vatRetentionAmount = hasISR && itemType === 'service' ? afterMargin * (vatRetentionRate / 100) : 0;
 
   return (
     <Card>
@@ -68,6 +74,24 @@ export function QuickPriceCalculator() {
               />
             </div>
             
+            <div className="space-y-3">
+              <Label>Tipo de Item</Label>
+              <RadioGroup value={itemType} onValueChange={(value) => setItemType(value as 'product' | 'service')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="product" id="product" />
+                  <Label htmlFor="product" className="font-normal cursor-pointer">
+                    Artículo
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="service" id="service" />
+                  <Label htmlFor="service" className="font-normal cursor-pointer">
+                    Servicio
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="hasISR"
@@ -105,19 +129,27 @@ export function QuickPriceCalculator() {
             )}
 
             {hasISR && (
-              <div className="border-t pt-3 mb-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-base font-bold text-orange-600 dark:text-orange-400">
-                    Precio para Factura:
-                  </span>
-                  <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                    {formatMXNInt(priceForInvoice)}
-                  </span>
+              <>
+                {itemType === 'service' && vatRetentionAmount > 0 && (
+                  <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
+                    <span className="text-sm">- Retención IVA (6.67%):</span>
+                    <span className="font-semibold">{formatMXNInt(vatRetentionAmount)}</span>
+                  </div>
+                )}
+                <div className="border-t pt-3 mb-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-base font-bold text-orange-600 dark:text-orange-400">
+                      Precio para Factura:
+                    </span>
+                    <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                      {formatMXNInt(priceForInvoice)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base + IVA compra + Margen (sin IVA de venta)
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Base + IVA compra + Margen (sin IVA de venta)
-                </p>
-              </div>
+              </>
             )}
 
             {!hasISR && (
