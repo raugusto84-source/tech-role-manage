@@ -2,15 +2,18 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calculator } from 'lucide-react';
 import { formatMXNInt } from '@/utils/currency';
 
 export function QuickPriceCalculator() {
   const [baseCost, setBaseCost] = useState<number>(0);
   const [margin, setMargin] = useState<number>(100);
+  const [hasISR, setHasISR] = useState<boolean>(false);
 
   const purchaseVAT = 16; // Fixed 16%
   const salesVAT = 16; // Fixed 16%
+  const isrRate = 10; // Fixed 10% ISR
 
   // Calculations
   const purchaseVATAmount = baseCost * (purchaseVAT / 100);
@@ -19,6 +22,10 @@ export function QuickPriceCalculator() {
   const afterMargin = afterPurchaseVAT + marginAmount;
   const salesVATAmount = afterMargin * (salesVAT / 100);
   const finalPrice = afterMargin + salesVATAmount;
+  
+  // ISR calculation (10% retention)
+  const isrAmount = hasISR ? finalPrice * (isrRate / 100) : 0;
+  const priceWithISR = finalPrice - isrAmount;
 
   return (
     <Card>
@@ -59,6 +66,17 @@ export function QuickPriceCalculator() {
                 placeholder="100"
               />
             </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hasISR"
+                checked={hasISR}
+                onCheckedChange={(checked) => setHasISR(checked === true)}
+              />
+              <Label htmlFor="hasISR" className="text-sm font-normal cursor-pointer">
+                Aplica retención de ISR (10%)
+              </Label>
+            </div>
           </div>
 
           {/* Calculation Breakdown */}
@@ -83,13 +101,20 @@ export function QuickPriceCalculator() {
               <span className="font-semibold">{formatMXNInt(salesVATAmount)}</span>
             </div>
 
+            {hasISR && (
+              <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
+                <span className="text-sm">- Retención ISR (10%):</span>
+                <span className="font-semibold">{formatMXNInt(isrAmount)}</span>
+              </div>
+            )}
+
             <div className="border-t pt-3">
               <div className="flex justify-between items-center">
                 <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                  Precio Final:
+                  {hasISR ? 'Precio para Factura:' : 'Precio Final:'}
                 </span>
                 <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatMXNInt(finalPrice)}
+                  {formatMXNInt(hasISR ? priceWithISR : finalPrice)}
                 </span>
               </div>
             </div>
