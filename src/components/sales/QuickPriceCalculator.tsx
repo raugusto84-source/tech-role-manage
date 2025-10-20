@@ -20,12 +20,13 @@ export function QuickPriceCalculator() {
   const afterPurchaseVAT = baseCost + purchaseVATAmount;
   const marginAmount = afterPurchaseVAT * (margin / 100);
   const afterMargin = afterPurchaseVAT + marginAmount;
+  
+  // Price for invoice (base + purchase VAT + margin) - used when ISR applies
+  const priceForInvoice = afterMargin;
+  
+  // Sales VAT and final price
   const salesVATAmount = afterMargin * (salesVAT / 100);
   const finalPrice = afterMargin + salesVATAmount;
-  
-  // ISR calculation (10% retention)
-  const isrAmount = hasISR ? finalPrice * (isrRate / 100) : 0;
-  const priceWithISR = finalPrice - isrAmount;
 
   return (
     <Card>
@@ -96,28 +97,54 @@ export function QuickPriceCalculator() {
               <span className="font-semibold">{formatMXNInt(marginAmount)}</span>
             </div>
 
-            <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
-              <span className="text-sm">+ IVA de venta (16%):</span>
-              <span className="font-semibold">{formatMXNInt(salesVATAmount)}</span>
-            </div>
-
-            {hasISR && (
-              <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
-                <span className="text-sm">- Retención ISR (10%):</span>
-                <span className="font-semibold">{formatMXNInt(isrAmount)}</span>
+            {!hasISR && (
+              <div className="flex justify-between items-center text-blue-600 dark:text-blue-400">
+                <span className="text-sm">+ IVA de venta (16%):</span>
+                <span className="font-semibold">{formatMXNInt(salesVATAmount)}</span>
               </div>
             )}
 
-            <div className="border-t pt-3">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {hasISR ? 'Precio para Factura:' : 'Precio Final:'}
-                </span>
-                <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {formatMXNInt(hasISR ? priceWithISR : finalPrice)}
-                </span>
+            {hasISR && (
+              <div className="border-t pt-3 mb-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-base font-bold text-orange-600 dark:text-orange-400">
+                    Precio para Factura:
+                  </span>
+                  <span className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                    {formatMXNInt(priceForInvoice)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Base + IVA compra + Margen (sin IVA de venta)
+                </p>
               </div>
-            </div>
+            )}
+
+            {!hasISR && (
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    Precio Final:
+                  </span>
+                  <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatMXNInt(finalPrice)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {hasISR && (
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-green-600 dark:text-green-400">
+                    Total con IVA:
+                  </span>
+                  <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {formatMXNInt(finalPrice)}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
