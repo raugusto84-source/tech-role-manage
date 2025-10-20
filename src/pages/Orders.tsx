@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -126,6 +128,8 @@ export default function Orders() {
   const [showMinimalForm, setShowMinimalForm] = useState(false);
   const [showCompletedWithoutBalance, setShowCompletedWithoutBalance] = useState(false);
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<Record<string, boolean>>({});
+  const [dateFrom, setDateFrom] = useState<Date | undefined>();
+  const [dateTo, setDateTo] = useState<Date | undefined>();
   const { canDeleteOrders } = useSoftDelete();
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [orderForPayment, setOrderForPayment] = useState<Order | null>(null);
@@ -344,9 +348,25 @@ export default function Orders() {
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     
-    // Show finalized orders only if checkbox is checked AND they have pending payment
-    const shouldShow = order.status !== 'finalizada' || 
-                      (showCompletedWithoutBalance && orderPaymentStatus[order.id] === true);
+    // Show finalized orders only if checkbox is checked
+    let shouldShow = order.status !== 'finalizada';
+    
+    if (showCompletedWithoutBalance && order.status === 'finalizada') {
+      shouldShow = true;
+      
+      // Apply date range filter for finalized orders
+      if (dateFrom || dateTo) {
+        const orderDate = new Date(order.estimated_delivery_date || order.delivery_date);
+        
+        if (dateFrom && orderDate < dateFrom) {
+          shouldShow = false;
+        }
+        
+        if (dateTo && orderDate > dateTo) {
+          shouldShow = false;
+        }
+      }
+    }
     
     return matchesSearch && matchesStatus && shouldShow;
   }).sort((a, b) => {
@@ -613,21 +633,98 @@ export default function Orders() {
 
       {/* Filter Checkboxes */}
       <div className="bg-muted/30 rounded-lg border p-4 mb-4">
-        <div className="flex flex-wrap gap-4 items-center">
-          <Label className="text-sm font-medium">Mostrar:</Label>
+        <div className="flex flex-col gap-4">
           <div className="flex items-center space-x-2">
             <Checkbox 
               id="show-completed"
               checked={showCompletedWithoutBalance}
-              onCheckedChange={(checked) => setShowCompletedWithoutBalance(checked === true)}
+              onCheckedChange={(checked) => {
+                setShowCompletedWithoutBalance(checked === true);
+                if (!checked) {
+                  setDateFrom(undefined);
+                  setDateTo(undefined);
+                }
+              }}
             />
             <Label 
               htmlFor="show-completed" 
-              className="text-sm font-normal cursor-pointer"
+              className="text-sm font-medium cursor-pointer"
             >
-              Finalizadas sin cobro pendiente
+              Mostrar finalizadas
             </Label>
           </div>
+          
+          {showCompletedWithoutBalance && (
+            <div className="flex flex-wrap gap-4 items-center pl-6 border-l-2 border-primary/20">
+              <Label className="text-sm font-medium">Rango de fechas:</Label>
+              <div className="flex flex-wrap gap-2 items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal",
+                        !dateFrom && "text-muted-foreground"
+                      )}
+                      size="sm"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Desde"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateFrom}
+                      onSelect={setDateFrom}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <span className="text-muted-foreground">-</span>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal",
+                        !dateTo && "text-muted-foreground"
+                      )}
+                      size="sm"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateTo ? format(dateTo, "PPP", { locale: es }) : "Hasta"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={dateTo}
+                      onSelect={setDateTo}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                {(dateFrom || dateTo) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDateFrom(undefined);
+                      setDateTo(undefined);
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
