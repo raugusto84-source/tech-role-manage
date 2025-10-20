@@ -7496,6 +7496,10 @@ export type Database = {
           years_experience: number
         }[]
       }
+      technician_has_client_access: {
+        Args: { _client_id: string; _technician_id: string }
+        Returns: boolean
+      }
       trigger_policy_follow_ups: {
         Args: {
           p_additional_data?: Json
