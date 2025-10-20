@@ -19,6 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Trash2, Folder } from 'lucide-react';
 import { MainCategoriesManager } from '@/components/admin/MainCategoriesManager';
 import { SubcategoriesManager } from '@/components/admin/SubcategoriesManager';
+import { QuickPriceCalculator } from '@/components/sales/QuickPriceCalculator';
 const MAIN_CATEGORIES = ['Computadoras', 'Cámaras de Seguridad', 'Control de Acceso', 'Fraccionamientos', 'Cercas Eléctricas', 'Servicio Técnico'] as const;
 
 // Emojis fallback si no hay icono en DB
@@ -290,6 +291,9 @@ export default function Sales() {
 
         {/* Control de Tiempo Personal - Solo para vendedores */}
         {profile?.role === 'vendedor' && <PersonalTimeClockPanel />}
+
+        {/* Quick Price Calculator */}
+        <QuickPriceCalculator />
 
         {/* Tabs principales */}
         <Tabs value={activeTab} onValueChange={v => setActiveTab(v as any)} className="w-full">
