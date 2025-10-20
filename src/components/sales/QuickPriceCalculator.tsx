@@ -15,7 +15,7 @@ export function QuickPriceCalculator() {
 
   const purchaseVAT = 16; // Fixed 16%
   const salesVAT = 16; // Fixed 16%
-  const isrRate = 10; // Fixed 10% ISR
+  const isrRate = 1.25; // Fixed 1.25% ISR
   const vatRetentionRate = 6.67; // Fixed 6.67% VAT retention for services with ISR
 
   // Calculations
@@ -118,7 +118,7 @@ export function QuickPriceCalculator() {
                 onCheckedChange={(checked) => setHasISR(checked === true)}
               />
               <Label htmlFor="hasISR" className="text-sm font-normal cursor-pointer">
-                Aplica retención de ISR (10%)
+                Aplica retención de ISR (1.25%)
               </Label>
             </div>
           </div>
@@ -172,7 +172,7 @@ export function QuickPriceCalculator() {
                 </div>
                 
                 <div className="flex justify-between items-center text-orange-600 dark:text-orange-400">
-                  <span className="text-sm">- Retención ISR (10%):</span>
+                  <span className="text-sm">- Retención ISR (1.25%):</span>
                   <span className="font-semibold">{formatMXNInt(isrAmount)}</span>
                 </div>
                 
