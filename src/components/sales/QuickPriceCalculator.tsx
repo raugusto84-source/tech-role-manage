@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -6,12 +6,51 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calculator } from 'lucide-react';
 import { formatMXNInt } from '@/utils/currency';
+import { supabase } from '@/integrations/supabase/client';
+
+interface MarginConfig {
+  id: string;
+  min_price: number;
+  max_price: number;
+  margin_percentage: number;
+}
 
 export function QuickPriceCalculator() {
   const [baseCost, setBaseCost] = useState<number>(0);
   const [margin, setMargin] = useState<number>(100);
   const [hasISR, setHasISR] = useState<boolean>(false);
   const [itemType, setItemType] = useState<'product' | 'service'>('product');
+  const [marginConfigs, setMarginConfigs] = useState<MarginConfig[]>([]);
+
+  // Cargar configuraciones de márgenes
+  useEffect(() => {
+    const loadMarginConfigs = async () => {
+      const { data, error } = await supabase
+        .from("profit_margin_configs")
+        .select("*")
+        .eq("is_active", true)
+        .order("min_price", { ascending: true });
+
+      if (!error && data) {
+        setMarginConfigs(data);
+      }
+    };
+
+    loadMarginConfigs();
+  }, []);
+
+  // Ajustar margen automáticamente cuando cambia el costo base (solo para productos)
+  useEffect(() => {
+    if (itemType === 'product' && baseCost > 0 && marginConfigs.length > 0) {
+      const applicableConfig = marginConfigs.find(
+        config => baseCost >= config.min_price && baseCost <= config.max_price
+      );
+
+      if (applicableConfig) {
+        setMargin(applicableConfig.margin_percentage);
+      }
+    }
+  }, [baseCost, marginConfigs, itemType]);
 
   const purchaseVAT = 16; // Fixed 16%
   const salesVAT = 16; // Fixed 16%
