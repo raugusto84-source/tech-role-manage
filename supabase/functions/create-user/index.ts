@@ -1,10 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
+// Input validation schema
+const createUserSchema = z.object({
+  email: z.string().email('Invalid email format').max(255, 'Email too long'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
+  full_name: z.string().min(1, 'Full name is required').max(100, 'Full name too long').trim(),
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(30, 'Username must be at most 30 characters')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+  role: z.enum(['administrador', 'vendedor', 'tecnico', 'cliente', 'supervisor'], {
+    errorMap: () => ({ message: 'Invalid role' })
+  }),
+  phone: z.string().regex(/^\+?[0-9]{10,15}$/, 'Invalid phone number format').optional()
+})
 
 serve(async (req) => {
   // Handle CORS
@@ -65,12 +86,30 @@ serve(async (req) => {
       throw new Error('User not authorized to create users')
     }
 
-  // Get request body
-  const { email, password, full_name, username, phone, role } = await req.json()
-
-  if (!email || !password || !full_name || !username || !role) {
-    throw new Error('Missing required fields')
+  // Get and validate request body
+  const body = await req.json()
+  
+  let validatedData
+  try {
+    validatedData = createUserSchema.parse(body)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Validation failed',
+          details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      )
+    }
+    throw error
   }
+
+  const { email, password, full_name, username, phone, role } = validatedData
 
   // Create user with admin client
   const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({

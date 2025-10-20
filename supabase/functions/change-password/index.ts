@@ -1,10 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const changePasswordSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+  newPassword: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character')
+});
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -56,17 +68,30 @@ serve(async (req) => {
       throw new Error('Unauthorized - only administrators can change passwords');
     }
 
-    // Parse request body
-    const { userId, newPassword } = await req.json();
+    // Parse and validate request body
+    const body = await req.json();
     
-    if (!userId || !newPassword) {
-      throw new Error('Missing userId or newPassword');
+    let validatedData;
+    try {
+      validatedData = changePasswordSchema.parse(body);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Validation failed',
+            details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          }
+        );
+      }
+      throw error;
     }
 
-    // Validate password length
-    if (newPassword.length < 6) {
-      throw new Error('Password must be at least 6 characters long');
-    }
+    const { userId, newPassword } = validatedData;
 
     // Create admin client to change password
     const adminSupabase = createClient(
