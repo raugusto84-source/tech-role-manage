@@ -2076,7 +2076,7 @@ export default function Finance() {
       </section>
       )}
 
-      <Tabs defaultValue="fiscal">
+      <Tabs defaultValue="cobranza">
         <TabsList className="bg-lime-400 rounded-none">
           <TabsTrigger value="fiscal" className="text-black font-bold">Fiscal</TabsTrigger>
           <TabsTrigger value="no_fiscal" className="text-black font-bold">No Fiscal</TabsTrigger>
