@@ -30,6 +30,7 @@ interface OrderPayment {
   created_at: string;
   updated_at: string;
   completion_date: string | null;
+  services_description: string;
 }
 
 export function OrderPaymentsPending() {
@@ -82,12 +83,20 @@ export function OrderPaymentsPending() {
         // Get order items to calculate real total
         const { data: orderItems, error: itemsError } = await supabase
           .from('order_items')
-          .select('total_amount')
+          .select('total_amount, service_name, service_description, item_type')
           .eq('order_id', pc.order_id);
 
         if (itemsError) {
           console.error('Error fetching order items:', itemsError);
         }
+
+        // Build services description
+        const servicesDescription = (orderItems || [])
+          .map((item: any) => {
+            const type = item.item_type === 'service' ? 'Servicio' : 'Producto';
+            return `${type}: ${item.service_name}`;
+          })
+          .join(', ') || 'Sin descripción';
 
         // Calculate the actual order total from items
         const actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
@@ -132,7 +141,8 @@ export function OrderPaymentsPending() {
           created_at: pc.created_at,
           updated_at: pc.updated_at,
           due_date: pc.due_date,
-          completion_date: completionDate
+          completion_date: completionDate,
+          services_description: servicesDescription
         };
       });
 
@@ -336,6 +346,7 @@ export function OrderPaymentsPending() {
                   <TableRow>
                     <TableHead>Orden</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Servicios</TableHead>
                     <TableHead>Fecha Finalización</TableHead>
                     <TableHead>Monto</TableHead>
                     <TableHead>Saldo</TableHead>
@@ -355,6 +366,11 @@ export function OrderPaymentsPending() {
                           <div className="text-sm text-muted-foreground">
                             {payment.client_email}
                           </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm max-w-xs">
+                        <div className="truncate" title={payment.services_description}>
+                          {payment.services_description}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm">
