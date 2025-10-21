@@ -29,6 +29,7 @@ interface OrderPayment {
   due_date: string;
   created_at: string;
   updated_at: string;
+  completion_date: string | null;
 }
 
 export function OrderPaymentsPending() {
@@ -67,6 +68,17 @@ export function OrderPaymentsPending() {
 
       // Fetch actual order totals and calculate remaining balance for each pending collection
       const formattedPaymentsPromises = (pendingCollections || []).map(async (pc: any) => {
+        // Get order details including completion date
+        const { data: orderData, error: orderError } = await supabase
+          .from('orders')
+          .select('client_approved_at, updated_at')
+          .eq('id', pc.order_id)
+          .single();
+
+        if (orderError) {
+          console.error('Error fetching order details:', orderError);
+        }
+
         // Get order items to calculate real total
         const { data: orderItems, error: itemsError } = await supabase
           .from('order_items')
@@ -106,6 +118,9 @@ export function OrderPaymentsPending() {
         // Calculate remaining balance consistent with dialog
         const remainingBalance = Math.max(0, finalExactTotal - totalPaid);
 
+        // Use client_approved_at as completion date if available, otherwise updated_at
+        const completionDate = orderData?.client_approved_at || orderData?.updated_at || null;
+
         return {
           id: pc.id,
           order_id: pc.order_id,
@@ -116,7 +131,8 @@ export function OrderPaymentsPending() {
           balance: remainingBalance, // Use calculated remaining balance
           created_at: pc.created_at,
           updated_at: pc.updated_at,
-          due_date: pc.due_date
+          due_date: pc.due_date,
+          completion_date: completionDate
         };
       });
 
@@ -320,6 +336,7 @@ export function OrderPaymentsPending() {
                   <TableRow>
                     <TableHead>Orden</TableHead>
                     <TableHead>Cliente</TableHead>
+                    <TableHead>Fecha Finalización</TableHead>
                     <TableHead>Monto</TableHead>
                     <TableHead>Saldo</TableHead>
                     <TableHead>Estado</TableHead>
@@ -339,6 +356,11 @@ export function OrderPaymentsPending() {
                             {payment.client_email}
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {payment.completion_date 
+                          ? formatDateMexico(payment.completion_date, 'dd/MM/yyyy')
+                          : '-'}
                       </TableCell>
                       <TableCell>{formatCurrency(payment.amount)}</TableCell>
                       <TableCell className="font-medium">
