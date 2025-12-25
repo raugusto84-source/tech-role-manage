@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Calendar, User, Clock, MapPin, Image } from 'lucide-react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatDateMexico } from '@/utils/dateUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface TimeRecord {
@@ -281,7 +281,7 @@ export function EmployeeHistoryPanel() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {format(new Date(record.work_date), 'dd/MM/yyyy', { locale: es })}
+                      {formatDateMexico(record.work_date, 'dd/MM/yyyy')}
                     </div>
                     
                     <div className="flex items-center gap-1">
@@ -329,7 +329,7 @@ export function EmployeeHistoryPanel() {
                           />
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                              <strong>Fecha:</strong> {format(new Date(record.work_date), 'dd/MM/yyyy')}
+                              <strong>Fecha:</strong> {formatDateMexico(record.work_date, 'dd/MM/yyyy')}
                             </div>
                             <div>
                               <strong>Hora:</strong> {record.check_in_time ? format(new Date(record.check_in_time), 'HH:mm') : 'N/A'}
@@ -367,7 +367,7 @@ export function EmployeeHistoryPanel() {
                           />
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
-                              <strong>Fecha:</strong> {format(new Date(record.work_date), 'dd/MM/yyyy')}
+                              <strong>Fecha:</strong> {formatDateMexico(record.work_date, 'dd/MM/yyyy')}
                             </div>
                             <div>
                               <strong>Hora:</strong> {record.check_out_time ? format(new Date(record.check_out_time), 'HH:mm') : 'N/A'}
