@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
+import { getCurrentDateMexico } from '@/utils/dateUtils';
 
 interface Location {
   lat: number;
@@ -49,7 +50,7 @@ export function TimeClockWidget() {
   const loadTodayRecord = async () => {
     if (!user) return;
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getCurrentDateMexico();
       const { data, error } = await supabase
         .from('time_records')
         .select('*')
@@ -255,7 +256,7 @@ export function TimeClockWidget() {
         check_in_time: now.toISOString(),
         check_in_location: location as any,
         check_in_photo_url: photoUrl,
-        work_date: now.toISOString().split('T')[0],
+        work_date: getCurrentDateMexico(),
         status: 'checked_in',
       };
 

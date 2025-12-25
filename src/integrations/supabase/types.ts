@@ -7064,10 +7064,7 @@ export type Database = {
       }
     }
     Functions: {
-      auto_assign_cleaning_tasks: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      auto_assign_cleaning_tasks: { Args: never; Returns: undefined }
       calculate_employee_weekly_payroll: {
         Args: {
           p_employee_id: string
@@ -7159,30 +7156,15 @@ export type Database = {
         Args: { p_new_password: string; p_user_id: string }
         Returns: Json
       }
-      check_and_award_achievements: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      check_overdue_payments: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      clean_expired_rewards: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      clean_workflow_data: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      check_and_award_achievements: { Args: never; Returns: undefined }
+      check_overdue_payments: { Args: never; Returns: undefined }
+      clean_expired_rewards: { Args: never; Returns: undefined }
+      clean_workflow_data: { Args: never; Returns: Json }
       complete_follow_up_reminder: {
         Args: { p_reminder_id: string; p_success?: boolean }
         Returns: undefined
       }
-      convert_quote_to_order: {
-        Args: { quote_id: string }
-        Returns: Json
-      }
+      convert_quote_to_order: { Args: { quote_id: string }; Returns: Json }
       create_order_for_scheduled_service: {
         Args: { p_scheduled_service_id: string }
         Returns: {
@@ -7190,10 +7172,7 @@ export type Database = {
           order_number: string
         }[]
       }
-      create_policy_follow_up_configs: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      create_policy_follow_up_configs: { Args: never; Returns: undefined }
       create_scheduled_service_bundle: {
         Args: {
           p_created_by: string
@@ -7210,43 +7189,22 @@ export type Database = {
         }[]
       }
       generate_automatic_orders_from_policies: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: undefined
       }
-      generate_expense_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_income_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_loan_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_expense_number: { Args: never; Returns: string }
+      generate_income_number: { Args: never; Returns: string }
+      generate_loan_number: { Args: never; Returns: string }
       generate_loan_payments: {
         Args: { p_loan_id: string }
         Returns: undefined
       }
-      generate_monthly_policy_payments: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      generate_monthly_recommendations: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      generate_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_payment_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_monthly_policy_payments: { Args: never; Returns: Json }
+      generate_monthly_recommendations: { Args: never; Returns: undefined }
+      generate_order_number: { Args: never; Returns: string }
+      generate_payment_number: { Args: never; Returns: string }
       generate_payment_overdue_alerts: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           alert_priority: string
           amount: number
@@ -7256,38 +7214,14 @@ export type Database = {
           policy_name: string
         }[]
       }
-      generate_policy_income_projections: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      generate_policy_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_policy_order_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_purchase_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_quote_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_referral_code: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_sale_number: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      generate_survey_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_policy_income_projections: { Args: never; Returns: undefined }
+      generate_policy_number: { Args: never; Returns: string }
+      generate_policy_order_number: { Args: never; Returns: string }
+      generate_purchase_number: { Args: never; Returns: string }
+      generate_quote_number: { Args: never; Returns: string }
+      generate_referral_code: { Args: never; Returns: string }
+      generate_sale_number: { Args: never; Returns: string }
+      generate_survey_token: { Args: never; Returns: string }
       generate_weekly_report: {
         Args: {
           p_employee_id: string
@@ -7309,7 +7243,7 @@ export type Database = {
         }[]
       }
       get_automation_cron_status: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active: boolean
           jobname: string
@@ -7329,18 +7263,9 @@ export type Database = {
           total_revenue: number
         }[]
       }
-      get_current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_email_by_username: {
-        Args: { p_username: string }
-        Returns: string
-      }
-      get_simple_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_current_user_role: { Args: never; Returns: string }
+      get_email_by_username: { Args: { p_username: string }; Returns: string }
+      get_simple_user_role: { Args: never; Returns: string }
       get_upcoming_reminders: {
         Args: { days_ahead?: number }
         Returns: {
@@ -7352,18 +7277,9 @@ export type Database = {
           vehicle_model: string
         }[]
       }
-      get_user_role_safe: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      handle_calculate_order_total: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      has_logged_time_today: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      get_user_role_safe: { Args: never; Returns: string }
+      handle_calculate_order_total: { Args: never; Returns: undefined }
+      has_logged_time_today: { Args: { user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["user_role"]
@@ -7391,17 +7307,9 @@ export type Database = {
         }
         Returns: undefined
       }
-      log_financial_operation: {
-        Args:
-          | {
-              p_account_type?: string
-              p_amount: number
-              p_description: string
-              p_operation_type: string
-              p_record_id: string
-              p_table_name: string
-            }
-          | {
+      log_financial_operation:
+        | {
+            Args: {
               p_account_type?: string
               p_amount: number
               p_operation_date?: string
@@ -7411,7 +7319,21 @@ export type Database = {
               p_record_id: string
               p_table_name: string
             }
-          | {
+            Returns: string
+          }
+        | {
+            Args: {
+              p_account_type?: string
+              p_amount: number
+              p_description: string
+              p_operation_type: string
+              p_record_id: string
+              p_table_name: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
               p_change_reason?: string
               p_metadata?: Json
               p_new_data?: Json
@@ -7420,8 +7342,8 @@ export type Database = {
               p_record_id: string
               p_table_name: string
             }
-        Returns: string
-      }
+            Returns: string
+          }
       log_order_event: {
         Args: {
           p_event_description: string
@@ -7433,7 +7355,7 @@ export type Database = {
         Returns: undefined
       }
       process_pending_follow_ups: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           client_email: string
           message_content: string
@@ -7442,14 +7364,8 @@ export type Database = {
           reminder_id: string
         }[]
       }
-      process_scheduled_surveys: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      refresh_pending_collections: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      process_scheduled_surveys: { Args: never; Returns: undefined }
+      refresh_pending_collections: { Args: never; Returns: undefined }
       reject_order: {
         Args: { p_order_id: string; p_rejection_reason: string }
         Returns: Json
@@ -7509,10 +7425,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      update_overdue_policy_payments: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      update_overdue_policy_payments: { Args: never; Returns: undefined }
     }
     Enums: {
       account_type: "fiscal" | "no_fiscal"
