@@ -20,9 +20,11 @@ interface User {
   username: string;
   full_name: string;
   phone?: string;
-  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente' | 'supervisor' | 'visor_tecnico';
+  role: 'administrador' | 'vendedor' | 'tecnico' | 'cliente' | 'supervisor' | 'visor_tecnico' | 'jcf';
   created_at: string;
   updated_at: string;
+  jcf_training_start_date?: string;
+  jcf_training_end_date?: string;
 }
 interface UserManagementProps {
   onUserSelect: (userId: string, role: string) => void;
@@ -189,7 +191,7 @@ export function UserManagement({
         username: formData.username,
         full_name: formData.full_name,
         phone: formData.phone || null,
-        role: formData.role,
+        role: formData.role as any,
         updated_at: new Date().toISOString()
       }).eq('id', editingUser.id);
       if (error) throw error;
@@ -401,6 +403,8 @@ export function UserManagement({
         return 'outline';
       case 'cliente':
         return 'secondary';
+      case 'jcf':
+        return 'secondary';
       default:
         return 'outline';
     }
@@ -410,15 +414,16 @@ export function UserManagement({
    * Traduce roles al español
    */
   const translateRole = (role: string) => {
-    const translations = {
+    const translations: Record<string, string> = {
       'administrador': 'Administrador',
       'supervisor': 'Supervisor',
       'vendedor': 'Vendedor',
       'tecnico': 'Técnico',
       'cliente': 'Cliente',
-      'visor_tecnico': 'Visor Técnico'
+      'visor_tecnico': 'Visor Técnico',
+      'jcf': 'JCF'
     };
-    return translations[role as keyof typeof translations] || role;
+    return translations[role] || role;
   };
   if (loading && users.length === 0) {
     return <div className="text-center py-6">Cargando usuarios...</div>;
@@ -443,6 +448,7 @@ export function UserManagement({
             <SelectItem value="vendedor">Vendedores</SelectItem>
             <SelectItem value="tecnico">Técnicos</SelectItem>
             <SelectItem value="visor_tecnico">Visores Técnicos</SelectItem>
+            <SelectItem value="jcf">JCF</SelectItem>
             <SelectItem value="cliente">Clientes</SelectItem>
           </SelectContent>
         </Select>
@@ -514,6 +520,7 @@ export function UserManagement({
                     <SelectItem value="vendedor">Vendedor</SelectItem>
                     <SelectItem value="supervisor">Supervisor</SelectItem>
                     <SelectItem value="visor_tecnico">Visor Técnico</SelectItem>
+                    <SelectItem value="jcf">JCF (Jóvenes Construyendo el Futuro)</SelectItem>
                     <SelectItem value="administrador">Administrador</SelectItem>
                   </SelectContent>
                 </Select>
