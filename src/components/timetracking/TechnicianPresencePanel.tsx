@@ -34,7 +34,7 @@ export function TechnicianPresencePanel() {
       const { data: employeeProfiles, error: profilesError } = await supabase
         .from('profiles')
         .select('user_id, full_name, role')
-        .in('role', ['tecnico', 'vendedor', 'supervisor', 'administrador'])
+        .in('role', ['tecnico', 'vendedor', 'supervisor', 'administrador', 'jcf'] as any)
         .order('full_name');
 
       if (profilesError) throw profilesError;

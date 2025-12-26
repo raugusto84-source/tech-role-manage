@@ -4434,6 +4434,8 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          jcf_training_end_date: string | null
+          jcf_training_start_date: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -4446,6 +4448,8 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          jcf_training_end_date?: string | null
+          jcf_training_start_date?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -4458,6 +4462,8 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          jcf_training_end_date?: string | null
+          jcf_training_start_date?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
