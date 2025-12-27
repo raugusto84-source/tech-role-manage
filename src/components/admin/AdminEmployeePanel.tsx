@@ -25,7 +25,7 @@ export function AdminEmployeePanel() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="presence" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="!flex !h-auto w-full flex-wrap justify-start gap-1">
             <TabsTrigger value="presence" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Presencia
