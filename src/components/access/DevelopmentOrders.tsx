@@ -1,0 +1,340 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AccessDevelopment } from './AccessDevelopmentsManager';
+import { ClipboardList, PlayCircle, Calendar, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+
+interface ScheduledOrder {
+  id: string;
+  development_id: string;
+  order_id: string | null;
+  scheduled_date: string;
+  status: string;
+  generated_at: string | null;
+  notes: string | null;
+}
+
+interface Props {
+  developments: AccessDevelopment[];
+}
+
+export function DevelopmentOrders({ developments }: Props) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [orders, setOrders] = useState<ScheduledOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDevelopment, setSelectedDevelopment] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [generating, setGenerating] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('access_development_orders')
+        .select('*')
+        .order('scheduled_date', { ascending: true });
+
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (error) {
+      console.error('Error loading orders:', error);
+      toast.error('Error al cargar órdenes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getDevelopmentName = (id: string) => {
+    return developments.find(d => d.id === id)?.name || 'Desconocido';
+  };
+
+  const getDevelopment = (id: string) => {
+    return developments.find(d => d.id === id);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+      pending: 'secondary',
+      generated: 'default',
+      completed: 'outline',
+      cancelled: 'destructive'
+    };
+    const labels: Record<string, string> = {
+      pending: 'Pendiente',
+      generated: 'Generada',
+      completed: 'Completada',
+      cancelled: 'Cancelada'
+    };
+    return <Badge variant={variants[status] || 'default'}>{labels[status] || status}</Badge>;
+  };
+
+  const filteredOrders = orders.filter(o => {
+    if (selectedDevelopment !== 'all' && o.development_id !== selectedDevelopment) return false;
+    if (statusFilter !== 'all' && o.status !== statusFilter) return false;
+    return true;
+  });
+
+  const pendingCount = orders.filter(o => o.status === 'pending' && new Date(o.scheduled_date) <= new Date()).length;
+
+  const generateOrder = async (scheduledOrder: ScheduledOrder) => {
+    const dev = getDevelopment(scheduledOrder.development_id);
+    if (!dev) {
+      toast.error('Fraccionamiento no encontrado');
+      return;
+    }
+
+    setGenerating(scheduledOrder.id);
+    try {
+      // Get a default service type for access services
+      const { data: serviceTypes } = await supabase
+        .from('service_types')
+        .select('id, name, base_price')
+        .ilike('name', '%acceso%')
+        .limit(1);
+
+      let serviceTypeId = serviceTypes?.[0]?.id;
+      
+      // If no access service found, get any active service
+      if (!serviceTypeId) {
+        const { data: anyService } = await supabase
+          .from('service_types')
+          .select('id')
+          .eq('is_active', true)
+          .limit(1)
+          .single();
+        serviceTypeId = anyService?.id;
+      }
+
+      if (!serviceTypeId) {
+        toast.error('No hay tipos de servicio disponibles');
+        return;
+      }
+
+      // Create client if doesn't exist
+      let clientId: string | null = null;
+      const { data: existingClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('name', dev.name)
+        .limit(1)
+        .single();
+
+      if (existingClient) {
+        clientId = existingClient.id;
+      } else {
+        const { data: newClient, error: clientError } = await supabase
+          .from('clients')
+          .insert({
+            name: dev.name,
+            address: dev.address || 'Sin dirección',
+            phone: dev.contact_phone,
+            email: dev.contact_email
+          })
+          .select()
+          .single();
+        
+        if (clientError) throw clientError;
+        clientId = newClient.id;
+      }
+
+      // Create order
+      const { data: newOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          client_id: clientId,
+          service_type: serviceTypeId,
+          failure_description: `Servicio mensual programado - ${dev.name}`,
+          estimated_cost: dev.monthly_payment,
+          delivery_date: scheduledOrder.scheduled_date,
+          status: 'pendiente',
+          created_by: user?.id
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order item
+      await supabase.from('order_items').insert({
+        order_id: newOrder.id,
+        service_type_id: serviceTypeId,
+        service_name: 'Servicio de Acceso Mensual',
+        service_description: `Servicio mensual para ${dev.name}`,
+        quantity: 1,
+        unit_base_price: dev.monthly_payment,
+        subtotal: dev.monthly_payment,
+        vat_rate: 16,
+        vat_amount: dev.monthly_payment * 0.16,
+        total_amount: dev.monthly_payment * 1.16,
+        item_type: 'servicio',
+        status: 'pendiente'
+      });
+
+      // Update scheduled order
+      await supabase
+        .from('access_development_orders')
+        .update({
+          status: 'generated',
+          order_id: newOrder.id,
+          generated_at: new Date().toISOString()
+        })
+        .eq('id', scheduledOrder.id);
+
+      toast.success('Orden generada correctamente');
+      loadOrders();
+    } catch (error) {
+      console.error('Error generating order:', error);
+      toast.error('Error al generar orden');
+    } finally {
+      setGenerating(null);
+    }
+  };
+
+  const viewOrder = (orderId: string) => {
+    navigate(`/orders?order=${orderId}`);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Órdenes Pendientes Hoy</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingCount}</div>
+            <p className="text-xs text-muted-foreground">Listas para generar</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Generadas Este Mes</CardTitle>
+            <Calendar className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {orders.filter(o => {
+                const genDate = o.generated_at ? new Date(o.generated_at) : null;
+                const now = new Date();
+                return genDate && genDate.getMonth() === now.getMonth() && genDate.getFullYear() === now.getFullYear();
+              }).length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Programadas</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{orders.length}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-4">
+        <Select value={selectedDevelopment} onValueChange={setSelectedDevelopment}>
+          <SelectTrigger className="w-[250px]">
+            <SelectValue placeholder="Todos los fraccionamientos" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los fraccionamientos</SelectItem>
+            {developments.map(d => (
+              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Todos los estados" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="pending">Pendientes</SelectItem>
+            <SelectItem value="generated">Generadas</SelectItem>
+            <SelectItem value="completed">Completadas</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Orders Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fraccionamiento</TableHead>
+                <TableHead>Fecha Programada</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Generada</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    No hay órdenes programadas
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredOrders.map(order => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">{getDevelopmentName(order.development_id)}</TableCell>
+                    <TableCell>{new Date(order.scheduled_date).toLocaleDateString('es-MX')}</TableCell>
+                    <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell>
+                      {order.generated_at 
+                        ? new Date(order.generated_at).toLocaleDateString('es-MX')
+                        : '-'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        {order.status === 'pending' && new Date(order.scheduled_date) <= new Date() && (
+                          <Button 
+                            size="sm" 
+                            onClick={() => generateOrder(order)}
+                            disabled={generating === order.id}
+                          >
+                            <PlayCircle className="h-4 w-4 mr-1" />
+                            {generating === order.id ? 'Generando...' : 'Generar'}
+                          </Button>
+                        )}
+                        {order.order_id && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => viewOrder(order.order_id!)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Ver Orden
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
