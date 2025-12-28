@@ -19,7 +19,8 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Activity
+  Activity,
+  Building2
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
@@ -69,6 +70,7 @@ export function AppSidebar() {
             { title: 'Cotizaciones', url: '/quotes', icon: FileText },
             { title: 'Órdenes', url: '/orders', icon: ClipboardList },
             { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
+            { title: 'Acceso by Syslag', url: '/acceso', icon: Building2 },
           ],
           configuracion: [
             { title: 'Pólizas', url: '/polizas', icon: Shield },
@@ -89,6 +91,7 @@ export function AppSidebar() {
             { title: 'Cotizaciones', url: '/quotes', icon: FileText },
             { title: 'Órdenes', url: '/orders', icon: ClipboardList },
             { title: 'Garantías', url: '/garantias', icon: ShieldCheck },
+            { title: 'Acceso by Syslag', url: '/acceso', icon: Building2 },
           ],
           configuracion: [
             { title: 'Pólizas', url: '/polizas', icon: Shield },

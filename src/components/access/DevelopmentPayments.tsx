@@ -123,15 +123,17 @@ export function DevelopmentPayments({ developments }: Props) {
 
       // Create income record for finance integration
       const dev = developments.find(d => d.id === payingPayment.development_id);
-      const { error: incomeError } = await supabase.from('incomes').insert({
+      const incomeNumber = `INC-${Date.now()}`;
+      const { error: incomeError } = await supabase.from('incomes').insert([{
+        income_number: incomeNumber,
         amount: payingPayment.amount,
         description: `Pago mensual - ${dev?.name || 'Fraccionamiento'} (${new Date(payingPayment.payment_period).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })})`,
-        income_type: 'servicio',
+        category: 'servicio',
         payment_method: paymentMethod,
-        income_date: new Date().toISOString().split('T')[0],
-        account_type: 'fiscal',
+        income_date: new Date().toISOString(),
+        account_type: 'fiscal' as const,
         status: 'completado'
-      });
+      }]);
 
       if (incomeError) console.error('Error creating income:', incomeError);
 
