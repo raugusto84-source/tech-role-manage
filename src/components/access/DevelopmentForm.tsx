@@ -36,6 +36,7 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
     investor_name: '',
     investor_amount: 0,
     investor_profit_percent: 0,
+    investor_account_type: 'no_fiscal' as 'fiscal' | 'no_fiscal',
     status: 'active',
     notes: ''
   });
@@ -58,6 +59,7 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
         investor_name: development.investor_name || '',
         investor_amount: development.investor_amount,
         investor_profit_percent: development.investor_profit_percent,
+        investor_account_type: 'no_fiscal',
         status: development.status,
         notes: development.notes || ''
       });
@@ -93,45 +95,33 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
         created_by: development ? undefined : user?.id
       };
 
+      // Remove investor_account_type from dataToSave as it's not a column
+      const { investor_account_type, ...saveData } = dataToSave;
+
       if (development) {
         const { error } = await supabase
           .from('access_developments')
-          .update(dataToSave)
+          .update(saveData)
           .eq('id', development.id);
         if (error) throw error;
         toast.success('Fraccionamiento actualizado');
       } else {
         const { data: newDev, error } = await supabase
           .from('access_developments')
-          .insert(dataToSave)
+          .insert(saveData)
           .select()
           .single();
         if (error) throw error;
 
-        // If has investor, create investor loan record
+        // If has investor, create investor loan record and loan payments
         if (formData.has_investor && newDev) {
-          await supabase.from('access_investor_loans').insert({
-            development_id: newDev.id,
-            investor_name: formData.investor_name,
-            amount: formData.investor_amount,
-            profit_percent: formData.investor_profit_percent,
-            recovery_months: calculatedRecoveryMonths
-          });
-
-          // Create loan in loans table for finance integration
-          await supabase.from('loans').insert({
-            loan_number: `INV-${Date.now()}`,
-            amount: formData.investor_amount,
-            monthly_payment: formData.monthly_payment,
-            total_months: calculatedRecoveryMonths,
-            start_date: formData.contract_start_date,
-            payment_day: formData.payment_day,
-            description: `Inversión de ${formData.investor_name} en fraccionamiento: ${formData.name}`,
-            status: 'activo'
-          });
+          await createInvestorLoanWithPayments(newDev.id, formData, calculatedRecoveryMonths);
         }
 
-        // Generate initial scheduled orders and payments
+        // Create initial order with 25 days delivery date
+        await createInitialOrder(newDev.id, formData);
+
+        // Generate scheduled orders and payments
         await generateInitialSchedules(newDev.id, formData);
 
         toast.success('Fraccionamiento creado');
@@ -152,8 +142,177 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
     return date.toISOString().split('T')[0];
   };
 
+  const createInvestorLoanWithPayments = async (
+    developmentId: string, 
+    data: typeof formData,
+    recoveryMonths: number
+  ) => {
+    const loanNumber = `INV-${Date.now()}`;
+    
+    // Create loan in loans table
+    const { data: newLoan, error: loanError } = await supabase.from('loans').insert({
+      loan_number: loanNumber,
+      amount: data.investor_amount,
+      monthly_payment: data.monthly_payment,
+      total_months: recoveryMonths,
+      start_date: data.contract_start_date,
+      payment_day: data.payment_day,
+      account_type: data.investor_account_type,
+      description: `Inversión de ${data.investor_name} en fraccionamiento: ${data.name}`,
+      status: 'activo',
+      remaining_amount: data.investor_amount
+    }).select().single();
+
+    if (loanError) {
+      console.error('Error creating loan:', loanError);
+      throw loanError;
+    }
+
+    // Create investor loan link
+    await supabase.from('access_investor_loans').insert({
+      development_id: developmentId,
+      investor_name: data.investor_name,
+      amount: data.investor_amount,
+      profit_percent: data.investor_profit_percent,
+      recovery_months: recoveryMonths,
+      loan_id: newLoan.id
+    });
+
+    // Generate loan payments - include past months if contract started in the past
+    const today = new Date();
+    const contractStart = new Date(data.contract_start_date);
+    const loanPayments = [];
+
+    for (let i = 0; i < recoveryMonths; i++) {
+      const paymentDate = new Date(contractStart);
+      paymentDate.setMonth(paymentDate.getMonth() + i);
+      paymentDate.setDate(data.payment_day);
+
+      const isPastDue = paymentDate < today;
+
+      loanPayments.push({
+        loan_id: newLoan.id,
+        payment_number: i + 1,
+        due_date: paymentDate.toISOString().split('T')[0],
+        amount: data.monthly_payment,
+        paid_amount: 0,
+        account_type: data.investor_account_type,
+        status: isPastDue ? 'vencido' : 'pendiente'
+      });
+    }
+
+    if (loanPayments.length > 0) {
+      const { error: paymentsError } = await supabase.from('loan_payments').insert(loanPayments);
+      if (paymentsError) {
+        console.error('Error creating loan payments:', paymentsError);
+      }
+    }
+  };
+
+  const createInitialOrder = async (developmentId: string, data: typeof formData) => {
+    // Get a default service type for access services
+    const { data: serviceTypes } = await supabase
+      .from('service_types')
+      .select('id')
+      .eq('is_active', true)
+      .limit(1);
+
+    const serviceTypeId = serviceTypes?.[0]?.id;
+    if (!serviceTypeId) {
+      console.warn('No active service type found for initial order');
+      return;
+    }
+
+    // Find or create client
+    let clientId: string | null = null;
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('name', data.name)
+      .limit(1)
+      .single();
+
+    if (existingClient) {
+      clientId = existingClient.id;
+    } else {
+      const { data: newClient, error: clientError } = await supabase
+        .from('clients')
+        .insert({
+          name: data.name,
+          address: data.address || 'Sin dirección',
+          phone: data.contact_phone,
+          email: data.contact_email
+        })
+        .select()
+        .single();
+
+      if (clientError) {
+        console.error('Error creating client:', clientError);
+        return;
+      }
+      clientId = newClient.id;
+    }
+
+    // Calculate delivery date: 25 days from now
+    const deliveryDate = new Date();
+    deliveryDate.setDate(deliveryDate.getDate() + 25);
+
+    // Create initial order with $0 cost
+    const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
+    const { data: newOrder, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        order_number: orderNumber,
+        client_id: clientId,
+        service_type: serviceTypeId,
+        failure_description: `Instalación inicial - ${data.name}`,
+        estimated_cost: 0,
+        delivery_date: deliveryDate.toISOString().split('T')[0],
+        status: 'pendiente',
+      })
+      .select()
+      .single();
+
+    if (orderError) {
+      console.error('Error creating initial order:', orderError);
+      return;
+    }
+
+    // Create order item with $0 cost
+    await supabase.from('order_items').insert({
+      order_id: newOrder.id,
+      service_type_id: serviceTypeId,
+      service_name: 'Instalación de Acceso',
+      service_description: `Instalación inicial para ${data.name}`,
+      quantity: 1,
+      unit_cost_price: 0,
+      unit_base_price: 0,
+      profit_margin_rate: 0,
+      subtotal: 0,
+      vat_rate: 0,
+      vat_amount: 0,
+      total_amount: 0,
+      item_type: 'servicio',
+      status: 'pendiente',
+      pricing_locked: true
+    });
+
+    // Link order to development
+    await supabase.from('access_development_orders').insert({
+      development_id: developmentId,
+      scheduled_date: new Date().toISOString().split('T')[0],
+      status: 'generated',
+      order_id: newOrder.id,
+      generated_at: new Date().toISOString(),
+      notes: 'Orden de instalación inicial'
+    });
+
+    console.log(`Created initial order ${orderNumber} for ${data.name}`);
+  };
+
   const generateInitialSchedules = async (developmentId: string, data: typeof formData) => {
     const startDate = new Date(data.contract_start_date);
+    const today = new Date();
     const ordersToCreate = [];
     const paymentsToCreate = [];
 
@@ -173,10 +332,14 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
             : data.monthly_payment * (data.investor_profit_percent / 100))
         : 0;
 
+      // Determine if this is a past order/payment
+      const isPastOrder = orderDate < today;
+      const isPastPayment = paymentDate < today;
+
       ordersToCreate.push({
         development_id: developmentId,
         scheduled_date: orderDate.toISOString().split('T')[0],
-        status: 'pending'
+        status: isPastOrder ? 'pending' : 'pending' // All pending for now, edge function will process
       });
 
       paymentsToCreate.push({
@@ -187,7 +350,7 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
         investor_portion: investorPortion,
         company_portion: data.monthly_payment - investorPortion,
         is_recovery_period: isRecoveryPeriod,
-        status: 'pending'
+        status: isPastPayment ? 'overdue' : 'pending'
       });
     }
 
@@ -358,12 +521,30 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
                 onChange={(e) => setFormData({ ...formData, investor_profit_percent: parseFloat(e.target.value) || 0 })}
               />
             </div>
+            <div className="col-span-2">
+              <Label htmlFor="investor_account_type">Tipo de Cuenta para el Préstamo *</Label>
+              <Select
+                value={formData.investor_account_type}
+                onValueChange={(v) => setFormData({ ...formData, investor_account_type: v as 'fiscal' | 'no_fiscal' })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fiscal">Cuenta Fiscal</SelectItem>
+                  <SelectItem value="no_fiscal">Cuenta No Fiscal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="col-span-2 p-4 bg-muted rounded-lg">
               <p className="text-sm">
                 <strong>Meses para recuperar inversión:</strong> {calculatedRecoveryMonths} meses
               </p>
               <p className="text-sm text-muted-foreground">
                 Después de recuperar, el inversionista recibirá el {formData.investor_profit_percent}% del pago mensual (${((formData.monthly_payment * formData.investor_profit_percent) / 100).toLocaleString('es-MX', { minimumFractionDigits: 2 })})
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Los pagos se registrarán en la cuenta <strong>{formData.investor_account_type === 'fiscal' ? 'Fiscal' : 'No Fiscal'}</strong>
               </p>
             </div>
           </div>

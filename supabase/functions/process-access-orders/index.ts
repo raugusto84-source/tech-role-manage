@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const today = new Date().toISOString().split('T')[0];
-    console.log(`Processing access development orders for date: ${today}`);
+    console.log(`Processing access development orders and payments for date: ${today}`);
 
     // Get pending scheduled orders for today or earlier
     const { data: pendingOrders, error: fetchError } = await supabase
@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
     console.log(`Found ${pendingOrders?.length || 0} pending orders to process`);
 
     const results = {
-      processed: 0,
-      skipped: 0,
+      orders_processed: 0,
+      orders_skipped: 0,
+      payments_generated: 0,
       errors: 0,
       details: [] as string[]
     };
@@ -50,8 +51,8 @@ Deno.serve(async (req) => {
       
       // Skip if development is not active or auto-generate is disabled
       if (!dev || dev.status !== 'active' || !dev.auto_generate_orders) {
-        results.skipped++;
-        results.details.push(`Skipped: ${dev?.name || 'Unknown'} - inactive or auto-generate disabled`);
+        results.orders_skipped++;
+        results.details.push(`Skipped order: ${dev?.name || 'Unknown'} - inactive or auto-generate disabled`);
         continue;
       }
 
@@ -105,15 +106,15 @@ Deno.serve(async (req) => {
         // Generate order number
         const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
-        // Create order
+        // Create order with $0 cost (service orders are free)
         const { data: newOrder, error: orderError } = await supabase
           .from('orders')
           .insert({
             order_number: orderNumber,
             client_id: clientId,
             service_type: serviceTypeId,
-            failure_description: `Servicio mensual programado - ${dev.name}`,
-            estimated_cost: dev.monthly_payment,
+            failure_description: `Servicio mensual de acceso - ${dev.name}`,
+            estimated_cost: 0, // Free service order
             delivery_date: scheduledOrder.scheduled_date,
             status: 'pendiente',
           })
@@ -127,20 +128,20 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Create order item
+        // Create order item with $0 cost
         await supabase.from('order_items').insert({
           order_id: newOrder.id,
           service_type_id: serviceTypeId,
           service_name: 'Servicio de Acceso Mensual',
-          service_description: `Servicio mensual para ${dev.name}`,
+          service_description: `Servicio mensual de acceso para ${dev.name}`,
           quantity: 1,
-          unit_cost_price: dev.monthly_payment,
-          unit_base_price: dev.monthly_payment,
+          unit_cost_price: 0,
+          unit_base_price: 0,
           profit_margin_rate: 0,
-          subtotal: dev.monthly_payment,
-          vat_rate: 16,
-          vat_amount: dev.monthly_payment * 0.16,
-          total_amount: dev.monthly_payment * 1.16,
+          subtotal: 0,
+          vat_rate: 0,
+          vat_amount: 0,
+          total_amount: 0,
           item_type: 'servicio',
           status: 'pendiente',
           pricing_locked: true
@@ -156,8 +157,8 @@ Deno.serve(async (req) => {
           })
           .eq('id', scheduledOrder.id);
 
-        results.processed++;
-        results.details.push(`Generated order ${orderNumber} for ${dev.name}`);
+        results.orders_processed++;
+        results.details.push(`Generated order ${orderNumber} for ${dev.name} (free service)`);
         console.log(`Generated order ${orderNumber} for ${dev.name}`);
 
       } catch (err) {
@@ -167,12 +168,75 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Now process pending access development payments and create pending_collections
+    const { data: pendingDevPayments, error: paymentsFetchError } = await supabase
+      .from('access_development_payments')
+      .select(`
+        *,
+        access_developments (id, name, contact_email, monthly_payment, status)
+      `)
+      .in('status', ['pending', 'overdue'])
+      .lte('due_date', today);
+
+    if (paymentsFetchError) {
+      console.error('Error fetching pending payments:', paymentsFetchError);
+    } else {
+      console.log(`Found ${pendingDevPayments?.length || 0} pending development payments`);
+
+      for (const devPayment of pendingDevPayments || []) {
+        const dev = devPayment.access_developments;
+        
+        if (!dev || dev.status !== 'active') {
+          continue;
+        }
+
+        try {
+          // Check if pending collection already exists
+          const { data: existingCollection } = await supabase
+            .from('pending_collections')
+            .select('id')
+            .eq('related_id', devPayment.id)
+            .eq('collection_type', 'development_payment')
+            .single();
+
+          if (!existingCollection) {
+            // Create pending collection for this development payment
+            await supabase.from('pending_collections').insert({
+              collection_type: 'development_payment',
+              related_id: devPayment.id,
+              client_name: dev.name,
+              client_email: dev.contact_email,
+              amount: devPayment.amount,
+              due_date: devPayment.due_date,
+              status: devPayment.status === 'overdue' ? 'overdue' : 'pending',
+              notes: `Pago mensual fraccionamiento: ${dev.name} - Período: ${devPayment.payment_period}`
+            });
+
+            results.payments_generated++;
+            results.details.push(`Created pending collection for ${dev.name} - $${devPayment.amount}`);
+            console.log(`Created pending collection for ${dev.name} - $${devPayment.amount}`);
+          }
+
+          // Update status to overdue if past due
+          if (devPayment.status !== 'overdue') {
+            await supabase
+              .from('access_development_payments')
+              .update({ status: 'overdue' })
+              .eq('id', devPayment.id);
+          }
+        } catch (err) {
+          console.error('Error processing payment:', err);
+          results.errors++;
+        }
+      }
+    }
+
     console.log('Processing complete:', results);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Processed ${results.processed} orders, skipped ${results.skipped}, errors ${results.errors}`,
+        message: `Processed ${results.orders_processed} orders, ${results.payments_generated} payments, skipped ${results.orders_skipped}, errors ${results.errors}`,
         ...results
       }),
       {
