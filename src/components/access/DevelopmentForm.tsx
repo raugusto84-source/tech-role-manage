@@ -120,12 +120,13 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
 
           // Create loan in loans table for finance integration
           await supabase.from('loans').insert({
-            lender_name: formData.investor_name,
-            loan_amount: formData.investor_amount,
-            interest_rate: 0,
-            loan_date: formData.contract_start_date,
-            due_date: calculateEarningStartDate(formData.contract_start_date, calculatedRecoveryMonths),
-            purpose: `Inversión en fraccionamiento: ${formData.name}`,
+            loan_number: `INV-${Date.now()}`,
+            amount: formData.investor_amount,
+            monthly_payment: formData.monthly_payment,
+            total_months: calculatedRecoveryMonths,
+            start_date: formData.contract_start_date,
+            payment_day: formData.payment_day,
+            description: `Inversión de ${formData.investor_name} en fraccionamiento: ${formData.name}`,
             status: 'activo'
           });
         }
