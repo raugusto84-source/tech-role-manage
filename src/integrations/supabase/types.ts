@@ -14,6 +14,260 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_development_orders: {
+        Row: {
+          created_at: string
+          development_id: string
+          generated_at: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          scheduled_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          development_id: string
+          generated_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          scheduled_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          development_id?: string
+          generated_at?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          scheduled_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_development_orders_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "access_developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_development_orders_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_development_payments: {
+        Row: {
+          amount: number
+          company_portion: number | null
+          created_at: string
+          development_id: string
+          due_date: string
+          id: string
+          income_id: string | null
+          investor_portion: number | null
+          is_recovery_period: boolean | null
+          paid_at: string | null
+          paid_by: string | null
+          payment_method: string | null
+          payment_period: string
+          payment_reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          company_portion?: number | null
+          created_at?: string
+          development_id: string
+          due_date: string
+          id?: string
+          income_id?: string | null
+          investor_portion?: number | null
+          is_recovery_period?: boolean | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          payment_period: string
+          payment_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          company_portion?: number | null
+          created_at?: string
+          development_id?: string
+          due_date?: string
+          id?: string
+          income_id?: string | null
+          investor_portion?: number | null
+          is_recovery_period?: boolean | null
+          paid_at?: string | null
+          paid_by?: string | null
+          payment_method?: string | null
+          payment_period?: string
+          payment_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_development_payments_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "access_developments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_developments: {
+        Row: {
+          address: string | null
+          auto_generate_orders: boolean | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contract_duration_months: number
+          contract_start_date: string
+          created_at: string
+          created_by: string | null
+          has_investor: boolean | null
+          id: string
+          investor_amount: number | null
+          investor_name: string | null
+          investor_profit_percent: number | null
+          investor_recovery_months: number | null
+          investor_start_earning_date: string | null
+          monthly_payment: number
+          name: string
+          notes: string | null
+          payment_day: number
+          service_day: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          auto_generate_orders?: boolean | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_duration_months?: number
+          contract_start_date: string
+          created_at?: string
+          created_by?: string | null
+          has_investor?: boolean | null
+          id?: string
+          investor_amount?: number | null
+          investor_name?: string | null
+          investor_profit_percent?: number | null
+          investor_recovery_months?: number | null
+          investor_start_earning_date?: string | null
+          monthly_payment?: number
+          name: string
+          notes?: string | null
+          payment_day?: number
+          service_day?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          auto_generate_orders?: boolean | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_duration_months?: number
+          contract_start_date?: string
+          created_at?: string
+          created_by?: string | null
+          has_investor?: boolean | null
+          id?: string
+          investor_amount?: number | null
+          investor_name?: string | null
+          investor_profit_percent?: number | null
+          investor_recovery_months?: number | null
+          investor_start_earning_date?: string | null
+          monthly_payment?: number
+          name?: string
+          notes?: string | null
+          payment_day?: number
+          service_day?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      access_investor_loans: {
+        Row: {
+          amount: number
+          amount_earned: number | null
+          amount_recovered: number | null
+          created_at: string
+          development_id: string
+          id: string
+          investor_name: string
+          loan_id: string | null
+          profit_percent: number
+          recovery_months: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          amount_earned?: number | null
+          amount_recovered?: number | null
+          created_at?: string
+          development_id: string
+          id?: string
+          investor_name: string
+          loan_id?: string | null
+          profit_percent: number
+          recovery_months: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          amount_earned?: number | null
+          amount_recovered?: number | null
+          created_at?: string
+          development_id?: string
+          id?: string
+          investor_name?: string
+          loan_id?: string | null
+          profit_percent?: number
+          recovery_months?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_investor_loans_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "access_developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_investor_loans_loan_id_fkey"
+            columns: ["loan_id"]
+            isOneToOne: false
+            referencedRelation: "loans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       achievement_rewards: {
         Row: {
           achievement_id: string
