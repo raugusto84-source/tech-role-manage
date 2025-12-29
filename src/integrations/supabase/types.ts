@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_development_leads: {
+        Row: {
+          address: string | null
+          comments: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          created_by: string | null
+          has_investor: boolean | null
+          id: string
+          investor_amount: number | null
+          investor_name: string | null
+          last_activity_at: string
+          last_activity_description: string | null
+          monthly_payment_proposed: number | null
+          name: string
+          reminder_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          comments?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          has_investor?: boolean | null
+          id?: string
+          investor_amount?: number | null
+          investor_name?: string | null
+          last_activity_at?: string
+          last_activity_description?: string | null
+          monthly_payment_proposed?: number | null
+          name: string
+          reminder_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          comments?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          created_by?: string | null
+          has_investor?: boolean | null
+          id?: string
+          investor_amount?: number | null
+          investor_name?: string | null
+          last_activity_at?: string
+          last_activity_description?: string | null
+          monthly_payment_proposed?: number | null
+          name?: string
+          reminder_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       access_development_orders: {
         Row: {
           created_at: string

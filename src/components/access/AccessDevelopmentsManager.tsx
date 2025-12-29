@@ -7,7 +7,8 @@ import { DevelopmentForm } from './DevelopmentForm';
 import { DevelopmentPayments } from './DevelopmentPayments';
 import { DevelopmentOrders } from './DevelopmentOrders';
 import { InvestorOverview } from './InvestorOverview';
-import { Building2, PlusCircle, CreditCard, ClipboardList, Users } from 'lucide-react';
+import { DevelopmentLeadsList } from './DevelopmentLeadsList';
+import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -41,6 +42,7 @@ export function AccessDevelopmentsManager() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [selectedDevelopment, setSelectedDevelopment] = useState<AccessDevelopment | null>(null);
   const [editingDevelopment, setEditingDevelopment] = useState<AccessDevelopment | null>(null);
+  const [leadToConvert, setLeadToConvert] = useState<any>(null);
 
   useEffect(() => {
     loadDevelopments();
@@ -67,13 +69,23 @@ export function AccessDevelopmentsManager() {
   const handleSuccess = () => {
     setShowNewForm(false);
     setEditingDevelopment(null);
+    setLeadToConvert(null);
     loadDevelopments();
+  };
+
+  const handleConvertLead = (lead: any) => {
+    setLeadToConvert(lead);
+    setShowNewForm(true);
   };
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="developments" className="space-y-4">
+      <Tabs defaultValue="leads" className="space-y-4">
         <TabsList className="flex flex-wrap gap-1">
+          <TabsTrigger value="leads" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Cotizaciones
+          </TabsTrigger>
           <TabsTrigger value="developments" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Fraccionamientos
@@ -91,6 +103,10 @@ export function AccessDevelopmentsManager() {
             Inversionistas
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="leads" className="space-y-4">
+          <DevelopmentLeadsList onConvertToContract={handleConvertLead} />
+        </TabsContent>
 
         <TabsContent value="developments" className="space-y-4">
           <div className="flex justify-end">
@@ -122,12 +138,22 @@ export function AccessDevelopmentsManager() {
       </Tabs>
 
       {/* New Development Dialog */}
-      <Dialog open={showNewForm} onOpenChange={setShowNewForm}>
+      <Dialog open={showNewForm} onOpenChange={(open) => {
+        setShowNewForm(open);
+        if (!open) setLeadToConvert(null);
+      }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Nuevo Fraccionamiento</DialogTitle>
+            <DialogTitle>{leadToConvert ? 'Convertir Cotización a Contrato' : 'Nuevo Fraccionamiento'}</DialogTitle>
           </DialogHeader>
-          <DevelopmentForm onSuccess={handleSuccess} onCancel={() => setShowNewForm(false)} />
+          <DevelopmentForm 
+            leadData={leadToConvert}
+            onSuccess={handleSuccess} 
+            onCancel={() => {
+              setShowNewForm(false);
+              setLeadToConvert(null);
+            }} 
+          />
         </DialogContent>
       </Dialog>
 

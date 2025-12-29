@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DollarSign, Calendar, AlertCircle, CheckCircle, Building2 } from "lucide-react";
+import { PaymentCollectionDialog } from "./PaymentCollectionDialog";
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
@@ -31,6 +32,8 @@ export function DevelopmentPaymentsPending() {
   const { toast } = useToast();
   const [payments, setPayments] = useState<DevelopmentPayment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPayment, setSelectedPayment] = useState<DevelopmentPayment | null>(null);
+  const [showCollectionDialog, setShowCollectionDialog] = useState(false);
   const [stats, setStats] = useState({
     total_pending: 0,
     total_amount: 0,
@@ -95,54 +98,17 @@ export function DevelopmentPaymentsPending() {
     }
   };
 
-  const handleMarkAsPaid = async (payment: DevelopmentPayment) => {
-    try {
-      const { error } = await supabase
-        .from('access_development_payments')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-          payment_method: 'transferencia'
-        })
-        .eq('id', payment.id);
+  const handleOpenCollectionDialog = (payment: DevelopmentPayment) => {
+    setSelectedPayment(payment);
+    setShowCollectionDialog(true);
+  };
 
-      if (error) throw error;
-
-      // Create income record
-      const incomeNumber = `INC-${Date.now()}`;
-      const incomeData = {
-        income_number: incomeNumber,
-        amount: payment.company_portion || 0,
-        category: 'fraccionamiento',
-        description: `Pago mensual fraccionamiento: ${payment.development_name}`,
-        income_type: 'fraccionamiento',
-        account_type: 'no_fiscal' as 'fiscal' | 'no_fiscal',
-        income_date: new Date().toISOString().split('T')[0],
-        status: 'recibido'
-      };
-      await supabase.from('incomes').insert([incomeData]);
-
-      // Remove from pending collections
-      await (supabase
-        .from('pending_collections') as any)
-        .delete()
-        .eq('related_id', payment.id)
-        .eq('collection_type', 'development_payment');
-
-      toast({
-        title: "Pago registrado",
-        description: `Pago de ${payment.development_name} registrado correctamente`,
-      });
-
-      loadPendingPayments();
-    } catch (error: any) {
-      console.error('Error marking payment:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo registrar el pago",
-        variant: "destructive",
-      });
-    }
+  const handleCollectionSuccess = () => {
+    toast({
+      title: "Pago registrado",
+      description: "El pago ha sido registrado correctamente",
+    });
+    loadPendingPayments();
   };
 
   const getStatusBadge = (payment: DevelopmentPayment) => {
@@ -315,7 +281,7 @@ export function DevelopmentPaymentsPending() {
                       <TableCell>
                         <Button
                           size="sm"
-                          onClick={() => handleMarkAsPaid(payment)}
+                          onClick={() => handleOpenCollectionDialog(payment)}
                           className="flex items-center gap-2"
                         >
                           <DollarSign className="h-4 w-4" />
@@ -330,6 +296,14 @@ export function DevelopmentPaymentsPending() {
           )}
         </CardContent>
       </Card>
+
+      {/* Collection Dialog */}
+      <PaymentCollectionDialog
+        open={showCollectionDialog}
+        onOpenChange={setShowCollectionDialog}
+        payment={selectedPayment}
+        onSuccess={handleCollectionSuccess}
+      />
     </div>
   );
 }
