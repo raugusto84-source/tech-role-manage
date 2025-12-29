@@ -11,13 +11,26 @@ import { AccessDevelopment } from './AccessDevelopmentsManager';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
+interface LeadData {
+  name: string;
+  address?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  monthly_payment_proposed?: number;
+  has_investor?: boolean;
+  investor_name?: string;
+  investor_amount?: number;
+}
+
 interface Props {
   development?: AccessDevelopment;
+  leadData?: LeadData;
   onSuccess: () => void;
   onCancel: () => void;
 }
 
-export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
+export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -63,8 +76,21 @@ export function DevelopmentForm({ development, onSuccess, onCancel }: Props) {
         status: development.status,
         notes: development.notes || ''
       });
+    } else if (leadData) {
+      setFormData(prev => ({
+        ...prev,
+        name: leadData.name || '',
+        address: leadData.address || '',
+        contact_name: leadData.contact_name || '',
+        contact_phone: leadData.contact_phone || '',
+        contact_email: leadData.contact_email || '',
+        monthly_payment: leadData.monthly_payment_proposed || 0,
+        has_investor: leadData.has_investor || false,
+        investor_name: leadData.investor_name || '',
+        investor_amount: leadData.investor_amount || 0,
+      }));
     }
-  }, [development]);
+  }, [development, leadData]);
 
   // Calculate recovery months based on investment and monthly payment
   const calculatedRecoveryMonths = formData.has_investor && formData.monthly_payment > 0
