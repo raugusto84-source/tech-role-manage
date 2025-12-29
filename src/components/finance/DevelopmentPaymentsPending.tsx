@@ -109,18 +109,22 @@ export function DevelopmentPaymentsPending() {
       if (error) throw error;
 
       // Create income record
-      await supabase.from('incomes').insert({
-        amount: payment.company_portion,
+      const incomeNumber = `INC-${Date.now()}`;
+      const incomeData = {
+        income_number: incomeNumber,
+        amount: payment.company_portion || 0,
+        category: 'fraccionamiento',
         description: `Pago mensual fraccionamiento: ${payment.development_name}`,
         income_type: 'fraccionamiento',
-        account_type: 'no_fiscal',
+        account_type: 'no_fiscal' as 'fiscal' | 'no_fiscal',
         income_date: new Date().toISOString().split('T')[0],
         status: 'recibido'
-      });
+      };
+      await supabase.from('incomes').insert([incomeData]);
 
       // Remove from pending collections
-      await supabase
-        .from('pending_collections')
+      await (supabase
+        .from('pending_collections') as any)
         .delete()
         .eq('related_id', payment.id)
         .eq('collection_type', 'development_payment');
