@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -412,6 +413,42 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
                     onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
                     rows={3}
                   />
+                </div>
+
+                {/* Investor Section */}
+                <div className="col-span-2 border-t pt-4 mt-2">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Checkbox
+                      id="has_investor"
+                      checked={formData.has_investor}
+                      onCheckedChange={(checked) => setFormData({ ...formData, has_investor: !!checked })}
+                    />
+                    <Label htmlFor="has_investor" className="font-medium cursor-pointer">
+                      ¿Tiene Inversionista?
+                    </Label>
+                  </div>
+
+                  {formData.has_investor && (
+                    <div className="grid grid-cols-2 gap-4 pl-6 border-l-2 border-primary/20">
+                      <div className="col-span-2">
+                        <Label>Nombre del Inversionista</Label>
+                        <Input
+                          value={formData.investor_name}
+                          onChange={(e) => setFormData({ ...formData, investor_name: e.target.value })}
+                          placeholder="Nombre completo"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label>Monto de Inversión</Label>
+                        <Input
+                          type="number"
+                          value={formData.investor_amount}
+                          onChange={(e) => setFormData({ ...formData, investor_amount: parseFloat(e.target.value) || 0 })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
