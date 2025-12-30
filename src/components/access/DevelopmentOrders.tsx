@@ -168,20 +168,20 @@ export function DevelopmentOrders({ developments }: Props) {
 
       if (orderError) throw orderError;
 
-      // Create order item - sin IVA, monto exacto mensual
+      // Create order item - $0 ya que el pago se genera automáticamente en finanzas
       await supabase.from('order_items').insert([{
         order_id: newOrder.id,
         service_type_id: serviceTypeId,
         service_name: 'Servicio de Acceso Mensual',
         service_description: `Servicio mensual para ${dev.name}`,
         quantity: 1,
-        unit_cost_price: dev.monthly_payment,
-        unit_base_price: dev.monthly_payment,
+        unit_cost_price: 0,
+        unit_base_price: 0,
         profit_margin_rate: 0,
-        subtotal: dev.monthly_payment,
+        subtotal: 0,
         vat_rate: 0,
         vat_amount: 0,
-        total_amount: dev.monthly_payment,
+        total_amount: 0,
         item_type: 'servicio',
         status: 'pendiente' as const,
         pricing_locked: true
