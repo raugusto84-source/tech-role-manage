@@ -168,7 +168,7 @@ export function DevelopmentOrders({ developments }: Props) {
 
       if (orderError) throw orderError;
 
-      // Create order item
+      // Create order item - sin IVA, monto exacto mensual
       await supabase.from('order_items').insert([{
         order_id: newOrder.id,
         service_type_id: serviceTypeId,
@@ -179,9 +179,9 @@ export function DevelopmentOrders({ developments }: Props) {
         unit_base_price: dev.monthly_payment,
         profit_margin_rate: 0,
         subtotal: dev.monthly_payment,
-        vat_rate: 16,
-        vat_amount: dev.monthly_payment * 0.16,
-        total_amount: dev.monthly_payment * 1.16,
+        vat_rate: 0,
+        vat_amount: 0,
+        total_amount: dev.monthly_payment,
         item_type: 'servicio',
         status: 'pendiente' as const,
         pricing_locked: true
