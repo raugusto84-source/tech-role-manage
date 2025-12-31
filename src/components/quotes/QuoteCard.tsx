@@ -10,10 +10,13 @@ interface Quote {
   client_email: string;
   service_description: string;
   estimated_amount: number;
-  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion';
+  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion' | 'asignando';
   request_date: string;
   created_at: string;
   salesperson_name?: string;
+  has_equipment?: boolean;
+  equipment_ready?: boolean;
+  department?: string;
 }
 
 interface QuoteCardProps {

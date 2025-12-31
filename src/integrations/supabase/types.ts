@@ -3848,6 +3848,8 @@ export type Database = {
           service_category: string | null
           service_location: Json | null
           service_type: string | null
+          skip_payment: boolean | null
+          source_type: string | null
           status: Database["public"]["Enums"]["order_status"]
           travel_time_hours: number | null
           updated_at: string
@@ -3895,6 +3897,8 @@ export type Database = {
           service_category?: string | null
           service_location?: Json | null
           service_type?: string | null
+          skip_payment?: boolean | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           travel_time_hours?: number | null
           updated_at?: string
@@ -3942,6 +3946,8 @@ export type Database = {
           service_category?: string | null
           service_location?: Json | null
           service_type?: string | null
+          skip_payment?: boolean | null
+          source_type?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           travel_time_hours?: number | null
           updated_at?: string
@@ -5175,9 +5181,14 @@ export type Database = {
           client_phone: string | null
           created_at: string
           created_by: string | null
+          department: string | null
+          equipment_confirmed_at: string | null
+          equipment_confirmed_by: string | null
+          equipment_ready: boolean | null
           estimated_amount: number | null
           final_decision_date: string | null
           follow_up_date: string | null
+          has_equipment: boolean | null
           id: string
           is_automatic_sale: boolean
           marketing_channel: Database["public"]["Enums"]["marketing_channel"]
@@ -5189,6 +5200,7 @@ export type Database = {
           sale_type: Database["public"]["Enums"]["sale_type"]
           service_description: string
           status: Database["public"]["Enums"]["quote_status"]
+          tdr_deadline: string | null
           updated_at: string
           user_id: string | null
         }
@@ -5205,9 +5217,14 @@ export type Database = {
           client_phone?: string | null
           created_at?: string
           created_by?: string | null
+          department?: string | null
+          equipment_confirmed_at?: string | null
+          equipment_confirmed_by?: string | null
+          equipment_ready?: boolean | null
           estimated_amount?: number | null
           final_decision_date?: string | null
           follow_up_date?: string | null
+          has_equipment?: boolean | null
           id?: string
           is_automatic_sale?: boolean
           marketing_channel: Database["public"]["Enums"]["marketing_channel"]
@@ -5219,6 +5236,7 @@ export type Database = {
           sale_type?: Database["public"]["Enums"]["sale_type"]
           service_description: string
           status?: Database["public"]["Enums"]["quote_status"]
+          tdr_deadline?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -5235,9 +5253,14 @@ export type Database = {
           client_phone?: string | null
           created_at?: string
           created_by?: string | null
+          department?: string | null
+          equipment_confirmed_at?: string | null
+          equipment_confirmed_by?: string | null
+          equipment_ready?: boolean | null
           estimated_amount?: number | null
           final_decision_date?: string | null
           follow_up_date?: string | null
+          has_equipment?: boolean | null
           id?: string
           is_automatic_sale?: boolean
           marketing_channel?: Database["public"]["Enums"]["marketing_channel"]
@@ -5249,6 +5272,7 @@ export type Database = {
           sale_type?: Database["public"]["Enums"]["sale_type"]
           service_description?: string
           status?: Database["public"]["Enums"]["quote_status"]
+          tdr_deadline?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -7319,6 +7343,84 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_tdr_config: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          notification_channels: string[] | null
+          stage: string
+          stage_label: string
+          tdr_hours: number
+          updated_at: string | null
+          warning_hours: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notification_channels?: string[] | null
+          stage: string
+          stage_label: string
+          tdr_hours?: number
+          updated_at?: string | null
+          warning_hours?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          notification_channels?: string[] | null
+          stage?: string
+          stage_label?: string
+          tdr_hours?: number
+          updated_at?: string | null
+          warning_hours?: number | null
+        }
+        Relationships: []
+      }
+      workflow_tdr_tracking: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          deadline_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          overdue_sent: boolean | null
+          stage: string
+          started_at: string | null
+          status: string | null
+          warning_sent: boolean | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          deadline_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          overdue_sent?: boolean | null
+          stage: string
+          started_at?: string | null
+          status?: string | null
+          warning_sent?: boolean | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          deadline_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          overdue_sent?: boolean | null
+          stage?: string
+          started_at?: string | null
+          status?: string | null
+          warning_sent?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       admin_employee_overview: {
@@ -7802,6 +7904,7 @@ export type Database = {
         | "aceptada"
         | "rechazada"
         | "pendiente_aprobacion"
+        | "asignando"
       reminder_type:
         | "placas"
         | "refrendo"
@@ -8015,6 +8118,7 @@ export const Constants = {
         "aceptada",
         "rechazada",
         "pendiente_aprobacion",
+        "asignando",
       ],
       reminder_type: [
         "placas",

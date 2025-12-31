@@ -161,7 +161,9 @@ export function DevelopmentOrders({ developments }: Props) {
           estimated_cost: dev.monthly_payment,
           delivery_date: scheduledOrder.scheduled_date,
           status: 'pendiente' as const,
-          created_by: user?.id
+          created_by: user?.id,
+          skip_payment: true,
+          source_type: 'development'
         }])
         .select()
         .single();
