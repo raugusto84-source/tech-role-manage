@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { getItemTypeInfo } from '@/utils/itemTypeUtils';
 import { ClientQuoteItemsSummary } from './ClientQuoteItemsSummary';
+import { QuoteWorkflowActions } from './QuoteWorkflowActions';
 
 interface QuoteItem {
   id: string;
@@ -70,7 +71,7 @@ interface Quote {
   client_phone?: string;
   service_description: string;
   estimated_amount: number;
-  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion';
+  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion' | 'asignando';
   request_date: string;
   notes?: string;
   marketing_channel?: string;
@@ -78,6 +79,9 @@ interface Quote {
   sale_type?: string;
   created_by?: string;
   assigned_to?: string;
+  has_equipment?: boolean;
+  equipment_ready?: boolean;
+  department?: string;
 }
 
 interface QuoteDetailsProps {
@@ -95,7 +99,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const { profile } = useAuth();
   // Removed useRewardSettings - cashback system eliminated
   const [loading, setLoading] = useState(false);
-  const [newStatus, setNewStatus] = useState<'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion'>(quote.status);
+  const [newStatus, setNewStatus] = useState<'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion' | 'asignando'>(quote.status);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [salesperson, setSalesperson] = useState<string>('');
   
@@ -205,6 +209,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'asignando': return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'solicitud': return 'bg-purple-100 text-purple-800 border-purple-200';
       case 'enviada': return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'aceptada': return 'bg-green-100 text-green-800 border-green-200';
@@ -216,6 +221,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const getStatusText = (status: string) => {
     switch (status) {
       case 'pendiente_aprobacion': return 'Pendiente de Aprobación';
+      case 'asignando': return 'Esperando Material';
       case 'solicitud': return 'Nueva';
       case 'enviada': return 'Enviada';
       case 'aceptada': return 'Aceptada';
@@ -686,68 +692,12 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
           </Card>
 
 
-          {/* Acciones */}
-          {canManageQuotes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Acciones</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Botones de acción */}
-                <div className="space-y-3">
-                  <label className="text-sm font-medium block">Acciones de Cotización</label>
-                  
-                  {/* Solo mostrar botones si no está ya aceptada o rechazada */}
-                  {quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button 
-                        onClick={convertToOrder}
-                        disabled={loading}
-                        variant="default"
-                        className="w-full"
-                        size="sm"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Aceptar y Crear Orden
-                      </Button>
-                      <Button 
-                        onClick={rejectQuote}
-                        disabled={loading}
-                        variant="destructive"
-                        className="w-full"
-                        size="sm"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Rechazar
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {/* Mostrar estado actual si ya está aceptada o rechazada */}
-                  {(quote.status === 'aceptada' || quote.status === 'rechazada') && (
-                    <div className="text-center py-2">
-                      <Badge className={getStatusColor(quote.status)}>
-                        <StatusIcon className="h-4 w-4 mr-2" />
-                        {getStatusText(quote.status)}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Mensaje especial para cotizaciones pendientes de aprobación */}
-                {quote.status === 'pendiente_aprobacion' && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                    <h4 className="font-medium text-orange-800 text-sm mb-1">Cotización Pendiente de Aprobación</h4>
-                    <p className="text-xs text-orange-700">
-                      Al aprobarla (estado "Aceptada"), se generará automáticamente una orden de trabajo.
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+          {/* Acciones - Nuevo componente de flujo de trabajo */}
+          <QuoteWorkflowActions 
+            quote={quote}
+            quoteItems={quoteItems}
+            onQuoteUpdated={onQuoteUpdated}
+          />
         </div>
       </div>
     </div>

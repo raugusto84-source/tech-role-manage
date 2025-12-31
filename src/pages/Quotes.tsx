@@ -19,12 +19,15 @@ interface Quote {
   client_email: string;
   service_description: string;
   estimated_amount: number;
-  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion';
+  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion' | 'asignando';
   request_date: string;
   created_by?: string;
   assigned_to?: string;
   created_at: string;
   salesperson_name?: string;
+  has_equipment?: boolean;
+  equipment_ready?: boolean;
+  department?: string;
 }
 
 /**
@@ -162,6 +165,7 @@ export default function Quotes() {
   // Separar cotizaciones por estado
   const quotesByStatus = {
     pendiente_aprobacion: filteredQuotes.filter(q => q.status === 'pendiente_aprobacion'),
+    asignando: filteredQuotes.filter(q => q.status === 'asignando'),
     solicitud: filteredQuotes.filter(q => q.status === 'solicitud'),
     enviada: filteredQuotes.filter(q => q.status === 'enviada'),
     aceptada: filteredQuotes.filter(q => q.status === 'aceptada'),
@@ -177,6 +181,13 @@ export default function Quotes() {
           color: 'bg-orange-100 text-orange-800 border-orange-200',
           bgColor: 'bg-orange-50',
           icon: '⏳'
+        };
+      case 'asignando': 
+        return { 
+          label: 'Esperando Material', 
+          color: 'bg-amber-100 text-amber-800 border-amber-200',
+          bgColor: 'bg-amber-50',
+          icon: '📦'
         };
       case 'solicitud': 
         return { 

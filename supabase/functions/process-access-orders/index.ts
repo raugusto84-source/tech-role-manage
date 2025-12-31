@@ -117,6 +117,8 @@ Deno.serve(async (req) => {
             estimated_cost: 0, // Free service order
             delivery_date: scheduledOrder.scheduled_date,
             status: 'pendiente',
+            skip_payment: true,
+            source_type: 'development'
           })
           .select()
           .single();
