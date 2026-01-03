@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Download, Upload, Trash2, AlertTriangle, RotateCcw, Power, Shield } from 'lucide-react';
+import { Download, Upload, Trash2, AlertTriangle, RotateCcw, Power, Shield, Key } from 'lucide-react';
 
 const DATABASE_MODULES_BY_CATEGORY = {
   usuarios: {
@@ -96,6 +96,9 @@ export function DatabaseAdminPanel() {
   const [isCleaningWorkflow, setIsCleaningWorkflow] = useState(false);
   const [cleanWorkflowDialogOpen, setCleanWorkflowDialogOpen] = useState(false);
   const [selectedImportModules, setSelectedImportModules] = useState<string[]>([]);
+  const [isResettingPasswords, setIsResettingPasswords] = useState(false);
+  const [resetPasswordsDialogOpen, setResetPasswordsDialogOpen] = useState(false);
+  const [newGenericPassword, setNewGenericPassword] = useState('Syslag2026!');
 
   const handleCategorySelect = (categoryKey: string, checked: boolean) => {
     const category = DATABASE_MODULES_BY_CATEGORY[categoryKey as keyof typeof DATABASE_MODULES_BY_CATEGORY];
@@ -481,6 +484,47 @@ export function DatabaseAdminPanel() {
       });
     } finally {
       setIsCleaningWorkflow(false);
+    }
+  };
+
+  const resetAllPasswords = async () => {
+    if (!newGenericPassword || newGenericPassword.length < 8) {
+      toast({
+        title: "Error",
+        description: "La contraseña debe tener al menos 8 caracteres",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsResettingPasswords(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('reset-all-passwords', {
+        body: { newPassword: newGenericPassword }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.success) {
+        toast({
+          title: "Contraseñas Actualizadas",
+          description: data.message || `Se actualizaron las contraseñas de todos los usuarios`,
+        });
+        setResetPasswordsDialogOpen(false);
+      } else {
+        throw new Error(data?.error || 'Error desconocido');
+      }
+    } catch (error: any) {
+      console.error('Reset passwords error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron resetear las contraseñas",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResettingPasswords(false);
     }
   };
 
@@ -894,6 +938,86 @@ export function DatabaseAdminPanel() {
                   className="bg-orange-600 hover:bg-orange-700"
                 >
                   {isCleaningWorkflow ? 'Limpiando...' : 'Limpiar Flujo de Trabajo'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+
+      {/* Reset Passwords Section */}
+      <Card className="border-amber-200 bg-amber-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-amber-700">
+            <Key className="h-5 w-5" />
+            Resetear Contraseñas de Usuarios
+          </CardTitle>
+          <CardDescription className="text-amber-600">
+            Cambia la contraseña de todos los usuarios a una contraseña genérica
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert className="mb-4 border-amber-200 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700">
+              Esta acción cambiará la contraseña de <strong>todos los usuarios</strong> del sistema.
+              Los usuarios podrán cambiar su contraseña desde su Dashboard.
+            </AlertDescription>
+          </Alert>
+
+          <Dialog open={resetPasswordsDialogOpen} onOpenChange={setResetPasswordsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full border-amber-500 text-amber-700 hover:bg-amber-100">
+                <Key className="h-4 w-4 mr-2" />
+                Resetear Todas las Contraseñas
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="text-amber-700 flex items-center gap-2">
+                  <Key className="h-5 w-5" />
+                  Resetear Contraseñas
+                </DialogTitle>
+                <DialogDescription>
+                  Se cambiará la contraseña de todos los usuarios a la contraseña especificada.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-generic-password">Nueva contraseña genérica</Label>
+                  <Input
+                    id="new-generic-password"
+                    value={newGenericPassword}
+                    onChange={(e) => setNewGenericPassword(e.target.value)}
+                    placeholder="Ej: Syslag2026!"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Requisitos: 8+ caracteres, mayúscula, minúscula, número y símbolo
+                  </p>
+                </div>
+
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    Esta acción afectará a todos los usuarios. Asegúrate de comunicarles la nueva contraseña.
+                  </AlertDescription>
+                </Alert>
+              </div>
+
+              <DialogFooter>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setResetPasswordsDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={resetAllPasswords}
+                  disabled={isResettingPasswords || !newGenericPassword}
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  {isResettingPasswords ? 'Reseteando...' : 'Resetear Contraseñas'}
                 </Button>
               </DialogFooter>
             </DialogContent>
