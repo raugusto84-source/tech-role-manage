@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -115,6 +116,7 @@ interface Order {
 export default function Orders() {
   const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -532,7 +534,7 @@ export default function Orders() {
   // Función para manejar el logout
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/auth';
+    navigate('/auth');
   };
 
   if (loading) {
@@ -593,7 +595,7 @@ export default function Orders() {
               {/* Botón volver al dashboard */}
               <Button 
                 variant="outline" 
-                onClick={() => window.location.href = getDashboardRoute()}
+                onClick={() => navigate(getDashboardRoute())}
                 className="gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                 size="sm"
               >

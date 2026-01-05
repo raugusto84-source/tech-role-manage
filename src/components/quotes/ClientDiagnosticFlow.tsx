@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,6 +55,7 @@ interface ClientDiagnosticFlowProps {
 
 export function ClientDiagnosticFlow({ onDiagnosisComplete }: ClientDiagnosticFlowProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [flows, setFlows] = useState<DiagnosticFlow[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -289,7 +291,7 @@ export function ClientDiagnosticFlow({ onDiagnosisComplete }: ClientDiagnosticFl
             <Button onClick={handleRestart} variant="outline">
               Nuevo Diagnóstico
             </Button>
-            <Button onClick={() => window.location.href = '/quotes'}>
+            <Button onClick={() => navigate('/quotes')}>
               Solicitar Cotización
             </Button>
           </div>

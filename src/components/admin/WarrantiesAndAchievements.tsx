@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ interface AchievementSummary {
 
 export function WarrantiesAndAchievements() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [warranties, setWarranties] = useState<WarrantySummary[]>([]);
   const [achievements, setAchievements] = useState<AchievementSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -253,7 +255,7 @@ export function WarrantiesAndAchievements() {
                 <p className="text-muted-foreground mb-4">
                   La lista de garantías y su gestión ahora se encuentra en la sección principal de Garantías
                 </p>
-                <Button onClick={() => window.location.href = '/garantias'} className="mt-4">
+                <Button onClick={() => navigate('/garantias')} className="mt-4">
                   Ir a Gestión de Garantías
                 </Button>
               </div>
