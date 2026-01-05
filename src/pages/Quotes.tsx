@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -37,7 +38,8 @@ interface Quote {
  */
 export default function Quotes() {
   const { profile, signOut } = useAuth();
-  
+  const navigate = useNavigate();
+
   // Función para obtener la ruta del dashboard según el rol
   const getDashboardRoute = () => {
     if (!profile) return '/dashboard';
@@ -57,7 +59,7 @@ export default function Quotes() {
   // Función para manejar el logout
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/auth';
+    navigate('/auth', { replace: true });
   };
 
   const [quotes, setQuotes] = useState<Quote[]>([]);
@@ -298,7 +300,7 @@ export default function Quotes() {
           onSuccess={() => {
             if (profile?.role === 'cliente') {
               // Para clientes, regresar al dashboard
-              window.location.href = getDashboardRoute();
+              navigate(getDashboardRoute(), { replace: true });
             } else {
               // Para staff, solo cerrar wizard y recargar
               setShowWizard(false);
@@ -329,7 +331,7 @@ export default function Quotes() {
               {/* Botón volver al dashboard */}
               <Button 
                 variant="outline" 
-                onClick={() => window.location.href = getDashboardRoute()}
+                onClick={() => navigate(getDashboardRoute())}
                 className="gap-1 sm:gap-2 flex-1 sm:flex-initial text-xs sm:text-sm"
                 size="sm"
               >

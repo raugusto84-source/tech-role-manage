@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
@@ -15,11 +16,12 @@ import { Settings, LogOut } from 'lucide-react';
  */
 export default function Dashboard() {
   const { profile, signOut } = useAuth();
+  const navigate = useNavigate();
 
   // Función para manejar el logout
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/auth';
+    navigate('/auth', { replace: true });
   };
 
   // Determinar si el usuario debe ver el control de horarios (todos excepto clientes)

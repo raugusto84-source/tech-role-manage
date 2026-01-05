@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +56,7 @@ interface Quote {
 export default function ClientDashboard() {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Estado
   const [loading, setLoading] = useState(true);
@@ -346,26 +348,26 @@ export default function ClientDashboard() {
   };
 
   const handleViewAll = (type: 'orders' | 'quotes') => {
-    window.location.href = `/${type}`;
+    navigate(`/${type}`);
   };
 
   const handleApproveOrder = (orderId: string) => {
     // Navegar a los detalles de la orden para aprobar
-    window.location.href = `/orders?id=${orderId}`;
+    navigate(`/orders?id=${orderId}`);
   };
 
   const handleApproveQuote = (quoteId: string) => {
     // Navegar a los detalles de la cotización para aprobar
-    window.location.href = `/quotes?id=${quoteId}`;
+    navigate(`/quotes?id=${quoteId}`);
   };
 
   const handleViewOrderDetails = (orderId: string) => {
-    window.location.href = `/orders?id=${orderId}`;
+    navigate(`/orders?id=${orderId}`);
   };
 
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/auth';
+    navigate('/auth', { replace: true });
   };
 
   if (loading) {
@@ -511,7 +513,7 @@ export default function ClientDashboard() {
         {/* Botones de acción principales */}
         <div className="grid grid-cols-1 gap-3">
           <Button 
-            onClick={() => window.location.href = '/quotes'}
+            onClick={() => navigate('/quotes')}
             variant="outline"
             className="h-24 flex-col gap-2 border-2 animate-pulse"
             size="lg"
