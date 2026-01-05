@@ -96,7 +96,7 @@ export function FreeQuoteWizard({ onSuccess, onCancel }: FreeQuoteWizardProps) {
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(clientSearchTerm.toLowerCase())
+    (client.email && client.email.toLowerCase().includes(clientSearchTerm.toLowerCase()))
   );
 
   const handleCreateClient = async () => {
@@ -230,7 +230,7 @@ export function FreeQuoteWizard({ onSuccess, onCancel }: FreeQuoteWizardProps) {
         .from('quotes')
         .insert([{
           client_name: selectedClient.name,
-          client_email: selectedClient.email,
+          client_email: selectedClient.email || null,
           client_phone: selectedClient.phone || '',
           service_description: 'Cotización libre - Items personalizados',
           estimated_amount: totalAmount,
