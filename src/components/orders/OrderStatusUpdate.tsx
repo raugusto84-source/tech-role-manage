@@ -19,6 +19,7 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -138,6 +139,7 @@ const ALL_STATES = [
 export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdateProps) {
   const { toast } = useToast();
   const { profile } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [showDeliverySignature, setShowDeliverySignature] = useState(false);
@@ -362,7 +364,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
             onUpdate();
             onClose();
             // Redirect to client dashboard after delivery signature
-            window.location.href = '/client';
+            navigate('/client');
           }}
         />
       )}
