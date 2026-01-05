@@ -184,6 +184,32 @@ export function DeliverySignature({ order, onClose, onComplete }: DeliverySignat
             }
           });
         }
+
+        // Crear registro en pending_collections para que aparezca en Finanzas
+        console.log('📋 Creando registro en pending_collections...');
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 7); // Vencimiento a 7 días
+        
+        const { error: pendingError } = await supabase
+          .from('pending_collections')
+          .insert({
+            order_id: order.id,
+            order_number: order.order_number,
+            client_name: orderDetails.clients?.name || 'Cliente',
+            client_email: order.clients?.email || null,
+            amount: totalAmount,
+            balance: totalAmount,
+            collection_type: 'order_payment',
+            status: 'pending',
+            due_date: dueDate.toISOString().split('T')[0],
+            notes: `Cobranza orden #${order.order_number}`
+          });
+
+        if (pendingError) {
+          console.error('⚠️ Error creating pending collection:', pendingError);
+        } else {
+          console.log('✅ Registro en pending_collections creado exitosamente');
+        }
       }
 
       console.log('🎉 Proceso de confirmación completado exitosamente');
