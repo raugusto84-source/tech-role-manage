@@ -5176,7 +5176,7 @@ export type Database = {
           cashback_amount_used: number | null
           cashback_applied: boolean | null
           client_company: string | null
-          client_email: string
+          client_email: string | null
           client_name: string
           client_phone: string | null
           created_at: string
@@ -5212,7 +5212,7 @@ export type Database = {
           cashback_amount_used?: number | null
           cashback_applied?: boolean | null
           client_company?: string | null
-          client_email: string
+          client_email?: string | null
           client_name: string
           client_phone?: string | null
           created_at?: string
@@ -5248,7 +5248,7 @@ export type Database = {
           cashback_amount_used?: number | null
           cashback_applied?: boolean | null
           client_company?: string | null
-          client_email?: string
+          client_email?: string | null
           client_name?: string
           client_phone?: string | null
           created_at?: string
