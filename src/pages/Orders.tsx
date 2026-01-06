@@ -401,6 +401,7 @@ export default function Orders() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'en_espera': return 'bg-slate-100 text-slate-800 border-slate-300';
       case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'pendiente_actualizacion': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'pendiente': return 'bg-blue-100 text-blue-800 border-blue-300';
@@ -416,6 +417,7 @@ export default function Orders() {
 
   const getStatusTitle = (status: string) => {
     switch (status) {
+      case 'en_espera': return 'En Espera';
       case 'pendiente_aprobacion': return 'Pendientes de Aprobación';
       case 'en_proceso': return 'En Proceso';
       case 'pendiente_actualizacion': return 'Pendientes de Actualización';

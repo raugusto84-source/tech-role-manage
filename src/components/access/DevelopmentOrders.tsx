@@ -160,7 +160,7 @@ export function DevelopmentOrders({ developments }: Props) {
           failure_description: `Servicio mensual programado - ${dev.name}`,
           estimated_cost: dev.monthly_payment,
           delivery_date: scheduledOrder.scheduled_date,
-          status: 'pendiente_aprobacion' as const,
+          status: 'en_espera' as const,
           order_category: 'fraccionamientos',
           created_by: user?.id,
           skip_payment: true,

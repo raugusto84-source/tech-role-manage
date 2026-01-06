@@ -34,7 +34,7 @@ interface OrderStatusUpdateProps {
   order: {
     id: string;
     order_number: string;
-    status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'finalizada';
+    status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'finalizada';
     clients?: {
       name: string;
     } | null;
@@ -45,6 +45,15 @@ interface OrderStatusUpdateProps {
 
 // Configuración de estados disponibles
 const STATE_TRANSITIONS: Record<string, Array<{ value: string; label: string; icon: any; color: string; description: string }>> = {
+  en_espera: [
+    { 
+      value: 'en_proceso', 
+      label: 'Iniciar Trabajo', 
+      icon: Wrench, 
+      color: 'bg-orange-500 hover:bg-orange-600',
+      description: 'Comenzar a trabajar en esta orden'
+    }
+  ],
   pendiente_aprobacion: [
     { 
       value: 'en_proceso', 
@@ -101,6 +110,13 @@ const STATE_TRANSITIONS: Record<string, Array<{ value: string; label: string; ic
 
 // Estados disponibles para administradores (acceso completo)
 const ALL_STATES = [
+  { 
+    value: 'en_espera', 
+    label: 'En Espera', 
+    icon: Clock, 
+    color: 'bg-slate-500 hover:bg-slate-600',
+    description: 'Orden programada esperando fecha'
+  },
   { 
     value: 'pendiente_aprobacion', 
     label: 'Pendiente Aprobación', 
@@ -245,6 +261,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
    */
   const getCurrentStatusColor = (status: string) => {
     switch (status) {
+      case 'en_espera': return 'bg-slate-100 text-slate-800';
       case 'pendiente_aprobacion': return 'bg-yellow-100 text-yellow-800';
       case 'en_proceso': return 'bg-orange-100 text-orange-800';
       case 'pendiente_actualizacion': return 'bg-blue-100 text-blue-800';
@@ -257,6 +274,7 @@ export function OrderStatusUpdate({ order, onClose, onUpdate }: OrderStatusUpdat
 
   const getCurrentStatusLabel = (status: string) => {
     switch (status) {
+      case 'en_espera': return 'En Espera';
       case 'pendiente_aprobacion': return 'Pendiente Autorización';
       case 'en_proceso': return 'En Proceso';
       case 'pendiente_actualizacion': return 'Pendiente Aprobación';
