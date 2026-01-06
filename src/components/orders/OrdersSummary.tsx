@@ -7,7 +7,7 @@ interface Order {
   created_at: string;
   delivery_date: string;
   estimated_delivery_date?: string | null;
-  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
+  status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
   priority?: 'baja' | 'media' | 'alta' | 'critica';
   order_category?: string; // Campo directo de la orden
   service_types?: {

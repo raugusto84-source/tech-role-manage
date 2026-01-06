@@ -59,7 +59,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
+  status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -778,6 +778,7 @@ export default function Orders() {
                     <TableHead>Descripción</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Técnico</TableHead>
+                    <TableHead>Agendado</TableHead>
                     <TableHead>Fecha Entrega</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-center">Acciones</TableHead>

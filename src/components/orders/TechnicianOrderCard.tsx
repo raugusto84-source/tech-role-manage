@@ -28,7 +28,7 @@ interface TechnicianOrderCardProps {
     service_type: string;
     failure_description: string;
     delivery_date: string;
-    status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'rechazada';
+    status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'rechazada';
     created_at: string;
     is_home_service?: boolean;
     service_location?: any;

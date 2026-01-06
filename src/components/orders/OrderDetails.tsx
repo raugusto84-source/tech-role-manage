@@ -46,7 +46,7 @@ interface OrderDetailsProps {
     estimated_delivery_date?: string | null;
     estimated_cost?: number;
     average_service_time?: number;
-    status: 'pendiente_aprobacion' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_entrega' | 'pendiente_actualizacion' | 'rechazada';
+    status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'finalizada' | 'cancelada' | 'en_camino' | 'pendiente_entrega' | 'pendiente_actualizacion' | 'rechazada';
     assigned_technician?: string;
     assignment_reason?: string;
     evidence_photos?: string[];
