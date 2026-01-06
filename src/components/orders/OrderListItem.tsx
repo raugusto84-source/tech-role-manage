@@ -25,6 +25,7 @@ interface Order {
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
   is_policy_order?: boolean;
+  is_development_order?: boolean;
   priority: 'baja' | 'media' | 'alta' | 'critica';
   service_types?: {
     name: string;
@@ -218,7 +219,11 @@ export function OrderListItem({
             <Eye className="h-4 w-4" />
           </Button>
           
-          {order.is_policy_order ? (
+          {order.is_development_order ? (
+            <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
+              🏘️ Fracc.
+            </Badge>
+          ) : order.is_policy_order ? (
             <Badge className="bg-blue-100 text-blue-800 border-blue-200 text-xs">
               📋 Póliza
             </Badge>

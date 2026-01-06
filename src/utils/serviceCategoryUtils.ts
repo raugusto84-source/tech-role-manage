@@ -1,12 +1,37 @@
 /**
- * Utilidades para manejar los colores e iconos de categorías de servicio (Sistemas/Seguridad)
+ * Utilidades para manejar los colores e iconos de categorías de servicio (Sistemas/Seguridad/Fraccionamientos)
  */
 
 export const getServiceCategoryInfo = (category: string) => {
   const isSistemas = category === 'sistemas';
+  const isFraccionamientos = category === 'fraccionamientos';
+  const isSeguridad = category === 'seguridad';
+  
+  if (isFraccionamientos) {
+    return {
+      isSistemas: false,
+      isFraccionamientos: true,
+      isSeguridad: false,
+      icon: '🏘️',
+      label: 'FRACCIONAMIENTOS',
+      colors: {
+        cardBackground: 'bg-amber-50 dark:bg-amber-950/20',
+        cardBorder: 'border-amber-200 dark:border-amber-800',
+        titleText: 'text-amber-700 dark:text-amber-300',
+        border: 'border-l-amber-500',
+        background: 'bg-amber-50/50',
+        fullCard: 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800',
+        section: 'bg-amber-50',
+        text: 'text-amber-700',
+        calendarHighlight: { backgroundColor: "hsl(45, 93%, 85%)", color: "hsl(45, 93%, 30%)" }
+      }
+    };
+  }
   
   return {
     isSistemas,
+    isFraccionamientos: false,
+    isSeguridad,
     icon: isSistemas ? '💻' : '🛡️',
     label: isSistemas ? 'SISTEMAS' : 'SEGURIDAD',
     colors: {
