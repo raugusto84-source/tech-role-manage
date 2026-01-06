@@ -201,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supervisor: '/dashboard',
         administrador: '/dashboard',
         visor_tecnico: '/technician-viewer',
+        jcf: '/jcf',
       };
 
       window.location.href = roleDashboards[role] || '/client';
