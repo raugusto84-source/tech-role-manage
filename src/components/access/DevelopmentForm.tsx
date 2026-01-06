@@ -379,7 +379,8 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
         failure_description: `Instalación inicial - ${data.name}`,
         estimated_cost: 0,
         delivery_date: deliveryDate.toISOString().split('T')[0],
-        status: 'pendiente',
+        status: 'pendiente_aprobacion',
+        order_category: 'fraccionamientos',
       })
       .select()
       .single();
