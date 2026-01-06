@@ -21,6 +21,7 @@ import Users from "./pages/Users";
 import Surveys from "./pages/Surveys";
 import Clients from "./pages/Clients";
 import ServiceContracts from "./pages/ServiceContracts";
+import JCFDashboard from "./pages/JCFDashboard";
 
 import Warranties from "./pages/Warranties";
 import Fleets from "./pages/Fleets";
@@ -49,7 +50,7 @@ const App = () => (
             <Route 
               path="/orders" 
               element={
-                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'tecnico', 'cliente']}>
+                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'tecnico', 'cliente', 'jcf']}>
                   <Orders />
                 </ProtectedRoute>
               } 
@@ -57,7 +58,7 @@ const App = () => (
             <Route 
               path="/quotes" 
               element={
-                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'tecnico', 'cliente']}>
+                <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'tecnico', 'cliente', 'jcf']}>
                   <Quotes />
                 </ProtectedRoute>
               } 
@@ -99,6 +100,14 @@ const App = () => (
               element={
                 <ProtectedRoute allowedRoles={['cliente']}>
                   <ClientDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route 
+              path="/jcf" 
+              element={
+                <ProtectedRoute allowedRoles={['jcf']}>
+                  <JCFDashboard />
                 </ProtectedRoute>
               }
             />

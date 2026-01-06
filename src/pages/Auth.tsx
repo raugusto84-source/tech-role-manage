@@ -25,7 +25,8 @@ export default function Auth() {
       'tecnico': '/technician',
       'vendedor': '/dashboard',
       'supervisor': '/dashboard',
-      'administrador': '/dashboard'
+      'administrador': '/dashboard',
+      'jcf': '/jcf'
     };
     
     const redirectTo = roleDashboards[profile.role] || '/dashboard';
