@@ -17,7 +17,7 @@ interface Order {
   delivery_date: string;
   estimated_cost?: number;
   average_service_time?: number;
-  status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
+  status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
   assigned_technician?: string;
   assignment_reason?: string;
   evidence_photos?: string[];
@@ -96,6 +96,7 @@ export function OrderListItem({
   
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'en_espera': return 'En Espera';
       case 'pendiente_aprobacion': return 'Pendiente Aprobación';
       case 'pendiente_actualizacion': return 'Pendiente Actualización';
       case 'en_proceso': return 'En Proceso';
@@ -197,9 +198,22 @@ export function OrderListItem({
         )}
       </TableCell>
       <TableCell onClick={onClick}>
+        {/* Para órdenes de fraccionamiento: delivery_date es agendado, estimated_delivery_date es entrega */}
+        {order.is_development_order && order.delivery_date ? (
+          <div className="text-sm">
+            <div className="font-medium">
+              {format(new Date(order.delivery_date + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })}
+            </div>
+            <div className="text-xs text-muted-foreground">Agendado</div>
+          </div>
+        ) : (
+          format(new Date((order.estimated_delivery_date || order.delivery_date) + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })
+        )}
+      </TableCell>
+      <TableCell onClick={onClick}>
         {order.estimated_delivery_date 
-          ? format(new Date(order.estimated_delivery_date), 'dd/MM/yyyy', { locale: es })
-          : format(new Date(order.delivery_date), 'dd/MM/yyyy', { locale: es })
+          ? format(new Date(order.estimated_delivery_date + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })
+          : format(new Date(order.delivery_date + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })
         }
       </TableCell>
       <TableCell onClick={onClick} className="text-right font-mono">
