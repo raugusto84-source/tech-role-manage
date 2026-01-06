@@ -44,7 +44,7 @@ interface OrderStatusUpdateProps {
 }
 
 // Configuración de estados disponibles
-const STATE_TRANSITIONS = {
+const STATE_TRANSITIONS: Record<string, Array<{ value: string; label: string; icon: any; color: string; description: string }>> = {
   pendiente_aprobacion: [
     { 
       value: 'en_proceso', 
@@ -52,6 +52,15 @@ const STATE_TRANSITIONS = {
       icon: Wrench, 
       color: 'bg-orange-500 hover:bg-orange-600',
       description: 'Iniciar trabajo en el proyecto'
+    }
+  ],
+  asignando: [
+    { 
+      value: 'en_proceso', 
+      label: 'Asignar Ahora', 
+      icon: Wrench, 
+      color: 'bg-green-500 hover:bg-green-600',
+      description: 'Productos listos, iniciar trabajo'
     }
   ],
   en_proceso: [
@@ -98,6 +107,13 @@ const ALL_STATES = [
     icon: Clock, 
     color: 'bg-yellow-500 hover:bg-yellow-600',
     description: 'Esperando aprobación del cliente'
+  },
+  { 
+    value: 'asignando', 
+    label: 'Asignando (Compras)', 
+    icon: Clock, 
+    color: 'bg-purple-500 hover:bg-purple-600',
+    description: 'Pendiente compra de productos'
   },
   { 
     value: 'en_proceso', 

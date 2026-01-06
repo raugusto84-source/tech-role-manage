@@ -325,18 +325,28 @@ export function SimpleOrderApproval({
         });
         if (signatureError) throw signatureError;
 
-        // Actualizar el estado de la orden a 'en_proceso'
+        // Verificar si la orden tiene productos
+        const hasProducts = orderItems.some((item: any) => item.item_type === 'producto');
+        
+        // Si tiene productos -> asignando (para compras)
+        // Si solo servicios -> en_proceso directo
+        const newStatus = hasProducts ? 'asignando' : 'en_proceso';
+
+        // Actualizar el estado de la orden
         const {
           error: orderError
         } = await supabase.from('orders').update({
-          status: 'en_proceso',
+          status: newStatus,
           client_approval: true,
           client_approved_at: new Date().toISOString()
         }).eq('id', order.id);
         if (orderError) throw orderError;
+        
         toast({
-          title: "Orden aprobada",
-          description: "La orden ha sido aprobada exitosamente y está en proceso.",
+          title: hasProducts ? "Orden en asignación" : "Orden aprobada",
+          description: hasProducts 
+            ? "La orden está pendiente de compra de productos."
+            : "La orden ha sido aprobada exitosamente y está en proceso.",
           variant: "default"
         });
       }
