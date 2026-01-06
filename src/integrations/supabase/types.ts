@@ -7897,6 +7897,7 @@ export type Database = {
         | "pausa"
         | "pendiente_actualizacion"
         | "rechazada"
+        | "asignando"
       quote_status:
         | "solicitud"
         | "enviada"
@@ -8110,6 +8111,7 @@ export const Constants = {
         "pausa",
         "pendiente_actualizacion",
         "rechazada",
+        "asignando",
       ],
       quote_status: [
         "solicitud",
