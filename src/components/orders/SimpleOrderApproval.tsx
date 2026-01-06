@@ -336,7 +336,7 @@ export function SimpleOrderApproval({
         const {
           error: orderError
         } = await supabase.from('orders').update({
-          status: newStatus,
+          status: newStatus as any,
           client_approval: true,
           client_approved_at: new Date().toISOString()
         }).eq('id', order.id);
