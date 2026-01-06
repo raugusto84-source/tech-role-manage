@@ -9,6 +9,7 @@ interface Order {
   estimated_delivery_date?: string | null;
   status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
   priority?: 'baja' | 'media' | 'alta' | 'critica';
+  order_category?: string; // Campo directo de la orden
   service_types?: {
     service_category?: string;
   } | null;
@@ -37,10 +38,11 @@ export function OrdersSummary({
     baja: calculatedPriorities.filter(p => p === 'baja').length
   };
 
-  // Count by category - Fraccionamientos tienen prioridad sobre service_category
+  // Count by category - Fraccionamientos tienen prioridad, luego order_category, luego service_types
   const getOrderCategory = (order: Order): 'sistemas' | 'seguridad' | 'fraccionamientos' => {
     if (order.is_development_order) return 'fraccionamientos';
-    return (order.service_types?.service_category || 'sistemas') as 'sistemas' | 'seguridad';
+    // Usar order_category si existe, sino service_types.service_category, sino default a sistemas
+    return (order.order_category || order.service_types?.service_category || 'sistemas') as 'sistemas' | 'seguridad' | 'fraccionamientos';
   };
 
   const categoryCounts = {
