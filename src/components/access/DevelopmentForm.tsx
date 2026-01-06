@@ -8,10 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AccessDevelopment } from './AccessDevelopmentsManager';
-import { Loader2, Search, UserPlus } from 'lucide-react';
+import { Loader2, Plus, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Client {
   id: string;
@@ -46,8 +45,10 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState('');
+  const [showNewClientDialog, setShowNewClientDialog] = useState(false);
+  const [newClientData, setNewClientData] = useState({ name: '', phone: '', email: '', address: '' });
+  const [savingClient, setSavingClient] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -136,16 +137,63 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
     }
   }, [development, leadData, clients]);
 
-  const handleSelectClient = (client: Client) => {
-    setSelectedClientId(client.id);
+  const handleSelectClient = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (client) {
+      setSelectedClientId(client.id);
+      setFormData(prev => ({
+        ...prev,
+        contact_name: client.name,
+        contact_phone: client.phone || '',
+        contact_email: client.email || '',
+        address: prev.address || client.address
+      }));
+    }
+  };
+
+  const handleCreateClient = async () => {
+    if (!newClientData.name.trim()) {
+      toast.error('El nombre del cliente es obligatorio');
+      return;
+    }
+
+    setSavingClient(true);
+    try {
+      const { data: newClient, error } = await supabase
+        .from('clients')
+        .insert({
+          name: newClientData.name,
+          phone: newClientData.phone || null,
+          email: newClientData.email || null,
+          address: newClientData.address || 'Sin dirección'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Add to list and select
+      setClients(prev => [...prev, newClient]);
+      handleSelectClient(newClient.id);
+      setShowNewClientDialog(false);
+      setNewClientData({ name: '', phone: '', email: '', address: '' });
+      toast.success('Cliente creado');
+    } catch (error) {
+      console.error('Error creating client:', error);
+      toast.error('Error al crear cliente');
+    } finally {
+      setSavingClient(false);
+    }
+  };
+
+  const clearSelectedClient = () => {
+    setSelectedClientId(null);
     setFormData(prev => ({
       ...prev,
-      contact_name: client.name,
-      contact_phone: client.phone || '',
-      contact_email: client.email || '',
-      address: prev.address || client.address
+      contact_name: '',
+      contact_phone: '',
+      contact_email: ''
     }));
-    setClientSearchOpen(false);
   };
 
   const filteredClients = clients.filter(client =>
@@ -422,6 +470,7 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Basic Info */}
       <div className="space-y-4">
@@ -446,66 +495,65 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
           </div>
           <div className="col-span-2">
             <Label>Cliente / Contacto *</Label>
-            <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  role="combobox"
-                  className="w-full justify-between font-normal"
-                >
-                  {selectedClientId ? (
-                    <span className="flex items-center gap-2">
-                      {formData.contact_name}
-                      {formData.contact_phone && (
-                        <span className="text-muted-foreground text-xs">({formData.contact_phone})</span>
-                      )}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Buscar cliente...</span>
-                  )}
-                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0" align="start">
-                <Command>
-                  <CommandInput 
-                    placeholder="Buscar por nombre, teléfono o email..." 
-                    value={clientSearch}
-                    onValueChange={setClientSearch}
-                  />
-                  <CommandList>
-                    {loadingClients ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
-                        Cargando clientes...
-                      </div>
-                    ) : (
-                      <>
-                        <CommandEmpty>No se encontraron clientes</CommandEmpty>
-                        <CommandGroup heading="Clientes">
-                          {filteredClients.slice(0, 10).map((client) => (
-                            <CommandItem
-                              key={client.id}
-                              value={client.name}
-                              onSelect={() => handleSelectClient(client)}
-                              className="cursor-pointer"
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-medium">{client.name}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {client.phone || 'Sin teléfono'} • {client.email || 'Sin email'}
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </>
-                    )}
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <div className="flex gap-2">
+              {selectedClientId ? (
+                <div className="flex-1 flex items-center gap-2 p-2 border rounded-md bg-muted/50">
+                  <div className="flex-1">
+                    <p className="font-medium">{formData.contact_name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formData.contact_phone || 'Sin teléfono'} • {formData.contact_email || 'Sin email'}
+                    </p>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={clearSelectedClient}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Buscar cliente..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    onClick={() => setShowNewClientDialog(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+            {!selectedClientId && clientSearch && filteredClients.length > 0 && (
+              <div className="mt-2 border rounded-md max-h-48 overflow-y-auto">
+                {filteredClients.slice(0, 10).map((client) => (
+                  <button
+                    key={client.id}
+                    type="button"
+                    className="w-full text-left p-2 hover:bg-muted/50 border-b last:border-b-0"
+                    onClick={() => handleSelectClient(client.id)}
+                  >
+                    <p className="font-medium">{client.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {client.phone || 'Sin teléfono'} • {client.email || 'Sin email'}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+            {!selectedClientId && clientSearch && filteredClients.length === 0 && !loadingClients && (
+              <p className="text-xs text-muted-foreground mt-1">
+                No se encontraron clientes. Use el botón + para crear uno nuevo.
+              </p>
+            )}
             {selectedClientId && (
               <p className="text-xs text-muted-foreground mt-1">
                 Las órdenes de servicio se asociarán a este cliente
@@ -517,8 +565,8 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
             <Input
               id="contact_phone"
               value={formData.contact_phone}
-              onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-              disabled={!!selectedClientId}
+              readOnly
+              className="bg-muted/50"
             />
           </div>
           <div>
@@ -526,8 +574,8 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
             <Input
               id="contact_email"
               value={formData.contact_email}
-              onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-              disabled={!!selectedClientId}
+              readOnly
+              className="bg-muted/50"
             />
           </div>
         </div>
@@ -724,5 +772,60 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
         </Button>
       </div>
     </form>
+
+    {/* New Client Dialog */}
+    <Dialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Nuevo Cliente</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="new_client_name">Nombre *</Label>
+            <Input
+              id="new_client_name"
+              value={newClientData.name}
+              onChange={(e) => setNewClientData({ ...newClientData, name: e.target.value })}
+              placeholder="Nombre del cliente"
+            />
+          </div>
+          <div>
+            <Label htmlFor="new_client_phone">Teléfono</Label>
+            <Input
+              id="new_client_phone"
+              value={newClientData.phone}
+              onChange={(e) => setNewClientData({ ...newClientData, phone: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="new_client_email">Email</Label>
+            <Input
+              id="new_client_email"
+              type="email"
+              value={newClientData.email}
+              onChange={(e) => setNewClientData({ ...newClientData, email: e.target.value })}
+            />
+          </div>
+          <div>
+            <Label htmlFor="new_client_address">Dirección</Label>
+            <Input
+              id="new_client_address"
+              value={newClientData.address}
+              onChange={(e) => setNewClientData({ ...newClientData, address: e.target.value })}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setShowNewClientDialog(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={handleCreateClient} disabled={savingClient}>
+              {savingClient && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Crear Cliente
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
