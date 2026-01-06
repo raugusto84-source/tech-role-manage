@@ -147,22 +147,24 @@ export function AppSidebar() {
 
   const sections = getNavigationSections();
   
-  const renderMenuItem = (item: any) => (
-    <SidebarMenuItem key={item.title}>
-      <SidebarMenuButton asChild className="touch-target">
-        <NavLink 
-          to={item.url} 
-          className={({ isActive: active }) => {
-            const hasQuoteNotifications = item.url === '/quotes' && unreadCounts.quotes > 0;
-            return `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${
-              active 
-                ? "bg-gradient-primary text-white shadow-md font-medium" 
-                : hasQuoteNotifications
-                  ? "bg-pink-200 text-gray-900 hover:bg-pink-300"
-                  : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
-            }`;
-          }}
-        >
+  const renderMenuItem = (item: any) => {
+    const hasQuoteNotifications = item.url === '/quotes' && unreadCounts.quotes > 0;
+    
+    return (
+      <SidebarMenuItem key={item.title} className={hasQuoteNotifications ? "bg-pink-200 rounded-lg" : ""}>
+        <SidebarMenuButton asChild className={`touch-target ${hasQuoteNotifications ? "!bg-pink-200 hover:!bg-pink-300" : ""}`}>
+          <NavLink 
+            to={item.url} 
+            className={({ isActive: active }) => {
+              return `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${
+                active 
+                  ? "bg-gradient-primary text-white shadow-md font-medium" 
+                  : hasQuoteNotifications
+                    ? "!bg-pink-200 !text-gray-900 hover:!bg-pink-300"
+                    : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
+              }`;
+            }}
+          >
           <item.icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
             !collapsed ? '' : 'mx-auto'
           }`} />
@@ -247,7 +249,8 @@ export function AppSidebar() {
         </NavLink>
       </SidebarMenuButton>
     </SidebarMenuItem>
-  );
+    );
+  };
 
   return (
     <Sidebar className={`${collapsed ? "w-14" : "w-60"} border-r border-sidebar-border bg-sidebar`} collapsible="icon">
