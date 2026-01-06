@@ -795,6 +795,7 @@ export default function Orders() {
                       getStatusColor={getStatusColor}
                       showCollectButton={canCollectPayment}
                       onCollect={() => handleCollectPayment(order)}
+                      onStatusChange={loadOrders}
                     />
                   ))}
                 </TableBody>

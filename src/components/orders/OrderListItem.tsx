@@ -1,11 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Eye, Trash2, CreditCard, Clock } from "lucide-react";
+import { Eye, Trash2, CreditCard, Clock, Play } from "lucide-react";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useOrderElapsedTime } from "@/hooks/useOrderElapsedTime";
 import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel } from "@/utils/priorityCalculator";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Order {
   id: string;
@@ -81,6 +83,7 @@ interface OrderListItemProps {
   getStatusColor: (status: string) => string;
   showCollectButton: boolean;
   onCollect?: () => void;
+  onStatusChange?: () => void;
 }
 
 export function OrderListItem({
@@ -90,8 +93,36 @@ export function OrderListItem({
   canDelete,
   getStatusColor,
   showCollectButton,
-  onCollect
+  onCollect,
+  onStatusChange
 }: OrderListItemProps) {
+
+  const handleActivateOrder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'en_proceso' })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      // Log status change
+      await supabase.from('order_status_logs').insert({
+        order_id: order.id,
+        previous_status: 'en_espera' as const,
+        new_status: 'en_proceso' as const,
+        notes: 'Orden activada desde lista de órdenes',
+        changed_by: (await supabase.auth.getUser()).data.user?.id || ''
+      });
+
+      toast.success('Orden activada correctamente');
+      onStatusChange?.();
+    } catch (error) {
+      console.error('Error activating order:', error);
+      toast.error('Error al activar la orden');
+    }
+  };
   const { elapsedTime, totalTime, loading: timeLoading } = useOrderElapsedTime(order.id, order.status, order.created_at);
   
   const getStatusLabel = (status: string) => {
@@ -241,6 +272,18 @@ export function OrderListItem({
             <Eye className="h-4 w-4" />
           </Button>
           
+          {order.status === 'en_espera' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleActivateOrder}
+              className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+              title="Activar orden"
+            >
+              <Play className="h-4 w-4" />
+            </Button>
+          )}
+
           {order.is_development_order ? (
             <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-xs">
               🏘️ Fracc.
