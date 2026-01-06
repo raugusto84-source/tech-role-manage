@@ -1,23 +1,26 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield, DollarSign } from "lucide-react";
+import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield, DollarSign, Building2 } from "lucide-react";
 import { calculateOrderPriority } from "@/utils/priorityCalculator";
+
 interface Order {
   id: string;
   created_at: string;
   delivery_date: string;
   estimated_delivery_date?: string | null;
   status: 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
-  // Campo opcional: si existe lo ignoramos para el resumen y calculamos dinámicamente
   priority?: 'baja' | 'media' | 'alta' | 'critica';
   service_types?: {
     service_category?: string;
   } | null;
+  // Campo para identificar si es orden de fraccionamiento
+  is_development_order?: boolean;
 }
+
 interface OrdersSummaryProps {
   orders: Order[];
   finalizedWithPendingPayment?: number;
 }
+
 export function OrdersSummary({
   orders,
   finalizedWithPendingPayment = 0
@@ -34,10 +37,16 @@ export function OrdersSummary({
     baja: calculatedPriorities.filter(p => p === 'baja').length
   };
 
-  // Count by category
+  // Count by category - Fraccionamientos tienen prioridad sobre service_category
+  const getOrderCategory = (order: Order): 'sistemas' | 'seguridad' | 'fraccionamientos' => {
+    if (order.is_development_order) return 'fraccionamientos';
+    return (order.service_types?.service_category || 'sistemas') as 'sistemas' | 'seguridad';
+  };
+
   const categoryCounts = {
-    sistemas: activeOrders.filter(o => (o.service_types?.service_category || 'sistemas') === 'sistemas').length,
-    seguridad: activeOrders.filter(o => (o.service_types?.service_category || 'sistemas') === 'seguridad').length
+    sistemas: activeOrders.filter(o => getOrderCategory(o) === 'sistemas').length,
+    seguridad: activeOrders.filter(o => getOrderCategory(o) === 'seguridad').length,
+    fraccionamientos: activeOrders.filter(o => getOrderCategory(o) === 'fraccionamientos').length
   };
 
   // Count by status
@@ -47,7 +56,9 @@ export function OrdersSummary({
     pendiente_actualizacion: activeOrders.filter(o => o.status === 'pendiente_actualizacion').length,
     pendiente_entrega: activeOrders.filter(o => o.status === 'pendiente_entrega').length
   };
-  return <div className="bg-muted/30 rounded-lg border p-3 mb-4">
+
+  return (
+    <div className="bg-muted/30 rounded-lg border p-3 mb-4">
       <div className="flex flex-wrap items-center gap-3">
         {/* Total */}
         <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
@@ -77,7 +88,7 @@ export function OrdersSummary({
         
         <span className="text-muted-foreground text-sm">|</span>
         
-        {/* Categories */}
+        {/* Categories - Sistemas, Seguridad, Fraccionamientos */}
         <Badge className="gap-1.5 text-sm px-3 py-1 bg-info text-info-foreground hover:bg-info/90" title="Sistemas">
           <Monitor className="h-4 w-4" />
           {categoryCounts.sistemas}
@@ -86,30 +97,45 @@ export function OrdersSummary({
           <Shield className="h-4 w-4" />
           {categoryCounts.seguridad}
         </Badge>
+        <Badge className="gap-1.5 text-sm px-3 py-1 bg-amber-500 text-white hover:bg-amber-600" title="Fraccionamientos">
+          <Building2 className="h-4 w-4" />
+          {categoryCounts.fraccionamientos}
+        </Badge>
         
         <span className="text-muted-foreground text-sm">|</span>
         
         {/* Status */}
-        {statusCounts.pendiente_aprobacion > 0 && <Badge variant="outline" title="Pendientes de Aprobación" className="text-sm px-3 py-1 text-warning-foreground border-warning-border bg-[#f2e326]">
+        {statusCounts.pendiente_aprobacion > 0 && (
+          <Badge variant="outline" title="Pendientes de Aprobación" className="text-sm px-3 py-1 text-warning-foreground border-warning-border bg-[#f2e326]">
             {statusCounts.pendiente_aprobacion} PA
-          </Badge>}
-        {statusCounts.en_proceso > 0 && <Badge variant="outline" title="En Proceso" className="text-sm px-3 py-1 text-info-foreground border-info-border bg-[#b0f7f4]">
-            {statusCounts.en_proceso} EP
-          </Badge>}
-        {statusCounts.pendiente_actualizacion > 0 && <Badge variant="outline" className="text-sm px-3 py-1 bg-warning-light text-warning-foreground border-warning-border" title="Pendientes de Actualización">
-            {statusCounts.pendiente_actualizacion} PAc
-          </Badge>}
-        {statusCounts.pendiente_entrega > 0 && <Badge variant="outline" title="Pendientes de Entrega" className="text-sm px-3 py-1 text-success-foreground border-success-border bg-[#a2f6d0]">
-            {statusCounts.pendiente_entrega} PE
-          </Badge>}
-        
-        {finalizedWithPendingPayment > 0 && <>
-          <span className="text-muted-foreground text-sm">|</span>
-          <Badge variant="outline" title="Finalizadas con Cobro Pendiente" className="text-sm px-3 py-1 bg-warning text-warning-foreground border-warning-border animate-pulse">
-            <DollarSign className="h-4 w-4" />
-            {finalizedWithPendingPayment}
           </Badge>
-        </>}
+        )}
+        {statusCounts.en_proceso > 0 && (
+          <Badge variant="outline" title="En Proceso" className="text-sm px-3 py-1 text-info-foreground border-info-border bg-[#b0f7f4]">
+            {statusCounts.en_proceso} EP
+          </Badge>
+        )}
+        {statusCounts.pendiente_actualizacion > 0 && (
+          <Badge variant="outline" className="text-sm px-3 py-1 bg-warning-light text-warning-foreground border-warning-border" title="Pendientes de Actualización">
+            {statusCounts.pendiente_actualizacion} PAc
+          </Badge>
+        )}
+        {statusCounts.pendiente_entrega > 0 && (
+          <Badge variant="outline" title="Pendientes de Entrega" className="text-sm px-3 py-1 text-success-foreground border-success-border bg-[#a2f6d0]">
+            {statusCounts.pendiente_entrega} PE
+          </Badge>
+        )}
+        
+        {finalizedWithPendingPayment > 0 && (
+          <>
+            <span className="text-muted-foreground text-sm">|</span>
+            <Badge variant="outline" title="Finalizadas con Cobro Pendiente" className="text-sm px-3 py-1 bg-warning text-warning-foreground border-warning-border animate-pulse">
+              <DollarSign className="h-4 w-4" />
+              {finalizedWithPendingPayment}
+            </Badge>
+          </>
+        )}
       </div>
-    </div>;
+    </div>
+  );
 }

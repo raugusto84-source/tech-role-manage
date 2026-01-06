@@ -67,6 +67,7 @@ interface Order {
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
   priority: 'baja' | 'media' | 'alta' | 'critica';
+  is_development_order?: boolean; // Flag para órdenes de fraccionamientos
   service_types?: {
     name: string;
     description?: string;
@@ -205,6 +206,15 @@ export default function Orders() {
         return;
       }
 
+      // Obtener IDs de órdenes que son de fraccionamientos
+      const orderIds = (data || []).map((o: any) => o.id);
+      const { data: developmentOrders } = await supabase
+        .from('access_development_orders')
+        .select('order_id')
+        .in('order_id', orderIds);
+      
+      const developmentOrderIds = new Set((developmentOrders || []).map(d => d.order_id));
+
       const ordersWithTechnician = await Promise.all(
         (data || []).map(async (order: any) => {
           let technicianProfile = null;
@@ -250,7 +260,8 @@ export default function Orders() {
           return {
             ...order,
             technician_profile: technicianProfile,
-            support_technicians: supportTechnicians || []
+            support_technicians: supportTechnicians || [],
+            is_development_order: developmentOrderIds.has(order.id)
           };
         })
       );
