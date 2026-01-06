@@ -12,6 +12,15 @@ export function useOrderElapsedTime(orderId: string, currentStatus: string, orde
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If order is in en_espera, don't calculate any time - timer starts at 0
+    if (currentStatus === 'en_espera') {
+      setElapsedTime('0h 0m');
+      setTotalTime('0h 0m');
+      setServiceTime('0h 0m');
+      setLoading(false);
+      return;
+    }
+
     loadElapsedTime();
     
     // Update every minute
@@ -52,7 +61,7 @@ export function useOrderElapsedTime(orderId: string, currentStatus: string, orde
       if (error) throw error;
 
       if (!logs || logs.length === 0) {
-        setElapsedTime('');
+        setElapsedTime('0h 0m');
       } else {
         const startTime = new Date(logs[0].changed_at);
         const now = new Date();
@@ -81,16 +90,16 @@ export function useOrderElapsedTime(orderId: string, currentStatus: string, orde
         // Total time is now service time (from en_proceso), not from creation
         setTotalTime(formatHoursAndMinutes(serviceDurationHours));
       } else {
-        // Order hasn't started yet (still in en_espera or similar)
-        setServiceTime('');
-        setTotalTime('');
+        // Order hasn't started yet
+        setServiceTime('0h 0m');
+        setTotalTime('0h 0m');
       }
 
     } catch (error) {
       console.error('Error loading elapsed time:', error);
-      setElapsedTime('');
-      setTotalTime('');
-      setServiceTime('');
+      setElapsedTime('0h 0m');
+      setTotalTime('0h 0m');
+      setServiceTime('0h 0m');
     } finally {
       setLoading(false);
     }
