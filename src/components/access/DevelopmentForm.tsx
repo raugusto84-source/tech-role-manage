@@ -8,8 +8,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AccessDevelopment } from './AccessDevelopmentsManager';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search, UserPlus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+interface Client {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string;
+}
 
 interface LeadData {
   name: string;
@@ -33,6 +43,11 @@ interface Props {
 export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: Props) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -53,6 +68,28 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
     status: 'active',
     notes: ''
   });
+
+  // Load clients on mount
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      setLoadingClients(true);
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, phone, email, address')
+        .order('name');
+      
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    } finally {
+      setLoadingClients(false);
+    }
+  };
 
   useEffect(() => {
     if (development) {
@@ -76,6 +113,13 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
         status: development.status,
         notes: development.notes || ''
       });
+      // Try to find matching client
+      if (development.contact_name) {
+        const matchingClient = clients.find(c => c.name === development.contact_name);
+        if (matchingClient) {
+          setSelectedClientId(matchingClient.id);
+        }
+      }
     } else if (leadData) {
       setFormData(prev => ({
         ...prev,
@@ -90,7 +134,25 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
         investor_amount: leadData.investor_amount || 0,
       }));
     }
-  }, [development, leadData]);
+  }, [development, leadData, clients]);
+
+  const handleSelectClient = (client: Client) => {
+    setSelectedClientId(client.id);
+    setFormData(prev => ({
+      ...prev,
+      contact_name: client.name,
+      contact_phone: client.phone || '',
+      contact_email: client.email || '',
+      address: prev.address || client.address
+    }));
+    setClientSearchOpen(false);
+  };
+
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    (client.phone && client.phone.includes(clientSearch)) ||
+    (client.email && client.email.toLowerCase().includes(clientSearch.toLowerCase()))
+  );
 
   // Calculate recovery months based on investment and monthly payment
   const calculatedRecoveryMonths = formData.has_investor && formData.monthly_payment > 0
@@ -107,6 +169,11 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
 
     if (formData.monthly_payment <= 0) {
       toast.error('El pago mensual debe ser mayor a 0');
+      return;
+    }
+
+    if (!selectedClientId) {
+      toast.error('Debe seleccionar un cliente para el contacto');
       return;
     }
 
@@ -144,8 +211,8 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
           await createInvestorLoanWithPayments(newDev.id, formData, calculatedRecoveryMonths);
         }
 
-        // Create initial order with 25 days delivery date
-        await createInitialOrder(newDev.id, formData);
+        // Create initial order with selected client
+        await createInitialOrder(newDev.id, formData, selectedClientId);
 
         // Generate scheduled orders and payments
         await generateInitialSchedules(newDev.id, formData);
@@ -235,7 +302,7 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
     }
   };
 
-  const createInitialOrder = async (developmentId: string, data: typeof formData) => {
+  const createInitialOrder = async (developmentId: string, data: typeof formData, clientId: string) => {
     // Get a default service type for access services
     const { data: serviceTypes } = await supabase
       .from('service_types')
@@ -247,36 +314,6 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
     if (!serviceTypeId) {
       console.warn('No active service type found for initial order');
       return;
-    }
-
-    // Find or create client
-    let clientId: string | null = null;
-    const { data: existingClient } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('name', data.name)
-      .limit(1)
-      .single();
-
-    if (existingClient) {
-      clientId = existingClient.id;
-    } else {
-      const { data: newClient, error: clientError } = await supabase
-        .from('clients')
-        .insert({
-          name: data.name,
-          address: data.address || 'Sin dirección',
-          phone: data.contact_phone,
-          email: data.contact_email
-        })
-        .select()
-        .single();
-
-      if (clientError) {
-        console.error('Error creating client:', clientError);
-        return;
-      }
-      clientId = newClient.id;
     }
 
     // Calculate delivery date: 25 days from now
@@ -407,13 +444,73 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
               onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             />
           </div>
-          <div>
-            <Label htmlFor="contact_name">Nombre de Contacto</Label>
-            <Input
-              id="contact_name"
-              value={formData.contact_name}
-              onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
-            />
+          <div className="col-span-2">
+            <Label>Cliente / Contacto *</Label>
+            <Popover open={clientSearchOpen} onOpenChange={setClientSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  role="combobox"
+                  className="w-full justify-between font-normal"
+                >
+                  {selectedClientId ? (
+                    <span className="flex items-center gap-2">
+                      {formData.contact_name}
+                      {formData.contact_phone && (
+                        <span className="text-muted-foreground text-xs">({formData.contact_phone})</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Buscar cliente...</span>
+                  )}
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command>
+                  <CommandInput 
+                    placeholder="Buscar por nombre, teléfono o email..." 
+                    value={clientSearch}
+                    onValueChange={setClientSearch}
+                  />
+                  <CommandList>
+                    {loadingClients ? (
+                      <div className="p-4 text-center text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                        Cargando clientes...
+                      </div>
+                    ) : (
+                      <>
+                        <CommandEmpty>No se encontraron clientes</CommandEmpty>
+                        <CommandGroup heading="Clientes">
+                          {filteredClients.slice(0, 10).map((client) => (
+                            <CommandItem
+                              key={client.id}
+                              value={client.name}
+                              onSelect={() => handleSelectClient(client)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">{client.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {client.phone || 'Sin teléfono'} • {client.email || 'Sin email'}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {selectedClientId && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Las órdenes de servicio se asociarán a este cliente
+              </p>
+            )}
           </div>
           <div>
             <Label htmlFor="contact_phone">Teléfono</Label>
@@ -421,6 +518,16 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
               id="contact_phone"
               value={formData.contact_phone}
               onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+              disabled={!!selectedClientId}
+            />
+          </div>
+          <div>
+            <Label htmlFor="contact_email">Email</Label>
+            <Input
+              id="contact_email"
+              value={formData.contact_email}
+              onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+              disabled={!!selectedClientId}
             />
           </div>
         </div>
