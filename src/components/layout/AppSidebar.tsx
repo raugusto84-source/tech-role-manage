@@ -152,13 +152,16 @@ export function AppSidebar() {
       <SidebarMenuButton asChild className="touch-target">
         <NavLink 
           to={item.url} 
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${
-              isActive 
+          className={({ isActive: active }) => {
+            const hasQuoteNotifications = item.url === '/quotes' && unreadCounts.quotes > 0;
+            return `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${
+              active 
                 ? "bg-gradient-primary text-white shadow-md font-medium" 
-                : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
-            }`
-          }
+                : hasQuoteNotifications
+                  ? "bg-pink-100 text-pink-800 hover:bg-pink-200"
+                  : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
+            }`;
+          }}
         >
           <item.icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${
             !collapsed ? '' : 'mx-auto'
@@ -196,7 +199,7 @@ export function AppSidebar() {
                 </div>
               )}
               {item.url === '/quotes' && unreadCounts.quotes > 0 && (
-                <Badge variant="destructive" className="h-5 w-5 p-0 flex items-center justify-center text-xs">
+                <Badge className="h-5 px-1.5 flex items-center justify-center text-xs bg-pink-200 text-pink-800 hover:bg-pink-200">
                   {unreadCounts.quotes > 99 ? '99+' : unreadCounts.quotes}
                 </Badge>
               )}

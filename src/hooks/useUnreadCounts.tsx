@@ -39,11 +39,11 @@ export function useUnreadCounts() {
         .eq('status', 'pendiente_aprobacion')
         .is('deleted_at', null);
 
-      // Count quotes pending approval (new status flow)
+      // Count new quote requests (solicitud status - new quotes from clients)
       const { count: quotesCount } = await supabase
         .from('quotes')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendiente_aprobacion');
+        .eq('status', 'solicitud');
 
       // Count warranty claims that are pending resolution
       const { count: warrantiesCount } = await supabase
