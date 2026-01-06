@@ -285,6 +285,20 @@ export function PaymentCollectionDialog({
           </DialogTitle>
         </DialogHeader>
         
+        {/* Mostrar total de la orden */}
+        <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Total de la Orden:</span>
+            <span className="text-xl font-bold text-primary">{formatMXNExact(totalAmount)}</span>
+          </div>
+          {paymentSummary.totalPaid > 0 && (
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-primary/10">
+              <span className="text-sm text-muted-foreground">Ya pagado:</span>
+              <span className="text-sm font-medium text-green-600">{formatMXNExact(paymentSummary.totalPaid)}</span>
+            </div>
+          )}
+        </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="amount">
