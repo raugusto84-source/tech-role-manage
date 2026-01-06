@@ -318,7 +318,7 @@ export function OrderDetails({
       const { data: updateData, error: orderError } = await supabase
         .from('orders')
         .update({
-          status: newStatus,
+          status: newStatus as any,
           client_approval: true,
           client_approved_at: new Date().toISOString()
         })
@@ -347,7 +347,7 @@ export function OrderDetails({
         .insert({
           order_id: order.id,
           previous_status: 'pendiente_aprobacion',
-          new_status: newStatus,
+          new_status: newStatus as any,
           changed_by: user?.id,
           notes: hasProducts 
             ? 'Aprobado por ' + (profile?.full_name || profile?.email) + ' - Pendiente compra de productos'
@@ -358,7 +358,7 @@ export function OrderDetails({
         console.error('Error logging status change:', logError);
       }
 
-      setOrderStatus(newStatus);
+      setOrderStatus(newStatus as any);
       
       toast({
         title: hasProducts ? "Orden en asignación" : "Orden aprobada",
