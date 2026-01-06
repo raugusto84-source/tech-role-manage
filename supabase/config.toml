@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.process-access-orders]
 verify_jwt = false
+
+[functions.create-development-order]
+verify_jwt = false
