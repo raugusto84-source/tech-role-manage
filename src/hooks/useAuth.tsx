@@ -174,13 +174,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // After successful sign-in, get the role and redirect
       const { data: roleData, error: roleError } = await supabase.rpc('get_simple_user_role');
+      
+      let role = 'cliente';
       if (roleError) {
-        console.warn('useAuth: Could not fetch role after sign-in, defaulting to dashboard', roleError);
-        window.location.href = '/dashboard';
-        return { error: null };
+        console.warn('useAuth: Could not fetch role from user_roles, trying profiles table', roleError);
+        // Fallback: try to get role from profiles table
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          if (profileData?.role) {
+            role = profileData.role;
+          }
+        }
+      } else {
+        role = (roleData as string) || 'cliente';
       }
 
-      const role = (roleData as string) || 'cliente';
       const roleDashboards: Record<string, string> = {
         cliente: '/client',
         tecnico: '/technician',
@@ -190,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         visor_tecnico: '/technician-viewer',
       };
 
-      window.location.href = roleDashboards[role] || '/dashboard';
+      window.location.href = roleDashboards[role] || '/client';
       return { error: null };
     } catch (err: any) {
       console.error('useAuth: Unexpected error during signIn:', err);
