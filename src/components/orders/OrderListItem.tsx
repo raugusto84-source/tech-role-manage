@@ -123,10 +123,21 @@ export function OrderListItem({
   );
 
   // Determinar el color de fondo según la fecha de entrega
-  const deliveryDate = new Date(order.estimated_delivery_date || order.delivery_date);
-  const isDeliveryToday = isToday(deliveryDate);
-  const isDeliveryPast = isBefore(deliveryDate, startOfDay(new Date()));
-  const isDeliveryFuture = !isDeliveryToday && !isDeliveryPast;
+  const deliveryDateStr = order.estimated_delivery_date || order.delivery_date;
+  const deliveryDate = deliveryDateStr ? new Date(deliveryDateStr + 'T12:00:00Z') : null;
+  const isDeliveryToday = deliveryDate ? isToday(deliveryDate) : false;
+  const isDeliveryPast = deliveryDate ? isBefore(deliveryDate, startOfDay(new Date())) : false;
+  const isDeliveryFuture = deliveryDate ? !isDeliveryToday && !isDeliveryPast : false;
+  
+  // Helper para formatear fechas de forma segura
+  const safeFormatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return '-';
+    try {
+      return format(new Date(dateStr + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es });
+    } catch {
+      return '-';
+    }
+  };
 
   // Clases CSS condicionales para el fondo
   const rowClassName = isDeliveryPast
@@ -202,19 +213,16 @@ export function OrderListItem({
         {order.is_development_order && order.delivery_date ? (
           <div className="text-sm">
             <div className="font-medium">
-              {format(new Date(order.delivery_date + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })}
+              {safeFormatDate(order.delivery_date)}
             </div>
             <div className="text-xs text-muted-foreground">Agendado</div>
           </div>
         ) : (
-          format(new Date((order.estimated_delivery_date || order.delivery_date) + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })
+          safeFormatDate(order.estimated_delivery_date || order.delivery_date)
         )}
       </TableCell>
       <TableCell onClick={onClick}>
-        {order.estimated_delivery_date 
-          ? format(new Date(order.estimated_delivery_date + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })
-          : format(new Date(order.delivery_date + 'T12:00:00Z'), 'dd/MM/yyyy', { locale: es })
-        }
+        {safeFormatDate(order.estimated_delivery_date || order.delivery_date)}
       </TableCell>
       <TableCell onClick={onClick} className="text-right font-mono">
         ${calculateTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
