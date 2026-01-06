@@ -1,13 +1,24 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { Eye, Trash2, CreditCard, Clock, Play } from "lucide-react";
+import { Trash2, CreditCard, Clock, Play } from "lucide-react";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useOrderElapsedTime } from "@/hooks/useOrderElapsedTime";
 import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel } from "@/utils/priorityCalculator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Order {
   id: string;
@@ -96,9 +107,9 @@ export function OrderListItem({
   onCollect,
   onStatusChange
 }: OrderListItemProps) {
+  const [showActivateDialog, setShowActivateDialog] = useState(false);
 
-  const handleActivateOrder = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleActivateOrder = async () => {
     try {
       const { error } = await supabase
         .from('orders')
@@ -117,6 +128,7 @@ export function OrderListItem({
       });
 
       toast.success('Orden activada correctamente');
+      setShowActivateDialog(false);
       onStatusChange?.();
     } catch (error) {
       console.error('Error activating order:', error);
@@ -260,23 +272,14 @@ export function OrderListItem({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick();
-            }}
-            className="h-8 w-8 p-0"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-          
           {order.status === 'en_espera' && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleActivateOrder}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowActivateDialog(true);
+              }}
               className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
               title="Activar orden"
             >
@@ -328,6 +331,24 @@ export function OrderListItem({
             </Button>
           )}
         </div>
+
+        {/* Activate Order Confirmation Dialog */}
+        <AlertDialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Activar orden?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Al activar esta orden, el tiempo de servicio comenzará a correr. ¿Estás seguro de que deseas continuar?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleActivateOrder} className="bg-green-600 hover:bg-green-700">
+                Activar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TableCell>
     </TableRow>
   );
