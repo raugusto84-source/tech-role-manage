@@ -302,11 +302,23 @@ export function OrderDetails({
       console.log('Current status:', order.status);
       console.log('User ID:', user?.id);
 
-      // Update order status to en_proceso
+      // Verificar si la orden tiene productos (no solo servicios)
+      const hasProducts = orderItems.some(item => item.item_type === 'producto');
+      
+      // Si tiene productos -> asignando (para compras)
+      // Si solo servicios -> en_proceso directo
+      const newStatus = hasProducts ? 'asignando' : 'en_proceso';
+      const statusDescription = hasProducts 
+        ? 'La orden está pendiente de compra de productos'
+        : 'La orden ha sido aprobada y está en proceso';
+
+      console.log('Has products:', hasProducts, 'New status:', newStatus);
+
+      // Update order status
       const { data: updateData, error: orderError } = await supabase
         .from('orders')
         .update({
-          status: 'en_proceso',
+          status: newStatus,
           client_approval: true,
           client_approved_at: new Date().toISOString()
         })
@@ -335,20 +347,22 @@ export function OrderDetails({
         .insert({
           order_id: order.id,
           previous_status: 'pendiente_aprobacion',
-          new_status: 'en_proceso',
+          new_status: newStatus,
           changed_by: user?.id,
-          notes: 'Aprobado administrativamente por ' + (profile?.full_name || profile?.email)
+          notes: hasProducts 
+            ? 'Aprobado por ' + (profile?.full_name || profile?.email) + ' - Pendiente compra de productos'
+            : 'Aprobado administrativamente por ' + (profile?.full_name || profile?.email)
         });
 
       if (logError) {
         console.error('Error logging status change:', logError);
       }
 
-      setOrderStatus('en_proceso');
+      setOrderStatus(newStatus);
       
       toast({
-        title: "Orden aprobada",
-        description: "La orden ha sido aprobada y está en proceso",
+        title: hasProducts ? "Orden en asignación" : "Orden aprobada",
+        description: statusDescription,
         variant: "default"
       });
 
