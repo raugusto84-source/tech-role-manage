@@ -68,6 +68,7 @@ interface Order {
   estimated_delivery_date?: string | null;
   priority: 'baja' | 'media' | 'alta' | 'critica';
   is_development_order?: boolean; // Flag para órdenes de fraccionamientos
+  order_category?: string; // Categoría directa de la orden
   service_types?: {
     name: string;
     description?: string;

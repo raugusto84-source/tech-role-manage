@@ -3838,6 +3838,7 @@ export type Database = {
           initial_signature_url: string | null
           is_home_service: boolean | null
           is_policy_order: boolean | null
+          order_category: string | null
           order_number: string
           order_priority: number | null
           pdf_url: string | null
@@ -3887,6 +3888,7 @@ export type Database = {
           initial_signature_url?: string | null
           is_home_service?: boolean | null
           is_policy_order?: boolean | null
+          order_category?: string | null
           order_number: string
           order_priority?: number | null
           pdf_url?: string | null
@@ -3936,6 +3938,7 @@ export type Database = {
           initial_signature_url?: string | null
           is_home_service?: boolean | null
           is_policy_order?: boolean | null
+          order_category?: string | null
           order_number?: string
           order_priority?: number | null
           pdf_url?: string | null
