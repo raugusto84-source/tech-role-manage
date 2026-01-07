@@ -282,7 +282,7 @@ export default function ClientDashboard() {
           client_id,
           policy_id,
           is_active,
-          insurance_policies!inner(
+          insurance_policies:policy_clients_policy_id_fkey(
             id,
             policy_name,
             policy_number,
@@ -292,16 +292,19 @@ export default function ClientDashboard() {
         .eq('client_id', clientByEmail.id)
         .eq('is_active', true);
       
+      console.log('Policies loaded for client by email:', policies, 'error:', error);
+      
       if (!error && policies) {
         const formattedPolicies: PolicyInfo[] = policies
-          .filter(p => p.insurance_policies?.is_active)
+          .filter(p => (p.insurance_policies as any)?.is_active)
           .map(p => ({
             policy_client_id: p.id,
             policy_id: p.policy_id,
-            policy_name: p.insurance_policies?.policy_name || 'Póliza',
-            policy_number: p.insurance_policies?.policy_number || '',
+            policy_name: (p.insurance_policies as any)?.policy_name || 'Póliza',
+            policy_number: (p.insurance_policies as any)?.policy_number || '',
             client_id: p.client_id
           }));
+        console.log('Formatted policies:', formattedPolicies);
         setClientPolicies(formattedPolicies);
       }
       return;
@@ -315,7 +318,7 @@ export default function ClientDashboard() {
         client_id,
         policy_id,
         is_active,
-        insurance_policies!inner(
+        insurance_policies:policy_clients_policy_id_fkey(
           id,
           policy_name,
           policy_number,
@@ -325,16 +328,19 @@ export default function ClientDashboard() {
       .eq('client_id', client.id)
       .eq('is_active', true);
     
+    console.log('Policies loaded for client:', policies, 'error:', error);
+    
     if (!error && policies) {
       const formattedPolicies: PolicyInfo[] = policies
-        .filter(p => p.insurance_policies?.is_active)
+        .filter(p => (p.insurance_policies as any)?.is_active)
         .map(p => ({
           policy_client_id: p.id,
           policy_id: p.policy_id,
-          policy_name: p.insurance_policies?.policy_name || 'Póliza',
-          policy_number: p.insurance_policies?.policy_number || '',
+          policy_name: (p.insurance_policies as any)?.policy_name || 'Póliza',
+          policy_number: (p.insurance_policies as any)?.policy_number || '',
           client_id: p.client_id
         }));
+      console.log('Formatted policies:', formattedPolicies);
       setClientPolicies(formattedPolicies);
     }
   };
