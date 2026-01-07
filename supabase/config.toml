@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.create-development-order]
 verify_jwt = false
+
+[functions.create-policy-support-order]
+verify_jwt = false
