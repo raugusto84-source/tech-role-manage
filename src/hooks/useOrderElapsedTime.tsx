@@ -70,24 +70,23 @@ export function useOrderElapsedTime(orderId: string, currentStatus: string, orde
         setElapsedTime(formatHoursAndMinutes(durationHours));
       }
 
-      // Get when the order first entered "en_proceso" for service time calculation
-      const { data: enProcesoLog, error: enProcesoError } = await supabase
+      // Get when the order first entered "pendiente_aprobacion" or "en_proceso" for time calculation
+      // Timer starts from pendiente_aprobacion (first active status after en_espera)
+      const { data: startLog, error: startError } = await supabase
         .from('order_status_logs')
-        .select('changed_at')
+        .select('changed_at, new_status')
         .eq('order_id', orderId)
-        .eq('new_status', 'en_proceso' as OrderStatus)
+        .in('new_status', ['pendiente_aprobacion', 'en_proceso'] as OrderStatus[])
         .order('changed_at', { ascending: true })
         .limit(1);
 
-      if (!enProcesoError && enProcesoLog && enProcesoLog.length > 0) {
-        // Calculate service time from when order entered "en_proceso"
-        const serviceStartTime = new Date(enProcesoLog[0].changed_at);
+      if (!startError && startLog && startLog.length > 0) {
+        // Calculate total time from when order first became active (pendiente_aprobacion or en_proceso)
+        const serviceStartTime = new Date(startLog[0].changed_at);
         const now = new Date();
         const serviceDurationMs = now.getTime() - serviceStartTime.getTime();
         const serviceDurationHours = serviceDurationMs / (1000 * 60 * 60);
         setServiceTime(formatHoursAndMinutes(serviceDurationHours));
-        
-        // Total time is now service time (from en_proceso), not from creation
         setTotalTime(formatHoursAndMinutes(serviceDurationHours));
       } else {
         // Order hasn't started yet
