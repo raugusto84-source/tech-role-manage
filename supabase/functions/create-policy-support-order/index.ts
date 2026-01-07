@@ -78,7 +78,7 @@ serve(async (req) => {
         // orders.delivery_date is NOT NULL in our schema; for support requests we default to "today"
         delivery_date: new Date().toISOString().slice(0, 10),
         failure_description: `[SOPORTE PÓLIZA ${policy_number}] ${failure_description}`,
-        status: 'pendiente', // Start as pending for immediate assignment
+        status: 'en_proceso', // Start as en_proceso so time tracking begins immediately
         order_priority: orderPriority,
         is_policy_order: true,
         policy_id: policy_id,
@@ -105,7 +105,7 @@ serve(async (req) => {
       .insert({
         order_id: order.id,
         old_status: null,
-        new_status: 'pendiente',
+        new_status: 'en_proceso',
         changed_by: client_id,
         notes: `Solicitud de soporte creada por cliente con póliza ${policy_number}. Urgencia: ${urgency}`
       });
