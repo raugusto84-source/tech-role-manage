@@ -223,7 +223,7 @@ async function createInitialOrders(supabaseClient: any, body: any) {
           status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
-          order_priority: scheduledService.priority || 2
+          order_priority: 1 // Policy orders always have HIGH priority
         })
         .select()
         .single();
@@ -522,7 +522,7 @@ async function processDueServices(supabaseClient: any) {
           status: 'en_proceso',
           client_approval: false,
           is_policy_order: true,
-          order_priority: scheduledService.priority || 2
+          order_priority: 1 // Policy orders always have HIGH priority
         })
         .select()
         .single();
