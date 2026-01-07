@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield, DollarSign, Building2 } from "lucide-react";
-import { calculateOrderPriority } from "@/utils/priorityCalculator";
+import { calculateOrderPriority, orderPriorityNumberToString, OrderPriority } from "@/utils/priorityCalculator";
 
 interface Order {
   id: string;
@@ -9,6 +9,8 @@ interface Order {
   estimated_delivery_date?: string | null;
   status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'finalizada' | 'cancelada' | 'rechazada';
   priority?: 'baja' | 'media' | 'alta' | 'critica';
+  order_priority?: number | null;
+  is_policy_order?: boolean;
   order_category?: string; // Campo directo de la orden
   service_types?: {
     service_category?: string;
@@ -29,8 +31,15 @@ export function OrdersSummary({
   // Filter active orders (not finalized or cancelled)
   const activeOrders = orders.filter(order => !['finalizada', 'cancelada', 'rechazada'].includes(order.status));
 
-  // Count by priority (calculated from dates to stay in sync with row badges)
-  const calculatedPriorities = activeOrders.map(o => calculateOrderPriority(o.created_at, o.estimated_delivery_date ?? null, o.delivery_date));
+  // Count by priority - usar order_priority para pólizas, cálculo dinámico para el resto
+  const getOrderPriority = (o: Order): OrderPriority => {
+    if (o.is_policy_order && o.order_priority != null) {
+      return orderPriorityNumberToString(o.order_priority);
+    }
+    return calculateOrderPriority(o.created_at, o.estimated_delivery_date ?? null, o.delivery_date);
+  };
+  
+  const calculatedPriorities = activeOrders.map(getOrderPriority);
   const priorityCounts = {
     critica: calculatedPriorities.filter(p => p === 'critica').length,
     alta: calculatedPriorities.filter(p => p === 'alta').length,

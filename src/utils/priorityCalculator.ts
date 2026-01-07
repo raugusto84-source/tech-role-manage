@@ -35,6 +35,19 @@ export function calculateOrderPriority(
   }
 }
 
+/**
+ * Convierte order_priority numérico (1-3) a OrderPriority string
+ * 1 = crítica, 2 = alta, 3 = normal/baja
+ */
+export function orderPriorityNumberToString(priority: number | null | undefined): OrderPriority {
+  switch (priority) {
+    case 1: return 'critica';
+    case 2: return 'alta';
+    case 3: return 'baja';
+    default: return 'baja';
+  }
+}
+
 export function getPriorityBadgeClass(priority: OrderPriority): string {
   const variants = {
     'baja': 'bg-priority-baja text-priority-baja-foreground hover:bg-priority-baja/90',
