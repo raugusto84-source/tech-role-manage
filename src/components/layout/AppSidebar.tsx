@@ -224,12 +224,24 @@ export function AppSidebar() {
   const sections = getNavigationSections();
   const renderMenuItem = (item: any) => {
     const hasQuoteNotifications = item.url === '/quotes' && unreadCounts.quotes > 0;
-    return <SidebarMenuItem key={item.title} className={hasQuoteNotifications ? "bg-pink-200 rounded-lg" : ""}>
-        <SidebarMenuButton asChild className={`touch-target ${hasQuoteNotifications ? "!bg-pink-200 hover:!bg-pink-300" : ""}`}>
+    const hasOrderNotifications = item.url === '/orders' && (unreadCounts.ordersPendingAuth > 0 || unreadCounts.ordersInProcess > 0 || unreadCounts.ordersPendingDelivery > 0);
+    const hasFinanceNotifications = item.url === '/finanzas' && (unreadCounts.collections > 0 || unreadCounts.ordersFinalized > 0);
+    
+    const getNotificationStyles = () => {
+      if (hasQuoteNotifications) return { bg: "!bg-pink-200 hover:!bg-pink-300", text: "!text-gray-900" };
+      if (hasOrderNotifications) return { bg: "!bg-blue-200 hover:!bg-blue-300", text: "!text-gray-900" };
+      if (hasFinanceNotifications) return { bg: "!bg-red-200 hover:!bg-red-300", text: "!text-gray-900" };
+      return null;
+    };
+    
+    const notifStyles = getNotificationStyles();
+    
+    return <SidebarMenuItem key={item.title} className={notifStyles ? `${notifStyles.bg.replace('!', '')} rounded-lg` : ""}>
+        <SidebarMenuButton asChild className={`touch-target ${notifStyles ? notifStyles.bg : ""}`}>
           <NavLink to={item.url} className={({
           isActive: active
         }) => {
-          return `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${active ? "bg-gradient-primary text-white shadow-md font-medium" : hasQuoteNotifications ? "!bg-pink-200 !text-gray-900 hover:!bg-pink-300" : "text-white hover:text-white"}`;
+          return `flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-sidebar-accent group ${active ? "bg-gradient-primary text-white shadow-md font-medium" : notifStyles ? `${notifStyles.bg} ${notifStyles.text}` : "text-white hover:text-white"}`;
         }}>
           <item.icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-110 ${!collapsed ? '' : 'mx-auto'}`} />
           {!collapsed && <span className="font-medium transition-all duration-200 flex items-center gap-2 text-sidebar-foreground">
