@@ -161,7 +161,7 @@ export function AppSidebar() {
                   ? "bg-gradient-primary text-white shadow-md font-medium" 
                   : hasQuoteNotifications
                     ? "!bg-pink-200 !text-gray-900 hover:!bg-pink-300"
-                    : "text-sidebar-foreground hover:text-sidebar-accent-foreground"
+                    : "text-white hover:text-white"
               }`;
             }}
           >
