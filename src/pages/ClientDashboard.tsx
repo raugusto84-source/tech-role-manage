@@ -274,72 +274,80 @@ export default function ClientDashboard() {
       
       if (!clientByEmail) return;
       
-      // Load policies for this client
-      const { data: policies, error } = await supabase
+      // Load policies for this client - using separate queries
+      const { data: policyClients, error: pcError } = await supabase
         .from('policy_clients')
-        .select(`
-          id,
-          client_id,
-          policy_id,
-          is_active,
-          insurance_policies:policy_clients_policy_id_fkey(
-            id,
-            policy_name,
-            policy_number,
-            is_active
-          )
-        `)
+        .select('id, client_id, policy_id, is_active')
         .eq('client_id', clientByEmail.id)
         .eq('is_active', true);
       
-      console.log('Policies loaded for client by email:', policies, 'error:', error);
-      
-      if (!error && policies) {
-        const formattedPolicies: PolicyInfo[] = policies
-          .filter(p => (p.insurance_policies as any)?.is_active)
-          .map(p => ({
-            policy_client_id: p.id,
-            policy_id: p.policy_id,
-            policy_name: (p.insurance_policies as any)?.policy_name || 'Póliza',
-            policy_number: (p.insurance_policies as any)?.policy_number || '',
-            client_id: p.client_id
-          }));
-        console.log('Formatted policies:', formattedPolicies);
-        setClientPolicies(formattedPolicies);
+      if (!pcError && policyClients && policyClients.length > 0) {
+        const policyIds = policyClients.map(pc => pc.policy_id);
+        const { data: insurancePolicies } = await supabase
+          .from('insurance_policies')
+          .select('id, policy_name, policy_number, is_active')
+          .in('id', policyIds)
+          .eq('is_active', true);
+
+        if (insurancePolicies) {
+          const formattedPolicies: PolicyInfo[] = policyClients
+            .map(pc => {
+              const policy = insurancePolicies.find(ip => ip.id === pc.policy_id);
+              if (!policy) return null;
+              return {
+                policy_client_id: pc.id,
+                policy_id: pc.policy_id,
+                policy_name: policy.policy_name || 'Póliza',
+                policy_number: policy.policy_number || '',
+                client_id: pc.client_id
+              };
+            })
+            .filter((p): p is PolicyInfo => p !== null);
+          
+          console.log('Formatted policies (by email):', formattedPolicies);
+          setClientPolicies(formattedPolicies);
+        }
       }
       return;
     }
     
-    // Load policies for this client
-    const { data: policies, error } = await supabase
+    // Load policies for this client - using separate queries to avoid join issues
+    const { data: policyClients, error: pcError } = await supabase
       .from('policy_clients')
-      .select(`
-        id,
-        client_id,
-        policy_id,
-        is_active,
-        insurance_policies:policy_clients_policy_id_fkey(
-          id,
-          policy_name,
-          policy_number,
-          is_active
-        )
-      `)
+      .select('id, client_id, policy_id, is_active')
       .eq('client_id', client.id)
       .eq('is_active', true);
     
-    console.log('Policies loaded for client:', policies, 'error:', error);
-    
-    if (!error && policies) {
-      const formattedPolicies: PolicyInfo[] = policies
-        .filter(p => (p.insurance_policies as any)?.is_active)
-        .map(p => ({
-          policy_client_id: p.id,
-          policy_id: p.policy_id,
-          policy_name: (p.insurance_policies as any)?.policy_name || 'Póliza',
-          policy_number: (p.insurance_policies as any)?.policy_number || '',
-          client_id: p.client_id
-        }));
+    if (pcError || !policyClients || policyClients.length === 0) {
+      console.log('No policy clients found:', pcError);
+      return;
+    }
+
+    // Get the policy details
+    const policyIds = policyClients.map(pc => pc.policy_id);
+    const { data: insurancePolicies, error: ipError } = await supabase
+      .from('insurance_policies')
+      .select('id, policy_name, policy_number, is_active')
+      .in('id', policyIds)
+      .eq('is_active', true);
+
+    console.log('Policy clients:', policyClients, 'Insurance policies:', insurancePolicies);
+
+    if (!ipError && insurancePolicies) {
+      const formattedPolicies: PolicyInfo[] = policyClients
+        .map(pc => {
+          const policy = insurancePolicies.find(ip => ip.id === pc.policy_id);
+          if (!policy) return null;
+          return {
+            policy_client_id: pc.id,
+            policy_id: pc.policy_id,
+            policy_name: policy.policy_name || 'Póliza',
+            policy_number: policy.policy_number || '',
+            client_id: pc.client_id
+          };
+        })
+        .filter((p): p is PolicyInfo => p !== null);
+      
       console.log('Formatted policies:', formattedPolicies);
       setClientPolicies(formattedPolicies);
     }
