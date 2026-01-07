@@ -6,7 +6,7 @@ import { Trash2, CreditCard, Clock, Play } from "lucide-react";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { useOrderElapsedTime } from "@/hooks/useOrderElapsedTime";
-import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel } from "@/utils/priorityCalculator";
+import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel, orderPriorityNumberToString } from "@/utils/priorityCalculator";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -39,6 +39,7 @@ interface Order {
   estimated_delivery_date?: string | null;
   is_policy_order?: boolean;
   is_development_order?: boolean;
+  order_priority?: number | null;
   priority: 'baja' | 'media' | 'alta' | 'critica';
   service_types?: {
     name: string;
@@ -158,12 +159,14 @@ export function OrderListItem({
     return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
   };
 
-  // Calcular prioridad dinámica basada en tiempo transcurrido
-  const calculatedPriority = calculateOrderPriority(
-    order.created_at,
-    order.estimated_delivery_date,
-    order.delivery_date
-  );
+  // Para órdenes de póliza usar la prioridad asignada, para otras calcular dinámicamente
+  const calculatedPriority = order.is_policy_order && order.order_priority != null
+    ? orderPriorityNumberToString(order.order_priority)
+    : calculateOrderPriority(
+        order.created_at,
+        order.estimated_delivery_date,
+        order.delivery_date
+      );
 
   // Determinar el color de fondo según la fecha de entrega
   const deliveryDateStr = order.estimated_delivery_date || order.delivery_date;

@@ -67,6 +67,8 @@ interface Order {
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
   priority: 'baja' | 'media' | 'alta' | 'critica';
+  order_priority?: number | null;
+  is_policy_order?: boolean;
   is_development_order?: boolean; // Flag para órdenes de fraccionamientos
   order_category?: string; // Categoría directa de la orden
   service_types?: {
