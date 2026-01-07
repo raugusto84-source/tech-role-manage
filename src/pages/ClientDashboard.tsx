@@ -282,31 +282,17 @@ export default function ClientDashboard() {
         .eq('is_active', true);
       
       if (!pcError && policyClients && policyClients.length > 0) {
-        const policyIds = policyClients.map(pc => pc.policy_id);
-        const { data: insurancePolicies } = await supabase
-          .from('insurance_policies')
-          .select('id, policy_name, policy_number, is_active')
-          .in('id', policyIds)
-          .eq('is_active', true);
+        // NOTE: Clientes no pueden leer insurance_policies por RLS (devuelve []).
+        // Para mostrar el botón y permitir solicitar soporte, basta con la asignación en policy_clients.
+        const formattedPolicies: PolicyInfo[] = policyClients.map((pc) => ({
+          policy_client_id: pc.id,
+          policy_id: pc.policy_id,
+          policy_name: 'Póliza',
+          policy_number: '',
+          client_id: pc.client_id,
+        }));
 
-        if (insurancePolicies) {
-          const formattedPolicies: PolicyInfo[] = policyClients
-            .map(pc => {
-              const policy = insurancePolicies.find(ip => ip.id === pc.policy_id);
-              if (!policy) return null;
-              return {
-                policy_client_id: pc.id,
-                policy_id: pc.policy_id,
-                policy_name: policy.policy_name || 'Póliza',
-                policy_number: policy.policy_number || '',
-                client_id: pc.client_id
-              };
-            })
-            .filter((p): p is PolicyInfo => p !== null);
-          
-          console.log('Formatted policies (by email):', formattedPolicies);
-          setClientPolicies(formattedPolicies);
-        }
+        setClientPolicies(formattedPolicies);
       }
       return;
     }
@@ -323,34 +309,17 @@ export default function ClientDashboard() {
       return;
     }
 
-    // Get the policy details
-    const policyIds = policyClients.map(pc => pc.policy_id);
-    const { data: insurancePolicies, error: ipError } = await supabase
-      .from('insurance_policies')
-      .select('id, policy_name, policy_number, is_active')
-      .in('id', policyIds)
-      .eq('is_active', true);
+    // NOTE: Clientes no pueden leer insurance_policies por RLS (devuelve []).
+    // Para mostrar el botón y permitir solicitar soporte, basta con la asignación en policy_clients.
+    const formattedPolicies: PolicyInfo[] = policyClients.map((pc) => ({
+      policy_client_id: pc.id,
+      policy_id: pc.policy_id,
+      policy_name: 'Póliza',
+      policy_number: '',
+      client_id: pc.client_id,
+    }));
 
-    console.log('Policy clients:', policyClients, 'Insurance policies:', insurancePolicies);
-
-    if (!ipError && insurancePolicies) {
-      const formattedPolicies: PolicyInfo[] = policyClients
-        .map(pc => {
-          const policy = insurancePolicies.find(ip => ip.id === pc.policy_id);
-          if (!policy) return null;
-          return {
-            policy_client_id: pc.id,
-            policy_id: pc.policy_id,
-            policy_name: policy.policy_name || 'Póliza',
-            policy_number: policy.policy_number || '',
-            client_id: pc.client_id
-          };
-        })
-        .filter((p): p is PolicyInfo => p !== null);
-      
-      console.log('Formatted policies:', formattedPolicies);
-      setClientPolicies(formattedPolicies);
-    }
+    setClientPolicies(formattedPolicies);
   };
 
   // Carga inicial
