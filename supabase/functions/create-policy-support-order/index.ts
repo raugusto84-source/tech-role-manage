@@ -75,6 +75,8 @@ serve(async (req) => {
       .insert({
         order_number: orderNumber,
         client_id: client_id,
+        // orders.delivery_date is NOT NULL in our schema; for support requests we default to "today"
+        delivery_date: new Date().toISOString().slice(0, 10),
         failure_description: `[SOPORTE PÓLIZA ${policy_number}] ${urgency === 'critico' ? '🚨 CRÍTICO: ' : urgency === 'urgente' ? '⚠️ URGENTE: ' : ''}${failure_description}`,
         status: 'pendiente', // Start as pending for immediate assignment
         order_priority: orderPriority,
