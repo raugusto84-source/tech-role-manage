@@ -22,10 +22,13 @@ import {
   Zap,
   TrendingUp,
   CalendarDays,
-  LogOut
+  LogOut,
+  Shield,
+  Headphones
 } from "lucide-react";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
+import { PolicySupportRequest } from "@/components/client/PolicySupportRequest";
 
 // Tipos locales
 interface Order {
@@ -53,6 +56,15 @@ interface Quote {
   service_description?: string;
 }
 
+// Policy info interface
+interface PolicyInfo {
+  policy_client_id: string;
+  policy_id: string;
+  policy_name: string;
+  policy_number: string;
+  client_id: string;
+}
+
 export default function ClientDashboard() {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
@@ -62,6 +74,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
+  const [showSupportRequest, setShowSupportRequest] = useState(false);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -70,6 +83,7 @@ export default function ClientDashboard() {
   const [pendingUpdateOrders, setPendingUpdateOrders] = useState<Order[]>([]);
   const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
   const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
+  const [clientPolicies, setClientPolicies] = useState<PolicyInfo[]>([]);
 
   // SEO y metadatos
   useEffect(() => {
@@ -239,6 +253,92 @@ export default function ClientDashboard() {
     setReadyForSignatureOrders(ordersWithTechnicianNames.filter(o => o.status === 'pendiente_entrega'));
   };
 
+  // Load client policies
+  const loadClientPolicies = async () => {
+    if (!profile?.user_id) return;
+    
+    // First get the client ID
+    const { data: client } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+    
+    if (!client) {
+      // Try by email
+      const { data: clientByEmail } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("email", profile.email)
+        .maybeSingle();
+      
+      if (!clientByEmail) return;
+      
+      // Load policies for this client
+      const { data: policies, error } = await supabase
+        .from('policy_clients')
+        .select(`
+          id,
+          client_id,
+          policy_id,
+          is_active,
+          insurance_policies!inner(
+            id,
+            policy_name,
+            policy_number,
+            is_active
+          )
+        `)
+        .eq('client_id', clientByEmail.id)
+        .eq('is_active', true);
+      
+      if (!error && policies) {
+        const formattedPolicies: PolicyInfo[] = policies
+          .filter(p => p.insurance_policies?.is_active)
+          .map(p => ({
+            policy_client_id: p.id,
+            policy_id: p.policy_id,
+            policy_name: p.insurance_policies?.policy_name || 'Póliza',
+            policy_number: p.insurance_policies?.policy_number || '',
+            client_id: p.client_id
+          }));
+        setClientPolicies(formattedPolicies);
+      }
+      return;
+    }
+    
+    // Load policies for this client
+    const { data: policies, error } = await supabase
+      .from('policy_clients')
+      .select(`
+        id,
+        client_id,
+        policy_id,
+        is_active,
+        insurance_policies!inner(
+          id,
+          policy_name,
+          policy_number,
+          is_active
+        )
+      `)
+      .eq('client_id', client.id)
+      .eq('is_active', true);
+    
+    if (!error && policies) {
+      const formattedPolicies: PolicyInfo[] = policies
+        .filter(p => p.insurance_policies?.is_active)
+        .map(p => ({
+          policy_client_id: p.id,
+          policy_id: p.policy_id,
+          policy_name: p.insurance_policies?.policy_name || 'Póliza',
+          policy_number: p.insurance_policies?.policy_number || '',
+          client_id: p.client_id
+        }));
+      setClientPolicies(formattedPolicies);
+    }
+  };
+
   // Carga inicial
   useEffect(() => {
     let mounted = true;
@@ -247,7 +347,8 @@ export default function ClientDashboard() {
       await Promise.all([
         loadOrders(), 
         loadQuotes(), 
-        loadPendingApprovalQuotes()
+        loadPendingApprovalQuotes(),
+        loadClientPolicies()
       ]);
       if (mounted) setLoading(false);
     })();
@@ -512,6 +613,26 @@ export default function ClientDashboard() {
 
         {/* Botones de acción principales */}
         <div className="grid grid-cols-1 gap-3">
+          {/* Botón de soporte para clientes con póliza - DESTACADO */}
+          {clientPolicies.length > 0 && (
+            <Button 
+              onClick={() => setShowSupportRequest(true)}
+              className="h-28 flex-col gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg"
+              size="lg"
+            >
+              <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center">
+                <Headphones className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-lg">Solicitar Soporte</div>
+                <div className="text-xs text-white/80 flex items-center gap-1 justify-center">
+                  <Shield className="h-3 w-3" />
+                  Atención prioritaria de póliza
+                </div>
+              </div>
+            </Button>
+          )}
+
           <Button 
             onClick={() => navigate('/quotes')}
             variant="outline"
@@ -804,6 +925,16 @@ export default function ClientDashboard() {
           }}
         />
       )}
+
+      {/* Diálogo de solicitud de soporte de póliza */}
+      <PolicySupportRequest
+        open={showSupportRequest}
+        onOpenChange={setShowSupportRequest}
+        policies={clientPolicies}
+        onSuccess={() => {
+          loadOrders();
+        }}
+      />
 
     </AppLayout>
   );
