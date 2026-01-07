@@ -54,9 +54,9 @@ serve(async (req) => {
       throw new Error('Client not found');
     }
 
-    // Determine priority based on urgency - Policy orders always get HIGH priority
-    // critico = 1 (highest), urgente = 1, normal = 1 (all high because it's policy)
-    const orderPriority = 1; // All policy support orders get HIGH priority
+    // Determine priority based on urgency
+    // critico = 1 (highest), urgente = 2, normal = 3
+    const orderPriority = urgency === 'critico' ? 1 : urgency === 'urgente' ? 2 : 3;
 
     // Generate unique order number using RPC
     const { data: orderNumber, error: numberError } = await supabaseClient
@@ -77,7 +77,7 @@ serve(async (req) => {
         client_id: client_id,
         // orders.delivery_date is NOT NULL in our schema; for support requests we default to "today"
         delivery_date: new Date().toISOString().slice(0, 10),
-        failure_description: `[SOPORTE PÓLIZA ${policy_number}] ${urgency === 'critico' ? '🚨 CRÍTICO: ' : urgency === 'urgente' ? '⚠️ URGENTE: ' : ''}${failure_description}`,
+        failure_description: `[SOPORTE PÓLIZA ${policy_number}] ${failure_description}`,
         status: 'pendiente', // Start as pending for immediate assignment
         order_priority: orderPriority,
         is_policy_order: true,
