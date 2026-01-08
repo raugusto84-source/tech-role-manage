@@ -75,6 +75,7 @@ interface ScheduledServiceDisplay {
   priority: number;
   source: 'policy' | 'development';
   source_name?: string;
+  status: string;
 }
 
 export default function ClientDashboard() {
@@ -368,12 +369,13 @@ export default function ClientDashboard() {
     const endStr = endOfMonth.toISOString().split('T')[0];
 
     try {
-      // Load policy orders for this month
+      // Load policy orders for this month (exclude deleted)
       const { data: policyOrders } = await supabase
         .from('orders')
-        .select('id, order_number, delivery_date, status')
+        .select('id, order_number, delivery_date, status, deleted_at')
         .eq('client_id', clientId)
         .eq('is_policy_order', true)
+        .is('deleted_at', null)
         .gte('delivery_date', startStr)
         .lte('delivery_date', endStr);
       
@@ -386,21 +388,23 @@ export default function ClientDashboard() {
             scheduled_date: order.delivery_date || '',
             priority: 2,
             source: 'policy',
-            source_name: 'Póliza'
+            source_name: 'Póliza',
+            status: order.status
           });
         }
       }
 
-      // Load development orders for this month via access_development_orders
+      // Load development orders for this month via access_development_orders (exclude deleted)
       const { data: devOrderLinks } = await supabase
         .from('access_development_orders')
-        .select('order_id, scheduled_date, orders!inner(id, order_number, status, client_id)')
+        .select('order_id, scheduled_date, orders!inner(id, order_number, status, client_id, deleted_at)')
         .gte('scheduled_date', startStr)
         .lte('scheduled_date', endStr);
       
       if (devOrderLinks) {
         for (const link of devOrderLinks as any[]) {
           if (!link.orders || link.orders.client_id !== clientId) continue;
+          if (link.orders.deleted_at) continue; // Skip deleted orders
           if (link.orders.status === 'cancelada' || link.orders.status === 'rechazada') continue;
           services.push({
             id: link.order_id || link.orders.id,
@@ -408,7 +412,8 @@ export default function ClientDashboard() {
             scheduled_date: link.scheduled_date || '',
             priority: 2,
             source: 'development',
-            source_name: 'Fraccionamiento'
+            source_name: 'Fraccionamiento',
+            status: link.orders.status
           });
         }
       }
@@ -820,6 +825,7 @@ export default function ClientDashboard() {
                         <Badge variant="outline" className={service.source === 'policy' ? 'border-primary/30 text-primary' : 'border-amber-300 text-amber-700'}>
                           {service.source_name}
                         </Badge>
+                        {statusBadge(service.status)}
                       </div>
                     </div>
                   </div>
