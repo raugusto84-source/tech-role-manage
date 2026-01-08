@@ -60,7 +60,12 @@ export function DevelopmentPaymentsPending() {
 
       if (error) throw error;
 
-      const formattedPayments: DevelopmentPayment[] = (data || []).map((p: any) => ({
+      // Filtrar solo pagos del mes actual y vencidos (no futuros)
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth(); // 0-indexed
+      
+      const allPayments: DevelopmentPayment[] = (data || []).map((p: any) => ({
         id: p.id,
         development_id: p.development_id,
         development_name: p.access_developments?.name || 'Desconocido',
@@ -73,15 +78,27 @@ export function DevelopmentPaymentsPending() {
         is_recovery_period: p.is_recovery_period || false
       }));
 
-      setPayments(formattedPayments);
+      // Filtrar: solo mostrar pagos cuyo due_date sea del mes actual o anterior (vencidos)
+      const filteredPayments = allPayments.filter(p => {
+        const dueDate = new Date(p.due_date + 'T00:00:00');
+        const dueYear = dueDate.getFullYear();
+        const dueMonth = dueDate.getMonth();
+        
+        // Mostrar si es del mes actual o de meses anteriores
+        if (dueYear < currentYear) return true;
+        if (dueYear === currentYear && dueMonth <= currentMonth) return true;
+        return false;
+      });
 
-      // Calculate stats
-      const today = new Date().toISOString().split('T')[0];
-      const overduePayments = formattedPayments.filter(p => p.due_date < today);
+      setPayments(filteredPayments);
+
+      // Calculate stats using filtered payments
+      const todayStr = today.toISOString().split('T')[0];
+      const overduePayments = filteredPayments.filter(p => p.due_date < todayStr);
       
       setStats({
-        total_pending: formattedPayments.length,
-        total_amount: formattedPayments.reduce((sum, p) => sum + p.amount, 0),
+        total_pending: filteredPayments.length,
+        total_amount: filteredPayments.reduce((sum, p) => sum + p.amount, 0),
         overdue_count: overduePayments.length,
         overdue_amount: overduePayments.reduce((sum, p) => sum + p.amount, 0)
       });
