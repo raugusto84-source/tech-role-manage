@@ -365,15 +365,27 @@ export function PolicyClientManager({ onStatsUpdate }: PolicyClientManagerProps)
       const paymentsToCreate: any[] = [];
       const notificationsToCreate: any[] = [];
 
-      // Start from policy start month
-      let iterMonth = policyStart.getMonth() + 1;
-      let iterYear = policyStart.getFullYear();
+      // Determine the first month that should be billed
+      // If policy starts after the 1st of a month, first billing is NEXT month
+      const policyStartDay = policyStart.getDate();
+      let iterMonth: number;
+      let iterYear: number;
       
-      // Current month and year for comparison
-      const currentMonth = today.getMonth() + 1;
-      const currentYear = today.getFullYear();
+      if (policyStartDay > 1) {
+        // Policy started mid-month, first billing is next month
+        iterMonth = policyStart.getMonth() + 2; // +1 for 0-indexed, +1 for next month
+        iterYear = policyStart.getFullYear();
+        if (iterMonth > 12) {
+          iterMonth = 1;
+          iterYear++;
+        }
+      } else {
+        // Policy started on the 1st, bill this month
+        iterMonth = policyStart.getMonth() + 1;
+        iterYear = policyStart.getFullYear();
+      }
 
-      // Generate payments from start month through current month (inclusive)
+      // Generate payments from first billing month through current month (inclusive)
       while (true) {
         // Create a date for comparison (first of the month)
         const firstOfMonth = new Date(iterYear, iterMonth - 1, 1);
