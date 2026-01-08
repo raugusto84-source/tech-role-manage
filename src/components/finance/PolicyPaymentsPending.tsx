@@ -114,19 +114,32 @@ export function PolicyPaymentsPending() {
 
       if (error) throw error;
 
-      setPayments(data || []);
-
-      // Calcular estadísticas
-      const pendingPayments = data || [];
+      // Filtrar solo pagos del mes actual y vencidos (no futuros)
       const today = new Date();
-      const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth(); // 0-indexed
+      const todayKey = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
-      const totalAmount = pendingPayments.reduce((sum, p) => sum + p.amount, 0);
-      const overduePayments = pendingPayments.filter(p => p.due_date < todayKey);
+      const filteredPayments = (data || []).filter((p: any) => {
+        const dueDate = new Date(p.due_date + 'T00:00:00');
+        const dueYear = dueDate.getFullYear();
+        const dueMonth = dueDate.getMonth();
+        
+        // Mostrar si es del mes actual o de meses anteriores
+        if (dueYear < currentYear) return true;
+        if (dueYear === currentYear && dueMonth <= currentMonth) return true;
+        return false;
+      });
+
+      setPayments(filteredPayments);
+
+      // Calcular estadísticas con pagos filtrados
+      const totalAmount = filteredPayments.reduce((sum, p) => sum + p.amount, 0);
+      const overduePayments = filteredPayments.filter(p => p.due_date < todayKey);
       const overdueAmount = overduePayments.reduce((sum, p) => sum + p.amount, 0);
 
       setStats({
-        total_pending: pendingPayments.length,
+        total_pending: filteredPayments.length,
         total_amount: totalAmount,
         overdue_count: overduePayments.length,
         overdue_amount: overdueAmount,

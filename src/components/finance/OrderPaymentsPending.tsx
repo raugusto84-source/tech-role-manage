@@ -142,12 +142,29 @@ export function OrderPaymentsPending() {
       const formattedPayments = await Promise.all(formattedPaymentsPromises);
       
       // Filter out payments that are fully paid (balance <= 0)
-      const pendingPayments = formattedPayments.filter(p => p.balance > 0);
+      const withBalance = formattedPayments.filter(p => p.balance > 0);
+      
+      // Filtrar solo pagos del mes actual y vencidos (no futuros)
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth(); // 0-indexed
+      
+      const pendingPayments = withBalance.filter(p => {
+        if (!p.due_date) return true; // Si no hay fecha, mostrar
+        const dueDate = new Date(p.due_date + 'T00:00:00');
+        const dueYear = dueDate.getFullYear();
+        const dueMonth = dueDate.getMonth();
+        
+        // Mostrar si es del mes actual o de meses anteriores
+        if (dueYear < currentYear) return true;
+        if (dueYear === currentYear && dueMonth <= currentMonth) return true;
+        return false;
+      });
+      
       setPayments(pendingPayments);
 
       // Calculate stats from filtered pending payments only
       const totalAmount = pendingPayments.reduce((sum, p) => sum + p.balance, 0);
-      const today = new Date();
       const overdue = pendingPayments.filter((p: any) => new Date(p.due_date) < today);
       const overdueAmount = overdue.reduce((sum, p) => sum + p.balance, 0);
 
