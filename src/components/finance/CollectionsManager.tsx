@@ -45,15 +45,34 @@ export function CollectionsManager() {
     try {
       setLoading(true);
 
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth(); // 0-indexed
+      const todayStr = today.toISOString().split('T')[0];
+
+      // Helper to filter only current month and overdue
+      const filterCurrentAndOverdue = (items: any[], dateField: string = 'due_date') => {
+        return items.filter(item => {
+          const dateValue = item[dateField];
+          if (!dateValue) return true;
+          const dueDate = new Date(dateValue + 'T00:00:00');
+          const dueYear = dueDate.getFullYear();
+          const dueMonth = dueDate.getMonth();
+          if (dueYear < currentYear) return true;
+          if (dueYear === currentYear && dueMonth <= currentMonth) return true;
+          return false;
+        });
+      };
+
       // Get policy payments
       const { data: policyPayments } = await supabase
         .from('policy_payments')
         .select('amount, due_date')
         .eq('is_paid', false);
 
-      const policyPending = (policyPayments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
-      const todayStr = new Date().toISOString().split('T')[0];
-      const overduePolicyAmount = (policyPayments || [])
+      const filteredPolicyPayments = filterCurrentAndOverdue(policyPayments || []);
+      const policyPending = filteredPolicyPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const overduePolicyAmount = filteredPolicyPayments
         .filter(p => p.due_date < todayStr)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
 
@@ -64,8 +83,9 @@ export function CollectionsManager() {
         .eq('collection_type', 'order_payment')
         .eq('status', 'pending');
 
-      const orderPending = (pendingOrders || []).reduce((sum, p) => sum + (p.amount || 0), 0);
-      const overdueOrderAmount = (pendingOrders || [])
+      const filteredOrders = filterCurrentAndOverdue(pendingOrders || []);
+      const orderPending = filteredOrders.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const overdueOrderAmount = filteredOrders
         .filter(p => p.due_date && p.due_date < todayStr)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
 
@@ -75,8 +95,9 @@ export function CollectionsManager() {
         .select('amount, due_date')
         .in('status', ['pending', 'overdue']);
 
-      const fraccionamientosAmount = (devPayments || []).reduce((sum, p) => sum + (p.amount || 0), 0);
-      const overdueDevAmount = (devPayments || [])
+      const filteredDevPayments = filterCurrentAndOverdue(devPayments || []);
+      const fraccionamientosAmount = filteredDevPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+      const overdueDevAmount = filteredDevPayments
         .filter(p => p.due_date < todayStr)
         .reduce((sum, p) => sum + (p.amount || 0), 0);
 
