@@ -574,31 +574,33 @@ export default function ClientDashboard() {
 
   return (
     <AppLayout>
-      <div className="max-w-md mx-auto space-y-4">
+      <div className="max-w-md mx-auto space-y-4 px-4 md:max-w-6xl md:px-6 lg:px-8">
         {/* Header con saludo */}
-        <div className="relative py-4">
-          <div className="text-center space-y-2">
-            <Avatar className="h-16 w-16 mx-auto">
+        <div className="relative py-4 md:py-6">
+          <div className="text-center space-y-2 md:text-left md:flex md:items-center md:gap-4">
+            <Avatar className="h-16 w-16 mx-auto md:mx-0 md:h-20 md:w-20">
               <AvatarImage src="" />
-              <AvatarFallback className="text-xl bg-primary/10 text-primary">
+              <AvatarFallback className="text-xl md:text-2xl bg-primary/10 text-primary">
                 {profile?.full_name?.charAt(0) || 'C'}
               </AvatarFallback>
             </Avatar>
-            <h1 className="text-xl font-bold">
-              ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              ¿Qué podemos hacer por ti hoy?
-            </p>
+            <div className="md:flex-1">
+              <h1 className="text-xl font-bold md:text-2xl lg:text-3xl">
+                ¡Hola, {profile?.full_name?.split(' ')[0] || 'Cliente'}! 👋
+              </h1>
+              <p className="text-sm text-muted-foreground md:text-base">
+                ¿Qué podemos hacer por ti hoy?
+              </p>
+            </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="absolute top-4 right-0 text-muted-foreground hover:text-destructive flex items-center gap-1"
+            className="absolute top-4 right-0 md:top-6 md:right-0 text-muted-foreground hover:text-destructive flex items-center gap-1"
           >
             <LogOut className="h-4 w-4" />
-            <span className="text-xs">Salir</span>
+            <span className="text-xs md:text-sm">Salir</span>
           </Button>
         </div>
 
@@ -700,20 +702,20 @@ export default function ClientDashboard() {
         )}
 
         {/* Botones de acción principales */}
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {/* Botón de soporte para clientes con póliza - DESTACADO */}
           {clientPolicies.length > 0 && (
             <Button 
               onClick={() => setShowSupportRequest(true)}
-              className="h-28 flex-col gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg"
+              className="h-28 flex-col gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white shadow-lg md:h-32"
               size="lg"
             >
-              <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Headphones className="h-5 w-5 text-white" />
+              <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center md:h-12 md:w-12">
+                <Headphones className="h-5 w-5 text-white md:h-6 md:w-6" />
               </div>
               <div className="text-center">
-                <div className="font-bold text-lg">Solicitar Soporte</div>
-                <div className="text-xs text-white/80 flex items-center gap-1 justify-center">
+                <div className="font-bold text-lg md:text-xl">Solicitar Soporte</div>
+                <div className="text-xs text-white/80 flex items-center gap-1 justify-center md:text-sm">
                   <Shield className="h-3 w-3" />
                   Atención prioritaria de póliza
                 </div>
@@ -724,33 +726,33 @@ export default function ClientDashboard() {
           <Button 
             onClick={() => navigate('/quotes')}
             variant="outline"
-            className="h-24 flex-col gap-2 border-2 animate-pulse"
+            className="h-24 flex-col gap-2 border-2 animate-pulse md:h-32"
             size="lg"
           >
-            <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
-              <FileText className="h-4 w-4 text-primary" />
+            <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center md:h-10 md:w-10">
+              <FileText className="h-4 w-4 text-primary md:h-5 md:w-5" />
             </div>
             <div className="text-center">
-              <div className="font-semibold">Cotización</div>
-              <div className="text-xs text-muted-foreground">Solicitar precio</div>
+              <div className="font-semibold md:text-lg">Cotización</div>
+              <div className="text-xs text-muted-foreground md:text-sm">Solicitar precio</div>
             </div>
           </Button>
         </div>
 
         {/* Métricas rápidas */}
-        <div className="space-y-4">
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
           {/* Órdenes */}
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Órdenes</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2 md:text-base">Órdenes</h3>
             <div className="grid grid-cols-2 gap-3">
               <Card 
                 className="bg-gradient-to-br from-blue-50 to-blue-100 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleViewAll('orders')}
               >
-                <CardContent className="p-4 text-center">
-                  <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600" />
-                  <p className="text-xl font-bold text-blue-700">{metrics.pendingOrders}</p>
-                  <p className="text-xs text-blue-600">En proceso</p>
+                <CardContent className="p-4 text-center md:p-6">
+                  <Clock className="h-6 w-6 mx-auto mb-1 text-blue-600 md:h-8 md:w-8" />
+                  <p className="text-xl font-bold text-blue-700 md:text-2xl">{metrics.pendingOrders}</p>
+                  <p className="text-xs text-blue-600 md:text-sm">En proceso</p>
                 </CardContent>
               </Card>
               
@@ -758,10 +760,10 @@ export default function ClientDashboard() {
                 className="bg-gradient-to-br from-green-50 to-green-100 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleViewAll('orders')}
               >
-                <CardContent className="p-4 text-center">
-                  <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-600" />
-                  <p className="text-xl font-bold text-green-700">{metrics.completedOrders}</p>
-                  <p className="text-xs text-green-600">Completadas</p>
+                <CardContent className="p-4 text-center md:p-6">
+                  <CheckCircle className="h-6 w-6 mx-auto mb-1 text-green-600 md:h-8 md:w-8" />
+                  <p className="text-xl font-bold text-green-700 md:text-2xl">{metrics.completedOrders}</p>
+                  <p className="text-xs text-green-600 md:text-sm">Completadas</p>
                 </CardContent>
               </Card>
             </div>
@@ -769,16 +771,16 @@ export default function ClientDashboard() {
 
           {/* Cotizaciones */}
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Cotizaciones</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2 md:text-base">Cotizaciones</h3>
             <div className="grid grid-cols-2 gap-3">
               <Card 
                 className="bg-gradient-to-br from-orange-50 to-orange-100 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleViewAll('quotes')}
               >
-                <CardContent className="p-4 text-center">
-                  <FileText className="h-6 w-6 mx-auto mb-1 text-orange-600" />
-                  <p className="text-xl font-bold text-orange-700">{metrics.activeQuotes}</p>
-                  <p className="text-xs text-orange-600">Aceptadas</p>
+                <CardContent className="p-4 text-center md:p-6">
+                  <FileText className="h-6 w-6 mx-auto mb-1 text-orange-600 md:h-8 md:w-8" />
+                  <p className="text-xl font-bold text-orange-700 md:text-2xl">{metrics.activeQuotes}</p>
+                  <p className="text-xs text-orange-600 md:text-sm">Aceptadas</p>
                 </CardContent>
               </Card>
               
@@ -786,10 +788,10 @@ export default function ClientDashboard() {
                 className="bg-gradient-to-br from-purple-50 to-purple-100 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleViewAll('quotes')}
               >
-                <CardContent className="p-4 text-center">
-                  <Star className="h-6 w-6 mx-auto mb-1 text-purple-600" />
-                  <p className="text-xl font-bold text-purple-700">{metrics.quotesToApprove}</p>
-                  <p className="text-xs text-purple-600">Por aprobar</p>
+                <CardContent className="p-4 text-center md:p-6">
+                  <Star className="h-6 w-6 mx-auto mb-1 text-purple-600 md:h-8 md:w-8" />
+                  <p className="text-xl font-bold text-purple-700 md:text-2xl">{metrics.quotesToApprove}</p>
+                  <p className="text-xs text-purple-600 md:text-sm">Por aprobar</p>
                 </CardContent>
               </Card>
             </div>
@@ -836,148 +838,150 @@ export default function ClientDashboard() {
           </Card>
         )}
 
-        {/* Secciones específicas de elementos pendientes */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base text-red-700 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4" />
-              Órdenes Esperando Autorización ({pendingApprovalOrders.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            {pendingApprovalOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tienes órdenes pendientes de autorización.</p>
-            ) : (
-              pendingApprovalOrders.slice(0, 3).map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-red-50">
-                  <div className="flex items-center gap-3">
-                    <ClipboardList className="h-4 w-4 text-red-600" />
-                    <div>
-                      <p className="text-sm font-medium">{order.order_number}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()}
-                      </p>
+        {/* Secciones específicas de elementos pendientes - Grid en desktop */}
+        <div className="space-y-4 md:grid md:grid-cols-2 md:gap-6 md:space-y-0">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-red-700 flex items-center gap-2 md:text-lg">
+                <AlertCircle className="h-4 w-4 md:h-5 md:w-5" />
+                Órdenes Esperando Autorización ({pendingApprovalOrders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingApprovalOrders.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No tienes órdenes pendientes de autorización.</p>
+              ) : (
+                pendingApprovalOrders.slice(0, 3).map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-red-50 md:p-4">
+                    <div className="flex items-center gap-3">
+                      <ClipboardList className="h-4 w-4 text-red-600 md:h-5 md:w-5" />
+                      <div>
+                        <p className="text-sm font-medium md:text-base">{order.order_number}</p>
+                        <p className="text-xs text-muted-foreground md:text-sm">
+                          {new Date(order.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
+                    <Button 
+                      size="sm" 
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={() => handleApproveOrder(order.id)}
+                    >
+                      Autorizar
+                    </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    className="bg-red-600 hover:bg-red-700 text-white"
-                    onClick={() => handleApproveOrder(order.id)}
-                  >
-                    Autorizar
-                  </Button>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base text-blue-700 flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Cotizaciones para Aprobar ({pendingApprovalQuotes.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            {pendingApprovalQuotes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No tienes cotizaciones por aprobar.</p>
-            ) : (
-              pendingApprovalQuotes.slice(0, 3).map((quote) => (
-                <div key={quote.id} className="flex items-center justify-between p-3 rounded-lg border bg-blue-50">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <div>
-                      <p className="text-sm font-medium">{quote.quote_number}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(quote.created_at).toLocaleDateString()}
-                      </p>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-blue-700 flex items-center gap-2 md:text-lg">
+                <FileText className="h-4 w-4 md:h-5 md:w-5" />
+                Cotizaciones para Aprobar ({pendingApprovalQuotes.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingApprovalQuotes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No tienes cotizaciones por aprobar.</p>
+              ) : (
+                pendingApprovalQuotes.slice(0, 3).map((quote) => (
+                  <div key={quote.id} className="flex items-center justify-between p-3 rounded-lg border bg-blue-50 md:p-4">
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-blue-600 md:h-5 md:w-5" />
+                      <div>
+                        <p className="text-sm font-medium md:text-base">{quote.quote_number}</p>
+                        <p className="text-xs text-muted-foreground md:text-sm">
+                          {new Date(quote.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleApproveQuote(quote.id)}>
+                      Revisar
+                    </Button>
                   </div>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleApproveQuote(quote.id)}>
-                    Revisar
-                  </Button>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base text-orange-700 flex items-center gap-2">
-              <Signature className="h-4 w-4" />
-              Listos para Firma de Entrega ({readyForSignatureOrders.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            {readyForSignatureOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay servicios listos para firma.</p>
-            ) : (
-              readyForSignatureOrders.slice(0, 3).map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-orange-50">
-                  <div className="flex items-center gap-3">
-                    <Signature className="h-4 w-4 text-orange-600" />
-                    <div>
-                      <p className="text-sm font-medium">{order.order_number}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'Sin fecha'}
-                      </p>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-orange-700 flex items-center gap-2 md:text-lg">
+                <Signature className="h-4 w-4 md:h-5 md:w-5" />
+                Listos para Firma de Entrega ({readyForSignatureOrders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {readyForSignatureOrders.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay servicios listos para firma.</p>
+              ) : (
+                readyForSignatureOrders.slice(0, 3).map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-orange-50 md:p-4">
+                    <div className="flex items-center gap-3">
+                      <Signature className="h-4 w-4 text-orange-600 md:h-5 md:w-5" />
+                      <div>
+                        <p className="text-sm font-medium md:text-base">{order.order_number}</p>
+                        <p className="text-xs text-muted-foreground md:text-sm">
+                          {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString() : 'Sin fecha'}
+                        </p>
+                      </div>
                     </div>
+                    <Button 
+                      size="sm" 
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                      onClick={() => setOrderToSign(order)}
+                    >
+                      Firmar
+                    </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    className="bg-orange-600 hover:bg-orange-700 text-white"
-                    onClick={() => setOrderToSign(order)}
-                  >
-                    Firmar
-                  </Button>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base text-purple-700 flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Órdenes con Actualizaciones ({pendingUpdateOrders.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 pt-0">
-            {pendingUpdateOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No hay actualizaciones recientes.</p>
-            ) : (
-              pendingUpdateOrders.slice(0, 3).map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-purple-50">
-                  <div className="flex items-center gap-3">
-                    <Zap className="h-4 w-4 text-purple-600" />
-                    <div>
-                      <p className="text-sm font-medium">{order.order_number}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {order.technician_profile?.full_name || 'Técnico asignado'}
-                      </p>
-                      <p className="text-xs text-purple-600">
-                        Estado: {statusBadge(order.status)}
-                      </p>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-purple-700 flex items-center gap-2 md:text-lg">
+                <Zap className="h-4 w-4 md:h-5 md:w-5" />
+                Órdenes con Actualizaciones ({pendingUpdateOrders.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {pendingUpdateOrders.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay actualizaciones recientes.</p>
+              ) : (
+                pendingUpdateOrders.slice(0, 3).map((order) => (
+                  <div key={order.id} className="flex items-center justify-between p-3 rounded-lg border bg-purple-50 md:p-4">
+                    <div className="flex items-center gap-3">
+                      <Zap className="h-4 w-4 text-purple-600 md:h-5 md:w-5" />
+                      <div>
+                        <p className="text-sm font-medium md:text-base">{order.order_number}</p>
+                        <p className="text-xs text-muted-foreground md:text-sm">
+                          {order.technician_profile?.full_name || 'Técnico asignado'}
+                        </p>
+                        <p className="text-xs text-purple-600 md:text-sm">
+                          Estado: {statusBadge(order.status)}
+                        </p>
+                      </div>
                     </div>
+                    <Button size="sm" variant="outline" className="border-purple-200 text-purple-600" onClick={() => handleViewOrderDetails(order.id)}>
+                      Ver detalles
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="border-purple-200 text-purple-600" onClick={() => handleViewOrderDetails(order.id)}>
-                    Ver detalles
-                  </Button>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Actividad reciente */}
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Actividad Reciente</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base md:text-lg">Actividad Reciente</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground md:h-5 md:w-5" />
             </div>
           </CardHeader>
           <CardContent className="space-y-3 pt-0">
@@ -985,18 +989,18 @@ export default function ClientDashboard() {
               .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
               .slice(0, 3)
               .map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-2">
+                <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30 md:p-3">
+                  <div className="flex items-center gap-2 md:gap-3">
                     {'order_number' in item ? (
-                      <ClipboardList className="h-4 w-4 text-primary" />
+                      <ClipboardList className="h-4 w-4 text-primary md:h-5 md:w-5" />
                     ) : (
-                      <FileText className="h-4 w-4 text-green-600" />
+                      <FileText className="h-4 w-4 text-green-600 md:h-5 md:w-5" />
                     )}
                     <div>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium md:text-base">
                         {'order_number' in item ? item.order_number : item.quote_number}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground md:text-sm">
                         {new Date(item.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -1007,18 +1011,18 @@ export default function ClientDashboard() {
             }
             
             {orders.length === 0 && quotes.length === 0 && (
-              <div className="text-center py-6">
-                <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">No hay actividad reciente</p>
-                <p className="text-xs text-muted-foreground">¡Crea tu primer servicio!</p>
+              <div className="text-center py-6 md:py-8">
+                <CalendarDays className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50 md:h-10 md:w-10" />
+                <p className="text-sm text-muted-foreground md:text-base">No hay actividad reciente</p>
+                <p className="text-xs text-muted-foreground md:text-sm">¡Crea tu primer servicio!</p>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Pie de página con versión */}
-        <div className="text-center py-4">
-          <p className="text-xs text-muted-foreground">
+        <div className="text-center py-4 md:py-6">
+          <p className="text-xs text-muted-foreground md:text-sm">
             Syslag App • Versión 2.0
           </p>
         </div>
