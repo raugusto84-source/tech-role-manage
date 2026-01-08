@@ -99,8 +99,26 @@ Deno.serve(async (req) => {
 
         // Get policy start date
         const policyStart = new Date(policyClient.start_date);
-        let iterMonth = policyStart.getMonth() + 1;
-        let iterYear = policyStart.getFullYear();
+        const policyStartDay = policyStart.getUTCDate();
+        
+        // Determine the first month that should be billed
+        // If policy starts after the 1st of a month, first billing is NEXT month
+        let iterMonth: number;
+        let iterYear: number;
+        
+        if (policyStartDay > 1) {
+          // Policy started mid-month, first billing is next month
+          iterMonth = policyStart.getUTCMonth() + 2; // +1 for 0-indexed, +1 for next month
+          iterYear = policyStart.getUTCFullYear();
+          if (iterMonth > 12) {
+            iterMonth = 1;
+            iterYear++;
+          }
+        } else {
+          // Policy started on the 1st, bill this month
+          iterMonth = policyStart.getUTCMonth() + 1;
+          iterYear = policyStart.getUTCFullYear();
+        }
 
         // Generate payments for each month where day 1 has passed since policy start
         while (true) {
