@@ -24,8 +24,10 @@ import {
   CalendarDays,
   LogOut,
   Shield,
-  Headphones
+  Headphones,
+  Calendar
 } from "lucide-react";
+import { formatDateMexico } from "@/utils/dateUtils";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 import { PolicySupportRequest } from "@/components/client/PolicySupportRequest";
@@ -65,6 +67,16 @@ interface PolicyInfo {
   client_id: string;
 }
 
+// Scheduled service interface
+interface ScheduledServiceDisplay {
+  id: string;
+  service_name: string;
+  scheduled_date: string;
+  priority: number;
+  source: 'policy' | 'development';
+  source_name?: string;
+}
+
 export default function ClientDashboard() {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
@@ -84,6 +96,7 @@ export default function ClientDashboard() {
   const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
   const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
   const [clientPolicies, setClientPolicies] = useState<PolicyInfo[]>([]);
+  const [scheduledServices, setScheduledServices] = useState<ScheduledServiceDisplay[]>([]);
 
   // SEO y metadatos
   useEffect(() => {
@@ -322,6 +335,92 @@ export default function ClientDashboard() {
     setClientPolicies(formattedPolicies);
   };
 
+  // Load scheduled services for the current month
+  const loadScheduledServices = async () => {
+    if (!profile?.user_id) return;
+    
+    // Get client ID
+    let clientId: string | null = null;
+    const { data: client } = await supabase
+      .from("clients")
+      .select("id")
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+    
+    if (client) {
+      clientId = client.id;
+    } else {
+      const { data: clientByEmail } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("email", profile.email)
+        .maybeSingle();
+      if (clientByEmail) clientId = clientByEmail.id;
+    }
+    
+    if (!clientId) return;
+
+    const services: ScheduledServiceDisplay[] = [];
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const startStr = startOfMonth.toISOString().split('T')[0];
+    const endStr = endOfMonth.toISOString().split('T')[0];
+
+    try {
+      // Load policy orders for this month
+      const { data: policyOrders } = await supabase
+        .from('orders')
+        .select('id, order_number, delivery_date, status')
+        .eq('client_id', clientId)
+        .eq('is_policy_order', true)
+        .gte('delivery_date', startStr)
+        .lte('delivery_date', endStr);
+      
+      if (policyOrders) {
+        for (const order of policyOrders) {
+          if (order.status === 'cancelada' || order.status === 'rechazada') continue;
+          services.push({
+            id: order.id,
+            service_name: 'Servicio de Póliza',
+            scheduled_date: order.delivery_date || '',
+            priority: 2,
+            source: 'policy',
+            source_name: 'Póliza'
+          });
+        }
+      }
+
+      // Load development orders for this month via access_development_orders
+      const { data: devOrderLinks } = await supabase
+        .from('access_development_orders')
+        .select('order_id, scheduled_date, orders!inner(id, order_number, status, client_id)')
+        .gte('scheduled_date', startStr)
+        .lte('scheduled_date', endStr);
+      
+      if (devOrderLinks) {
+        for (const link of devOrderLinks as any[]) {
+          if (!link.orders || link.orders.client_id !== clientId) continue;
+          if (link.orders.status === 'cancelada' || link.orders.status === 'rechazada') continue;
+          services.push({
+            id: link.order_id || link.orders.id,
+            service_name: 'Servicio Mensual',
+            scheduled_date: link.scheduled_date || '',
+            priority: 2,
+            source: 'development',
+            source_name: 'Fraccionamiento'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading scheduled services:', error);
+    }
+
+    // Sort by date
+    services.sort((a, b) => new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime());
+    setScheduledServices(services);
+  };
+
   // Carga inicial
   useEffect(() => {
     let mounted = true;
@@ -331,7 +430,8 @@ export default function ClientDashboard() {
         loadOrders(), 
         loadQuotes(), 
         loadPendingApprovalQuotes(),
-        loadClientPolicies()
+        loadClientPolicies(),
+        loadScheduledServices()
       ]);
       if (mounted) setLoading(false);
     })();
@@ -691,6 +791,44 @@ export default function ClientDashboard() {
           </div>
         </div>
 
+        {/* Servicios Programados del Mes */}
+        {scheduledServices.length > 0 && (
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-primary flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Servicios Programados - {new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {scheduledServices.map((service) => (
+                <div 
+                  key={service.id} 
+                  className="flex items-center justify-between p-3 rounded-lg border bg-white cursor-pointer hover:bg-primary/5 transition-colors"
+                  onClick={() => handleViewOrderDetails(service.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    {service.source === 'policy' ? (
+                      <Shield className="h-4 w-4 text-primary" />
+                    ) : (
+                      <CalendarDays className="h-4 w-4 text-amber-600" />
+                    )}
+                    <div>
+                      <p className="text-sm font-medium">{service.service_name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{formatDateMexico(service.scheduled_date, 'dd MMM yyyy')}</span>
+                        <Badge variant="outline" className={service.source === 'policy' ? 'border-primary/30 text-primary' : 'border-amber-300 text-amber-700'}>
+                          {service.source_name}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Secciones específicas de elementos pendientes */}
         <Card>
