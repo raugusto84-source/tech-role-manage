@@ -3851,6 +3851,10 @@ export type Database = {
           service_type: string | null
           skip_payment: boolean | null
           source_type: string | null
+          special_price: number | null
+          special_price_enabled: boolean | null
+          special_price_set_at: string | null
+          special_price_set_by: string | null
           status: Database["public"]["Enums"]["order_status"]
           travel_time_hours: number | null
           updated_at: string
@@ -3901,6 +3905,10 @@ export type Database = {
           service_type?: string | null
           skip_payment?: boolean | null
           source_type?: string | null
+          special_price?: number | null
+          special_price_enabled?: boolean | null
+          special_price_set_at?: string | null
+          special_price_set_by?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           travel_time_hours?: number | null
           updated_at?: string
@@ -3951,6 +3959,10 @@ export type Database = {
           service_type?: string | null
           skip_payment?: boolean | null
           source_type?: string | null
+          special_price?: number | null
+          special_price_enabled?: boolean | null
+          special_price_set_at?: string | null
+          special_price_set_by?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           travel_time_hours?: number | null
           updated_at?: string

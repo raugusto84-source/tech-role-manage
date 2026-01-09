@@ -33,6 +33,7 @@ import { SignatureViewer } from './SignatureViewer';
 import { EquipmentList } from './EquipmentList';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { ServiceChecklist } from './ServiceChecklist';
+import { SpecialPriceEditor } from './SpecialPriceEditor';
 
 interface OrderDetailsProps {
   order: {
@@ -55,6 +56,8 @@ interface OrderDetailsProps {
     service_location?: any;
     travel_time_hours?: number;
     is_policy_order?: boolean;
+    special_price_enabled?: boolean;
+    special_price?: number | null;
     service_types?: {
       name: string;
       description?: string;
@@ -433,7 +436,11 @@ export function OrderDetails({
     return 0;
   };
   // Calculate payment summary after total calculation
-  const totalAmount = calculateCorrectTotal();
+  const calculatedTotal = calculateCorrectTotal();
+  // Use special price if enabled, otherwise use calculated total
+  const totalAmount = order.special_price_enabled && order.special_price 
+    ? order.special_price 
+    : calculatedTotal;
   const hasStoredTotals = orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false;
   const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
   const {
@@ -548,10 +555,17 @@ export function OrderDetails({
                 </div>
                 
                 <div className="text-right text-sm">
-                  <div className="text-xs text-muted-foreground mb-1">Total con IVA:</div>
-                  <div className="font-bold text-primary">
+                  <div className="text-xs text-muted-foreground mb-1">
+                    {order.special_price_enabled ? 'Precio Especial:' : 'Total con IVA:'}
+                  </div>
+                  <div className={`font-bold ${order.special_price_enabled ? 'text-amber-600' : 'text-primary'}`}>
                     {itemsLoading ? <Skeleton className="h-4 w-16 rounded" /> : formatMXNExact(totalAmount)}
                   </div>
+                  {order.special_price_enabled && (
+                    <div className="text-xs text-muted-foreground line-through">
+                      {formatMXNExact(calculatedTotal)}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {getEstimatedHours()}h est.
                   </div>
@@ -660,6 +674,18 @@ export function OrderDetails({
               
             </CardContent>
           </Card>
+
+          {/* Special Price Editor - Admin Only */}
+          {profile?.role === 'administrador' && !['finalizada', 'cancelada', 'rechazada'].includes(orderStatus) && (
+            <SpecialPriceEditor
+              orderId={order.id}
+              currentTotal={calculatedTotal}
+              specialPriceEnabled={order.special_price_enabled || false}
+              specialPrice={order.special_price || null}
+              userId={user?.id || ''}
+              onUpdate={onUpdate}
+            />
+          )}
 
           {/* Equipos */}
           <Card>
