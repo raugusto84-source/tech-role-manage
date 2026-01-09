@@ -660,12 +660,21 @@ export function OrderDetails({
                   {/* Total General */}
                   {orderItems.length > 0 && <div className="mt-4 pt-3 border-t border-border">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-muted-foreground">Total General:</span>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-primary" />
-                            {itemsLoading ? <Skeleton className="h-6 w-24 rounded" /> : <span className="text-lg font-bold text-primary">
-                                 {formatMXNExact(totalAmount)}
-                               </span>}
+                        <span className="text-sm font-semibold text-muted-foreground">
+                          {order.special_price_enabled ? 'Total (Precio Especial):' : 'Total General:'}
+                        </span>
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className={`h-4 w-4 ${order.special_price_enabled ? 'text-amber-600' : 'text-primary'}`} />
+                              {itemsLoading ? <Skeleton className="h-6 w-24 rounded" /> : <span className={`text-lg font-bold ${order.special_price_enabled ? 'text-amber-600' : 'text-primary'}`}>
+                                   {formatMXNExact(totalAmount)}
+                                 </span>}
+                          </div>
+                          {order.special_price_enabled && (
+                            <span className="text-xs text-muted-foreground line-through">
+                              {formatMXNExact(calculatedTotal)}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>}
