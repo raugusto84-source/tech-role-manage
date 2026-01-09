@@ -51,68 +51,77 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
+      // Count pending policy payments
+      const policyPaymentsResult = await (supabase
+        .from('policy_payments') as any)
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pendiente');
+      const pendingPolicyPaymentsCount = policyPaymentsResult.count || 0;
+
       // Count finalized orders with pending balance (excluding policy orders and deleted orders)
-      const { data: finalizedOrders } = await supabase
+      const finalizedOrdersResult = await supabase
         .from('orders')
-        .select(`
-          id,
-          estimated_cost,
-          is_policy_order,
-          order_items (
-            quantity,
-            unit_cost_price,
-            unit_base_price,
-            vat_rate,
-            item_type,
-            profit_margin_rate,
-            total_amount
-          )
-        `)
+        .select('id, estimated_cost, is_policy_order')
         .eq('status', 'finalizada')
         .neq('is_policy_order', true)
         .is('deleted_at', null);
 
       // Get payments for each finalized order and filter those with remaining balance > 0
       let finalizedCount = 0;
-      if (finalizedOrders) {
-        for (const order of finalizedOrders) {
-          const { data: payments } = await supabase
-            .from('order_payments')
-            .select('payment_amount')
-            .eq('order_id', order.id)
-            .is('deleted_at', null); // Exclude deleted payments
+      const finalizedOrders = finalizedOrdersResult.data || [];
+      
+      for (const order of finalizedOrders) {
+        const { data: orderItems } = await supabase
+          .from('order_items')
+          .select('quantity, unit_cost_price, unit_base_price, vat_rate, total_amount')
+          .eq('order_id', order.id);
           
-          // Calculate order total from items (same logic as in OrderCard)
-          let orderTotal = 0;
-          if (order.order_items && order.order_items.length > 0) {
-            orderTotal = order.order_items.reduce((total, item) => {
-              const quantity = item.quantity || 1;
-              const hasStoredTotal = item.total_amount && item.total_amount > 0;
-              
-              if (hasStoredTotal) {
-                return total + item.total_amount;
-              }
-              
-              const unitPrice = item.unit_base_price || item.unit_cost_price || 0;
-              const vatRate = item.vat_rate || 16;
-              const subtotal = unitPrice * quantity;
-              const vatAmount = subtotal * (vatRate / 100);
-              const itemTotal = Math.ceil((subtotal + vatAmount) / 10) * 10;
-              
-              return total + itemTotal;
-            }, 0);
-          } else {
-            orderTotal = order.estimated_cost || 0;
-          }
-          
-          const totalPaid = payments?.reduce((sum, payment) => sum + (payment.payment_amount || 0), 0) || 0;
-          const remaining = orderTotal - totalPaid;
-          
-          if (remaining > 0) {
-            finalizedCount++;
-          }
+        const { data: payments } = await supabase
+          .from('order_payments')
+          .select('payment_amount')
+          .eq('order_id', order.id)
+          .is('deleted_at', null);
+        
+        // Calculate order total from items
+        let orderTotal = 0;
+        if (orderItems && orderItems.length > 0) {
+          orderTotal = orderItems.reduce((total: number, item: any) => {
+            const quantity = item.quantity || 1;
+            const hasStoredTotal = item.total_amount && item.total_amount > 0;
+            
+            if (hasStoredTotal) {
+              return total + item.total_amount;
+            }
+            
+            const unitPrice = item.unit_base_price || item.unit_cost_price || 0;
+            const vatRate = item.vat_rate || 16;
+            const subtotal = unitPrice * quantity;
+            const vatAmount = subtotal * (vatRate / 100);
+            const itemTotal = Math.ceil((subtotal + vatAmount) / 10) * 10;
+            
+            return total + itemTotal;
+          }, 0);
+        } else {
+          orderTotal = order.estimated_cost || 0;
+        }
+        
+        const totalPaid = payments?.reduce((sum: number, payment: any) => sum + (payment.payment_amount || 0), 0) || 0;
+        const remaining = orderTotal - totalPaid;
+        
+        if (remaining > 0) {
+          finalizedCount++;
         }
       }
+
+      // Count pending development payments
+      const devPaymentsResult = await supabase
+        .from('access_development_payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pendiente');
+      const pendingDevPaymentsCount = devPaymentsResult.count || 0;
+
+      // Total collections = policy payments + finalized orders + development payments
+      const totalCollections = pendingPolicyPaymentsCount + finalizedCount + pendingDevPaymentsCount;
 
       const { count: inProcessCount } = await supabase
         .from('orders')
@@ -137,8 +146,8 @@ export function useUnreadCounts() {
         orders: ordersCount || 0,
         quotes: quotesCount || 0,
         warranties: warrantiesCount || 0,
-        collections: 0,
-        ordersFinalized: finalizedCount || 0,
+        collections: totalCollections,
+        ordersFinalized: finalizedCount,
         ordersInProcess: inProcessCount || 0,
         ordersPendingAuth: pendingAuthCount || 0,
         ordersPendingDelivery: pendingDeliveryCount || 0
