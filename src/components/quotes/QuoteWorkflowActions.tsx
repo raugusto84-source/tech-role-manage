@@ -118,10 +118,10 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
   // Callback cuando se agregan items desde el diálogo
   const handleItemsAdded = () => {
     onQuoteUpdated();
-    // Después de agregar items, proceder con la aprobación
-    setTimeout(() => {
-      convertToOrder();
-    }, 500);
+    toast({
+      title: "Items agregados",
+      description: "Ahora puede revisar los items y aprobar la cotización cuando esté listo"
+    });
   };
 
   // Rechazar cotización
