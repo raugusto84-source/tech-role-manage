@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Minus, ShoppingCart, Search, Shield, Monitor, Package, X, CheckCircle } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, Search, Shield, Monitor, Package, X, Save, Trash2 } from 'lucide-react';
 import { ceilToTen, formatCOPCeilToTen } from '@/utils/currency';
 
 interface AddQuoteItemsDialogProps {
@@ -34,6 +34,16 @@ interface ServiceType {
   }>;
 }
 
+interface ExistingItem {
+  id: string;
+  service_type_id: string | null;
+  name: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+  toDelete?: boolean;
+}
+
 interface NewItem {
   service_type_id: string;
   service_name: string;
@@ -58,6 +68,7 @@ export function AddQuoteItemsDialog({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [existingItems, setExistingItems] = useState<ExistingItem[]>([]);
   const [newItems, setNewItems] = useState<NewItem[]>([]);
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -65,11 +76,26 @@ export function AddQuoteItemsDialog({
   useEffect(() => {
     if (open) {
       loadServiceTypes();
+      loadExistingItems();
       setNewItems([]);
       setSelectedMainCategory(null);
       setSearchTerm('');
     }
-  }, [open]);
+  }, [open, quoteId]);
+
+  const loadExistingItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('quote_items')
+        .select('id, service_type_id, name, quantity, unit_price, total')
+        .eq('quote_id', quoteId);
+      
+      if (error) throw error;
+      setExistingItems((data || []).map(item => ({ ...item, toDelete: false })));
+    } catch (error) {
+      console.error('Error loading existing items:', error);
+    }
+  };
 
   const loadServiceTypes = async () => {
     try {
@@ -214,11 +240,17 @@ export function AddQuoteItemsDialog({
     setNewItems(prev => [...prev, newItem]);
   };
 
-  const removeItem = (index: number) => {
+  const removeNewItem = (index: number) => {
     setNewItems(newItems.filter((_, i) => i !== index));
   };
 
-  const updateItemQuantity = (index: number, quantity: number) => {
+  const toggleDeleteExistingItem = (index: number) => {
+    const updated = [...existingItems];
+    updated[index] = { ...updated[index], toDelete: !updated[index].toDelete };
+    setExistingItems(updated);
+  };
+
+  const updateNewItemQuantity = (index: number, quantity: number) => {
     const updated = [...newItems];
     updated[index] = {
       ...updated[index],
@@ -230,6 +262,18 @@ export function AddQuoteItemsDialog({
     item.subtotal = item.unit_base_price * item.quantity;
     item.vat_amount = item.subtotal * item.vat_rate / 100;
     setNewItems(updated);
+  };
+
+  const updateExistingItemQuantity = async (index: number, quantity: number) => {
+    const updated = [...existingItems];
+    const newQty = Math.max(1, quantity);
+    const unitPrice = updated[index].unit_price;
+    updated[index] = {
+      ...updated[index],
+      quantity: newQty,
+      total: unitPrice * newQty * 1.16 // Approximate with VAT
+    };
+    setExistingItems(updated);
   };
 
   const renderCategoryButton = (mainCategory: string, itemType: string) => {
@@ -338,14 +382,27 @@ export function AddQuoteItemsDialog({
   };
 
   const calculateTotal = () => {
-    return newItems.reduce((sum, item) => sum + calculateItemCorrectPrice(item), 0);
+    const existingTotal = existingItems
+      .filter(item => !item.toDelete)
+      .reduce((sum, item) => sum + item.total, 0);
+    const newTotal = newItems.reduce((sum, item) => sum + calculateItemCorrectPrice(item), 0);
+    return existingTotal + newTotal;
   };
 
+  const activeExistingItems = existingItems.filter(item => !item.toDelete);
+  const deletedExistingItems = existingItems.filter(item => item.toDelete);
+  const hasChanges = newItems.length > 0 || deletedExistingItems.length > 0 || 
+    existingItems.some((item, i) => {
+      // Check if quantity changed (compare with original)
+      return false; // For now, we track changes through new/deleted items
+    });
+
   const handleSubmit = async () => {
-    if (newItems.length === 0) {
+    const totalItems = activeExistingItems.length + newItems.length;
+    if (totalItems === 0) {
       toast({
         title: "Error",
-        description: "Debe agregar al menos un servicio o producto",
+        description: "Debe tener al menos un servicio o producto",
         variant: "destructive"
       });
       return;
@@ -353,33 +410,53 @@ export function AddQuoteItemsDialog({
 
     setLoading(true);
     try {
-      const totalAmount = calculateTotal();
+      // Delete items marked for deletion
+      for (const item of deletedExistingItems) {
+        await supabase
+          .from('quote_items')
+          .delete()
+          .eq('id', item.id);
+      }
 
-      // Insert quote items
-      const itemsToInsert = newItems.map(item => ({
-        quote_id: quoteId,
-        service_type_id: item.service_type_id,
-        name: item.service_name,
-        description: '',
-        quantity: item.quantity,
-        unit_price: item.unit_base_price,
-        subtotal: item.subtotal,
-        vat_rate: item.vat_rate,
-        vat_amount: item.vat_amount,
-        withholding_rate: 0,
-        withholding_amount: 0,
-        withholding_type: 'none',
-        total: item.total_amount,
-        is_custom: false
-      }));
+      // Update existing items quantities
+      for (const item of activeExistingItems) {
+        await supabase
+          .from('quote_items')
+          .update({ 
+            quantity: item.quantity,
+            total: item.total
+          })
+          .eq('id', item.id);
+      }
 
-      const { error: itemsError } = await supabase
-        .from('quote_items')
-        .insert(itemsToInsert);
+      // Insert new items
+      if (newItems.length > 0) {
+        const itemsToInsert = newItems.map(item => ({
+          quote_id: quoteId,
+          service_type_id: item.service_type_id,
+          name: item.service_name,
+          description: '',
+          quantity: item.quantity,
+          unit_price: item.unit_base_price,
+          subtotal: item.subtotal,
+          vat_rate: item.vat_rate,
+          vat_amount: item.vat_amount,
+          withholding_rate: 0,
+          withholding_amount: 0,
+          withholding_type: 'none',
+          total: item.total_amount,
+          is_custom: false
+        }));
 
-      if (itemsError) throw itemsError;
+        const { error: itemsError } = await supabase
+          .from('quote_items')
+          .insert(itemsToInsert);
+
+        if (itemsError) throw itemsError;
+      }
 
       // Update quote estimated_amount
+      const totalAmount = calculateTotal();
       const { error: updateError } = await supabase
         .from('quotes')
         .update({ estimated_amount: totalAmount })
@@ -388,17 +465,17 @@ export function AddQuoteItemsDialog({
       if (updateError) throw updateError;
 
       toast({
-        title: "Items agregados",
-        description: `Se agregaron ${newItems.length} items a la cotización`
+        title: "Items guardados",
+        description: `Cotización actualizada con ${activeExistingItems.length + newItems.length} items`
       });
 
       onItemsAdded();
       onOpenChange(false);
     } catch (error: any) {
-      console.error('Error adding items to quote:', error);
+      console.error('Error saving quote items:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudieron agregar los items",
+        description: error.message || "No se pudieron guardar los items",
         variant: "destructive"
       });
     } finally {
@@ -412,27 +489,85 @@ export function AddQuoteItemsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Agregar Items - {quoteNumber}
+            Editar Items - {quoteNumber}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Category Selection */}
           <div>
-            <h3 className="text-sm font-medium mb-3">Seleccionar Servicios/Productos</h3>
+            <h3 className="text-sm font-medium mb-3">Agregar Servicios/Productos</h3>
             {renderMainCategoryView()}
           </div>
 
-          {/* Selected Items */}
+          {/* Existing Items */}
+          {existingItems.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                Items Existentes ({activeExistingItems.length})
+              </h3>
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {existingItems.map((item, index) => (
+                  <Card key={item.id} className={`p-3 ${item.toDelete ? 'opacity-50 bg-destructive/10' : ''}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium text-sm truncate ${item.toDelete ? 'line-through' : ''}`}>
+                          {item.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatCOPCeilToTen(item.total)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!item.toDelete && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 w-7 p-0"
+                              onClick={() => updateExistingItemQuantity(index, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center text-sm">{item.quantity}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 w-7 p-0"
+                              onClick={() => updateExistingItemQuantity(index, item.quantity + 1)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={item.toDelete ? "outline" : "destructive"}
+                          className="h-7 w-7 p-0"
+                          onClick={() => toggleDeleteExistingItem(index)}
+                        >
+                          {item.toDelete ? <Plus className="h-3 w-3" /> : <Trash2 className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* New Items */}
           {newItems.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <ShoppingCart className="h-4 w-4" />
-                Items Seleccionados ({newItems.length})
+                Nuevos Items ({newItems.length})
               </h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-32 overflow-y-auto">
                 {newItems.map((item, index) => (
-                  <Card key={index} className="p-3">
+                  <Card key={index} className="p-3 border-primary/30 bg-primary/5">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{item.service_name}</p>
@@ -445,7 +580,7 @@ export function AddQuoteItemsDialog({
                           size="sm"
                           variant="outline"
                           className="h-7 w-7 p-0"
-                          onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                          onClick={() => updateNewItemQuantity(index, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                         >
                           <Minus className="h-3 w-3" />
@@ -455,7 +590,7 @@ export function AddQuoteItemsDialog({
                           size="sm"
                           variant="outline"
                           className="h-7 w-7 p-0"
-                          onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                          onClick={() => updateNewItemQuantity(index, item.quantity + 1)}
                         >
                           <Plus className="h-3 w-3" />
                         </Button>
@@ -463,7 +598,7 @@ export function AddQuoteItemsDialog({
                           size="sm"
                           variant="destructive"
                           className="h-7 w-7 p-0"
-                          onClick={() => removeItem(index)}
+                          onClick={() => removeNewItem(index)}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -472,15 +607,17 @@ export function AddQuoteItemsDialog({
                   </Card>
                 ))}
               </div>
+            </div>
+          )}
 
-              {/* Total */}
-              <div className="mt-4 p-3 bg-muted rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total:</span>
-                  <span className="text-lg font-bold text-primary">
-                    {formatCOPCeilToTen(calculateTotal())}
-                  </span>
-                </div>
+          {/* Total */}
+          {(activeExistingItems.length > 0 || newItems.length > 0) && (
+            <div className="p-3 bg-muted rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Total:</span>
+                <span className="text-lg font-bold text-primary">
+                  {formatCOPCeilToTen(calculateTotal())}
+                </span>
               </div>
             </div>
           )}
@@ -497,11 +634,11 @@ export function AddQuoteItemsDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading || newItems.length === 0}
+              disabled={loading || (activeExistingItems.length === 0 && newItems.length === 0)}
               className="flex-1"
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {loading ? "Guardando..." : "Agregar y Aprobar"}
+              <Save className="h-4 w-4 mr-2" />
+              {loading ? "Guardando..." : "Guardar Items"}
             </Button>
           </div>
         </div>
