@@ -444,7 +444,7 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
                   <span className="text-sm font-medium">Cotización sin items</span>
                 </div>
                 <p className="text-xs text-blue-700 mt-1">
-                  Al aprobar se abrirá el catálogo para seleccionar servicios o productos
+                  Agregue servicios o productos antes de aprobar
                 </p>
               </div>
             )}
@@ -474,25 +474,28 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
 
             <Separator />
 
+            {/* Botón para editar items */}
+            <Button
+              onClick={() => setShowAddItemsDialog(true)}
+              disabled={loading}
+              variant="outline"
+              className="w-full"
+              size="sm"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {hasNoItems ? 'Agregar Items' : 'Editar Items'}
+            </Button>
+
             <div className="grid grid-cols-2 gap-2">
               <Button
-                onClick={() => hasNoItems ? handleApprove() : openConfirmDialog('approve')}
-                disabled={loading}
+                onClick={() => openConfirmDialog('approve')}
+                disabled={loading || hasNoItems}
                 variant="default"
                 className="w-full"
                 size="sm"
               >
-                {hasNoItems ? (
-                  <>
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Agregar Items
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {hasEquipment ? 'Aprobar' : 'Aprobar y Crear Orden'}
-                  </>
-                )}
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {hasEquipment ? 'Aprobar' : 'Aprobar y Crear Orden'}
               </Button>
               <Button
                 onClick={() => openConfirmDialog('reject')}
