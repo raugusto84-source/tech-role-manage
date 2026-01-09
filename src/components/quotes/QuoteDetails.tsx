@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package } from 'lucide-react';
+import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package, Plus } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { getItemTypeInfo } from '@/utils/itemTypeUtils';
 import { ClientQuoteItemsSummary } from './ClientQuoteItemsSummary';
 import { QuoteWorkflowActions } from './QuoteWorkflowActions';
+import { AddQuoteItemsDialog } from './AddQuoteItemsDialog';
 
 interface QuoteItem {
   id: string;
@@ -102,6 +103,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const [newStatus, setNewStatus] = useState<'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion' | 'asignando'>(quote.status);
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [salesperson, setSalesperson] = useState<string>('');
+  const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
   
   // Load quote items and salesperson information
   useEffect(() => {
@@ -513,11 +515,21 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
             />
           ) : (
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Package className="h-5 w-5" />
                   Artículos y Servicios Cotizados
                 </CardTitle>
+                {canManageQuotes && quote.status !== 'aceptada' && quote.status !== 'rechazada' && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowAddItemsDialog(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Agregar Items
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
               {quoteItems.length > 0 ? (
@@ -700,6 +712,32 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
           />
         </div>
       </div>
+
+      {/* Diálogo para agregar/editar items */}
+      <AddQuoteItemsDialog
+        open={showAddItemsDialog}
+        onOpenChange={setShowAddItemsDialog}
+        quoteId={quote.id}
+        quoteNumber={quote.quote_number}
+        onItemsAdded={() => {
+          onQuoteUpdated();
+          // Reload items
+          const loadItems = async () => {
+            const { data } = await supabase
+              .from('quote_items')
+              .select('*, service_types!left(image_url, item_type, cost_price, base_price, vat_rate)')
+              .eq('quote_id', quote.id);
+            if (data) {
+              setQuoteItems(data.map(item => ({
+                ...item,
+                image_url: item.service_types?.image_url || null,
+                item_type: item.service_types?.item_type || 'servicio',
+              })));
+            }
+          };
+          loadItems();
+        }}
+      />
     </div>
   );
 }
