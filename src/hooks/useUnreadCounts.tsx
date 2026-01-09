@@ -51,11 +51,11 @@ export function useUnreadCounts() {
         .select('*', { count: 'exact', head: true })
         .in('status', ['pendiente', 'en_proceso']);
 
-      // Count pending policy payments
+      // Count pending policy payments (is_paid = false means pending)
       const policyPaymentsResult = await (supabase
         .from('policy_payments') as any)
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'pendiente');
+        .eq('is_paid', false);
       const pendingPolicyPaymentsCount = policyPaymentsResult.count || 0;
 
       // Count finalized orders with pending balance (excluding policy orders and deleted orders)
