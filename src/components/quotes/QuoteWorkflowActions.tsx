@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { CheckCircle, XCircle, Package, Clock, Truck, AlertTriangle } from 'lucide-react';
+import { CheckCircle, XCircle, Package, Clock, Truck, AlertTriangle, ShoppingCart } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
+import { AddQuoteItemsDialog } from './AddQuoteItemsDialog';
 
 interface QuoteItem {
   id: string;
@@ -45,6 +46,13 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingAction, setPendingAction] = useState<'approve' | 'reject' | 'assign' | null>(null);
   const [department, setDepartment] = useState<string | null>(quote.department || null);
+  const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
+  const [hasNoItems, setHasNoItems] = useState(false);
+
+  // Check if quote has items
+  useEffect(() => {
+    setHasNoItems(quoteItems.length === 0);
+  }, [quoteItems]);
 
   // Detectar si hay productos (equipo) en los items
   useEffect(() => {
@@ -91,6 +99,13 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
 
   // Aprobar cotización
   const handleApprove = async () => {
+    // Si no tiene items, abrir diálogo para agregar
+    if (hasNoItems) {
+      setShowAddItemsDialog(true);
+      setShowConfirmDialog(false);
+      return;
+    }
+
     if (hasEquipment && !equipmentReady) {
       // Si tiene equipo y no está listo, pasar a estado "asignando"
       await updateQuoteStatus('asignando');
@@ -98,6 +113,15 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
       // Si no tiene equipo o ya está listo, crear orden directamente
       await convertToOrder();
     }
+  };
+
+  // Callback cuando se agregan items desde el diálogo
+  const handleItemsAdded = () => {
+    onQuoteUpdated();
+    // Después de agregar items, proceder con la aprobación
+    setTimeout(() => {
+      convertToOrder();
+    }, 500);
   };
 
   // Rechazar cotización
@@ -406,88 +430,120 @@ export function QuoteWorkflowActions({ quote, quoteItems, onQuoteUpdated }: Quot
   // Vista normal para cotizaciones pendientes
   if (quote.status !== 'aceptada' && quote.status !== 'rechazada') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Acciones</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Indicador de equipo */}
-          {hasEquipment && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 text-amber-800">
-                <Package className="h-4 w-4" />
-                <span className="text-sm font-medium">Cotización con productos</span>
+      <>
+        <Card>
+          <CardHeader>
+            <CardTitle>Acciones</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Alerta cuando no tiene items */}
+            {hasNoItems && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-blue-800">
+                  <ShoppingCart className="h-4 w-4" />
+                  <span className="text-sm font-medium">Cotización sin items</span>
+                </div>
+                <p className="text-xs text-blue-700 mt-1">
+                  Al aprobar se abrirá el catálogo para seleccionar servicios o productos
+                </p>
               </div>
-              <p className="text-xs text-amber-700 mt-1">
-                Al aprobar, pasará a estado "Asignando" para esperar el material
-              </p>
-            </div>
-          )}
+            )}
 
-          {/* Departamento detectado */}
-          {department && (
-            <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                <Truck className="h-3 w-3 mr-1" />
-                {department === 'sistemas' ? 'Sistemas' : 'Seguridad'}
-              </Badge>
-            </div>
-          )}
+            {/* Indicador de equipo */}
+            {hasEquipment && !hasNoItems && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-amber-800">
+                  <Package className="h-4 w-4" />
+                  <span className="text-sm font-medium">Cotización con productos</span>
+                </div>
+                <p className="text-xs text-amber-700 mt-1">
+                  Al aprobar, pasará a estado "Asignando" para esperar el material
+                </p>
+              </div>
+            )}
 
-          <Separator />
+            {/* Departamento detectado */}
+            {department && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  <Truck className="h-3 w-3 mr-1" />
+                  {department === 'sistemas' ? 'Sistemas' : 'Seguridad'}
+                </Badge>
+              </div>
+            )}
 
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              onClick={() => openConfirmDialog('approve')}
-              disabled={loading}
-              variant="default"
-              className="w-full"
-              size="sm"
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              {hasEquipment ? 'Aprobar' : 'Aprobar y Crear Orden'}
-            </Button>
-            <Button
-              onClick={() => openConfirmDialog('reject')}
-              disabled={loading}
-              variant="destructive"
-              className="w-full"
-              size="sm"
-            >
-              <XCircle className="h-4 w-4 mr-2" />
-              Rechazar
-            </Button>
-          </div>
+            <Separator />
 
-          {quote.status === 'pendiente_aprobacion' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-              <h4 className="font-medium text-orange-800 text-sm mb-1">Cotización Pendiente de Aprobación</h4>
-              <p className="text-xs text-orange-700">
-                Al aprobarla se iniciará el flujo de trabajo automáticamente.
-              </p>
-            </div>
-          )}
-        </CardContent>
-
-        <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>{getActionDialogContent().title}</AlertDialogTitle>
-              <AlertDialogDescription>{getActionDialogContent().description}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={executeAction} 
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={() => hasNoItems ? handleApprove() : openConfirmDialog('approve')}
                 disabled={loading}
-                className={pendingAction === 'reject' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                variant="default"
+                className="w-full"
+                size="sm"
               >
-                {loading ? "Procesando..." : "Confirmar"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </Card>
+                {hasNoItems ? (
+                  <>
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Agregar Items
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {hasEquipment ? 'Aprobar' : 'Aprobar y Crear Orden'}
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => openConfirmDialog('reject')}
+                disabled={loading}
+                variant="destructive"
+                className="w-full"
+                size="sm"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Rechazar
+              </Button>
+            </div>
+
+            {quote.status === 'pendiente_aprobacion' && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                <h4 className="font-medium text-orange-800 text-sm mb-1">Cotización Pendiente de Aprobación</h4>
+                <p className="text-xs text-orange-700">
+                  Al aprobarla se iniciará el flujo de trabajo automáticamente.
+                </p>
+              </div>
+            )}
+          </CardContent>
+
+          <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{getActionDialogContent().title}</AlertDialogTitle>
+                <AlertDialogDescription>{getActionDialogContent().description}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={executeAction} 
+                  disabled={loading}
+                  className={pendingAction === 'reject' ? 'bg-destructive hover:bg-destructive/90' : ''}
+                >
+                  {loading ? "Procesando..." : "Confirmar"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </Card>
+
+        <AddQuoteItemsDialog
+          open={showAddItemsDialog}
+          onOpenChange={setShowAddItemsDialog}
+          quoteId={quote.id}
+          quoteNumber={quote.quote_number}
+          onItemsAdded={handleItemsAdded}
+        />
+      </>
     );
   }
 
