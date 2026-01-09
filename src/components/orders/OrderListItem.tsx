@@ -41,6 +41,8 @@ interface Order {
   is_development_order?: boolean;
   order_priority?: number | null;
   priority: 'baja' | 'media' | 'alta' | 'critica';
+  special_price_enabled?: boolean;
+  special_price?: number | null;
   service_types?: {
     name: string;
     description?: string;
@@ -153,11 +155,23 @@ export function OrderListItem({
   };
 
   const calculateTotal = () => {
-    if (!order.order_items || order.order_items.length === 0) {
-      return order.estimated_cost || 0;
+    // First calculate from items
+    let calculatedTotal = 0;
+    if (order.order_items && order.order_items.length > 0) {
+      calculatedTotal = order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+    } else {
+      calculatedTotal = order.estimated_cost || 0;
     }
-    return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
+    
+    // Use special price if enabled
+    if (order.special_price_enabled && typeof order.special_price === 'number') {
+      return { total: order.special_price, originalTotal: calculatedTotal, isSpecial: true };
+    }
+    
+    return { total: calculatedTotal, originalTotal: calculatedTotal, isSpecial: false };
   };
+
+  const priceInfo = calculateTotal();
 
   // Para órdenes de póliza usar la prioridad asignada, para otras calcular dinámicamente
   const calculatedPriority = order.is_policy_order && order.order_priority != null
@@ -271,7 +285,16 @@ export function OrderListItem({
         {safeFormatDate(order.estimated_delivery_date || order.delivery_date)}
       </TableCell>
       <TableCell onClick={onClick} className="text-right font-mono">
-        ${calculateTotal().toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+        <div className="flex flex-col items-end">
+          <span className={priceInfo.isSpecial ? 'text-amber-600 font-semibold' : ''}>
+            ${priceInfo.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+          </span>
+          {priceInfo.isSpecial && (
+            <span className="text-xs text-muted-foreground line-through">
+              ${priceInfo.originalTotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+            </span>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">

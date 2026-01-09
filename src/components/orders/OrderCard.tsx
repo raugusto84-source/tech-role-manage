@@ -31,6 +31,8 @@ interface OrderCardProps {
     client_approval?: boolean;
     assigned_technician?: string;
     is_policy_order?: boolean;
+    special_price_enabled?: boolean;
+    special_price?: number | null;
     clients?: {
       name: string;
       client_number: string;
@@ -196,7 +198,11 @@ export function OrderCard({
     console.log('No items found, returning 0');
     return 0;
   };
-  const totalAmount = calculateCorrectTotal();
+  const calculatedTotal = calculateCorrectTotal();
+  // Use special price if enabled
+  const totalAmount = order.special_price_enabled && typeof order.special_price === 'number'
+    ? order.special_price
+    : calculatedTotal;
   const hasStoredTotals = orderItems?.some((i: any) => typeof i.total_amount === 'number' && i.total_amount > 0) ?? false;
   const usingEstimated = Boolean(order.estimated_cost && order.estimated_cost > 0);
   const {
@@ -249,21 +255,18 @@ export function OrderCard({
             </div>
           </div>
           <div className="text-right">
-            {itemsLoading || paymentsLoading ? <Skeleton className="h-6 w-20" /> : <div className="text-lg font-bold text-primary">
-                {(() => {
-              console.log('OrderCard display total debug:', {
-                orderId: order.id,
-                usingEstimated,
-                estimatedCost: order.estimated_cost,
-                totalAmount,
-                formattedEstimated: usingEstimated ? formatMXNExact(order.estimated_cost!) : 'N/A',
-                formattedTotal: formatMXNExact(totalAmount)
-              });
-              
-              // Mostrar total exacto guardado de la orden (sin redondeo adicional)
-              return formatMXNExact(totalAmount);
-            })()}
-              </div>}
+            {itemsLoading || paymentsLoading ? <Skeleton className="h-6 w-20" /> : (
+              <div className="flex flex-col items-end">
+                <div className={`text-lg font-bold ${order.special_price_enabled ? 'text-amber-600' : 'text-primary'}`}>
+                  {formatMXNExact(totalAmount)}
+                </div>
+                {order.special_price_enabled && (
+                  <div className="text-xs text-muted-foreground line-through">
+                    {formatMXNExact(calculatedTotal)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
