@@ -37,10 +37,10 @@ export function SpecialPriceEditor({
     : '0';
 
   const handleSave = async () => {
-    if (enabled && (!price || parseFloat(price) <= 0)) {
+    if (enabled && (price === '' || parseFloat(price) < 0)) {
       toast({
         title: "Error",
-        description: "Ingrese un precio especial válido",
+        description: "Ingrese un precio especial válido (puede ser 0)",
         variant: "destructive"
       });
       return;
