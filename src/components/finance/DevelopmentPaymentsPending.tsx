@@ -26,6 +26,7 @@ interface DevelopmentPayment {
   investor_portion: number;
   company_portion: number;
   is_recovery_period: boolean;
+  created_at: string;
 }
 
 export function DevelopmentPaymentsPending() {
@@ -37,6 +38,10 @@ export function DevelopmentPaymentsPending() {
   const [stats, setStats] = useState({
     total_pending: 0,
     total_amount: 0,
+    overdue_count: 0,
+    overdue_amount: 0,
+    on_time_count: 0,
+    on_time_amount: 0,
   });
 
   useEffect(() => {
@@ -58,8 +63,8 @@ export function DevelopmentPaymentsPending() {
 
       if (error) throw error;
 
-      // Filtrar solo pagos del mes actual y vencidos (no futuros)
       const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth(); // 0-indexed
       
@@ -73,27 +78,40 @@ export function DevelopmentPaymentsPending() {
         status: p.status,
         investor_portion: p.investor_portion || 0,
         company_portion: p.company_portion || 0,
-        is_recovery_period: p.is_recovery_period || false
+        is_recovery_period: p.is_recovery_period || false,
+        created_at: p.created_at
       }));
 
-      // Filtrar: solo mostrar pagos cuyo due_date sea del mes actual o anterior (vencidos)
+      // Filtrar: solo pagos que NO fueron creados retroactivamente
+      // (created_at debe ser anterior o igual a due_date)
+      // Y solo del mes actual hacia atrás
       const filteredPayments = allPayments.filter(p => {
         const dueDate = new Date(p.due_date + 'T00:00:00');
+        const createdAt = new Date(p.created_at);
         const dueYear = dueDate.getFullYear();
         const dueMonth = dueDate.getMonth();
         
-        // Mostrar si es del mes actual o de meses anteriores
+        // Excluir pagos creados después de su fecha de vencimiento (retroactivos)
+        if (createdAt > dueDate) return false;
+        
+        // Mostrar solo pagos del mes actual o anteriores
         if (dueYear < currentYear) return true;
         if (dueYear === currentYear && dueMonth <= currentMonth) return true;
         return false;
       });
 
-      setPayments(filteredPayments);
+      // Calcular estadísticas
+      const overduePayments = filteredPayments.filter(p => p.due_date < todayStr);
+      const onTimePayments = filteredPayments.filter(p => p.due_date >= todayStr);
 
-      // Calculate stats using filtered payments
+      setPayments(filteredPayments);
       setStats({
         total_pending: filteredPayments.length,
         total_amount: filteredPayments.reduce((sum, p) => sum + p.amount, 0),
+        overdue_count: overduePayments.length,
+        overdue_amount: overduePayments.reduce((sum, p) => sum + p.amount, 0),
+        on_time_count: onTimePayments.length,
+        on_time_amount: onTimePayments.reduce((sum, p) => sum + p.amount, 0),
       });
 
     } catch (error: any) {
@@ -121,12 +139,23 @@ export function DevelopmentPaymentsPending() {
     loadPendingPayments();
   };
 
-  const getStatusBadge = () => {
-    // Todos los pagos pendientes se muestran como "En Cobranza"
+  const getStatusBadge = (payment: DevelopmentPayment) => {
+    const today = new Date().toISOString().split('T')[0];
+    const isOverdue = payment.due_date < today;
+    
+    if (isOverdue) {
+      return (
+        <Badge variant="destructive" className="flex items-center gap-1">
+          <AlertCircle className="h-3 w-3" />
+          Vencido
+        </Badge>
+      );
+    }
+    
     return (
-      <Badge variant="secondary" className="flex items-center gap-1">
-        <DollarSign className="h-3 w-3" />
-        En Cobranza
+      <Badge variant="default" className="flex items-center gap-1 bg-green-600">
+        <CheckCircle className="h-3 w-3" />
+        A Tiempo
       </Badge>
     );
   };
@@ -153,7 +182,7 @@ export function DevelopmentPaymentsPending() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total en Cobranza</CardTitle>
@@ -171,15 +200,30 @@ export function DevelopmentPaymentsPending() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Promedio por Pago</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">A Tiempo</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(stats.total_pending > 0 ? stats.total_amount / stats.total_pending : 0)}
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(stats.on_time_amount)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Por fraccionamiento
+              {stats.on_time_count} pagos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Vencidos</CardTitle>
+            <AlertCircle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">
+              {formatCurrency(stats.overdue_amount)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stats.overdue_count} pagos
             </p>
           </CardContent>
         </Card>
@@ -245,7 +289,7 @@ export function DevelopmentPaymentsPending() {
                         {formatCurrency(payment.investor_portion)}
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge()}
+                        {getStatusBadge(payment)}
                       </TableCell>
                       <TableCell>
                         <Button
