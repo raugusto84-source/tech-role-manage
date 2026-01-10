@@ -69,18 +69,14 @@ export function DevelopmentPayments({ developments }: Props) {
     return developments.find(d => d.id === id)?.name || 'Desconocido';
   };
 
-  const getStatusBadge = (status: string, dueDate: string) => {
-    const isOverdue = new Date(dueDate) < new Date() && status === 'pending';
-    if (isOverdue) {
-      return <Badge variant="destructive">Vencido</Badge>;
-    }
+  const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       pending: 'secondary',
       paid: 'default',
       cancelled: 'destructive'
     };
     const labels: Record<string, string> = {
-      pending: 'Pendiente',
+      pending: 'En Cobranza',
       paid: 'Pagado',
       cancelled: 'Cancelado'
     };
@@ -89,9 +85,6 @@ export function DevelopmentPayments({ developments }: Props) {
 
   const filteredPayments = payments.filter(p => {
     if (selectedDevelopment !== 'all' && p.development_id !== selectedDevelopment) return false;
-    if (statusFilter === 'overdue') {
-      return p.status === 'pending' && new Date(p.due_date) < new Date();
-    }
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
     return true;
   });
@@ -99,7 +92,6 @@ export function DevelopmentPayments({ developments }: Props) {
   const totals = {
     pending: filteredPayments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
     paid: filteredPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0),
-    overdue: filteredPayments.filter(p => p.status === 'pending' && new Date(p.due_date) < new Date()).reduce((s, p) => s + p.amount, 0)
   };
 
   const handlePayment = async () => {
@@ -182,10 +174,10 @@ export function DevelopmentPayments({ developments }: Props) {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pendiente Total</CardTitle>
+            <CardTitle className="text-sm font-medium">En Cobranza</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -202,17 +194,6 @@ export function DevelopmentPayments({ developments }: Props) {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
               ${totals.paid.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vencido</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              ${totals.overdue.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
             </div>
           </CardContent>
         </Card>
@@ -237,9 +218,8 @@ export function DevelopmentPayments({ developments }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pending">Pendientes</SelectItem>
+            <SelectItem value="pending">En Cobranza</SelectItem>
             <SelectItem value="paid">Pagados</SelectItem>
-            <SelectItem value="overdue">Vencidos</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -285,7 +265,7 @@ export function DevelopmentPayments({ developments }: Props) {
                     <TableCell className="text-right text-green-600">
                       ${payment.company_portion.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </TableCell>
-                    <TableCell>{getStatusBadge(payment.status, payment.due_date)}</TableCell>
+                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
                     <TableCell>
                       {payment.status === 'pending' && (
                         <Button size="sm" onClick={() => setPayingPayment(payment)}>

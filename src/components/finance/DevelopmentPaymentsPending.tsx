@@ -37,8 +37,6 @@ export function DevelopmentPaymentsPending() {
   const [stats, setStats] = useState({
     total_pending: 0,
     total_amount: 0,
-    overdue_count: 0,
-    overdue_amount: 0,
   });
 
   useEffect(() => {
@@ -93,14 +91,9 @@ export function DevelopmentPaymentsPending() {
       setPayments(filteredPayments);
 
       // Calculate stats using filtered payments
-      const todayStr = today.toISOString().split('T')[0];
-      const overduePayments = filteredPayments.filter(p => p.due_date < todayStr);
-      
       setStats({
         total_pending: filteredPayments.length,
         total_amount: filteredPayments.reduce((sum, p) => sum + p.amount, 0),
-        overdue_count: overduePayments.length,
-        overdue_amount: overduePayments.reduce((sum, p) => sum + p.amount, 0)
       });
 
     } catch (error: any) {
@@ -128,23 +121,12 @@ export function DevelopmentPaymentsPending() {
     loadPendingPayments();
   };
 
-  const getStatusBadge = (payment: DevelopmentPayment) => {
-    const today = new Date().toISOString().split('T')[0];
-    const isOverdue = payment.due_date < today;
-    
-    if (isOverdue) {
-      return (
-        <Badge variant="destructive" className="flex items-center gap-1">
-          <AlertCircle className="h-3 w-3" />
-          Vencido
-        </Badge>
-      );
-    }
-    
+  const getStatusBadge = () => {
+    // Todos los pagos pendientes se muestran como "En Cobranza"
     return (
       <Badge variant="secondary" className="flex items-center gap-1">
-        <Calendar className="h-3 w-3" />
-        Pendiente
+        <DollarSign className="h-3 w-3" />
+        En Cobranza
       </Badge>
     );
   };
@@ -171,10 +153,10 @@ export function DevelopmentPaymentsPending() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Pendiente</CardTitle>
+            <CardTitle className="text-sm font-medium">Total en Cobranza</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -182,44 +164,14 @@ export function DevelopmentPaymentsPending() {
               {formatCurrency(stats.total_amount)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.total_pending} pagos
+              {stats.total_pending} pagos pendientes
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vencido</CardTitle>
-            <AlertCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {formatCurrency(stats.overdue_amount)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.overdue_count} pagos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Al Día</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(stats.total_amount - stats.overdue_amount)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.total_pending - stats.overdue_count} pagos
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Promedio</CardTitle>
+            <CardTitle className="text-sm font-medium">Promedio por Pago</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -227,7 +179,7 @@ export function DevelopmentPaymentsPending() {
               {formatCurrency(stats.total_pending > 0 ? stats.total_amount / stats.total_pending : 0)}
             </div>
             <p className="text-xs text-muted-foreground">
-              Por pago
+              Por fraccionamiento
             </p>
           </CardContent>
         </Card>
@@ -293,7 +245,7 @@ export function DevelopmentPaymentsPending() {
                         {formatCurrency(payment.investor_portion)}
                       </TableCell>
                       <TableCell>
-                        {getStatusBadge(payment)}
+                        {getStatusBadge()}
                       </TableCell>
                       <TableCell>
                         <Button
