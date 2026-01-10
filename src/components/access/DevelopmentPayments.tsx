@@ -26,6 +26,7 @@ interface Payment {
   paid_at: string | null;
   payment_method: string | null;
   payment_reference: string | null;
+  created_at: string;
 }
 
 interface Props {
@@ -69,28 +70,77 @@ export function DevelopmentPayments({ developments }: Props) {
     return developments.find(d => d.id === id)?.name || 'Desconocido';
   };
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-      pending: 'secondary',
-      paid: 'default',
-      cancelled: 'destructive'
-    };
-    const labels: Record<string, string> = {
-      pending: 'En Cobranza',
-      paid: 'Pagado',
-      cancelled: 'Cancelado'
-    };
-    return <Badge variant={variants[status] || 'default'}>{labels[status] || status}</Badge>;
+  const getStatusBadge = (payment: Payment) => {
+    // Estados finales
+    if (payment.status === 'paid') {
+      return <Badge variant="default">Pagado</Badge>;
+    }
+    if (payment.status === 'cancelled') {
+      return <Badge variant="destructive">Cancelado</Badge>;
+    }
+
+    // Pendiente / overdue
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isOverdue = payment.status === 'overdue' || payment.due_date < todayStr;
+
+    if (isOverdue) {
+      return <Badge variant="destructive">Vencidos</Badge>;
+    }
+
+    return <Badge variant="secondary">A Tiempo</Badge>;
+  };
+
+  const isCurrentOrPastMonth = (dateStr: string) => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    const d = new Date(dateStr + 'T00:00:00');
+    const y = d.getFullYear();
+    const m = d.getMonth();
+
+    if (y < currentYear) return true;
+    if (y === currentYear && m <= currentMonth) return true;
+    return false;
+  };
+
+  const isRetroactive = (payment: Payment) => {
+    // Si el pago fue creado DESPUÉS de su fecha de vencimiento, lo consideramos retroactivo (no mostrar)
+    const due = new Date(payment.due_date + 'T23:59:59');
+    const created = new Date(payment.created_at);
+    return created > due;
+  };
+
+  const isBeforeContractStart = (payment: Payment) => {
+    const dev = developments.find(d => d.id === payment.development_id);
+    if (!dev?.contract_start_date) return false;
+
+    const contractStart = new Date(dev.contract_start_date);
+    const period = new Date(payment.payment_period);
+
+    const contractMonth = new Date(contractStart.getFullYear(), contractStart.getMonth(), 1).getTime();
+    const periodMonth = new Date(period.getFullYear(), period.getMonth(), 1).getTime();
+
+    return periodMonth < contractMonth;
   };
 
   const filteredPayments = payments.filter(p => {
+    // En Cobros solo mostramos mes actual + anteriores (vencidos), no meses futuros
+    if (!isCurrentOrPastMonth(p.due_date)) return false;
+
+    // No mostrar pagos generados retroactivamente
+    if (isRetroactive(p)) return false;
+
+    // No mostrar períodos anteriores al inicio del contrato
+    if (isBeforeContractStart(p)) return false;
+
     if (selectedDevelopment !== 'all' && p.development_id !== selectedDevelopment) return false;
     if (statusFilter !== 'all' && p.status !== statusFilter) return false;
     return true;
   });
 
   const totals = {
-    pending: filteredPayments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0),
+    pending: filteredPayments.filter(p => p.status === 'pending' || p.status === 'overdue').reduce((s, p) => s + p.amount, 0),
     paid: filteredPayments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0),
   };
 
@@ -218,7 +268,8 @@ export function DevelopmentPayments({ developments }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pending">En Cobranza</SelectItem>
+            <SelectItem value="pending">A Tiempo</SelectItem>
+            <SelectItem value="overdue">Vencidos</SelectItem>
             <SelectItem value="paid">Pagados</SelectItem>
           </SelectContent>
         </Select>
@@ -265,7 +316,7 @@ export function DevelopmentPayments({ developments }: Props) {
                     <TableCell className="text-right text-green-600">
                       ${payment.company_portion.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                     </TableCell>
-                    <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                    <TableCell>{getStatusBadge(payment)}</TableCell>
                     <TableCell>
                       {payment.status === 'pending' && (
                         <Button size="sm" onClick={() => setPayingPayment(payment)}>
