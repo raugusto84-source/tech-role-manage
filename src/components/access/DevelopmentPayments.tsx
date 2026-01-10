@@ -125,9 +125,6 @@ export function DevelopmentPayments({ developments }: Props) {
   };
 
   const filteredPayments = payments.filter(p => {
-    // En Cobros solo mostramos mes actual + anteriores (vencidos), no meses futuros
-    if (!isCurrentOrPastMonth(p.due_date)) return false;
-
     // No mostrar pagos generados retroactivamente
     if (isRetroactive(p)) return false;
 
