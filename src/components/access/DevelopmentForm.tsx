@@ -433,9 +433,10 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
       orderDate.setMonth(orderDate.getMonth() + i);
       orderDate.setDate(data.service_day);
 
+      // Due date siempre el día 1 del mes
       const paymentDate = new Date(startDate);
       paymentDate.setMonth(paymentDate.getMonth() + i);
-      paymentDate.setDate(data.payment_day);
+      paymentDate.setDate(1);
 
       const isRecoveryPeriod = i < calculatedRecoveryMonths;
       const investorPortion = data.has_investor
