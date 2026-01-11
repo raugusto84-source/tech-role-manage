@@ -82,17 +82,14 @@ export function DevelopmentPaymentsPending() {
         created_at: p.created_at
       }));
 
-      // Filtrar: solo pagos que NO fueron creados retroactivamente
-      // (created_at debe ser anterior o igual a due_date)
-      // Y solo del mes actual hacia atrás
+      // Filtrar: solo pagos desde enero 2026 en adelante y hasta el mes actual
       const filteredPayments = allPayments.filter(p => {
         const dueDate = new Date(p.due_date + 'T00:00:00');
-        const createdAt = new Date(p.created_at);
         const dueYear = dueDate.getFullYear();
         const dueMonth = dueDate.getMonth();
         
-        // Excluir pagos creados después de su fecha de vencimiento (retroactivos)
-        if (createdAt > dueDate) return false;
+        // Solo mostrar pagos desde enero 2026 (excluir meses anteriores)
+        if (dueYear < 2026) return false;
         
         // Mostrar solo pagos del mes actual o anteriores
         if (dueYear < currentYear) return true;
