@@ -466,8 +466,15 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
       });
     }
 
-    await supabase.from('access_development_orders').insert(ordersToCreate);
-    await supabase.from('access_development_payments').insert(paymentsToCreate);
+    // Usar upsert para evitar duplicados (índice único por development_id + scheduled_date/payment_period)
+    await supabase.from('access_development_orders').upsert(ordersToCreate, { 
+      onConflict: 'development_id,scheduled_date',
+      ignoreDuplicates: true 
+    });
+    await supabase.from('access_development_payments').upsert(paymentsToCreate, { 
+      onConflict: 'development_id,payment_period',
+      ignoreDuplicates: true 
+    });
   };
 
   return (
