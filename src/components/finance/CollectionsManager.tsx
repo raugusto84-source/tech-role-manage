@@ -314,7 +314,7 @@ export function CollectionsManager() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Monitor className="h-5 w-5 text-blue-600" />
-            Sistemas
+            Sistemas - Pólizas
             <Badge variant="secondary">{policyPayments.length}</Badge>
           </CardTitle>
         </CardHeader>
@@ -368,7 +368,7 @@ export function CollectionsManager() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Shield className="h-5 w-5 text-green-600" />
-            Seguridad - Órdenes
+            Seguridad
             <Badge variant="secondary">{orderPayments.length}</Badge>
           </CardTitle>
         </CardHeader>
