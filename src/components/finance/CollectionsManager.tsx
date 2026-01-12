@@ -8,7 +8,17 @@ import { useToast } from "@/hooks/use-toast";
 import { PolicyPaymentDialog } from "./PolicyPaymentDialog";
 import { PaymentCollectionDialog } from "./PaymentCollectionDialog";
 import { PaymentCollectionDialog as OrderPaymentCollectionDialog } from "../orders/PaymentCollectionDialog";
-import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
@@ -67,6 +77,12 @@ export function CollectionsManager() {
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [devDialogOpen, setDevDialogOpen] = useState(false);
+  
+  // Delete dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteType, setDeleteType] = useState<'policy' | 'order' | 'dev' | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -215,6 +231,74 @@ export function CollectionsManager() {
     loadAllCollections();
   };
 
+  const handleDeleteClick = (type: 'policy' | 'order' | 'dev', item: any) => {
+    setDeleteType(type);
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete || !deleteType) return;
+    
+    try {
+      setDeleting(true);
+      let error;
+      
+      if (deleteType === 'policy') {
+        const result = await supabase
+          .from('policy_payments')
+          .delete()
+          .eq('id', itemToDelete.id);
+        error = result.error;
+      } else if (deleteType === 'order') {
+        const result = await supabase
+          .from('pending_collections')
+          .delete()
+          .eq('id', itemToDelete.id);
+        error = result.error;
+      } else if (deleteType === 'dev') {
+        const result = await supabase
+          .from('access_development_payments')
+          .delete()
+          .eq('id', itemToDelete.id);
+        error = result.error;
+      }
+
+      if (error) throw error;
+
+      toast({
+        title: "Cobro eliminado",
+        description: "El cobro pendiente ha sido eliminado correctamente",
+      });
+      
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+      setDeleteType(null);
+      loadAllCollections();
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el cobro",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const getDeleteDescription = () => {
+    if (!itemToDelete || !deleteType) return '';
+    if (deleteType === 'policy') {
+      return `${itemToDelete.client_name} - ${itemToDelete.policy_name} por ${formatCurrency(itemToDelete.amount)}`;
+    } else if (deleteType === 'order') {
+      return `Orden ${itemToDelete.order_number} - ${itemToDelete.client_name} por ${formatCurrency(itemToDelete.balance)}`;
+    } else if (deleteType === 'dev') {
+      return `${itemToDelete.development_name} por ${formatCurrency(itemToDelete.amount)}`;
+    }
+    return '';
+  };
+
   // Calculate totals
   const sistemasTotal = policyPayments.reduce((sum, p) => sum + p.amount, 0);
   const seguridadTotal = orderPayments.reduce((sum, p) => sum + p.balance, 0);
@@ -335,7 +419,16 @@ export function CollectionsManager() {
                     <TableCell className="font-semibold">{formatCurrency(p.amount)}</TableCell>
                     <TableCell><StatusBadge dueDate={p.due_date} /></TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => handlePolicyPaymentClick(p)}>Cobrar</Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handlePolicyPaymentClick(p)}>Cobrar</Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => handleDeleteClick('policy', p)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -381,7 +474,16 @@ export function CollectionsManager() {
                     <TableCell className="font-semibold">{formatCurrency(p.balance)}</TableCell>
                     <TableCell><StatusBadge dueDate={p.due_date} /></TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>Cobrar</Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>Cobrar</Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => handleDeleteClick('order', p)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -429,7 +531,16 @@ export function CollectionsManager() {
                     <TableCell className="font-semibold">{formatCurrency(p.amount)}</TableCell>
                     <TableCell><StatusBadge dueDate={p.due_date} /></TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => handleDevPaymentClick(p)}>Cobrar</Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handleDevPaymentClick(p)}>Cobrar</Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => handleDeleteClick('dev', p)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -473,6 +584,30 @@ export function CollectionsManager() {
           onSuccess={handlePaymentSuccess}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cobro pendiente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estás por eliminar el cobro de: <strong>{getDeleteDescription()}</strong>
+              <br /><br />
+              Esta acción no se puede deshacer. Usa esto solo para cobros que no son reales.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
