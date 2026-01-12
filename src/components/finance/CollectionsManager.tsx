@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,29 +8,19 @@ import { useToast } from "@/hooks/use-toast";
 import { PolicyPaymentDialog } from "./PolicyPaymentDialog";
 import { PaymentCollectionDialog } from "./PaymentCollectionDialog";
 import { PaymentCollectionDialog as OrderPaymentCollectionDialog } from "../orders/PaymentCollectionDialog";
-import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle } from "lucide-react";
 
 const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN'
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
   }).format(amount);
 };
 
 const formatDate = (dateString: string) => {
-  if (!dateString) return '-';
-  const [y, m, d] = dateString.split('-').map(Number);
-  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`;
+  if (!dateString) return "-";
+  const [y, m, d] = dateString.split("-").map(Number);
+  return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
 };
 
 interface PolicyPayment {
@@ -64,12 +54,12 @@ export function CollectionsManager() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  
+
   // Data states
   const [policyPayments, setPolicyPayments] = useState<PolicyPayment[]>([]);
   const [orderPayments, setOrderPayments] = useState<OrderPayment[]>([]);
   const [devPayments, setDevPayments] = useState<DevelopmentPayment[]>([]);
-  
+
   // Dialog states
   const [selectedPolicyPayment, setSelectedPolicyPayment] = useState<any>(null);
   const [selectedOrderPayment, setSelectedOrderPayment] = useState<any>(null);
@@ -77,14 +67,8 @@ export function CollectionsManager() {
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [devDialogOpen, setDevDialogOpen] = useState(false);
-  
-  // Delete dialog states
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteType, setDeleteType] = useState<'policy' | 'order' | 'dev' | null>(null);
-  const [itemToDelete, setItemToDelete] = useState<any>(null);
-  const [deleting, setDeleting] = useState(false);
 
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
   useEffect(() => {
     loadAllCollections();
@@ -95,7 +79,7 @@ export function CollectionsManager() {
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth();
-    const dueDate = new Date(dueDateStr + 'T00:00:00');
+    const dueDate = new Date(dueDateStr + "T00:00:00");
     const dueYear = dueDate.getFullYear();
     const dueMonth = dueDate.getMonth();
     if (dueYear < currentYear) return true;
@@ -105,7 +89,7 @@ export function CollectionsManager() {
 
   const isOverdue = (dueDateStr: string) => {
     if (!dueDateStr) return false;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     return dueDateStr < today;
   };
 
@@ -114,16 +98,17 @@ export function CollectionsManager() {
       setLoading(true);
 
       // ========== SISTEMAS: Policy Payments ==========
-      const { data: policyData } = await (supabase
-        .from('policy_payments') as any)
-        .select(`
+      const { data: policyData } = await (supabase.from("policy_payments") as any)
+        .select(
+          `
           id, amount, due_date, payment_month, payment_year,
           policy_clients(
             clients(name),
             insurance_policies(policy_name)
           )
-        `)
-        .eq('is_paid', false);
+        `,
+        )
+        .eq("is_paid", false);
 
       const filteredPolicyPayments = (policyData || [])
         .filter((p: any) => isCurrentOrOverdue(p.due_date))
@@ -131,19 +116,19 @@ export function CollectionsManager() {
           id: p.id,
           amount: p.amount,
           due_date: p.due_date,
-          client_name: p.policy_clients?.clients?.name || 'Desconocido',
-          policy_name: p.policy_clients?.insurance_policies?.policy_name || 'Sin póliza',
+          client_name: p.policy_clients?.clients?.name || "Desconocido",
+          policy_name: p.policy_clients?.insurance_policies?.policy_name || "Sin póliza",
           payment_month: p.payment_month,
-          payment_year: p.payment_year
+          payment_year: p.payment_year,
         }));
       setPolicyPayments(filteredPolicyPayments);
 
       // ========== SEGURIDAD: Order Payments ==========
       const { data: orderData } = await supabase
-        .from('pending_collections')
-        .select('*')
-        .eq('collection_type', 'order_payment')
-        .eq('status', 'pending');
+        .from("pending_collections")
+        .select("*")
+        .eq("collection_type", "order_payment")
+        .eq("status", "pending");
 
       const filteredOrderPayments = (orderData || [])
         .filter((p: any) => isCurrentOrOverdue(p.due_date))
@@ -153,36 +138,37 @@ export function CollectionsManager() {
           order_number: p.order_number,
           client_name: p.client_name,
           balance: p.amount,
-          due_date: p.due_date
+          due_date: p.due_date,
         }));
       setOrderPayments(filteredOrderPayments);
 
       // ========== FRACCIONAMIENTOS: Development Payments ==========
       const { data: devData } = await supabase
-        .from('access_development_payments')
-        .select(`
+        .from("access_development_payments")
+        .select(
+          `
           id, amount, due_date, payment_period,
           access_developments(name)
-        `)
-        .in('status', ['pending', 'overdue']);
+        `,
+        )
+        .in("status", ["pending", "overdue"]);
 
       const filteredDevPayments = (devData || [])
         .filter((p: any) => isCurrentOrOverdue(p.due_date))
         .map((p: any) => ({
           id: p.id,
-          development_name: p.access_developments?.name || 'Desconocido',
+          development_name: p.access_developments?.name || "Desconocido",
           amount: p.amount,
           due_date: p.due_date,
-          payment_period: p.payment_period
+          payment_period: p.payment_period,
         }));
       setDevPayments(filteredDevPayments);
-
     } catch (error: any) {
-      console.error('Error loading collections:', error);
+      console.error("Error loading collections:", error);
       toast({
         title: "Error",
         description: "No se pudieron cargar las cobranzas",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -198,9 +184,9 @@ export function CollectionsManager() {
 
   // Policy payment handlers
   const handlePolicyPaymentClick = async (payment: PolicyPayment) => {
-    const { data } = await (supabase.from('policy_payments') as any)
+    const { data } = await (supabase.from("policy_payments") as any)
       .select(`*, policy_clients(clients(name, email), insurance_policies(policy_name, policy_number))`)
-      .eq('id', payment.id)
+      .eq("id", payment.id)
       .single();
     if (data) {
       setSelectedPolicyPayment(data);
@@ -211,9 +197,9 @@ export function CollectionsManager() {
   // Order payment handlers
   const handleOrderPaymentClick = async (payment: OrderPayment) => {
     const { data } = await supabase
-      .from('orders')
+      .from("orders")
       .select(`*, clients(name, email, phone, address), order_items(*)`)
-      .eq('id', payment.order_id)
+      .eq("id", payment.order_id)
       .single();
     if (data) {
       setSelectedOrderPayment({ ...data, totalAmount: payment.balance, remainingBalance: payment.balance });
@@ -231,74 +217,6 @@ export function CollectionsManager() {
     loadAllCollections();
   };
 
-  const handleDeleteClick = (type: 'policy' | 'order' | 'dev', item: any) => {
-    setDeleteType(type);
-    setItemToDelete(item);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!itemToDelete || !deleteType) return;
-    
-    try {
-      setDeleting(true);
-      let error;
-      
-      if (deleteType === 'policy') {
-        const result = await supabase
-          .from('policy_payments')
-          .delete()
-          .eq('id', itemToDelete.id);
-        error = result.error;
-      } else if (deleteType === 'order') {
-        const result = await supabase
-          .from('pending_collections')
-          .delete()
-          .eq('id', itemToDelete.id);
-        error = result.error;
-      } else if (deleteType === 'dev') {
-        const result = await supabase
-          .from('access_development_payments')
-          .delete()
-          .eq('id', itemToDelete.id);
-        error = result.error;
-      }
-
-      if (error) throw error;
-
-      toast({
-        title: "Cobro eliminado",
-        description: "El cobro pendiente ha sido eliminado correctamente",
-      });
-      
-      setDeleteDialogOpen(false);
-      setItemToDelete(null);
-      setDeleteType(null);
-      loadAllCollections();
-    } catch (error: any) {
-      console.error('Error deleting payment:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el cobro",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const getDeleteDescription = () => {
-    if (!itemToDelete || !deleteType) return '';
-    if (deleteType === 'policy') {
-      return `${itemToDelete.client_name} - ${itemToDelete.policy_name} por ${formatCurrency(itemToDelete.amount)}`;
-    } else if (deleteType === 'order') {
-      return `Orden ${itemToDelete.order_number} - ${itemToDelete.client_name} por ${formatCurrency(itemToDelete.balance)}`;
-    } else if (deleteType === 'dev') {
-      return `${itemToDelete.development_name} por ${formatCurrency(itemToDelete.amount)}`;
-    }
-    return '';
-  };
-
   // Calculate totals
   const sistemasTotal = policyPayments.reduce((sum, p) => sum + p.amount, 0);
   const seguridadTotal = orderPayments.reduce((sum, p) => sum + p.balance, 0);
@@ -311,9 +229,19 @@ export function CollectionsManager() {
 
   const StatusBadge = ({ dueDate }: { dueDate: string }) => {
     if (isOverdue(dueDate)) {
-      return <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" />Vencido</Badge>;
+      return (
+        <Badge variant="destructive" className="gap-1">
+          <AlertCircle className="h-3 w-3" />
+          Vencido
+        </Badge>
+      );
     }
-    return <Badge variant="secondary" className="gap-1"><Calendar className="h-3 w-3" />Pendiente</Badge>;
+    return (
+      <Badge variant="secondary" className="gap-1">
+        <Calendar className="h-3 w-3" />
+        Pendiente
+      </Badge>
+    );
   };
 
   return (
@@ -327,7 +255,7 @@ export function CollectionsManager() {
           </p>
         </div>
         <Button onClick={handleRefresh} disabled={updating} variant="outline" size="sm">
-          <RefreshCw className={`h-4 w-4 mr-2 ${updating ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 mr-2 ${updating ? "animate-spin" : ""}`} />
           Actualizar
         </Button>
       </div>
@@ -386,7 +314,7 @@ export function CollectionsManager() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Monitor className="h-5 w-5 text-blue-600" />
-            Sistemas - Pólizas
+            Sistemas
             <Badge variant="secondary">{policyPayments.length}</Badge>
           </CardTitle>
         </CardHeader>
@@ -414,21 +342,18 @@ export function CollectionsManager() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.client_name}</TableCell>
                     <TableCell>{p.policy_name}</TableCell>
-                    <TableCell>{months[p.payment_month - 1]} {p.payment_year}</TableCell>
+                    <TableCell>
+                      {months[p.payment_month - 1]} {p.payment_year}
+                    </TableCell>
                     <TableCell>{formatDate(p.due_date)}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(p.amount)}</TableCell>
-                    <TableCell><StatusBadge dueDate={p.due_date} /></TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => handlePolicyPaymentClick(p)}>Cobrar</Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => handleDeleteClick('policy', p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <StatusBadge dueDate={p.due_date} />
+                    </TableCell>
+                    <TableCell>
+                      <Button size="sm" onClick={() => handlePolicyPaymentClick(p)}>
+                        Cobrar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -472,18 +397,13 @@ export function CollectionsManager() {
                     <TableCell>{p.client_name}</TableCell>
                     <TableCell>{formatDate(p.due_date)}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(p.balance)}</TableCell>
-                    <TableCell><StatusBadge dueDate={p.due_date} /></TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>Cobrar</Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => handleDeleteClick('order', p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <StatusBadge dueDate={p.due_date} />
+                    </TableCell>
+                    <TableCell>
+                      <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>
+                        Cobrar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -525,22 +445,17 @@ export function CollectionsManager() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.development_name}</TableCell>
                     <TableCell>
-                      {new Date(p.payment_period).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}
+                      {new Date(p.payment_period).toLocaleDateString("es-MX", { month: "long", year: "numeric" })}
                     </TableCell>
                     <TableCell>{formatDate(p.due_date)}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(p.amount)}</TableCell>
-                    <TableCell><StatusBadge dueDate={p.due_date} /></TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => handleDevPaymentClick(p)}>Cobrar</Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive" 
-                          onClick={() => handleDeleteClick('dev', p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <StatusBadge dueDate={p.due_date} />
+                    </TableCell>
+                    <TableCell>
+                      <Button size="sm" onClick={() => handleDevPaymentClick(p)}>
+                        Cobrar
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -570,7 +485,7 @@ export function CollectionsManager() {
           order={{
             id: selectedOrderPayment.id,
             order_number: selectedOrderPayment.order_number,
-            clients: selectedOrderPayment.clients
+            clients: selectedOrderPayment.clients,
           }}
           totalAmount={selectedOrderPayment.totalAmount || 0}
         />
@@ -584,30 +499,6 @@ export function CollectionsManager() {
           onSuccess={handlePaymentSuccess}
         />
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar cobro pendiente?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Estás por eliminar el cobro de: <strong>{getDeleteDescription()}</strong>
-              <br /><br />
-              Esta acción no se puede deshacer. Usa esto solo para cobros que no son reales.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? 'Eliminando...' : 'Eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
