@@ -5,9 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Calendar, AlertCircle, CheckCircle, Building2 } from "lucide-react";
+import { DollarSign, Calendar, AlertCircle, CheckCircle, Building2, Trash2 } from "lucide-react";
 import { PaymentCollectionDialog } from "./PaymentCollectionDialog";
-
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -35,6 +44,8 @@ export function DevelopmentPaymentsPending() {
   const [loading, setLoading] = useState(true);
   const [selectedPayment, setSelectedPayment] = useState<DevelopmentPayment | null>(null);
   const [showCollectionDialog, setShowCollectionDialog] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<DevelopmentPayment | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [stats, setStats] = useState({
     total_pending: 0,
     total_amount: 0,
@@ -134,6 +145,38 @@ export function DevelopmentPaymentsPending() {
       description: "El pago ha sido registrado correctamente",
     });
     loadPendingPayments();
+  };
+
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    
+    try {
+      setDeleting(true);
+      
+      const { error } = await supabase
+        .from('access_development_payments')
+        .delete()
+        .eq('id', paymentToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Pago eliminado",
+        description: `El pago de ${paymentToDelete.development_name} ha sido eliminado`,
+      });
+      
+      setPaymentToDelete(null);
+      loadPendingPayments();
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el pago",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const getStatusBadge = (payment: DevelopmentPayment) => {
@@ -289,14 +332,23 @@ export function DevelopmentPaymentsPending() {
                         {getStatusBadge(payment)}
                       </TableCell>
                       <TableCell>
-                        <Button
-                          size="sm"
-                          onClick={() => handleOpenCollectionDialog(payment)}
-                          className="flex items-center gap-2"
-                        >
-                          <DollarSign className="h-4 w-4" />
-                          Cobrar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenCollectionDialog(payment)}
+                            className="flex items-center gap-2"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                            Cobrar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setPaymentToDelete(payment)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -314,6 +366,36 @@ export function DevelopmentPaymentsPending() {
         payment={selectedPayment}
         onSuccess={handleCollectionSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!paymentToDelete} onOpenChange={() => setPaymentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar cobro pendiente?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {paymentToDelete && (
+                <>
+                  Estás por eliminar el cobro de <strong>{paymentToDelete.development_name}</strong> del período{' '}
+                  <strong>{new Date(paymentToDelete.payment_period).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}</strong>{' '}
+                  por <strong>{formatCurrency(paymentToDelete.amount)}</strong>.
+                  <br /><br />
+                  Esta acción no se puede deshacer. Usa esto solo para cobros que no son reales.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePayment}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'Eliminando...' : 'Eliminar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
