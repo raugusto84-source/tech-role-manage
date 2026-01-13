@@ -594,6 +594,33 @@ export default function Orders() {
     );
   }
 
+  // Minimal order form (from "Nueva Solicitud" dialog)
+  if (showMinimalForm) {
+    return (
+      <AppLayout>
+        <div className="max-w-4xl mx-auto py-4 px-2 sm:px-4">
+          <div className="mb-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowMinimalForm(false)}
+              className="gap-2"
+              size="sm"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver a Órdenes
+            </Button>
+          </div>
+          <OrderFormMinimal
+            onClose={() => {
+              setShowMinimalForm(false);
+              loadOrders();
+            }}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <div className="w-full">
