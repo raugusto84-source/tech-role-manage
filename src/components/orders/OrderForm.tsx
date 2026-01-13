@@ -1257,8 +1257,20 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         console.log('Basic fallback delivery date:', computedDeliveryDate);
       }
 
+      // Generate unique order number
+      const generateOrderNumber = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const timestamp = Date.now().toString().slice(-6);
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `ORD-${year}${month}${day}-${timestamp}${random}`;
+      };
+
       // Crear la orden principal - explicitly set correct status
       const orderData = {
+        order_number: generateOrderNumber(),
         client_id: formData.client_id,
         service_type: orderItems[0].service_type_id,
         failure_description: formData.failure_description,
