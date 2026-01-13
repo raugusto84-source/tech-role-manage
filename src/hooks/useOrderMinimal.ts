@@ -141,13 +141,15 @@ export const useOrderMinimal = () => {
     return data;
   };
 
-  // Generate order number
+  // Generate order number with unique identifier
   const generateOrderNumber = () => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    const timestamp = Date.now().toString().slice(-4);
-    return `ORD-${year}${month}-${timestamp}`;
+    const day = String(now.getDate()).padStart(2, '0');
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+    return `ORD-${year}${month}${day}-${timestamp}${random}`;
   };
 
   // Create order
