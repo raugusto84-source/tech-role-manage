@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Filter, User, Calendar as CalendarIcon, Eye, Trash2, AlertCircle, Clock, CheckCircle, X, ClipboardList, Zap, LogOut, Home, Shield, History, LayoutList, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +20,7 @@ import { OrderCard } from '@/components/orders/OrderCard';
 import { SimpleOrderCard } from '@/components/orders/SimpleOrderCard';
 import { OrderDetails } from '@/components/orders/OrderDetails';
 import { OrderListItem } from '@/components/orders/OrderListItem';
+import { WeeklyOrdersView } from '@/components/orders/WeeklyOrdersView';
 import { getServiceCategoryInfo } from '@/utils/serviceCategoryUtils';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -132,7 +133,7 @@ export default function Orders() {
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [selectedDateSistemas, setSelectedDateSistemas] = useState<Date | undefined>();
   const [selectedDateSeguridad, setSelectedDateSeguridad] = useState<Date | undefined>();
-  const [activeTab, setActiveTab] = useState('list');
+  const [activeTab, setActiveTab] = useState('weekly');
   const [showMinimalForm, setShowMinimalForm] = useState(false);
   const [showCompletedWithoutBalance, setShowCompletedWithoutBalance] = useState(false);
   const [orderPaymentStatus, setOrderPaymentStatus] = useState<Record<string, boolean>>({});
@@ -678,162 +679,193 @@ export default function Orders() {
 
       </div>
 
-      {/* Filter Checkboxes */}
-      <div className="bg-muted/30 rounded-lg border p-4 mb-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="show-completed"
-              checked={showCompletedWithoutBalance}
-              onCheckedChange={(checked) => {
-                setShowCompletedWithoutBalance(checked === true);
-                if (!checked) {
-                  setDateFrom(undefined);
-                  setDateTo(undefined);
-                }
-              }}
-            />
-            <Label 
-              htmlFor="show-completed" 
-              className="text-sm font-medium cursor-pointer"
-            >
-              Mostrar finalizadas
-            </Label>
-          </div>
-          
-          {showCompletedWithoutBalance && (
-            <div className="flex flex-wrap gap-4 items-center pl-6 border-l-2 border-primary/20">
-              <Label className="text-sm font-medium">Rango de fechas:</Label>
-              <div className="flex flex-wrap gap-2 items-center">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[200px] justify-start text-left font-normal",
-                        !dateFrom && "text-muted-foreground"
-                      )}
-                      size="sm"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Desde"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateFrom}
-                      onSelect={setDateFrom}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                
-                <span className="text-muted-foreground">-</span>
-                
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[200px] justify-start text-left font-normal",
-                        !dateTo && "text-muted-foreground"
-                      )}
-                      size="sm"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dateTo ? format(dateTo, "PPP", { locale: es }) : "Hasta"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateTo}
-                      onSelect={setDateTo}
-                      initialFocus
-                      className="pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                
-                {(dateFrom || dateTo) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
+      {/* View Toggle Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <TabsList className="grid w-auto grid-cols-2">
+            <TabsTrigger value="weekly" className="gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Vista Semanal
+            </TabsTrigger>
+            <TabsTrigger value="list" className="gap-2">
+              <LayoutList className="h-4 w-4" />
+              Lista Completa
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Weekly View - New Modern Design */}
+        <TabsContent value="weekly" className="mt-0">
+          <WeeklyOrdersView
+            orders={orders.filter(o => 
+              o.status !== 'finalizada' && 
+              o.status !== 'cancelada' && 
+              o.status !== 'rechazada'
+            )}
+            onSelectOrder={(order) => setSelectedOrder(order)}
+          />
+        </TabsContent>
+
+        {/* List View - Traditional */}
+        <TabsContent value="list" className="mt-0">
+          {/* Filter Checkboxes */}
+          <div className="bg-muted/30 rounded-lg border p-4 mb-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="show-completed"
+                  checked={showCompletedWithoutBalance}
+                  onCheckedChange={(checked) => {
+                    setShowCompletedWithoutBalance(checked === true);
+                    if (!checked) {
                       setDateFrom(undefined);
                       setDateTo(undefined);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
+                    }
+                  }}
+                />
+                <Label 
+                  htmlFor="show-completed" 
+                  className="text-sm font-medium cursor-pointer"
+                >
+                  Mostrar finalizadas
+                </Label>
               </div>
+              
+              {showCompletedWithoutBalance && (
+                <div className="flex flex-wrap gap-4 items-center pl-6 border-l-2 border-primary/20">
+                  <Label className="text-sm font-medium">Rango de fechas:</Label>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[200px] justify-start text-left font-normal",
+                            !dateFrom && "text-muted-foreground"
+                          )}
+                          size="sm"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateFrom ? format(dateFrom, "PPP", { locale: es }) : "Desde"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateFrom}
+                          onSelect={setDateFrom}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    
+                    <span className="text-muted-foreground">-</span>
+                    
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-[200px] justify-start text-left font-normal",
+                            !dateTo && "text-muted-foreground"
+                          )}
+                          size="sm"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateTo ? format(dateTo, "PPP", { locale: es }) : "Hasta"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={dateTo}
+                          onSelect={setDateTo}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    
+                    {(dateFrom || dateTo) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDateFrom(undefined);
+                          setDateTo(undefined);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* Orders Summary - Top Section */}
-      <div className="mb-4 sm:mb-6">
-        <OrdersSummary 
-          orders={orders} 
-          finalizedWithPendingPayment={
-            orders.filter(o => o.status === 'finalizada' && orderPaymentStatus[o.id] === true).length
-          }
-        />
-      </div>
+          {/* Orders Summary - Top Section */}
+          <div className="mb-4 sm:mb-6">
+            <OrdersSummary 
+              orders={orders} 
+              finalizedWithPendingPayment={
+                orders.filter(o => o.status === 'finalizada' && orderPaymentStatus[o.id] === true).length
+              }
+            />
+          </div>
 
-      {/* Orders List - Main Content */}
-      <div>
-          {filteredOrders.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
-              <p className="text-sm sm:text-base text-muted-foreground px-4">
-                Aún no hay órdenes registradas
-              </p>
-            </div>
-          ) : (
-            // List view
-            <div className="bg-background rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead># Orden</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Prioridad</TableHead>
-                    <TableHead>Descripción</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Técnico</TableHead>
-                    <TableHead>Agendado</TableHead>
-                    <TableHead>Fecha Entrega</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead className="text-center">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.map((order) => (
-                    <OrderListItem
-                      key={order.id}
-                      order={order}
-                      onClick={() => setSelectedOrder(order)}
-                      onDelete={() => setOrderToDelete(order.id)}
-                      canDelete={canDeleteOrders}
-                      getStatusColor={getStatusColor}
-                      showCollectButton={canCollectPayment}
-                      onCollect={() => handleCollectPayment(order)}
-                      onStatusChange={loadOrders}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-      </div>
+          {/* Orders List - Main Content */}
+          <div>
+              {filteredOrders.length === 0 ? (
+                <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                    <ClipboardList className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-medium mb-2">No hay órdenes</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground px-4">
+                    Aún no hay órdenes registradas
+                  </p>
+                </div>
+              ) : (
+                // List view
+                <div className="bg-background rounded-lg border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead># Orden</TableHead>
+                        <TableHead>Cliente</TableHead>
+                        <TableHead>Prioridad</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Técnico</TableHead>
+                        <TableHead>Agendado</TableHead>
+                        <TableHead>Fecha Entrega</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                        <TableHead className="text-center">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredOrders.map((order) => (
+                        <OrderListItem
+                          key={order.id}
+                          order={order}
+                          onClick={() => setSelectedOrder(order)}
+                          onDelete={() => setOrderToDelete(order.id)}
+                          canDelete={canDeleteOrders}
+                          getStatusColor={getStatusColor}
+                          showCollectButton={canCollectPayment}
+                          onCollect={() => handleCollectPayment(order)}
+                          onStatusChange={loadOrders}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!orderToDelete} onOpenChange={() => setOrderToDelete(null)}>
