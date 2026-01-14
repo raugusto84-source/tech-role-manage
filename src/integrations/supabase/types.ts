@@ -3075,6 +3075,41 @@ export type Database = {
           },
         ]
       }
+      order_evidence_photos: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string
+          photo_url: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id: string
+          photo_url: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string
+          photo_url?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_evidence_photos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_final_totals: {
         Row: {
           calculation_source: string | null
