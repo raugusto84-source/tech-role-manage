@@ -48,8 +48,8 @@ export function OrderEvidencePhotos({ orderId, canEdit = true }: OrderEvidencePh
   const loadPhotos = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('order_evidence_photos')
+      const { data, error } = await (supabase
+        .from('order_evidence_photos' as any)
         .select(`
           *,
           profiles:uploaded_by (
@@ -57,10 +57,10 @@ export function OrderEvidencePhotos({ orderId, canEdit = true }: OrderEvidencePh
           )
         `)
         .eq('order_id', orderId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any);
 
       if (error) throw error;
-      setPhotos((data as unknown) as EvidencePhoto[]);
+      setPhotos((data || []) as EvidencePhoto[]);
     } catch (error) {
       console.error('Error loading evidence photos:', error);
     } finally {
@@ -102,13 +102,13 @@ export function OrderEvidencePhotos({ orderId, canEdit = true }: OrderEvidencePh
           .getPublicUrl(fileName);
 
         // Guardar referencia en la base de datos
-        const { error: dbError } = await supabase
-          .from('order_evidence_photos')
+        const { error: dbError } = await (supabase
+          .from('order_evidence_photos' as any)
           .insert({
             order_id: orderId,
             photo_url: urlData.publicUrl,
             uploaded_by: user.id
-          });
+          }) as any);
 
         if (dbError) throw dbError;
       }
@@ -183,10 +183,10 @@ export function OrderEvidencePhotos({ orderId, canEdit = true }: OrderEvidencePh
       }
 
       // Eliminar de la base de datos
-      const { error } = await supabase
-        .from('order_evidence_photos')
+      const { error } = await (supabase
+        .from('order_evidence_photos' as any)
         .delete()
-        .eq('id', photo.id);
+        .eq('id', photo.id) as any);
 
       if (error) throw error;
 
