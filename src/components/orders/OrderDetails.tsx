@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
@@ -34,6 +34,7 @@ import { EquipmentList } from './EquipmentList';
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { ServiceChecklist } from './ServiceChecklist';
 import { SpecialPriceEditor } from './SpecialPriceEditor';
+import { OrderEvidencePhotos } from './OrderEvidencePhotos';
 
 interface OrderDetailsProps {
   order: {
@@ -747,6 +748,14 @@ export function OrderDetails({
                   </div>}
               </CardContent>
             </Card>}
+
+          {/* Fotos de Evidencia */}
+          {!isClient && (
+            <OrderEvidencePhotos 
+              orderId={order.id} 
+              canEdit={!isClient && ['en_proceso', 'pendiente_entrega', 'finalizada'].includes(orderStatus)}
+            />
+          )}
 
           {/* Firmas de Autorización */}
           {authorizationSignatures.length > 0 && <Card>
