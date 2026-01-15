@@ -39,7 +39,7 @@ interface OrderServiceSelectionProps {
   onServiceAdd: (service: ServiceType, quantity?: number) => void;
   selectedServiceIds: string[];
   filterByType?: string;
-  serviceCategory?: 'sistemas' | 'seguridad';
+  serviceCategory?: 'sistemas' | 'seguridad' | 'fraccionamientos';
 }
 
 export function OrderServiceSelection({ onServiceAdd, selectedServiceIds, filterByType, serviceCategory }: OrderServiceSelectionProps) {

@@ -28,13 +28,15 @@ interface UseWorkloadCalculationProps {
   orderItems: OrderItem[];
   primarySchedule: WorkSchedule;
   supportTechnicians?: SupportTechnician[];
+  category?: string; // Optional category for filtering workload
 }
 
 export function useWorkloadCalculation({
   technicianId,
   orderItems,
   primarySchedule,
-  supportTechnicians = []
+  supportTechnicians = [],
+  category
 }: UseWorkloadCalculationProps) {
   const [workload, setWorkload] = useState(0);
   const [deliveryCalculation, setDeliveryCalculation] = useState<{
@@ -51,7 +53,7 @@ export function useWorkloadCalculation({
   const lastCalculationKey = useRef<string>('');
 
   // Create a stable key for comparison
-  const calculationKey = `${technicianId}-${JSON.stringify(orderItems)}-${JSON.stringify(primarySchedule)}-${JSON.stringify(supportTechnicians)}`;
+  const calculationKey = `${technicianId}-${category || 'all'}-${JSON.stringify(orderItems)}-${JSON.stringify(primarySchedule)}-${JSON.stringify(supportTechnicians)}`;
 
   const calculateWorkload = useCallback(async () => {
     // Prevent duplicate calculations
@@ -86,13 +88,15 @@ export function useWorkloadCalculation({
         return;
       }
 
-      // Get current workload with timeout
+      // Get current workload with timeout - filter by category if provided
       const currentWorkload = await Promise.race([
-        getTechnicianCurrentWorkload(technicianId),
+        getTechnicianCurrentWorkload(technicianId, category),
         new Promise<number>((_, reject) => 
           setTimeout(() => reject(new Error('Timeout')), 5000)
         )
       ]);
+
+      console.log(`Workload for technician ${technicianId}${category ? ` (${category})` : ''}: ${currentWorkload}h`);
 
       // Check if calculation was aborted after workload fetch
       if (currentController.signal.aborted) {
