@@ -409,7 +409,16 @@ export function calculateTechnicianWorkload(
   return workloadMap;
 }
 
-export async function getTechnicianCurrentWorkload(technicianId: string): Promise<number> {
+/**
+ * Get the current workload for a technician, optionally filtered by category
+ * @param technicianId - The technician's user ID
+ * @param category - Optional category filter ('sistemas', 'seguridad', 'fraccionamientos')
+ * @returns Total hours of current workload
+ */
+export async function getTechnicianCurrentWorkload(
+  technicianId: string, 
+  category?: string
+): Promise<number> {
   const { supabase } = await import('../integrations/supabase/client');
   
   try {
@@ -417,11 +426,13 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
     
-    // Get all active orders for this technician with service type details
-    const { data: orders, error } = await supabase
+    // Build query with optional category filter
+    let query = supabase
       .from('orders')
       .select(`
         id,
+        order_category,
+        service_category,
         order_items!inner(
           id,
           service_type_id,
@@ -433,8 +444,14 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
         )
       `)
       .eq('assigned_technician', technicianId)
-      .in('status', ['pendiente_aprobacion', 'en_proceso', 'en_camino'])
-      .abortSignal(controller.signal);
+      .in('status', ['pendiente_aprobacion', 'en_proceso', 'en_camino']);
+    
+    // Apply category filter if provided
+    if (category) {
+      query = query.or(`order_category.eq.${category},service_category.eq.${category}`);
+    }
+    
+    const { data: orders, error } = await query.abortSignal(controller.signal);
 
     clearTimeout(timeoutId);
 
@@ -465,6 +482,7 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
       }
     });
 
+    console.log(`Workload for technician ${technicianId}${category ? ` (category: ${category})` : ''}: ${totalWorkload}h`);
     return totalWorkload;
   } catch (error: any) {
     // Handle abort errors gracefully
@@ -474,6 +492,75 @@ export async function getTechnicianCurrentWorkload(technicianId: string): Promis
       console.error('Failed to get technician workload:', error);
     }
     return 0; // Always return 0 to allow calculation to continue
+  }
+}
+
+/**
+ * Get workload for a fleet/category by summing up all technicians' workloads in that category
+ * This is useful for determining when the next available slot is for a category
+ */
+export async function getCategoryCurrentWorkload(category: string): Promise<number> {
+  const { supabase } = await import('../integrations/supabase/client');
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    
+    // Get all active orders for this category
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        order_items!inner(
+          id,
+          service_type_id,
+          quantity,
+          service_types!inner(
+            estimated_hours,
+            shared_time
+          )
+        )
+      `)
+      .or(`order_category.eq.${category},service_category.eq.${category}`)
+      .in('status', ['pendiente_aprobacion', 'en_proceso', 'en_camino'])
+      .abortSignal(controller.signal);
+
+    clearTimeout(timeoutId);
+
+    if (error) {
+      console.error('Error getting category workload:', error);
+      return 0;
+    }
+
+    if (!orders || orders.length === 0) {
+      return 0;
+    }
+
+    let totalWorkload = 0;
+    
+    orders.forEach(order => {
+      if (order.order_items && order.order_items.length > 0) {
+        const orderItems = order.order_items.map(item => ({
+          id: item.id,
+          estimated_hours: item.service_types?.estimated_hours || 0,
+          shared_time: item.service_types?.shared_time || false,
+          service_type_id: item.service_type_id,
+          quantity: item.quantity || 1
+        }));
+        
+        totalWorkload += calculateSharedTimeHours(orderItems);
+      }
+    });
+
+    console.log(`Total workload for category ${category}: ${totalWorkload}h`);
+    return totalWorkload;
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.warn('Category workload calculation timed out:', category);
+    } else {
+      console.error('Failed to get category workload:', error);
+    }
+    return 0;
   }
 }
 

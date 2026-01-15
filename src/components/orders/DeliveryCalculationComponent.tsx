@@ -25,6 +25,7 @@ interface DeliveryCalculationDisplayProps {
   supportTechnicians?: SupportTechnicianData[];
   onDateUpdate: (date: string) => void;
   currentDeliveryDate: string;
+  serviceCategory?: string; // Add category for workload filtering
 }
 
 export function DeliveryCalculationDisplay({
@@ -33,7 +34,8 @@ export function DeliveryCalculationDisplay({
   technicianSchedules,
   supportTechnicians = [],
   onDateUpdate,
-  currentDeliveryDate
+  currentDeliveryDate,
+  serviceCategory
 }: DeliveryCalculationDisplayProps) {
   // Obtener el horario del técnico principal con valores por defecto mejorados
   const defaultSchedule = {
@@ -58,11 +60,13 @@ export function DeliveryCalculationDisplay({
   console.log('Processed support technicians:', processedSupportTechnicians);
 
   // Usar el hook para calcular la carga de trabajo y fecha de entrega
+  // Pass category for category-specific workload calculation
   const { workload, deliveryCalculation, loading, error } = useWorkloadCalculation({
     technicianId,
     orderItems,
     primarySchedule,
-    supportTechnicians: processedSupportTechnicians
+    supportTechnicians: processedSupportTechnicians,
+    category: serviceCategory
   });
 
   // Actualizar la fecha cuando cambie el cálculo

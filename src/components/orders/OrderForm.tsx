@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
 import { OrderItemsList, OrderItem } from '@/components/orders/OrderItemsList';
 import { ProductServiceSeparator } from '@/components/orders/ProductServiceSeparator';
-import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, getTechnicianCurrentWorkload } from '@/utils/workScheduleCalculator';
+import { calculateDeliveryDate, calculateAdvancedDeliveryDate, calculateSharedTimeHours, suggestSupportTechnician, calculateTechnicianWorkload, getTechnicianCurrentWorkload, getCategoryCurrentWorkload } from '@/utils/workScheduleCalculator';
 import { useWorkloadCalculation } from '@/hooks/useWorkloadCalculation';
 import { DeliveryCalculationDisplay } from '@/components/orders/DeliveryCalculationComponent';
 import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleSupportTechnicianSelector';
@@ -75,7 +75,7 @@ interface OrderFormData {
   assigned_technician: string;
   estimated_cost: string;
   is_home_service: boolean;
-  service_category: 'sistemas' | 'seguridad';
+  service_category: 'sistemas' | 'seguridad' | 'fraccionamientos';
   service_location: {
     latitude?: number;
     longitude?: number;
@@ -1200,6 +1200,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }
 
         // Calcular fecha de entrega si tenemos técnico y items
+        // Use category-specific workload for more accurate scheduling
         if (finalAssignedTechnician && orderItems.length > 0) {
           const primarySchedule = technicianSchedules[finalAssignedTechnician] || defaultSchedule;
           const processedSupport = supportTechnicians.map(st => ({
@@ -1208,8 +1209,12 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             reductionPercentage: st.reductionPercentage,
           }));
 
-          const currentWorkload = await getTechnicianCurrentWorkload(finalAssignedTechnician);
-          console.log(`Calculating delivery date for technician ${finalAssignedTechnician} with ${totalHours}h total and ${currentWorkload}h current workload`);
+          // Get workload filtered by the current category for accurate delivery dates
+          const currentWorkload = await getTechnicianCurrentWorkload(
+            finalAssignedTechnician, 
+            formData.service_category  // Filter by category
+          );
+          console.log(`Calculating delivery date for technician ${finalAssignedTechnician} in category ${formData.service_category} with ${totalHours}h total and ${currentWorkload}h current workload`);
 
           const result = calculateAdvancedDeliveryDate({
             orderItems: orderItems.map((item) => ({
@@ -1269,6 +1274,9 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       };
 
       // Crear la orden principal - explicitly set correct status
+      // Determine the order_category based on service_category
+      const orderCategory = formData.service_category;
+      
       const orderData = {
         order_number: generateOrderNumber(),
         client_id: formData.client_id,
@@ -1287,6 +1295,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         created_at: formData.creation_date.toISOString(),
         status: initialStatus,
         service_category: formData.service_category,
+        order_category: orderCategory,  // Set order_category same as service_category
         is_home_service: formData.is_home_service,
         service_location: formData.service_location,
         travel_time_hours: formData.is_home_service ? 1 : 0,
@@ -1516,7 +1525,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               {/* Selección de Categoría de Servicio - Obligatorio */}
               <div className="space-y-3">
                 <Label>Categoría de Servicio *</Label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <Button
                     type="button"
                     variant={formData.service_category === 'sistemas' ? 'default' : 'outline'}
@@ -1538,6 +1547,17 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     className="h-12 text-sm"
                   >
                     Seguridad
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={formData.service_category === 'fraccionamientos' ? 'default' : 'outline'}
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, service_category: 'fraccionamientos' }));
+                      setOrderItems([]);
+                    }}
+                    className="h-12 text-sm"
+                  >
+                    Fraccionamientos
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -1698,6 +1718,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                     supportTechnicians={supportTechnicians}
                     onDateUpdate={(date) => setFormData(prev => ({ ...prev, delivery_date: date }))}
                     currentDeliveryDate={formData.delivery_date}
+                    serviceCategory={formData.service_category}
                   />
                 )}
               </div>
