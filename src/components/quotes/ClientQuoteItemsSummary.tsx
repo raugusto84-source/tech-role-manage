@@ -102,28 +102,15 @@ export function ClientQuoteItemsSummary({
           </div>
           
           <div className="bg-white rounded-lg p-4 border border-green-200 mb-3">
-            <div className="text-center mb-4">
+            <div className="text-center">
               <div className="text-3xl font-bold text-green-700 mb-1">
                 {formatCurrency(estimatedAmount || total)}
               </div>
               <div className="text-sm text-green-600">
                 {quoteItems.length} servicio{quoteItems.length !== 1 ? 's' : ''} incluido{quoteItems.length !== 1 ? 's' : ''}
               </div>
-            </div>
-
-            {/* Quick breakdown in summary */}
-            <div className="space-y-1 text-xs">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal:</span>
-                <span>{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">IVA:</span>
-                <span>{formatCurrency(vatTotal)}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-green-700 border-t pt-1">
-                <span>Total:</span>
-                <span>{formatCurrency(estimatedAmount || total)}</span>
+              <div className="text-xs text-muted-foreground mt-1">
+                Precio final (IVA incluido)
               </div>
             </div>
           </div>
@@ -193,13 +180,8 @@ export function ClientQuoteItemsSummary({
           
           <div className="space-y-3">
             <div className="flex justify-between items-center text-base">
-              <span className="text-muted-foreground">Subtotal ({quoteItems.length} servicios):</span>
-              <span className="font-semibold">{formatCurrency(subtotal)}</span>
-            </div>
-            
-            <div className="flex justify-between items-center text-base">
-              <span className="text-muted-foreground">IVA Total:</span>
-              <span className="font-semibold">{formatCurrency(vatTotal)}</span>
+              <span className="text-muted-foreground">{quoteItems.length} servicio{quoteItems.length !== 1 ? 's' : ''}:</span>
+              <span className="font-semibold">{formatCurrency(estimatedAmount || total)}</span>
             </div>
             
             <div className="border-t-2 pt-3">
@@ -208,6 +190,9 @@ export function ClientQuoteItemsSummary({
                 <span className="text-2xl font-bold text-primary">
                   {formatCurrency(estimatedAmount || total)}
                 </span>
+              </div>
+              <div className="text-xs text-muted-foreground text-right mt-1">
+                Precio final (IVA incluido)
               </div>
             </div>
           </div>
