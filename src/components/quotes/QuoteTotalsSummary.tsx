@@ -69,25 +69,13 @@ export function QuoteTotalsSummary({ selectedItems, clientId = '', clientEmail =
 
   return (
     <div className="space-y-3 bg-muted/50 p-4 rounded-lg">
-      <div className="flex justify-between items-center">
-        <span>Subtotal:</span>
-        <span>{formatCurrency(subtotalBeforeVat)}</span>
-      </div>
-      
-      {totalVAT > 0 && (
-        <div className="flex justify-between items-center">
-          <span>IVA Total:</span>
-          <span>{formatCurrency(totalVAT)}</span>
-        </div>
-      )}
-      
-
-      {/* Cashback Earning Section - Removed cashback system */}
-      
       <div className="border-t pt-2">
         <div className="flex justify-between items-center text-lg font-bold text-primary">
           <span>Total:</span>
           <span>{formatCurrency(totalFinal)}</span>
+        </div>
+        <div className="text-xs text-muted-foreground text-right mt-1">
+          Precio final (IVA incluido)
         </div>
       </div>
     </div>

@@ -90,9 +90,6 @@ export function ServiceCard({
                <Package className="h-4 w-4 text-green-600" />
                <span className="font-medium text-green-600">
                  {formatCurrency(getDisplayPrice(service, quantities[service.id] || 1))}
-                 <span className="text-xs text-muted-foreground ml-1">
-                   (IVA {service.vat_rate}%)
-                 </span>
                </span>
                {(quantities[service.id] || 1) > 1 && (
                  <span className="text-xs text-muted-foreground">
