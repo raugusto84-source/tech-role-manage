@@ -122,6 +122,13 @@ export function WeeklyOrdersView({ orders, onSelectOrder }: WeeklyOrdersViewProp
 
   // Determinar la categoría de una orden
   const getOrderCategory = (order: Order): CategoryType => {
+    // Primero usar order_category si está definido
+    if (order.order_category) {
+      if (order.order_category === 'seguridad') return 'seguridad';
+      if (order.order_category === 'fraccionamientos') return 'fraccionamientos';
+      if (order.order_category === 'sistemas') return 'sistemas';
+    }
+    
     // Si es orden de fraccionamiento
     if (order.is_development_order) return 'fraccionamientos';
     
