@@ -48,19 +48,45 @@ export function OrderEvidencePhotos({ orderId, canEdit = true }: OrderEvidencePh
   const loadPhotos = async () => {
     try {
       setLoading(true);
+      // Fetch photos without join since there's no FK relationship
       const { data, error } = await (supabase
         .from('order_evidence_photos' as any)
-        .select(`
-          *,
-          profiles:uploaded_by (
-            full_name
-          )
-        `)
+        .select('*')
         .eq('order_id', orderId)
         .order('created_at', { ascending: false }) as any);
 
       if (error) throw error;
-      setPhotos((data || []) as EvidencePhoto[]);
+      
+      // Fetch profile names separately for each unique uploader
+      const photosData = (data || []) as any[];
+      const uploaderIdsSet = new Set<string>();
+      photosData.forEach((p) => {
+        if (p.uploaded_by) uploaderIdsSet.add(p.uploaded_by);
+      });
+      const uploaderIds = Array.from(uploaderIdsSet);
+      
+      let profilesMap: Record<string, string> = {};
+      if (uploaderIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', uploaderIds);
+        
+        profilesMap = (profiles || []).reduce((acc: Record<string, string>, p: any) => {
+          acc[p.user_id] = p.full_name;
+          return acc;
+        }, {});
+      }
+      
+      const photosWithProfiles: EvidencePhoto[] = [];
+      for (const photo of photosData) {
+        photosWithProfiles.push({
+          ...photo,
+          profiles: profilesMap[photo.uploaded_by] ? { full_name: profilesMap[photo.uploaded_by] } : undefined
+        });
+      }
+      
+      setPhotos(photosWithProfiles);
     } catch (error) {
       console.error('Error loading evidence photos:', error);
     } finally {
