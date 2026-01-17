@@ -414,34 +414,30 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     return item.unit_price || 0;
   };
 
-  // Calculate totals using correct pricing and reward settings
+  // Calculate totals using the stored total field which already includes VAT
   const calculateTotals = () => {
     let totalAmount = 0;
-
-    // First calculate the total amount using unit_price * quantity
-    quoteItems.forEach(item => {
-      const unitPrice = item.unit_price || 0;
-      const quantity = item.quantity || 1;
-      const itemTotal = unitPrice * quantity;
-      totalAmount += itemTotal;
-    });
-
-    // Extract subtotal and VAT from the total amount
-    // Assuming unit_price already includes VAT at 16%
-    const vatRate = 16;
-    const subtotalBeforeVat = totalAmount / (1 + vatRate / 100);
-    const totalVAT = totalAmount - subtotalBeforeVat;
-    
-    // Calculate withholdings separately if needed
+    let totalSubtotal = 0;
+    let totalVAT = 0;
     let totalWithholdings = 0;
+
+    // Use the stored values from quote_items which are already calculated correctly
     quoteItems.forEach(item => {
       const quantity = item.quantity || 1;
+      // Use item.total which already includes VAT, or calculate from unit_price + vat_amount
+      const itemTotal = (item.total || (item.unit_price + (item.vat_amount || 0))) * quantity;
+      const itemSubtotal = (item.subtotal || item.unit_price || 0) * quantity;
+      const itemVat = (item.vat_amount || 0) * quantity;
       const itemWithholding = (item.withholding_amount || 0) * quantity;
+      
+      totalAmount += itemTotal;
+      totalSubtotal += itemSubtotal;
+      totalVAT += itemVat;
       totalWithholdings += itemWithholding;
     });
 
     return { 
-      subtotal: subtotalBeforeVat,
+      subtotal: totalSubtotal,
       totalVat: totalVAT,
       totalWithholdings: totalWithholdings, 
       total: totalAmount
@@ -587,7 +583,7 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                            </TableCell>
                            <TableCell className="text-center">{item.quantity}</TableCell>
                            <TableCell className="text-right font-medium">
-                             {formatCurrency(item.unit_price * item.quantity)}
+                             {formatCurrency((item.total || (item.unit_price + (item.vat_amount || 0))) * item.quantity)}
                            </TableCell>
                          </TableRow>
                          );
