@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,7 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { PolicyPaymentDialog } from "./PolicyPaymentDialog";
 import { PaymentCollectionDialog } from "./PaymentCollectionDialog";
 import { PaymentCollectionDialog as OrderPaymentCollectionDialog } from "../orders/PaymentCollectionDialog";
-import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle } from "lucide-react";
+import { DeletePaymentDialog } from "./DeletePaymentDialog";
+import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
+import { useSoftDelete } from "@/hooks/useSoftDelete";
 
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat("es-MX", {
@@ -39,6 +41,7 @@ interface OrderPayment {
   order_number: string;
   client_name: string;
   balance: number;
+  total_amount: number;
   due_date: string;
 }
 
@@ -52,6 +55,7 @@ interface DevelopmentPayment {
 
 export function CollectionsManager() {
   const { toast } = useToast();
+  const { canDeletePayments } = useSoftDelete();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
 
@@ -67,6 +71,10 @@ export function CollectionsManager() {
   const [policyDialogOpen, setPolicyDialogOpen] = useState(false);
   const [orderDialogOpen, setOrderDialogOpen] = useState(false);
   const [devDialogOpen, setDevDialogOpen] = useState(false);
+
+  // Delete dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<{id: string; amount: number; orderNumber?: string} | null>(null);
 
   const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -130,16 +138,53 @@ export function CollectionsManager() {
         .eq("collection_type", "order_payment")
         .eq("status", "pending");
 
-      const filteredOrderPayments = (orderData || [])
-        .filter((p: any) => isCurrentOrOverdue(p.due_date))
-        .map((p: any) => ({
-          id: p.id,
-          order_id: p.order_id,
-          order_number: p.order_number,
-          client_name: p.client_name,
-          balance: p.amount,
-          due_date: p.due_date,
-        }));
+      // Calcular el saldo real de cada orden
+      const orderPaymentsWithBalance = await Promise.all(
+        (orderData || [])
+          .filter((p: any) => isCurrentOrOverdue(p.due_date))
+          .map(async (p: any) => {
+            // Get order items to calculate real total
+            const { data: orderItems } = await supabase
+              .from('order_items')
+              .select('total_amount')
+              .eq('order_id', p.order_id);
+
+            const actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
+              return sum + (item.total_amount || 0);
+            }, 0);
+
+            // Get payments made for this order
+            const { data: payments } = await supabase
+              .from('order_payments')
+              .select('payment_amount, isr_withholding_applied')
+              .eq('order_id', p.order_id);
+
+            const totalPaid = (payments || []).reduce((sum: number, payment: any) => {
+              return sum + (payment.payment_amount || 0);
+            }, 0);
+
+            // Apply ISR rule if any payment had ISR withholding
+            const hasISR = (payments || []).some((pay: any) => pay.isr_withholding_applied);
+            const finalExactTotal = hasISR
+              ? actualTotal - (actualTotal / 1.16) * 0.0125
+              : actualTotal;
+
+            const remainingBalance = Math.max(0, finalExactTotal - totalPaid);
+
+            return {
+              id: p.id,
+              order_id: p.order_id,
+              order_number: p.order_number,
+              client_name: p.client_name,
+              balance: remainingBalance,
+              total_amount: actualTotal,
+              due_date: p.due_date,
+            };
+          })
+      );
+
+      // Filter out fully paid orders
+      const filteredOrderPayments = orderPaymentsWithBalance.filter(p => p.balance > 0);
       setOrderPayments(filteredOrderPayments);
 
       // ========== FRACCIONAMIENTOS: Development Payments ==========
@@ -194,7 +239,7 @@ export function CollectionsManager() {
     }
   };
 
-  // Order payment handlers
+  // Order payment handlers - use the calculated total and balance
   const handleOrderPaymentClick = async (payment: OrderPayment) => {
     const { data } = await supabase
       .from("orders")
@@ -202,7 +247,12 @@ export function CollectionsManager() {
       .eq("id", payment.order_id)
       .single();
     if (data) {
-      setSelectedOrderPayment({ ...data, totalAmount: payment.balance, remainingBalance: payment.balance });
+      // Use the total_amount from the order and balance as remaining
+      setSelectedOrderPayment({ 
+        ...data, 
+        totalAmount: payment.total_amount, 
+        remainingBalance: payment.balance 
+      });
       setOrderDialogOpen(true);
     }
   };
@@ -214,6 +264,20 @@ export function CollectionsManager() {
   };
 
   const handlePaymentSuccess = () => {
+    loadAllCollections();
+  };
+
+  // Delete handlers
+  const handleDeleteOrderPayment = (payment: OrderPayment) => {
+    setPaymentToDelete({
+      id: payment.id,
+      amount: payment.balance,
+      orderNumber: payment.order_number
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteSuccess = () => {
     loadAllCollections();
   };
 
@@ -385,9 +449,10 @@ export function CollectionsManager() {
                   <TableHead>Orden</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Vencimiento</TableHead>
+                  <TableHead>Total</TableHead>
                   <TableHead>Saldo</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -396,14 +461,27 @@ export function CollectionsManager() {
                     <TableCell className="font-medium">{p.order_number}</TableCell>
                     <TableCell>{p.client_name}</TableCell>
                     <TableCell>{formatDate(p.due_date)}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatCurrency(p.total_amount)}</TableCell>
                     <TableCell className="font-semibold">{formatCurrency(p.balance)}</TableCell>
                     <TableCell>
                       <StatusBadge dueDate={p.due_date} />
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>
-                        Cobrar
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>
+                          Cobrar
+                        </Button>
+                        {canDeletePayments && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteOrderPayment(p)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -497,6 +575,18 @@ export function CollectionsManager() {
           onOpenChange={setDevDialogOpen}
           payment={selectedDevPayment}
           onSuccess={handlePaymentSuccess}
+        />
+      )}
+
+      {/* Delete Payment Dialog */}
+      {paymentToDelete && (
+        <DeletePaymentDialog
+          paymentId={paymentToDelete.id}
+          paymentAmount={paymentToDelete.amount}
+          orderNumber={paymentToDelete.orderNumber}
+          isOpen={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onDeleted={handleDeleteSuccess}
         />
       )}
     </div>
