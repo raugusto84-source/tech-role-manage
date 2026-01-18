@@ -1200,7 +1200,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }
 
         // Calcular fecha de entrega si tenemos técnico y items
-        // Use category-specific workload for more accurate scheduling
+        // Use CATEGORY-specific workload for accurate scheduling across the entire fleet
         if (finalAssignedTechnician && orderItems.length > 0) {
           const primarySchedule = technicianSchedules[finalAssignedTechnician] || defaultSchedule;
           const processedSupport = supportTechnicians.map(st => ({
@@ -1209,12 +1209,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             reductionPercentage: st.reductionPercentage,
           }));
 
-          // Get workload filtered by the current category for accurate delivery dates
-          const currentWorkload = await getTechnicianCurrentWorkload(
-            finalAssignedTechnician, 
-            formData.service_category  // Filter by category
-          );
-          console.log(`Calculating delivery date for technician ${finalAssignedTechnician} in category ${formData.service_category} with ${totalHours}h total and ${currentWorkload}h current workload`);
+          // Get workload for the ENTIRE CATEGORY to properly queue orders
+          // This ensures orders are scheduled after all pending work in that category
+          const categoryWorkload = formData.service_category 
+            ? await getCategoryCurrentWorkload(formData.service_category)
+            : 0;
+          
+          console.log(`Calculating delivery date for category ${formData.service_category}: category has ${categoryWorkload}h total pending work`);
 
           const result = calculateAdvancedDeliveryDate({
             orderItems: orderItems.map((item) => ({
@@ -1227,14 +1228,19 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             primaryTechnicianSchedule: primarySchedule,
             supportTechnicians: processedSupport,
             creationDate: formData.creation_date,
-            currentWorkload,
+            currentWorkload: categoryWorkload, // Use category workload instead of individual technician
           });
 
           computedDeliveryDate = result.deliveryDate.toISOString().split('T')[0];
-          console.log('Computed delivery date:', computedDeliveryDate);
-        } else {
-          // Fallback: calcular fecha basada solo en las horas estimadas (sin considerar carga actual)
-          console.log('No technician available, using fallback calculation...');
+          console.log('Computed delivery date based on category workload:', computedDeliveryDate);
+        } else if (orderItems.length > 0) {
+          // Fallback: use category workload even without assigned technician
+          console.log('No technician assigned, using category workload for calculation...');
+          
+          const categoryWorkload = formData.service_category 
+            ? await getCategoryCurrentWorkload(formData.service_category)
+            : 0;
+          
           const result = calculateAdvancedDeliveryDate({
             orderItems: orderItems.map((item) => ({
               id: item.id,
@@ -1246,11 +1252,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
             primaryTechnicianSchedule: defaultSchedule,
             supportTechnicians: [],
             creationDate: formData.creation_date,
-            currentWorkload: 0,
+            currentWorkload: categoryWorkload, // Use category workload for fallback too
           });
           
           computedDeliveryDate = result.deliveryDate.toISOString().split('T')[0];
-          console.log('Fallback delivery date calculated:', computedDeliveryDate);
+          console.log('Fallback delivery date calculated with category workload:', computedDeliveryDate);
         }
       } catch (e) {
         console.warn('Auto delivery date calc failed, using basic fallback:', e);
