@@ -54,14 +54,14 @@ interface WeeklyOrderCardProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  en_espera: { label: 'ESP', className: 'bg-muted text-muted-foreground' },
-  pendiente_aprobacion: { label: 'APR', className: 'bg-warning text-warning-foreground' },
-  en_proceso: { label: 'PRO', className: 'bg-primary text-primary-foreground' },
-  pendiente_actualizacion: { label: 'ACT', className: 'bg-orange-500 text-white' },
-  pendiente_entrega: { label: 'ENT', className: 'bg-purple-500 text-white' },
-  finalizada: { label: 'FIN', className: 'bg-success text-success-foreground' },
-  cancelada: { label: 'CAN', className: 'bg-destructive text-destructive-foreground' },
-  rechazada: { label: 'REC', className: 'bg-destructive text-destructive-foreground' },
+  en_espera: { label: 'En Espera', className: 'bg-muted text-muted-foreground' },
+  pendiente_aprobacion: { label: 'Pend. Aprobación', className: 'bg-warning text-warning-foreground' },
+  en_proceso: { label: 'En Proceso', className: 'bg-primary text-primary-foreground' },
+  pendiente_actualizacion: { label: 'Pend. Actualización', className: 'bg-orange-500 text-white' },
+  pendiente_entrega: { label: 'Pend. Entrega', className: 'bg-purple-500 text-white' },
+  finalizada: { label: 'Finalizada', className: 'bg-success text-success-foreground' },
+  cancelada: { label: 'Cancelada', className: 'bg-destructive text-destructive-foreground' },
+  rechazada: { label: 'Rechazada', className: 'bg-destructive text-destructive-foreground' },
 };
 
 const PRIORITY_INDICATOR: Record<OrderPriority, string> = {
@@ -94,27 +94,23 @@ export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardPro
         categoryBorderColor[category]
       )}
     >
-      {/* Row 1: Icons/badges + Status */}
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <div className="flex items-center gap-1.5">
-          <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", priorityClass)} />
-          <Badge className={cn("text-[10px] px-1.5 py-0 h-4", statusConfig.className)}>
-            {statusConfig.label}
-          </Badge>
-          {order.is_policy_order && <span className="text-xs">📋</span>}
-          {order.is_development_order && <span className="text-xs">🏘️</span>}
-        </div>
-      </div>
-
-      {/* Row 2: Client + Order number */}
-      <div className="flex items-center gap-1.5 mb-0.5">
-        <span className="text-sm font-medium truncate flex-1">
-          {order.clients?.name || '—'}
-        </span>
-        <span className="font-mono text-xs text-muted-foreground shrink-0">
+      {/* Row 1: Order # + Icons + Status */}
+      <div className="flex items-center gap-1.5 mb-1">
+        <div className={cn("w-2 h-2 rounded-full shrink-0", priorityClass)} />
+        <span className="font-mono text-xs font-semibold text-primary">
           #{order.order_number}
         </span>
+        {order.is_policy_order && <span className="text-xs">📋</span>}
+        {order.is_development_order && <span className="text-xs">🏘️</span>}
+        <Badge className={cn("text-[10px] px-1.5 py-0 h-4 ml-auto", statusConfig.className)}>
+          {statusConfig.label}
+        </Badge>
       </div>
+
+      {/* Row 2: Client name */}
+      <p className="text-sm font-medium truncate mb-0.5">
+        {order.clients?.name || 'Sin cliente'}
+      </p>
 
       {/* Row 3: Description */}
       <p className="text-xs text-muted-foreground truncate">
