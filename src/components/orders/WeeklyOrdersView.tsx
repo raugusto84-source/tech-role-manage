@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2 } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO, isToday } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle } from 'lucide-react';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO, isToday, isBefore, startOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { WeeklyOrderCard } from './WeeklyOrderCard';
@@ -207,6 +207,48 @@ export function WeeklyOrdersView({ orders, onSelectOrder }: WeeklyOrdersViewProp
     ).length;
   }, [weekOrders]);
 
+  // Órdenes atrasadas (de semanas anteriores que siguen activas) - solo mostrar en semana actual
+  const overdueOrders = useMemo(() => {
+    if (!isCurrentWeek) return [];
+    
+    const today = startOfDay(new Date());
+    const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
+    
+    return orders.filter(order => {
+      // Solo órdenes activas
+      if (order.status === 'finalizada' || order.status === 'cancelada' || order.status === 'rechazada') {
+        return false;
+      }
+      
+      const deliveryDate = order.estimated_delivery_date || order.delivery_date;
+      if (!deliveryDate) return false;
+      
+      try {
+        const orderDate = parseISO(deliveryDate);
+        // Órdenes con fecha de entrega antes de esta semana
+        return isBefore(orderDate, thisWeekStart);
+      } catch {
+        return false;
+      }
+    });
+  }, [orders, isCurrentWeek]);
+
+  // Agrupar órdenes atrasadas por categoría
+  const overdueByCategory = useMemo(() => {
+    const result: Record<CategoryType, Order[]> = {
+      sistemas: [],
+      seguridad: [],
+      fraccionamientos: [],
+    };
+    
+    overdueOrders.forEach(order => {
+      const category = getOrderCategory(order);
+      result[category].push(order);
+    });
+    
+    return result;
+  }, [overdueOrders]);
+
   return (
     <div className="space-y-4">
       {/* Week Navigation Header */}
@@ -263,6 +305,9 @@ export function WeeklyOrdersView({ orders, onSelectOrder }: WeeklyOrdersViewProp
             >
               <Calendar className="h-4 w-4" />
               Semana Actual
+              {!isCurrentWeek && overdueOrders.length > 0 && (
+                <Badge className="ml-1 bg-red-500 text-white">{overdueOrders.length}</Badge>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -307,6 +352,31 @@ export function WeeklyOrdersView({ orders, onSelectOrder }: WeeklyOrdersViewProp
 
               {/* Days List */}
               <CardContent className={cn("p-0", config.bgLight)}>
+                {/* Overdue Orders Section - Only show on current week */}
+                {isCurrentWeek && overdueByCategory[category].length > 0 && (
+                  <div className="p-3 bg-red-100 dark:bg-red-950/50 border-b-2 border-red-300 dark:border-red-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <span className="font-bold text-red-700 dark:text-red-300">
+                        ATRASADAS
+                      </span>
+                      <Badge className="bg-red-600 text-white">
+                        {overdueByCategory[category].length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {overdueByCategory[category].map(order => (
+                        <WeeklyOrderCard
+                          key={order.id}
+                          order={order}
+                          onClick={() => onSelectOrder(order)}
+                          category={category}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="divide-y divide-border/50">
                   {weekDays.map(day => {
                     const dayKey = format(day, 'yyyy-MM-dd');
