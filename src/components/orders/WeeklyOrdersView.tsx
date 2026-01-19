@@ -527,15 +527,26 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
 
                           {/* Hour Slots */}
                           <div className="px-2 pb-2">
-                            {WORK_HOURS.map(hour => {
+                            {WORK_HOURS.map((hour, hourIndex) => {
+                              // For the first slot (8 AM), also include orders with no specific hour set
+                              // (midnight, or hours outside work hours)
                               const hourOrders = dayOrders.filter(order => {
                                 const deliveryDate = order.estimated_delivery_date || order.delivery_date;
                                 if (!deliveryDate) return false;
                                 try {
                                   const orderDate = parseISO(deliveryDate);
-                                  return orderDate.getHours() === hour;
-                                } catch {
+                                  const orderHour = orderDate.getHours();
+                                  
+                                  // Exact hour match
+                                  if (orderHour === hour) return true;
+                                  
+                                  // For first slot, include orders with hours outside work range
+                                  if (hourIndex === 0 && (orderHour < 8 || orderHour >= 16)) return true;
+                                  
                                   return false;
+                                } catch {
+                                  // If parsing fails but order is in this day, show in first slot
+                                  return hourIndex === 0;
                                 }
                               });
                               
