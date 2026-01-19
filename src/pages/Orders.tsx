@@ -523,7 +523,7 @@ export default function Orders() {
     return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
   };
 
-  const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'supervisor';
+  const canCreateOrder = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'supervisor' || profile?.role === 'jcf' || profile?.role === 'tecnico';
   const canCollectPayment = profile?.role === 'administrador' || profile?.role === 'vendedor';
   
   // Debug logging
