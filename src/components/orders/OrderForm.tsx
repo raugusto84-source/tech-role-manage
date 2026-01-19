@@ -15,7 +15,7 @@ import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, Plus, CalendarIcon, MapPin, Crosshair, Gift } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ClientForm } from '@/components/ClientForm';
+import { UserCreateDialog } from '@/components/shared/UserCreateDialog';
 import { FleetSuggestion } from '@/components/orders/FleetSuggestion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { OrderServiceSelection } from '@/components/orders/OrderServiceSelection';
@@ -1435,32 +1435,26 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     }
   };
 
-  const handleClientCreated = (newClient: Client) => {
-    setClients(prev => [...prev, newClient]);
-    setFormData(prev => ({ ...prev, client_id: newClient.id }));
+  const handleClientCreated = async () => {
+    // Reload clients to get the newly created client
+    await loadClients();
     setShowClientForm(false);
+    toast({
+      title: "Cliente creado",
+      description: "El cliente ha sido creado exitosamente. Selecciónalo de la lista.",
+    });
   };
 
-  if (showClientForm) {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-6">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center mb-6">
-            <Button variant="ghost" onClick={() => setShowClientForm(false)} className="mr-4">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <h1 className="text-3xl font-bold text-foreground">Crear Cliente</h1>
-          </div>
-          <ClientForm 
-            onSuccess={handleClientCreated}
-            onCancel={() => setShowClientForm(false)}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
+    <>
+    <UserCreateDialog
+      open={showClientForm}
+      onOpenChange={setShowClientForm}
+      onSuccess={handleClientCreated}
+      defaultRole="cliente"
+      showRoleSelector={false}
+      title="Crear Nuevo Cliente"
+    />
     <div className="min-h-screen bg-background p-4 md:p-6">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center mb-6">
@@ -1984,5 +1978,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       </div>
     </div>
+    </>
   );
 }
