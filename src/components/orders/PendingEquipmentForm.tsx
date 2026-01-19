@@ -19,6 +19,8 @@ export interface PendingEquipment {
   physical_condition?: string;
   problem_description?: string;
   additional_notes?: string;
+  is_new_brand?: boolean;
+  is_new_model?: boolean;
 }
 
 interface EquipmentCategory {
@@ -110,61 +112,43 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
     setModels(data || []);
   };
 
-  const handleAddBrand = async () => {
+  // Agregar marca temporalmente (sin guardar en BD)
+  const handleAddBrand = () => {
     if (!newBrandName.trim()) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('equipment_brands')
-        .insert({ name: newBrandName.trim() })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setBrands(prev => [...prev, data]);
-      setFormData(prev => ({
-        ...prev,
-        brand_id: data.id,
-        brand_name: data.name
-      }));
-      setNewBrandName('');
-      setShowNewBrand(false);
-      toast({ title: "Marca agregada", description: `"${data.name}" disponible.` });
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudo agregar la marca", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    
+    const tempId = `temp-brand-${Date.now()}`;
+    const newBrand = { id: tempId, name: newBrandName.trim() };
+    
+    setBrands(prev => [...prev, newBrand]);
+    setFormData(prev => ({
+      ...prev,
+      brand_id: tempId,
+      brand_name: newBrandName.trim(),
+      is_new_brand: true
+    }));
+    setNewBrandName('');
+    setShowNewBrand(false);
+    toast({ title: "Marca agregada", description: `"${newBrand.name}" se guardará al crear la orden.` });
   };
 
-  const handleAddModel = async () => {
+  // Agregar modelo temporalmente (sin guardar en BD)
+  const handleAddModel = () => {
     if (!newModelName.trim() || !formData.brand_id) return;
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('equipment_models')
-        .insert({ name: newModelName.trim(), brand_id: formData.brand_id })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setModels(prev => [...prev, data]);
-      setFilteredModels(prev => [...prev, data]);
-      setFormData(prev => ({
-        ...prev,
-        model_id: data.id,
-        model_name: data.name
-      }));
-      setNewModelName('');
-      setShowNewModel(false);
-      toast({ title: "Modelo agregado", description: `"${data.name}" disponible.` });
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudo agregar el modelo", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    
+    const tempId = `temp-model-${Date.now()}`;
+    const newModel = { id: tempId, name: newModelName.trim(), brand_id: formData.brand_id };
+    
+    setModels(prev => [...prev, newModel]);
+    setFilteredModels(prev => [...prev, newModel]);
+    setFormData(prev => ({
+      ...prev,
+      model_id: tempId,
+      model_name: newModelName.trim(),
+      is_new_model: true
+    }));
+    setNewModelName('');
+    setShowNewModel(false);
+    toast({ title: "Modelo agregado", description: `"${newModel.name}" se guardará al crear la orden.` });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
