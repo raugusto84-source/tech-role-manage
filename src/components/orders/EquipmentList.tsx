@@ -66,6 +66,9 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
+  const isOrderPersisted = Boolean(orderId && orderId.trim());
+  const canManage = canEdit && isOrderPersisted;
+
   const handleToggleServiced = async (equipmentId: string, currentlyServiced: boolean) => {
     setLoading(true);
     try {
@@ -155,7 +158,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
           <Monitor className="h-5 w-5" />
           Equipos ({equipment.length})
         </h3>
-        {canEdit && (
+        {canManage ? (
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
@@ -174,6 +177,12 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
               />
             </DialogContent>
           </Dialog>
+        ) : (
+          canEdit && (
+            <span className="text-sm text-muted-foreground">
+              Disponible después de crear la orden
+            </span>
+          )
         )}
       </div>
 
@@ -208,7 +217,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
                       )}
                     </div>
                   </div>
-                  {canEdit && (
+                  {canManage && (
                     <div className="flex gap-2">
                       <Button
                         variant="ghost"
@@ -317,7 +326,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
           <DialogHeader>
             <DialogTitle>Editar Equipo</DialogTitle>
           </DialogHeader>
-          {editingEquipment && (
+          {canManage && editingEquipment && (
             <EquipmentForm
               orderId={orderId}
               equipment={editingEquipment}
