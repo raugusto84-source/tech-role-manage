@@ -703,6 +703,7 @@ export default function Orders() {
               o.status !== 'rechazada'
             )}
             onSelectOrder={(order) => setSelectedOrder(order)}
+            onOrdersChange={loadOrders}
           />
         </TabsContent>
 
