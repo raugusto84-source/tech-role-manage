@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus, CheckCircle } from 'lucide-react';
-import { ClientUserForm } from './ClientUserForm';
+import { UserCreateDialog } from '@/components/shared/UserCreateDialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
 interface Client {
   id: string;
@@ -894,24 +894,38 @@ export function QuoteWizard({
       {/* Bottom spacing for fixed navigation */}
       <div className="h-20"></div>
 
-      {/* New Client Dialog - Uses full user creation with auth */}
-      <Dialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Nuevo Cliente</DialogTitle>
-            <DialogDescription>
-              Crea un nuevo cliente con su cuenta de acceso al sistema
-            </DialogDescription>
-          </DialogHeader>
-          <ClientUserForm
-            onSuccess={(newClient) => {
-              setShowNewClientDialog(false);
-              loadClients();
-              setSelectedClient(newClient);
-            }}
-            onCancel={() => setShowNewClientDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* New Client Dialog - Same dialog as UserManagement */}
+      <UserCreateDialog
+        open={showNewClientDialog}
+        onOpenChange={setShowNewClientDialog}
+        defaultRole="cliente"
+        showRoleSelector={false}
+        title="Nuevo Cliente"
+        onSuccess={async (user) => {
+          // Create client record if user was created
+          if (user?.id) {
+            const { data: session } = await supabase.auth.getSession();
+            const { data: clientData } = await supabase
+              .from('clients')
+              .insert({
+                name: user.user_metadata?.full_name || user.email,
+                email: user.email,
+                phone: user.user_metadata?.phone || null,
+                address: '',
+                user_id: user.id,
+                created_by: session?.session?.user?.id
+              })
+              .select()
+              .single();
+            
+            loadClients();
+            if (clientData) {
+              setSelectedClient(clientData);
+            }
+          } else {
+            loadClients();
+          }
+        }}
+      />
     </div>;
 }
