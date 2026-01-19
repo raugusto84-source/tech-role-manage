@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { PolicyPaymentDialog } from "./PolicyPaymentDialog";
 import { PaymentCollectionDialog } from "./PaymentCollectionDialog";
 import { PaymentCollectionDialog as OrderPaymentCollectionDialog } from "../orders/PaymentCollectionDialog";
 import { DeletePaymentDialog } from "./DeletePaymentDialog";
-import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle, Trash2 } from "lucide-react";
+import { DollarSign, Monitor, Shield, Building2, RefreshCw, Calendar, AlertCircle, CheckCircle, Trash2, ExternalLink } from "lucide-react";
 import { useSoftDelete } from "@/hooks/useSoftDelete";
 
 const formatCurrency = (amount: number): string => {
@@ -54,6 +55,7 @@ interface DevelopmentPayment {
 }
 
 export function CollectionsManager() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { canDeletePayments } = useSoftDelete();
   const [loading, setLoading] = useState(true);
@@ -490,8 +492,17 @@ export function CollectionsManager() {
               </TableHeader>
               <TableBody>
                 {orderPayments.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.order_number}</TableCell>
+                  <TableRow 
+                    key={p.id} 
+                    className="cursor-pointer hover:bg-accent/50"
+                    onClick={() => navigate(`/orders?view=${p.order_id}`)}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-1">
+                        {p.order_number}
+                        <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </TableCell>
                     <TableCell>{p.client_name}</TableCell>
                     <TableCell>{formatDate(p.due_date)}</TableCell>
                     <TableCell className="text-muted-foreground">{formatCurrency(p.total_amount)}</TableCell>
@@ -501,14 +512,14 @@ export function CollectionsManager() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={() => handleOrderPaymentClick(p)}>
+                        <Button size="sm" onClick={(e) => { e.stopPropagation(); handleOrderPaymentClick(p); }}>
                           Cobrar
                         </Button>
                         {canDeletePayments && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => handleDeleteOrderPayment(p)}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteOrderPayment(p); }}
                             className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />

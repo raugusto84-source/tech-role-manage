@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -124,6 +124,7 @@ export default function Orders() {
   const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -311,6 +312,20 @@ export default function Orders() {
       loadOrders();
     }
   }, [profile?.user_id, profile?.role]); // Evita recargar por cambios de referencia del perfil (p. ej. refresh de token)
+
+  // Handle URL parameter to open specific order
+  useEffect(() => {
+    const viewOrderId = searchParams.get('view');
+    if (viewOrderId && orders.length > 0 && !selectedOrder) {
+      const orderToView = orders.find(o => o.id === viewOrderId);
+      if (orderToView) {
+        setSelectedOrder(orderToView);
+        // Clear the URL parameter
+        searchParams.delete('view');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [orders, searchParams]);
 
   // Suscripción en tiempo real para actualizar órdenes automáticamente
   useEffect(() => {
