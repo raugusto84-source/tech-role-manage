@@ -29,7 +29,8 @@ import { MultipleSupportTechnicianSelector } from '@/components/orders/MultipleS
 import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { usePricingCalculation } from '@/hooks/usePricingCalculation';
 import { formatCOPCeilToTen, ceilToTen } from '@/utils/currency';
-import { EquipmentList } from './EquipmentList';
+import { PendingEquipmentList } from './PendingEquipmentList';
+import { PendingEquipment } from './PendingEquipmentForm';
 
 interface ServiceType {
   id: string;
@@ -117,7 +118,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   });
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [supportTechnicians, setSupportTechnicians] = useState<SupportTechnicianEntry[]>([]);
-  const [orderEquipment, setOrderEquipment] = useState<any[]>([]);
+  const [pendingEquipment, setPendingEquipment] = useState<PendingEquipment[]>([]);
 
   // Estados para el sistema de sugerencias de flotillas
   const [showFleetSuggestions, setShowFleetSuggestions] = useState(false);
@@ -138,27 +139,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
   // Hook for pricing calculation
   const pricing = usePricingCalculation(orderItems, formData.client_id);
 
-  // Función para cargar equipos de la orden (para edición)
-  const loadOrderEquipment = async (orderId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('order_equipment')
-        .select(`
-          *,
-          equipment_categories (
-            name,
-            icon
-          )
-        `)
-        .eq('order_id', orderId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setOrderEquipment(data || []);
-    } catch (error) {
-      console.error('Error loading order equipment:', error);
-    }
-  };
+  // No longer needed - using pendingEquipment state instead
 
   // Función para actualizar automáticamente la fecha de entrega
   const updateDeliveryDate = async () => {
@@ -1363,6 +1344,32 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         }
       }
 
+      // Guardar equipos pendientes en la orden
+      if (pendingEquipment.length > 0) {
+        const equipmentData = pendingEquipment.map(eq => ({
+          order_id: orderResult.id,
+          category_id: eq.category_id || null,
+          brand_id: eq.brand_id || null,
+          model_id: eq.model_id || null,
+          equipment_name: eq.equipment_name,
+          brand_name: eq.brand_name || null,
+          model_name: eq.model_name || null,
+          serial_number: eq.serial_number || null,
+          physical_condition: eq.physical_condition || null,
+          problem_description: eq.problem_description || null,
+          additional_notes: eq.additional_notes || null
+        }));
+
+        const { error: equipmentError } = await supabase
+          .from('order_equipment')
+          .insert(equipmentData);
+
+        if (equipmentError) {
+          console.error('Error saving equipment:', equipmentError);
+          // Don't fail the entire order creation for this
+        }
+      }
+
       // Registrar la carga de trabajo del técnico si está asignado
       if (formData.assigned_technician && formData.assigned_technician !== 'unassigned') {
         try {
@@ -1648,18 +1655,13 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               />
 
               {/* Equipos - Opcional para contextualizar el trabajo */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Equipos a Trabajar (Opcional)</Label>
-                  <span className="text-sm text-muted-foreground">
-                    Registra los equipos para mejor documentación
-                  </span>
-                </div>
-                <EquipmentList
-                  orderId={''} // Se pasará el orderId real después de crear la orden
-                  equipment={orderEquipment}
-                  onUpdate={() => {}} // Placeholder - se actualizará después de crear la orden
-                  canEdit={true}
+              <div className="space-y-2">
+                <Label>Equipos a Trabajar (Opcional)</Label>
+                <PendingEquipmentList
+                  equipment={pendingEquipment}
+                  onAdd={(eq) => setPendingEquipment(prev => [...prev, eq])}
+                  onUpdate={(index, eq) => setPendingEquipment(prev => prev.map((e, i) => i === index ? eq : e))}
+                  onRemove={(index) => setPendingEquipment(prev => prev.filter((_, i) => i !== index))}
                 />
               </div>
 
