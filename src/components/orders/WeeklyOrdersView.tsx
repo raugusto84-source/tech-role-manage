@@ -637,10 +637,12 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
                                         hourOrders.length === 0 && !isDragging && "opacity-60"
                                       )}
                                     >
-                                      {/* Hora arriba */}
+                                      {/* Hora centrada y más visible */}
                                       <div className={cn(
-                                        "text-xs font-mono mb-1",
-                                        snapshot.isDraggingOver ? "text-primary font-bold" : "text-muted-foreground"
+                                        "text-sm font-bold font-mono mb-2 text-center py-1 rounded-md",
+                                        snapshot.isDraggingOver 
+                                          ? "text-primary-foreground bg-primary" 
+                                          : "text-foreground bg-muted/80 dark:bg-muted/40"
                                       )}>
                                         {hour.toString().padStart(2, '0')}:00
                                       </div>
