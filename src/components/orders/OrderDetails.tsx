@@ -472,7 +472,7 @@ export function OrderDetails({
     }
   };
   const isClient = profile?.role === 'cliente';
-  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico') && ['pendiente_aprobacion', 'en_proceso'].includes(orderStatus);
+  const canModifyOrder = ['administrador', 'vendedor', 'tecnico', 'jcf'].includes(profile?.role || '') && ['pendiente_aprobacion', 'en_proceso'].includes(orderStatus);
 
   // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
   const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
@@ -685,8 +685,8 @@ export function OrderDetails({
             </CardContent>
           </Card>
 
-          {/* Special Price Editor - Admin Only */}
-          {profile?.role === 'administrador' && !['finalizada', 'cancelada', 'rechazada'].includes(orderStatus) && (
+          {/* Special Price Editor - Admin/JCF */}
+          {['administrador', 'jcf'].includes(profile?.role || '') && !['finalizada', 'cancelada', 'rechazada'].includes(orderStatus) && (
             <SpecialPriceEditor
               orderId={order.id}
               currentTotal={calculatedTotal}
