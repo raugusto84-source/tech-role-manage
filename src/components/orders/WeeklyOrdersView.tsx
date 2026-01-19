@@ -334,6 +334,60 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
   return (
     <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
       <div className="space-y-4">
+        {/* Pending Approval Section - Above Week Navigation */}
+        {pendingApprovalOrders.length > 0 && (
+          <Collapsible open={showPendingApproval} onOpenChange={setShowPendingApproval}>
+            <Card className="border-2 border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20">
+              <CollapsibleTrigger asChild>
+                <CardContent className="py-3 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                        <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-amber-800 dark:text-amber-200">
+                          Órdenes Pendientes de Aprobación
+                        </h3>
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          {pendingApprovalOrders.length} {pendingApprovalOrders.length === 1 ? 'orden' : 'órdenes'} sin programar
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-amber-500 text-white font-bold text-lg px-3">
+                        {pendingApprovalOrders.length}
+                      </Badge>
+                      <Button variant="ghost" size="sm" className="text-amber-700 dark:text-amber-300">
+                        {showPendingApproval ? (
+                          <ChevronUp className="h-5 w-5" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <div className="px-4 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pendingApprovalOrders.map(order => (
+                      <WeeklyOrderCard
+                        key={order.id}
+                        order={order}
+                        onClick={() => onSelectOrder(order)}
+                        category={getOrderCategory(order)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
         {/* Week Navigation Header */}
         <Card className="border-2 border-primary/20 shadow-lg">
           <CardContent className="py-4">
@@ -400,60 +454,6 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
             </div>
           </CardContent>
         </Card>
-
-        {/* Pending Approval Section */}
-        {pendingApprovalOrders.length > 0 && (
-          <Collapsible open={showPendingApproval} onOpenChange={setShowPendingApproval}>
-            <Card className="border-2 border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20">
-              <CollapsibleTrigger asChild>
-                <CardContent className="py-3 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                        <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-amber-800 dark:text-amber-200">
-                          Órdenes Pendientes de Aprobación
-                        </h3>
-                        <p className="text-sm text-amber-600 dark:text-amber-400">
-                          {pendingApprovalOrders.length} {pendingApprovalOrders.length === 1 ? 'orden' : 'órdenes'} sin programar
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-amber-500 text-white font-bold text-lg px-3">
-                        {pendingApprovalOrders.length}
-                      </Badge>
-                      <Button variant="ghost" size="sm" className="text-amber-700 dark:text-amber-300">
-                        {showPendingApproval ? (
-                          <ChevronUp className="h-5 w-5" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </CollapsibleTrigger>
-              
-              <CollapsibleContent>
-                <div className="px-4 pb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pendingApprovalOrders.map(order => (
-                      <WeeklyOrderCard
-                        key={order.id}
-                        order={order}
-                        onClick={() => onSelectOrder(order)}
-                        category={getOrderCategory(order)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        )}
 
         {/* Three Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
