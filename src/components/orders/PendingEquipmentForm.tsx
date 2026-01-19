@@ -153,6 +153,8 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Evitar que el submit se propague al formulario padre
+    
     if (!formData.equipment_name.trim()) {
       toast({ title: "Error", description: "El nombre del equipo es requerido", variant: "destructive" });
       return;
