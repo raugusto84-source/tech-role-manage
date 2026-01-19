@@ -1346,19 +1346,52 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       // Guardar equipos pendientes en la orden
       if (pendingEquipment.length > 0) {
-        const equipmentData = pendingEquipment.map(eq => ({
-          order_id: orderResult.id,
-          category_id: eq.category_id || null,
-          brand_id: eq.brand_id || null,
-          model_id: eq.model_id || null,
-          equipment_name: eq.equipment_name,
-          brand_name: eq.brand_name || null,
-          model_name: eq.model_name || null,
-          serial_number: eq.serial_number || null,
-          physical_condition: eq.physical_condition || null,
-          problem_description: eq.problem_description || null,
-          additional_notes: eq.additional_notes || null
-        }));
+        const equipmentDataPromises = pendingEquipment.map(async (eq) => {
+          let finalBrandId = eq.brand_id;
+          let finalModelId = eq.model_id;
+
+          // Si es una marca nueva (temporal), crearla primero
+          if (eq.is_new_brand && eq.brand_name && eq.brand_id?.startsWith('temp-brand-')) {
+            const { data: newBrand } = await supabase
+              .from('equipment_brands')
+              .insert({ name: eq.brand_name })
+              .select('id')
+              .single();
+            
+            if (newBrand) {
+              finalBrandId = newBrand.id;
+            }
+          }
+
+          // Si es un modelo nuevo (temporal), crearlo primero
+          if (eq.is_new_model && eq.model_name && eq.model_id?.startsWith('temp-model-') && finalBrandId) {
+            const { data: newModel } = await supabase
+              .from('equipment_models')
+              .insert({ name: eq.model_name, brand_id: finalBrandId })
+              .select('id')
+              .single();
+            
+            if (newModel) {
+              finalModelId = newModel.id;
+            }
+          }
+
+          return {
+            order_id: orderResult.id,
+            category_id: eq.category_id || null,
+            brand_id: finalBrandId && !finalBrandId.startsWith('temp-') ? finalBrandId : null,
+            model_id: finalModelId && !finalModelId.startsWith('temp-') ? finalModelId : null,
+            equipment_name: eq.equipment_name,
+            brand_name: eq.brand_name || null,
+            model_name: eq.model_name || null,
+            serial_number: eq.serial_number || null,
+            physical_condition: eq.physical_condition || null,
+            problem_description: eq.problem_description || null,
+            additional_notes: eq.additional_notes || null
+          };
+        });
+
+        const equipmentData = await Promise.all(equipmentDataPromises);
 
         const { error: equipmentError } = await supabase
           .from('order_equipment')
@@ -1366,7 +1399,6 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
         if (equipmentError) {
           console.error('Error saving equipment:', equipmentError);
-          // Don't fail the entire order creation for this
         }
       }
 
