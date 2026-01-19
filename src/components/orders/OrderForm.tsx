@@ -753,7 +753,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         console.log('No fleet suggestions available for service');
         
         // Mostrar mensaje informativo solo para staff
-        if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+        if (['administrador', 'vendedor', 'tecnico', 'jcf'].includes(profile?.role || '')) {
           toast({
             title: "Sin flotillas disponibles",
             description: "No hay flotillas configuradas para este tipo de servicio",
@@ -1764,7 +1764,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               </div>
 
               {/* Multiple Support Technician Selector */}
-              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && formData.assigned_technician && (
+              {['administrador', 'vendedor', 'tecnico', 'jcf'].includes(profile?.role || '') && formData.assigned_technician && (
                 <MultipleSupportTechnicianSelector
                   technicians={technicians}
                   primaryTechnicianId={formData.assigned_technician}
@@ -1774,7 +1774,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
               )}
 
               {/* Fleet Suggestions for Staff */}
-              {showFleetSuggestions && orderItems.length > 0 && (profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+              {showFleetSuggestions && orderItems.length > 0 && ['administrador', 'vendedor', 'tecnico', 'jcf'].includes(profile?.role || '') && (
                 <div className="mt-4">
                   <FleetSuggestion
                     serviceTypeId={orderItems[0].service_type_id}
@@ -1808,7 +1808,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
                         {fleetSuggestionReason}
                       </p>
                     </div>
-                    {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+                    {['administrador', 'vendedor', 'tecnico', 'jcf'].includes(profile?.role || '') && (
                       <Button
                         type="button"
                         variant="ghost"
