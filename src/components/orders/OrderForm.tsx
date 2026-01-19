@@ -239,7 +239,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
     loadTechnicianSchedules();
     
     const init = async () => {
-      if (profile?.role === 'administrador' || profile?.role === 'vendedor') {
+      if (['administrador', 'vendedor', 'jcf', 'tecnico'].includes(profile?.role || '')) {
         await syncClientsFromProfiles();
         await loadClients();
         await loadTechnicians();
@@ -1437,8 +1437,8 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Selección del Cliente - Solo para staff */}
-              {(profile?.role === 'administrador' || profile?.role === 'vendedor') && (
+              {/* Selección del Cliente - Para staff (admin, vendedor, jcf, tecnico) */}
+              {(['administrador', 'vendedor', 'jcf', 'tecnico'].includes(profile?.role || '')) && (
                 <div className="space-y-2">
                   <Label htmlFor="client_id">Cliente *</Label>
                   <div className="flex gap-2">
