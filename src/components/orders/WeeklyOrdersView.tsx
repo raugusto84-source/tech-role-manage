@@ -567,52 +567,52 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
                                         hourOrders.length === 0 && !isDragging && "opacity-60"
                                       )}
                                     >
-                                      <div className="flex items-center gap-2">
-                                        <span className={cn(
-                                          "text-xs font-mono w-12 shrink-0",
-                                          snapshot.isDraggingOver ? "text-primary font-bold" : "text-muted-foreground"
-                                        )}>
-                                          {hour.toString().padStart(2, '0')}:00
-                                        </span>
-                                        
-                                        <div className="flex-1 space-y-1">
-                                          {hourOrders.map((order, index) => (
-                                            <Draggable 
-                                              key={order.id} 
-                                              draggableId={order.id} 
-                                              index={index}
-                                            >
-                                              {(provided, snapshot) => (
-                                                <div
-                                                  ref={provided.innerRef}
-                                                  {...provided.draggableProps}
-                                                  className={cn(
-                                                    "relative",
-                                                    snapshot.isDragging && "z-50 rotate-1 scale-105 shadow-2xl"
-                                                  )}
+                                      {/* Hora arriba */}
+                                      <div className={cn(
+                                        "text-xs font-mono mb-1",
+                                        snapshot.isDraggingOver ? "text-primary font-bold" : "text-muted-foreground"
+                                      )}>
+                                        {hour.toString().padStart(2, '0')}:00
+                                      </div>
+                                      
+                                      {/* Órdenes debajo */}
+                                      <div className="space-y-1">
+                                        {hourOrders.map((order, index) => (
+                                          <Draggable 
+                                            key={order.id} 
+                                            draggableId={order.id} 
+                                            index={index}
+                                          >
+                                            {(provided, snapshot) => (
+                                              <div
+                                                ref={provided.innerRef}
+                                                {...provided.draggableProps}
+                                                className={cn(
+                                                  "relative",
+                                                  snapshot.isDragging && "z-50 rotate-1 scale-105 shadow-2xl"
+                                                )}
+                                              >
+                                                <div 
+                                                  {...provided.dragHandleProps}
+                                                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing z-10 p-1 bg-card rounded"
                                                 >
-                                                  <div 
-                                                    {...provided.dragHandleProps}
-                                                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing z-10 p-1 bg-card rounded"
-                                                  >
-                                                    <GripVertical className="h-4 w-4" />
-                                                  </div>
-                                                  <WeeklyOrderCard
-                                                    order={order}
-                                                    onClick={() => !snapshot.isDragging && onSelectOrder(order)}
-                                                    category={category}
-                                                  />
+                                                  <GripVertical className="h-4 w-4" />
                                                 </div>
-                                              )}
-                                            </Draggable>
-                                          ))}
-                                          
-                                          {hourOrders.length === 0 && isDragging && (
-                                            <div className="h-6 flex items-center justify-center text-xs text-muted-foreground border border-dashed border-muted-foreground/30 rounded">
-                                              Soltar aquí
-                                            </div>
-                                          )}
-                                        </div>
+                                                <WeeklyOrderCard
+                                                  order={order}
+                                                  onClick={() => !snapshot.isDragging && onSelectOrder(order)}
+                                                  category={category}
+                                                />
+                                              </div>
+                                            )}
+                                          </Draggable>
+                                        ))}
+                                        
+                                        {hourOrders.length === 0 && isDragging && (
+                                          <div className="h-6 flex items-center justify-center text-xs text-muted-foreground border border-dashed border-muted-foreground/30 rounded">
+                                            Soltar aquí
+                                          </div>
+                                        )}
                                       </div>
                                       {provided.placeholder}
                                     </div>
