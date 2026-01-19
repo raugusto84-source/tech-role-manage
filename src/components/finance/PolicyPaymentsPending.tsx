@@ -399,6 +399,7 @@ export function PolicyPaymentsPending() {
         <DeletePaymentDialog
           paymentId={paymentToDelete.id}
           paymentAmount={paymentToDelete.amount}
+          paymentType="policy"
           isOpen={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onDeleted={handleDeleteSuccess}

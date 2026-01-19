@@ -17,7 +17,9 @@ import { Trash2 } from "lucide-react";
 interface DeletePaymentDialogProps {
   paymentId: string;
   paymentAmount: number;
+  paymentType: 'policy' | 'order' | 'development';
   orderNumber?: string;
+  description?: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onDeleted?: () => void;
@@ -26,7 +28,9 @@ interface DeletePaymentDialogProps {
 export function DeletePaymentDialog({
   paymentId,
   paymentAmount,
+  paymentType,
   orderNumber,
+  description,
   isOpen,
   onOpenChange,
   onDeleted
@@ -34,6 +38,14 @@ export function DeletePaymentDialog({
   const [reason, setReason] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
+
+  const getPaymentTypeLabel = () => {
+    switch (paymentType) {
+      case 'policy': return 'póliza';
+      case 'order': return 'orden';
+      case 'development': return 'fraccionamiento';
+    }
+  };
 
   const handleDelete = async () => {
     if (!reason.trim()) {
@@ -47,10 +59,50 @@ export function DeletePaymentDialog({
 
     setIsDeleting(true);
     try {
-      const { data, error } = await supabase.rpc("soft_delete_payment", {
-        p_payment_id: paymentId,
-        p_reason: reason.trim(),
-      });
+      let error;
+
+      if (paymentType === 'order') {
+        // Use the existing RPC for order payments
+        const result = await supabase.rpc("soft_delete_payment", {
+          p_payment_id: paymentId,
+          p_reason: reason.trim(),
+        });
+        error = result.error;
+      } else if (paymentType === 'policy') {
+        // Delete policy payment from pending_collections or mark as cancelled
+        const result = await supabase
+          .from('policy_payments')
+          .delete()
+          .eq('id', paymentId);
+        error = result.error;
+        
+        // Also log to deletion_history
+        if (!error) {
+          await supabase.from('deletion_history').insert({
+            table_name: 'policy_payments',
+            record_id: paymentId,
+            deletion_reason: reason.trim(),
+            record_data: { amount: paymentAmount, description }
+          });
+        }
+      } else if (paymentType === 'development') {
+        // Delete development payment
+        const result = await supabase
+          .from('access_development_payments')
+          .delete()
+          .eq('id', paymentId);
+        error = result.error;
+        
+        // Also log to deletion_history
+        if (!error) {
+          await supabase.from('deletion_history').insert({
+            table_name: 'access_development_payments',
+            record_id: paymentId,
+            deletion_reason: reason.trim(),
+            record_data: { amount: paymentAmount, description }
+          });
+        }
+      }
 
       if (error) throw error;
 
@@ -83,8 +135,10 @@ export function DeletePaymentDialog({
             Eliminar Pago
           </DialogTitle>
           <DialogDescription>
-            ¿Está seguro que desea eliminar el pago de <strong>${paymentAmount.toLocaleString()}</strong>
-            {orderNumber && ` de la orden ${orderNumber}`}?
+            ¿Está seguro que desea eliminar el cobro pendiente de <strong>${paymentAmount.toLocaleString()}</strong>
+            {orderNumber && ` de la orden ${orderNumber}`}
+            {description && ` (${description})`}
+            {` de ${getPaymentTypeLabel()}`}?
             Esta acción quedará registrada en el historial.
           </DialogDescription>
         </DialogHeader>

@@ -74,7 +74,7 @@ export function CollectionsManager() {
 
   // Delete dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [paymentToDelete, setPaymentToDelete] = useState<{id: string; amount: number; orderNumber?: string} | null>(null);
+  const [paymentToDelete, setPaymentToDelete] = useState<{id: string; amount: number; type: 'policy' | 'order' | 'development'; orderNumber?: string; description?: string} | null>(null);
 
   const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -268,11 +268,32 @@ export function CollectionsManager() {
   };
 
   // Delete handlers
+  const handleDeletePolicyPayment = (payment: PolicyPayment) => {
+    setPaymentToDelete({
+      id: payment.id,
+      amount: payment.amount,
+      type: 'policy',
+      description: `${payment.client_name} - ${payment.policy_name}`
+    });
+    setDeleteDialogOpen(true);
+  };
+
   const handleDeleteOrderPayment = (payment: OrderPayment) => {
     setPaymentToDelete({
       id: payment.id,
       amount: payment.balance,
+      type: 'order',
       orderNumber: payment.order_number
+    });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteDevPayment = (payment: DevelopmentPayment) => {
+    setPaymentToDelete({
+      id: payment.id,
+      amount: payment.amount,
+      type: 'development',
+      description: `${payment.development_name} - ${payment.payment_period}`
     });
     setDeleteDialogOpen(true);
   };
@@ -398,7 +419,7 @@ export function CollectionsManager() {
                   <TableHead>Vencimiento</TableHead>
                   <TableHead>Monto</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -415,9 +436,21 @@ export function CollectionsManager() {
                       <StatusBadge dueDate={p.due_date} />
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => handlePolicyPaymentClick(p)}>
-                        Cobrar
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handlePolicyPaymentClick(p)}>
+                          Cobrar
+                        </Button>
+                        {canDeletePayments && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeletePolicyPayment(p)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -515,7 +548,7 @@ export function CollectionsManager() {
                   <TableHead>Vencimiento</TableHead>
                   <TableHead>Monto</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -531,9 +564,21 @@ export function CollectionsManager() {
                       <StatusBadge dueDate={p.due_date} />
                     </TableCell>
                     <TableCell>
-                      <Button size="sm" onClick={() => handleDevPaymentClick(p)}>
-                        Cobrar
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" onClick={() => handleDevPaymentClick(p)}>
+                          Cobrar
+                        </Button>
+                        {canDeletePayments && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteDevPayment(p)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -583,7 +628,9 @@ export function CollectionsManager() {
         <DeletePaymentDialog
           paymentId={paymentToDelete.id}
           paymentAmount={paymentToDelete.amount}
+          paymentType={paymentToDelete.type}
           orderNumber={paymentToDelete.orderNumber}
+          description={paymentToDelete.description}
           isOpen={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onDeleted={handleDeleteSuccess}
