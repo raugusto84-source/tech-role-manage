@@ -24,7 +24,7 @@ serve(async (req) => {
     let totalProcessed = 0;
     let totalCached = 0;
 
-    // 1. Procesar órdenes con pagos pendientes
+    // 1. Procesar órdenes APROBADAS con pagos pendientes (excluye pendiente y pendiente_aprobacion)
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -36,7 +36,7 @@ serve(async (req) => {
         clients (name),
         order_payments (payment_amount)
       `)
-      .in('status', ['pendiente', 'en_proceso', 'pendiente_entrega', 'finalizada'])
+      .in('status', ['en_proceso', 'pendiente_entrega', 'finalizada'])
       .is('deleted_at', null);
 
     if (ordersError) throw ordersError;
