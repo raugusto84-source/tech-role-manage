@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera, Pencil } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { OrderServicesList } from '@/components/orders/OrderServicesList';
@@ -112,6 +113,9 @@ export function OrderDetails({
     signatures: false
   });
   const [showAdminApprovalDialog, setShowAdminApprovalDialog] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(order.failure_description);
+  const [savingDescription, setSavingDescription] = useState(false);
   
   // Sync orderStatus with order.status prop changes
   useEffect(() => {
@@ -389,6 +393,44 @@ export function OrderDetails({
     }
   };
 
+  const handleSaveDescription = async () => {
+    if (!editedDescription.trim()) {
+      toast({
+        title: "Error",
+        description: "La descripción no puede estar vacía",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setSavingDescription(true);
+      const { error } = await supabase
+        .from('orders')
+        .update({ failure_description: editedDescription.trim() })
+        .eq('id', order.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Descripción actualizada",
+        description: "La descripción del problema ha sido modificada",
+      });
+      
+      setIsEditingDescription(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Error updating description:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar la descripción",
+        variant: "destructive"
+      });
+    } finally {
+      setSavingDescription(false);
+    }
+  };
+
   // SIEMPRE usar precio guardado de cotización - NO recalcular nunca
   const calculateItemDisplayPrice = (item: any): number => {
     // Si existe total_amount en BD, es la fuente de verdad SIEMPRE
@@ -612,12 +654,58 @@ export function OrderDetails({
               <div className="flex items-start gap-3">
                 <Wrench className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="font-medium text-sm mb-1">
-                    {order.service_types?.name || 'Servicio no especificado'}
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="font-medium text-sm">
+                      {order.service_types?.name || 'Servicio no especificado'}
+                    </div>
+                    {canModifyOrder && !isEditingDescription && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => {
+                          setEditedDescription(order.failure_description);
+                          setIsEditingDescription(true);
+                        }}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground line-clamp-3">
-                    {order.failure_description}
-                  </div>
+                  {isEditingDescription ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editedDescription}
+                        onChange={(e) => setEditedDescription(e.target.value)}
+                        className="text-sm min-h-[80px]"
+                        placeholder="Describe el problema..."
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={handleSaveDescription}
+                          disabled={savingDescription}
+                        >
+                          {savingDescription ? 'Guardando...' : 'Guardar'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditingDescription(false);
+                            setEditedDescription(order.failure_description);
+                          }}
+                          disabled={savingDescription}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground line-clamp-3">
+                      {order.failure_description}
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
