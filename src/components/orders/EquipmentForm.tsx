@@ -183,6 +183,16 @@ export function EquipmentForm({ orderId, onSuccess, onCancel, equipment }: Equip
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!orderId || !orderId.trim()) {
+      toast({
+        title: "No se puede agregar equipo",
+        description: "Primero guarda/crea la orden para poder registrar equipos.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!formData.equipment_name.trim()) {
       toast({
         title: "Error",
