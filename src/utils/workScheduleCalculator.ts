@@ -186,14 +186,47 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   let remainingHoursToday = 0;
   let hoursWorkedToday = 0;
   
-  // Siempre programar para el siguiente día laboral, sin considerar la hora actual
-  startFromNextDay = true;
-  remainingHoursToday = 0; // No usar horas del día actual
+  // Verificar si estamos en un día laboral y si hay tiempo disponible hoy
+  const isWorkingDay = workingDays.includes(currentDate.getDay());
+  
+  if (isWorkingDay && creationTime < workEndTime) {
+    // Calcular cuántas horas quedan disponibles hoy
+    const effectiveStartTime = Math.max(creationTime, workStartTime);
+    const minutesAvailableToday = workEndTime - effectiveStartTime;
+    remainingHoursToday = Math.max(0, minutesAvailableToday / 60);
+    
+    console.log(`=== TODAY'S AVAILABILITY ===`);
+    console.log(`Creation time: ${creationTime} minutes`);
+    console.log(`Work start: ${workStartTime}, Work end: ${workEndTime}`);
+    console.log(`Remaining hours today: ${remainingHoursToday}`);
+    
+    // Si hay suficiente tiempo hoy para completar el trabajo, NO avanzar al siguiente día
+    if (remainingHoursToday >= adjustedHours) {
+      startFromNextDay = false;
+      console.log(`Work can be completed today`);
+    } else if (remainingHoursToday >= 2) {
+      // Si quedan al menos 2 horas, empezar hoy
+      startFromNextDay = false;
+      console.log(`Starting today, will continue tomorrow`);
+    } else {
+      // Menos de 2 horas disponibles, empezar mañana
+      startFromNextDay = true;
+      remainingHoursToday = 0;
+      console.log(`Not enough time today, starting tomorrow`);
+    }
+  } else {
+    // Fuera de horario laboral o día no laboral, empezar al siguiente día laboral
+    startFromNextDay = true;
+    remainingHoursToday = 0;
+    console.log(`Outside working hours, starting next working day`);
+  }
 
-  // Avanzar al siguiente día laboral
-  currentDate.setDate(currentDate.getDate() + 1);
-  while (!workingDays.includes(currentDate.getDay())) {
+  // Solo avanzar al siguiente día laboral si es necesario
+  if (startFromNextDay) {
     currentDate.setDate(currentDate.getDate() + 1);
+    while (!workingDays.includes(currentDate.getDay())) {
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
   }
 
   // Calcular día por día considerando tiempo muerto
