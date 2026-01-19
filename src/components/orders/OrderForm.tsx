@@ -1419,7 +1419,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
       toast({
         title: "Orden creada",
-        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${formatCOPCeilToTen(totalAmount)} - Cobro pendiente generado`,
+        description: `${statusMessage} ${orderItems.length} artículo(s) por un total de ${formatCOPCeilToTen(totalAmount)}`,
       });
 
       onSuccess();
