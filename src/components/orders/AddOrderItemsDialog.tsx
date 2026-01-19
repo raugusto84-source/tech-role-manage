@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 // Removed useRewardSettings import - cashback system eliminated
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Minus, ShoppingCart, CheckCircle2, Search, Shield, Monitor, Package, X } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, CheckCircle2, Search, Shield, Monitor, Package, X, PenLine } from 'lucide-react';
 import { ceilToTen } from '@/utils/currency';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 interface AddOrderItemsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,6 +64,12 @@ export function AddOrderItemsDialog({
   const [reason, setReason] = useState('');
   const [selectedMainCategory, setSelectedMainCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFreeItemForm, setShowFreeItemForm] = useState(false);
+  const [freeItemName, setFreeItemName] = useState('');
+  const [freeItemDescription, setFreeItemDescription] = useState('');
+  const [freeItemType, setFreeItemType] = useState<'servicio' | 'articulo'>('servicio');
+  const [freeItemPrice, setFreeItemPrice] = useState('');
+  const [freeItemQuantity, setFreeItemQuantity] = useState(1);
   useEffect(() => {
     if (open) {
       loadServiceTypes();
@@ -70,6 +77,12 @@ export function AddOrderItemsDialog({
       setReason('');
       setSelectedMainCategory(null);
       setSearchTerm('');
+      setShowFreeItemForm(false);
+      setFreeItemName('');
+      setFreeItemDescription('');
+      setFreeItemType('servicio');
+      setFreeItemPrice('');
+      setFreeItemQuantity(1);
     }
   }, [open]);
   const loadServiceTypes = async () => {
@@ -218,12 +231,73 @@ export function AddOrderItemsDialog({
       ...updated[index],
       quantity: Math.max(1, quantity)
     };
+    // For free items (no service_type_id), calculate directly
+    if (!updated[index].service_type_id) {
+      const item = updated[index];
+      item.subtotal = item.unit_base_price * item.quantity;
+      item.vat_amount = item.subtotal * item.vat_rate / 100;
+      item.total_amount = ceilToTen(item.subtotal + item.vat_amount);
+      setNewItems(updated);
+      return;
+    }
     const correctPrice = calculateItemCorrectPrice(updated[index]);
     updated[index].total_amount = correctPrice;
     const item = updated[index];
     item.subtotal = item.unit_base_price * item.quantity;
     item.vat_amount = item.subtotal * item.vat_rate / 100;
     setNewItems(updated);
+  };
+
+  const addFreeItem = () => {
+    if (!freeItemName.trim()) {
+      toast({
+        title: "Error",
+        description: "Debe proporcionar un nombre para el ítem",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const price = parseFloat(freeItemPrice) || 0;
+    if (price <= 0) {
+      toast({
+        title: "Error",
+        description: "El precio debe ser mayor a 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const vatRate = 16;
+    const subtotal = price * freeItemQuantity;
+    const vatAmount = subtotal * vatRate / 100;
+    const totalAmount = ceilToTen(subtotal + vatAmount);
+
+    const newItem: NewItem = {
+      service_type_id: '', // Empty for free items
+      service_name: freeItemName.trim(),
+      quantity: freeItemQuantity,
+      unit_cost_price: price * 0.7, // Estimate cost at 70%
+      unit_base_price: price,
+      subtotal: subtotal,
+      vat_rate: vatRate,
+      vat_amount: vatAmount,
+      total_amount: totalAmount,
+      item_type: freeItemType,
+      profit_margin_rate: 30
+    };
+
+    setNewItems(prev => [...prev, newItem]);
+    setFreeItemName('');
+    setFreeItemDescription('');
+    setFreeItemPrice('');
+    setFreeItemQuantity(1);
+    setShowFreeItemForm(false);
+
+    toast({
+      title: "Ítem agregado",
+      description: `${freeItemName} agregado a la orden`
+    });
   };
   const renderCategoryButton = (mainCategory: string, itemType: string) => {
     const IconComponent = getMainCategoryIcon(mainCategory);
@@ -239,6 +313,18 @@ export function AddOrderItemsDialog({
   const renderMainCategoryView = () => {
     if (!selectedMainCategory) {
       return <div className="space-y-6">
+          {/* Free Item Button */}
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowFreeItemForm(true)}
+              className="gap-2 border-dashed border-2"
+            >
+              <PenLine className="h-4 w-4" />
+              Agregar Ítem Libre
+            </Button>
+          </div>
+
           <div>
             <h3 className="text-lg font-medium mb-4">Servicios</h3>
             <div className="grid grid-cols-2 gap-4">
@@ -374,7 +460,30 @@ export function AddOrderItemsDialog({
         throw modificationError;
       }
       for (const item of newItems) {
-        // Verificar si el item ya existe en la orden
+        // Free items (no service_type_id) always get inserted as new
+        if (!item.service_type_id) {
+          const freeItemTotal = ceilToTen(item.subtotal + item.vat_amount);
+          const { error: itemError } = await supabase.from('order_items').insert({
+            order_id: orderId,
+            service_type_id: null, // Free item, no service type
+            service_name: item.service_name,
+            quantity: item.quantity,
+            unit_cost_price: item.unit_cost_price,
+            unit_base_price: item.unit_base_price,
+            subtotal: item.subtotal,
+            vat_rate: item.vat_rate,
+            vat_amount: item.vat_amount,
+            total_amount: freeItemTotal,
+            item_type: item.item_type,
+            profit_margin_rate: item.profit_margin_rate,
+            status: 'pendiente' as const,
+            pricing_locked: true
+          });
+          if (itemError) throw itemError;
+          continue;
+        }
+
+        // Verificar si el item ya existe en la orden (only for items with service_type_id)
         const { data: existingItem, error: checkError } = await supabase
           .from('order_items')
           .select('*')
@@ -462,6 +571,89 @@ export function AddOrderItemsDialog({
             </CardContent>
           </Card>
 
+          {/* Free Item Form */}
+          {showFreeItemForm && (
+            <Card className="border-2 border-dashed border-primary">
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <PenLine className="h-5 w-5" />
+                    Agregar Ítem Libre
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => setShowFreeItemForm(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nombre del ítem *</Label>
+                    <Input 
+                      placeholder="Ej: Instalación especial, Producto personalizado..." 
+                      value={freeItemName} 
+                      onChange={e => setFreeItemName(e.target.value)} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Select value={freeItemType} onValueChange={(v: 'servicio' | 'articulo') => setFreeItemType(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="servicio">Servicio</SelectItem>
+                        <SelectItem value="articulo">Producto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Precio unitario (sin IVA) *</Label>
+                    <Input 
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00" 
+                      value={freeItemPrice} 
+                      onChange={e => setFreeItemPrice(e.target.value)} 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cantidad</Label>
+                    <Input 
+                      type="number"
+                      min="1"
+                      value={freeItemQuantity} 
+                      onChange={e => setFreeItemQuantity(parseInt(e.target.value) || 1)} 
+                    />
+                  </div>
+                </div>
+                {freeItemPrice && parseFloat(freeItemPrice) > 0 && (
+                  <div className="bg-muted p-3 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>${(parseFloat(freeItemPrice) * freeItemQuantity).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>IVA (16%):</span>
+                      <span>${(parseFloat(freeItemPrice) * freeItemQuantity * 0.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between font-medium pt-1 border-t mt-1">
+                      <span>Total:</span>
+                      <span>${ceilToTen(parseFloat(freeItemPrice) * freeItemQuantity * 1.16).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                )}
+                <Button onClick={addFreeItem} className="w-full gap-2">
+                  <Plus className="h-4 w-4" />
+                  Agregar Ítem Libre
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Selección de servicios/productos por categoría */}
           <Card>
             <CardHeader>
@@ -481,21 +673,27 @@ export function AddOrderItemsDialog({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {newItems.map((item, index) => <Card key={index} className="p-4">
+                {newItems.map((item, index) => <Card key={index} className={`p-4 ${!item.service_type_id ? 'border-dashed border-2 border-primary/50' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h4 className="font-medium">{item.service_name}</h4>
                           <Badge variant="outline">
                             {item.item_type === 'servicio' ? 'Servicio' : 'Producto'}
                           </Badge>
+                          {!item.service_type_id && (
+                            <Badge variant="secondary" className="bg-primary/10 text-primary">
+                              <PenLine className="h-3 w-3 mr-1" />
+                              Ítem Libre
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 mt-2">
                           <Label>Cantidad:</Label>
                           <Input type="number" min="1" value={item.quantity} onChange={e => updateItemQuantity(index, parseInt(e.target.value) || 1)} className="w-20" />
                           
                           <div className="font-medium">
-                            Total: ${calculateItemCorrectPrice(item).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                            Total: ${(!item.service_type_id ? ceilToTen(item.unit_base_price * item.quantity * 1.16) : calculateItemCorrectPrice(item)).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                           </div>
                         </div>
                       </div>
