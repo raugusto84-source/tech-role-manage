@@ -1,7 +1,6 @@
 import { Badge } from '@/components/ui/badge';
-import { Clock, User, DollarSign, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { calculateOrderPriority, getPriorityLabel, orderPriorityNumberToString, OrderPriority } from '@/utils/priorityCalculator';
+import { calculateOrderPriority, orderPriorityNumberToString, OrderPriority } from '@/utils/priorityCalculator';
 
 interface Order {
   id: string;
@@ -55,69 +54,31 @@ interface WeeklyOrderCardProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  en_espera: { 
-    label: 'En Espera', 
-    className: 'bg-slate-500 text-white border-slate-600' 
-  },
-  pendiente_aprobacion: { 
-    label: 'Pend. Aprob.', 
-    className: 'bg-yellow-500 text-white border-yellow-600' 
-  },
-  en_proceso: { 
-    label: 'En Proceso', 
-    className: 'bg-blue-500 text-white border-blue-600' 
-  },
-  pendiente_actualizacion: { 
-    label: 'Pend. Actualiz.', 
-    className: 'bg-orange-500 text-white border-orange-600' 
-  },
-  pendiente_entrega: { 
-    label: 'Pend. Entrega', 
-    className: 'bg-purple-500 text-white border-purple-600' 
-  },
-  finalizada: { 
-    label: 'Finalizada', 
-    className: 'bg-green-500 text-white border-green-600' 
-  },
-  cancelada: { 
-    label: 'Cancelada', 
-    className: 'bg-red-500 text-white border-red-600' 
-  },
-  rechazada: { 
-    label: 'Rechazada', 
-    className: 'bg-red-700 text-white border-red-800' 
-  },
+  en_espera: { label: 'ESP', className: 'bg-muted text-muted-foreground' },
+  pendiente_aprobacion: { label: 'APR', className: 'bg-warning text-warning-foreground' },
+  en_proceso: { label: 'PRO', className: 'bg-primary text-primary-foreground' },
+  pendiente_actualizacion: { label: 'ACT', className: 'bg-orange-500 text-white' },
+  pendiente_entrega: { label: 'ENT', className: 'bg-purple-500 text-white' },
+  finalizada: { label: 'FIN', className: 'bg-success text-success-foreground' },
+  cancelada: { label: 'CAN', className: 'bg-destructive text-destructive-foreground' },
+  rechazada: { label: 'REC', className: 'bg-destructive text-destructive-foreground' },
 };
 
-const PRIORITY_CONFIG: Record<OrderPriority, { className: string }> = {
-  baja: { className: 'bg-priority-baja text-priority-baja-foreground' },
-  media: { className: 'bg-priority-media text-priority-media-foreground' },
-  alta: { className: 'bg-priority-alta text-priority-alta-foreground' },
-  critica: { className: 'bg-priority-critica text-priority-critica-foreground animate-pulse' },
+const PRIORITY_INDICATOR: Record<OrderPriority, string> = {
+  baja: 'bg-priority-baja',
+  media: 'bg-priority-media',
+  alta: 'bg-priority-alta',
+  critica: 'bg-priority-critica animate-pulse',
 };
 
 export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardProps) {
-  // Calculate priority
   const calculatedPriority: OrderPriority = order.is_policy_order && order.order_priority != null
     ? orderPriorityNumberToString(order.order_priority)
     : calculateOrderPriority(order.created_at, order.estimated_delivery_date, order.delivery_date);
 
-  // Calculate total
-  const calculateTotal = (): number => {
-    if (order.special_price_enabled && typeof order.special_price === 'number') {
-      return order.special_price;
-    }
-    if (order.order_items && order.order_items.length > 0) {
-      return order.order_items.reduce((sum, item) => sum + (item.total_amount || 0), 0);
-    }
-    return order.estimated_cost || 0;
-  };
-
-  const total = calculateTotal();
   const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.en_espera;
-  const priorityConfig = PRIORITY_CONFIG[calculatedPriority];
+  const priorityClass = PRIORITY_INDICATOR[calculatedPriority];
 
-  // Border left color based on category
   const categoryBorderColor = {
     sistemas: 'border-l-blue-500',
     seguridad: 'border-l-red-500',
@@ -128,63 +89,37 @@ export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardPro
     <div
       onClick={onClick}
       className={cn(
-        "group relative bg-card rounded-lg border-2 border-l-4 p-3 cursor-pointer",
-        "transition-all duration-200 hover:shadow-lg hover:scale-[1.02]",
-        "hover:border-primary/50",
+        "group flex items-center gap-2 bg-card rounded border-l-2 px-2 py-1.5 cursor-pointer",
+        "transition-all duration-150 hover:bg-accent/50 hover:shadow-sm",
         categoryBorderColor[category]
       )}
     >
-      {/* Header Row */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="font-mono font-bold text-primary text-sm">
-            #{order.order_number}
-          </span>
-          {order.is_policy_order && (
-            <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
-              📋
-            </Badge>
-          )}
-          {order.is_development_order && (
-            <Badge variant="outline" className="text-xs bg-amber-100 text-amber-700 border-amber-300">
-              🏘️
-            </Badge>
-          )}
-        </div>
-        <Badge className={cn("text-xs font-semibold shrink-0", statusConfig.className)}>
-          {statusConfig.label}
-        </Badge>
-      </div>
+      {/* Priority indicator dot */}
+      <div className={cn("w-2 h-2 rounded-full shrink-0", priorityClass)} />
+      
+      {/* Order number */}
+      <span className="font-mono text-xs font-semibold text-primary shrink-0">
+        #{order.order_number}
+      </span>
 
-      {/* Client */}
-      <div className="flex items-center gap-1.5 text-sm mb-1.5">
-        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <span className="font-medium truncate">
-          {order.clients?.name || 'Sin cliente'}
-        </span>
-      </div>
+      {/* Type icons (compact) */}
+      {order.is_policy_order && <span className="text-xs shrink-0">📋</span>}
+      {order.is_development_order && <span className="text-xs shrink-0">🏘️</span>}
 
-      {/* Description */}
-      <div className="flex items-start gap-1.5 text-sm text-muted-foreground mb-2">
-        <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-        <span className="line-clamp-2 text-xs">
-          {order.failure_description || 'Sin descripción'}
-        </span>
-      </div>
+      {/* Client name */}
+      <span className="text-xs font-medium truncate min-w-0 flex-1">
+        {order.clients?.name || '—'}
+      </span>
 
-      {/* Footer Row */}
-      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/50">
-        {/* Priority */}
-        <Badge className={cn("text-xs font-bold", priorityConfig.className)}>
-          {getPriorityLabel(calculatedPriority)}
-        </Badge>
+      {/* Description (truncated) */}
+      <span className="text-xs text-muted-foreground truncate max-w-[120px] hidden sm:block">
+        {order.failure_description || ''}
+      </span>
 
-        {/* Total */}
-        <div className="flex items-center gap-1 text-sm font-mono font-semibold text-foreground">
-          <DollarSign className="h-3.5 w-3.5 text-success" />
-          {total.toLocaleString('es-MX', { minimumFractionDigits: 0 })}
-        </div>
-      </div>
+      {/* Status badge */}
+      <Badge className={cn("text-[10px] px-1.5 py-0 h-4 shrink-0", statusConfig.className)}>
+        {statusConfig.label}
+      </Badge>
     </div>
   );
 }
