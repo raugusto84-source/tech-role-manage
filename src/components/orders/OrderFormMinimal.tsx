@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useOrderMinimal, type Client, type Problem, type Solution } from '@/hooks/useOrderMinimal';
 import { useNavigate } from 'react-router-dom';
-
+import { UserCreateDialog } from '@/components/shared/UserCreateDialog';
+import { supabase } from '@/integrations/supabase/client';
 interface OrderFormMinimalProps {
   onClose?: () => void;
 }
@@ -41,7 +41,6 @@ export function OrderFormMinimal({ onClose }: OrderFormMinimalProps) {
   const [showNewClientDialog, setShowNewClientDialog] = useState(false);
   const [showDiagnostic, setShowDiagnostic] = useState(false);
   const [showPriceEdit, setShowPriceEdit] = useState(false);
-  const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', address: '' });
 
   // Filter clients by search term
   const filteredClients = clients.filter(client =>
@@ -58,16 +57,17 @@ export function OrderFormMinimal({ onClose }: OrderFormMinimalProps) {
       )
     : solutions;
 
-  const handleCreateClient = async () => {
-    if (!newClient.name.trim() || !newClient.address.trim()) return;
+  const handleClientCreated = async () => {
+    // Reload clients list by refetching
+    const { data } = await supabase
+      .from('clients')
+      .select('*')
+      .order('name');
     
-    const client = await createClient(newClient);
-    if (client) {
-      selectClient(client);
-      setShowNewClientDialog(false);
-      setNewClient({ name: '', email: '', phone: '', address: '' });
-      setSearchTerm(''); // Clear search to show new client
-    }
+    // Note: The hook doesn't expose a way to update clients, 
+    // so we close the dialog and rely on the user to search again
+    setShowNewClientDialog(false);
+    setSearchTerm(''); // Clear search to show new client
   };
 
   const handleDiagnosticAnswer = (questionId: string, value: boolean) => {
@@ -126,64 +126,22 @@ export function OrderFormMinimal({ onClose }: OrderFormMinimalProps) {
                   }}
                 />
               </div>
-              <Dialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Nuevo Cliente</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="name">Nombre *</Label>
-                      <Input
-                        id="name"
-                        value={newClient.name}
-                        onChange={(e) => setNewClient(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Nombre completo"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={newClient.email}
-                        onChange={(e) => setNewClient(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="email@ejemplo.com"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Teléfono</Label>
-                      <Input
-                        id="phone"
-                        value={newClient.phone}
-                        onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="555-1234"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="address">Dirección *</Label>
-                      <Input
-                        id="address"
-                        value={newClient.address}
-                        onChange={(e) => setNewClient(prev => ({ ...prev, address: e.target.value }))}
-                        placeholder="Calle, colonia, ciudad"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleCreateClient}
-                      disabled={!newClient.name.trim() || !newClient.address.trim() || isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? 'Guardando...' : 'Guardar'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => setShowNewClientDialog(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              
+              <UserCreateDialog
+                open={showNewClientDialog}
+                onOpenChange={setShowNewClientDialog}
+                onSuccess={handleClientCreated}
+                defaultRole="cliente"
+                showRoleSelector={false}
+                title="Crear Nuevo Cliente"
+              />
             </div>
 
             <div className="grid gap-2 max-h-64 overflow-y-auto">
