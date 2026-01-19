@@ -2,13 +2,14 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle, GripVertical } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle, GripVertical, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO, isToday, isBefore, startOfDay, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { WeeklyOrderCard } from './WeeklyOrderCard';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { supabase } from '@/integrations/supabase/client';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 
 interface Order {
@@ -121,6 +122,21 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [isDragging, setIsDragging] = useState(false);
+  const [showPendingApproval, setShowPendingApproval] = useState(false);
+
+  // Órdenes pendientes de aprobación (excluidas del calendario)
+  const pendingApprovalOrders = useMemo(() => {
+    return orders.filter(order => 
+      order.status === 'pendiente_aprobacion'
+    );
+  }, [orders]);
+
+  // Órdenes para mostrar en el calendario (excluyendo pendientes de aprobación)
+  const calendarOrders = useMemo(() => {
+    return orders.filter(order => 
+      order.status !== 'pendiente_aprobacion'
+    );
+  }, [orders]);
 
   const weekEnd = endOfWeek(currentWeekStart, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: currentWeekStart, end: weekEnd });
@@ -146,9 +162,9 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     return 'sistemas';
   };
 
-  // Filtrar órdenes de la semana actual
+  // Filtrar órdenes de la semana actual (solo las que NO están pendiente_aprobacion)
   const weekOrders = useMemo(() => {
-    return orders.filter(order => {
+    return calendarOrders.filter(order => {
       const deliveryDate = order.estimated_delivery_date || order.delivery_date;
       if (!deliveryDate) return false;
       
@@ -159,7 +175,7 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
         return false;
       }
     });
-  }, [orders, currentWeekStart, weekEnd]);
+  }, [calendarOrders, currentWeekStart, weekEnd]);
 
   // Agrupar por categoría y día
   const groupedOrders = useMemo(() => {
@@ -210,14 +226,14 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     ).length;
   }, [weekOrders]);
 
-  // Órdenes atrasadas
+  // Órdenes atrasadas (excluye pendientes de aprobación)
   const overdueOrders = useMemo(() => {
     if (!isCurrentWeek) return [];
     
     const today = startOfDay(new Date());
     const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     
-    return orders.filter(order => {
+    return calendarOrders.filter(order => {
       if (order.status === 'finalizada' || order.status === 'cancelada' || order.status === 'rechazada') {
         return false;
       }
@@ -384,6 +400,60 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
             </div>
           </CardContent>
         </Card>
+
+        {/* Pending Approval Section */}
+        {pendingApprovalOrders.length > 0 && (
+          <Collapsible open={showPendingApproval} onOpenChange={setShowPendingApproval}>
+            <Card className="border-2 border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20">
+              <CollapsibleTrigger asChild>
+                <CardContent className="py-3 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                        <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-amber-800 dark:text-amber-200">
+                          Órdenes Pendientes de Aprobación
+                        </h3>
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          {pendingApprovalOrders.length} {pendingApprovalOrders.length === 1 ? 'orden' : 'órdenes'} sin programar
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-amber-500 text-white font-bold text-lg px-3">
+                        {pendingApprovalOrders.length}
+                      </Badge>
+                      <Button variant="ghost" size="sm" className="text-amber-700 dark:text-amber-300">
+                        {showPendingApproval ? (
+                          <ChevronUp className="h-5 w-5" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent>
+                <div className="px-4 pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {pendingApprovalOrders.map(order => (
+                      <WeeklyOrderCard
+                        key={order.id}
+                        order={order}
+                        onClick={() => onSelectOrder(order)}
+                        category={getOrderCategory(order)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         {/* Three Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
