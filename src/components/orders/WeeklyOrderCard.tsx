@@ -89,37 +89,37 @@ export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardPro
     <div
       onClick={onClick}
       className={cn(
-        "group flex items-center gap-2 bg-card rounded border-l-2 px-2 py-1.5 cursor-pointer",
+        "group bg-card rounded border-l-3 px-2.5 py-2 cursor-pointer",
         "transition-all duration-150 hover:bg-accent/50 hover:shadow-sm",
         categoryBorderColor[category]
       )}
     >
-      {/* Priority indicator dot */}
-      <div className={cn("w-2 h-2 rounded-full shrink-0", priorityClass)} />
-      
-      {/* Order number */}
-      <span className="font-mono text-xs font-semibold text-primary shrink-0">
-        #{order.order_number}
-      </span>
+      {/* Row 1: Icons/badges + Status */}
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-1.5">
+          <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", priorityClass)} />
+          <Badge className={cn("text-[10px] px-1.5 py-0 h-4", statusConfig.className)}>
+            {statusConfig.label}
+          </Badge>
+          {order.is_policy_order && <span className="text-xs">📋</span>}
+          {order.is_development_order && <span className="text-xs">🏘️</span>}
+        </div>
+      </div>
 
-      {/* Type icons (compact) */}
-      {order.is_policy_order && <span className="text-xs shrink-0">📋</span>}
-      {order.is_development_order && <span className="text-xs shrink-0">🏘️</span>}
+      {/* Row 2: Client + Order number */}
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <span className="text-sm font-medium truncate flex-1">
+          {order.clients?.name || '—'}
+        </span>
+        <span className="font-mono text-xs text-muted-foreground shrink-0">
+          #{order.order_number}
+        </span>
+      </div>
 
-      {/* Client name */}
-      <span className="text-xs font-medium truncate min-w-0 flex-1">
-        {order.clients?.name || '—'}
-      </span>
-
-      {/* Description (truncated) */}
-      <span className="text-xs text-muted-foreground truncate max-w-[120px] hidden sm:block">
-        {order.failure_description || ''}
-      </span>
-
-      {/* Status badge */}
-      <Badge className={cn("text-[10px] px-1.5 py-0 h-4 shrink-0", statusConfig.className)}>
-        {statusConfig.label}
-      </Badge>
+      {/* Row 3: Description */}
+      <p className="text-xs text-muted-foreground truncate">
+        {order.failure_description || 'Sin descripción'}
+      </p>
     </div>
   );
 }
