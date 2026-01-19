@@ -11,6 +11,16 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { supabase } from '@/integrations/supabase/client';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Order {
   id: string;
@@ -123,6 +133,14 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
   );
   const [isDragging, setIsDragging] = useState(false);
   const [showPendingApproval, setShowPendingApproval] = useState(false);
+  
+  // Estado para diálogo de confirmación de reprogramación
+  const [rescheduleDialog, setRescheduleDialog] = useState<{
+    open: boolean;
+    order: Order | null;
+    newDate: Date | null;
+    destCategory: CategoryType | null;
+  }>({ open: false, order: null, newDate: null, destCategory: null });
 
   // Órdenes pendientes de aprobación (excluidas del calendario)
   const pendingApprovalOrders = useMemo(() => {
@@ -265,8 +283,40 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     return result;
   }, [overdueOrders]);
 
-  // Handle drag end
-  const handleDragEnd = async (result: DropResult) => {
+  // Total orders summary (all active orders)
+  const totalOrdersSummary = useMemo(() => {
+    const activeOrders = orders.filter(o => 
+      o.status !== 'finalizada' && o.status !== 'cancelada' && o.status !== 'rechazada'
+    );
+    
+    const sistemas = activeOrders.filter(o => getOrderCategory(o) === 'sistemas').length;
+    const seguridad = activeOrders.filter(o => getOrderCategory(o) === 'seguridad').length;
+    const fraccionamientos = activeOrders.filter(o => getOrderCategory(o) === 'fraccionamientos').length;
+    
+    // Count overdue
+    const today = startOfDay(new Date());
+    const overdue = activeOrders.filter(order => {
+      const deliveryDate = order.estimated_delivery_date || order.delivery_date;
+      if (!deliveryDate) return false;
+      try {
+        const orderDate = parseISO(deliveryDate);
+        return isBefore(orderDate, today) && order.status !== 'pendiente_aprobacion';
+      } catch {
+        return false;
+      }
+    }).length;
+    
+    return {
+      sistemas,
+      seguridad,
+      fraccionamientos,
+      overdue,
+      total: sistemas + seguridad + fraccionamientos
+    };
+  }, [orders]);
+
+  // Handle drag end - show confirmation dialog
+  const handleDragEnd = (result: DropResult) => {
     setIsDragging(false);
     
     if (!result.destination) return;
@@ -298,7 +348,22 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
 
     // Create new delivery date with hour
     const newDeliveryDate = setMinutes(setHours(parseISO(destDayKey), destHour), 0);
-    const newDeliveryDateStr = newDeliveryDate.toISOString();
+    
+    // Show confirmation dialog instead of directly saving
+    setRescheduleDialog({
+      open: true,
+      order,
+      newDate: newDeliveryDate,
+      destCategory
+    });
+  };
+
+  // Confirm reschedule
+  const confirmReschedule = async () => {
+    if (!rescheduleDialog.order || !rescheduleDialog.newDate) return;
+    
+    const { order, newDate } = rescheduleDialog;
+    const newDeliveryDateStr = newDate.toISOString();
 
     try {
       const { error } = await supabase
@@ -313,7 +378,7 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
 
       toast({
         title: "Orden reprogramada",
-        description: `Orden #${order.order_number} movida a ${format(newDeliveryDate, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}`,
+        description: `Orden #${order.order_number} movida a ${format(newDate, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}`,
       });
 
       onOrdersChange?.();
@@ -324,7 +389,13 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
         description: "No se pudo reprogramar la orden",
         variant: "destructive"
       });
+    } finally {
+      setRescheduleDialog({ open: false, order: null, newDate: null, destCategory: null });
     }
+  };
+
+  const cancelReschedule = () => {
+    setRescheduleDialog({ open: false, order: null, newDate: null, destCategory: null });
   };
 
   const handleDragStart = () => {
@@ -332,377 +403,426 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
   };
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
-      <div className="space-y-4">
-        {/* Pending Approval Section - Above Week Navigation */}
-        {pendingApprovalOrders.length > 0 && (
-          <Collapsible open={showPendingApproval} onOpenChange={setShowPendingApproval}>
-            <Card className="border-2 border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20">
-              <CollapsibleTrigger asChild>
-                <CardContent className="py-3 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
-                        <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-amber-800 dark:text-amber-200">
-                          Órdenes Pendientes de Aprobación
-                        </h3>
-                        <p className="text-sm text-amber-600 dark:text-amber-400">
-                          {pendingApprovalOrders.length} {pendingApprovalOrders.length === 1 ? 'orden' : 'órdenes'} sin programar
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-amber-500 text-white font-bold text-lg px-3">
-                        {pendingApprovalOrders.length}
-                      </Badge>
-                      <Button variant="ghost" size="sm" className="text-amber-700 dark:text-amber-300">
-                        {showPendingApproval ? (
-                          <ChevronUp className="h-5 w-5" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </CollapsibleTrigger>
-              
-              <CollapsibleContent>
-                <div className="px-4 pb-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {pendingApprovalOrders.map(order => (
-                      <WeeklyOrderCard
-                        key={order.id}
-                        order={order}
-                        onClick={() => onSelectOrder(order)}
-                        category={getOrderCategory(order)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        )}
+    <>
+      {/* Reschedule Confirmation Dialog */}
+      <AlertDialog open={rescheduleDialog.open} onOpenChange={(open) => !open && cancelReschedule()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Reprogramar orden?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {rescheduleDialog.order && rescheduleDialog.newDate && (
+                <>
+                  Mover orden <strong>#{rescheduleDialog.order.order_number}</strong> a{' '}
+                  <strong>{format(rescheduleDialog.newDate, "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}</strong>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelReschedule}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReschedule}>Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        {/* Week Navigation Header */}
-        <Card className="border-2 border-primary/20 shadow-lg">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={goToPreviousWeek}
-                  className="h-10 w-10"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={goToNextWeek}
-                  className="h-10 w-10"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
-              </div>
-
-              <div className="flex-1 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-bold">
-                    {format(currentWeekStart, "d 'de' MMMM", { locale: es })} — {format(weekEnd, "d 'de' MMMM, yyyy", { locale: es })}
-                  </h2>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {weekOrders.length} órdenes esta semana
-                  {isPastWeek && activeOrdersCount > 0 && (
-                    <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
-                      ({activeOrdersCount} pendientes)
-                    </span>
-                  )}
-                </p>
-                {isPastWeek && (
-                  <Badge variant="outline" className="mt-1 border-amber-500 text-amber-600 dark:text-amber-400">
-                    Semana Anterior
-                  </Badge>
-                )}
-                {isDragging && (
-                  <Badge className="mt-1 ml-2 bg-primary animate-pulse">
-                    Arrastrando...
-                  </Badge>
-                )}
-              </div>
-
-              <Button
-                variant={isCurrentWeek ? "secondary" : "default"}
-                onClick={goToCurrentWeek}
-                disabled={isCurrentWeek}
-                className="gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Semana Actual
-                {!isCurrentWeek && overdueOrders.length > 0 && (
-                  <Badge className="ml-1 bg-red-500 text-white">{overdueOrders.length}</Badge>
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Three Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {(['sistemas', 'seguridad', 'fraccionamientos'] as CategoryType[]).map(category => {
-            const config = CATEGORY_CONFIG[category];
-            
-            return (
-              <Card 
-                key={category} 
-                className={cn(
-                  "overflow-hidden border-2",
-                  config.borderColor,
-                  "shadow-lg"
-                )}
-              >
-                {/* Category Header */}
-                <div className={cn(
-                  "bg-gradient-to-r p-4 text-white",
-                  config.gradient
-                )}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
-                        {config.icon}
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-lg tracking-wide">{config.label}</h3>
-                        <p className="text-white/80 text-sm">
-                          {categoryCounts[category]} órdenes
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="bg-white/20 text-white border-0 text-lg font-bold px-3 py-1">
-                      {categoryCounts[category]}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Days List */}
-                <CardContent className={cn("p-0", config.bgLight)}>
-                  {/* Overdue Orders Section */}
-                  {isCurrentWeek && overdueByCategory[category].length > 0 && (
-                    <Droppable droppableId={`${category}-overdue`}>
-                      {(provided, snapshot) => (
-                        <div 
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                          className={cn(
-                            "p-3 border-b-2 border-red-300 dark:border-red-800",
-                            snapshot.isDraggingOver 
-                              ? "bg-red-200 dark:bg-red-900/70" 
-                              : "bg-red-100 dark:bg-red-950/50"
-                          )}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                            <span className="font-bold text-red-700 dark:text-red-300">
-                              ATRASADAS
-                            </span>
-                            <Badge className="bg-red-600 text-white">
-                              {overdueByCategory[category].length}
-                            </Badge>
-                          </div>
-                          <div className="space-y-2">
-                            {overdueByCategory[category].map((order, index) => (
-                              <Draggable key={order.id} draggableId={order.id} index={index}>
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    className={cn(
-                                      "relative",
-                                      snapshot.isDragging && "z-50 rotate-2 scale-105"
-                                    )}
-                                  >
-                                    <div 
-                                      {...provided.dragHandleProps}
-                                      className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 opacity-50 hover:opacity-100 cursor-grab active:cursor-grabbing z-10"
-                                    >
-                                      <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                    <WeeklyOrderCard
-                                      order={order}
-                                      onClick={() => !snapshot.isDragging && onSelectOrder(order)}
-                                      category={category}
-                                    />
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                          </div>
-                          {provided.placeholder}
+      <DragDropContext onDragEnd={handleDragEnd} onDragStart={handleDragStart}>
+        <div className="space-y-4">
+          {/* Pending Approval Section - Above Week Navigation */}
+          {pendingApprovalOrders.length > 0 && (
+            <Collapsible open={showPendingApproval} onOpenChange={setShowPendingApproval}>
+              <Card className="border-2 border-amber-400 dark:border-amber-600 bg-amber-50/50 dark:bg-amber-950/20">
+                <CollapsibleTrigger asChild>
+                  <CardContent className="py-3 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/30 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg">
+                          <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                         </div>
-                      )}
-                    </Droppable>
-                  )}
-                  
-                  <div className="divide-y divide-border/50">
-                    {weekDays.map(day => {
-                      const dayKey = format(day, 'yyyy-MM-dd');
-                      const dayOrders = groupedOrders[category][dayKey] || [];
-                      const dayIsToday = isToday(day);
-                      
-                      return (
-                        <div 
-                          key={dayKey}
-                          className={cn(
-                            "transition-colors",
-                            dayIsToday && "bg-primary/5 ring-2 ring-inset ring-primary/20"
+                        <div>
+                          <h3 className="font-semibold text-amber-800 dark:text-amber-200">
+                            Órdenes Pendientes de Aprobación
+                          </h3>
+                          <p className="text-sm text-amber-600 dark:text-amber-400">
+                            {pendingApprovalOrders.length} {pendingApprovalOrders.length === 1 ? 'orden' : 'órdenes'} sin programar
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge className="bg-amber-500 text-white font-bold text-lg px-3">
+                          {pendingApprovalOrders.length}
+                        </Badge>
+                        <Button variant="ghost" size="sm" className="text-amber-700 dark:text-amber-300">
+                          {showPendingApproval ? (
+                            <ChevronUp className="h-5 w-5" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5" />
                           )}
-                        >
-                          {/* Day Header */}
-                          <div className="flex items-center justify-between p-3 pb-1">
-                            <div className="flex items-center gap-2">
-                              <span className={cn(
-                                "text-2xl font-bold",
-                                dayIsToday ? "text-primary" : "text-foreground"
-                              )}>
-                                {format(day, 'd')}
-                              </span>
-                              <div>
-                                <span className={cn(
-                                  "text-sm font-medium capitalize",
-                                  dayIsToday ? "text-primary" : "text-muted-foreground"
-                                )}>
-                                  {format(day, 'EEEE', { locale: es })}
-                                </span>
-                                {dayIsToday && (
-                                  <Badge className="ml-2 bg-primary text-primary-foreground text-xs">
-                                    HOY
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                            {dayOrders.length > 0 && (
-                              <Badge variant="outline" className={cn(config.textColor, "font-semibold")}>
-                                {dayOrders.length}
-                              </Badge>
-                            )}
-                          </div>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <div className="px-4 pb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {pendingApprovalOrders.map(order => (
+                        <WeeklyOrderCard
+                          key={order.id}
+                          order={order}
+                          onClick={() => onSelectOrder(order)}
+                          category={getOrderCategory(order)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )}
 
-                          {/* Hour Slots */}
-                          <div className="px-2 pb-2">
-                            {WORK_HOURS.map((hour, hourIndex) => {
-                              // For the first slot (8 AM), also include orders with no specific hour set
-                              // (midnight, or hours outside work hours)
-                              const hourOrders = dayOrders.filter(order => {
-                                const deliveryDate = order.estimated_delivery_date || order.delivery_date;
-                                if (!deliveryDate) return false;
-                                try {
-                                  const orderDate = parseISO(deliveryDate);
-                                  const orderHour = orderDate.getHours();
-                                  
-                                  // Exact hour match
-                                  if (orderHour === hour) return true;
-                                  
-                                  // For first slot, include orders with hours outside work range
-                                  if (hourIndex === 0 && (orderHour < 8 || orderHour >= 16)) return true;
-                                  
-                                  return false;
-                                } catch {
-                                  // If parsing fails but order is in this day, show in first slot
-                                  return hourIndex === 0;
-                                }
-                              });
-                              
-                              const droppableId = `${category}-${dayKey}-${hour}`;
-                              
-                              return (
-                                <Droppable key={droppableId} droppableId={droppableId}>
+          {/* Orders Summary - Compact */}
+          <div className="flex flex-wrap items-center justify-center gap-2 py-2 px-3 bg-muted/50 rounded-lg border">
+            <span className="text-xs font-medium text-muted-foreground mr-1">Órdenes activas:</span>
+            <Badge variant="outline" className="text-xs gap-1 border-blue-500 text-blue-700 dark:text-blue-300">
+              <Monitor className="h-3 w-3" />
+              {totalOrdersSummary.sistemas}
+            </Badge>
+            <Badge variant="outline" className="text-xs gap-1 border-red-500 text-red-700 dark:text-red-300">
+              <Shield className="h-3 w-3" />
+              {totalOrdersSummary.seguridad}
+            </Badge>
+            <Badge variant="outline" className="text-xs gap-1 border-amber-500 text-amber-700 dark:text-amber-300">
+              <Building2 className="h-3 w-3" />
+              {totalOrdersSummary.fraccionamientos}
+            </Badge>
+            {totalOrdersSummary.overdue > 0 && (
+              <Badge variant="destructive" className="text-xs gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                {totalOrdersSummary.overdue} atrasadas
+              </Badge>
+            )}
+            <span className="text-xs font-bold text-foreground ml-1">
+              Total: {totalOrdersSummary.total}
+            </span>
+          </div>
+
+          {/* Week Navigation Header */}
+          <Card className="border-2 border-primary/20 shadow-lg">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToPreviousWeek}
+                    className="h-10 w-10"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={goToNextWeek}
+                    className="h-10 w-10"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <div className="flex-1 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-bold">
+                      {format(currentWeekStart, "d 'de' MMMM", { locale: es })} — {format(weekEnd, "d 'de' MMMM, yyyy", { locale: es })}
+                    </h2>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {weekOrders.length} órdenes esta semana
+                    {isPastWeek && activeOrdersCount > 0 && (
+                      <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
+                        ({activeOrdersCount} pendientes)
+                      </span>
+                    )}
+                  </p>
+                  {isPastWeek && (
+                    <Badge variant="outline" className="mt-1 border-amber-500 text-amber-600 dark:text-amber-400">
+                      Semana Anterior
+                    </Badge>
+                  )}
+                  {isDragging && (
+                    <Badge className="mt-1 ml-2 bg-primary animate-pulse">
+                      Arrastrando...
+                    </Badge>
+                  )}
+                </div>
+
+                <Button
+                  variant={isCurrentWeek ? "secondary" : "default"}
+                  onClick={goToCurrentWeek}
+                  disabled={isCurrentWeek}
+                  className="gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Semana Actual
+                  {!isCurrentWeek && overdueOrders.length > 0 && (
+                    <Badge className="ml-1 bg-red-500 text-white">{overdueOrders.length}</Badge>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Three Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {(['sistemas', 'seguridad', 'fraccionamientos'] as CategoryType[]).map(category => {
+              const config = CATEGORY_CONFIG[category];
+              
+              return (
+                <Card 
+                  key={category} 
+                  className={cn(
+                    "overflow-hidden border-2",
+                    config.borderColor,
+                    "shadow-lg"
+                  )}
+                >
+                  {/* Category Header */}
+                  <div className={cn(
+                    "bg-gradient-to-r p-4 text-white",
+                    config.gradient
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg backdrop-blur-sm">
+                          {config.icon}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg tracking-wide">{config.label}</h3>
+                          <p className="text-white/80 text-sm">
+                            {categoryCounts[category]} órdenes
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="bg-white/20 text-white border-0 text-lg font-bold px-3 py-1">
+                        {categoryCounts[category]}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Days List */}
+                  <CardContent className={cn("p-0", config.bgLight)}>
+                    {/* Overdue Orders Section */}
+                    {isCurrentWeek && overdueByCategory[category].length > 0 && (
+                      <Droppable droppableId={`${category}-overdue`}>
+                        {(provided, snapshot) => (
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={cn(
+                              "p-3 border-b-2 border-red-300 dark:border-red-800",
+                              snapshot.isDraggingOver 
+                                ? "bg-red-200 dark:bg-red-900/70" 
+                                : "bg-red-100 dark:bg-red-950/50"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                              <span className="font-bold text-red-700 dark:text-red-300">
+                                ATRASADAS
+                              </span>
+                              <Badge className="bg-red-600 text-white">
+                                {overdueByCategory[category].length}
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              {overdueByCategory[category].map((order, index) => (
+                                <Draggable key={order.id} draggableId={order.id} index={index}>
                                   {(provided, snapshot) => (
                                     <div
                                       ref={provided.innerRef}
-                                      {...provided.droppableProps}
+                                      {...provided.draggableProps}
                                       className={cn(
-                                        "min-h-[40px] py-1 px-2 rounded-md mb-1 transition-all",
-                                        "border border-transparent",
-                                        snapshot.isDraggingOver 
-                                          ? "bg-primary/20 border-primary border-dashed scale-[1.02]" 
-                                          : "hover:bg-muted/50",
-                                        hourOrders.length === 0 && !isDragging && "opacity-60"
+                                        "relative",
+                                        snapshot.isDragging && "z-50 rotate-2 scale-105"
                                       )}
                                     >
-                                      {/* Hora centrada y más visible */}
-                                      <div className={cn(
-                                        "text-sm font-bold font-mono mb-2 text-center py-1 rounded-md",
-                                        snapshot.isDraggingOver 
-                                          ? "text-primary-foreground bg-primary" 
-                                          : "text-foreground bg-muted/80 dark:bg-muted/40"
-                                      )}>
-                                        {hour.toString().padStart(2, '0')}:00
+                                      <div 
+                                        {...provided.dragHandleProps}
+                                        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 opacity-50 hover:opacity-100 cursor-grab active:cursor-grabbing z-10"
+                                      >
+                                        <GripVertical className="h-4 w-4 text-muted-foreground" />
                                       </div>
-                                      
-                                      {/* Órdenes debajo */}
-                                      <div className="space-y-1">
-                                        {hourOrders.map((order, index) => (
-                                          <Draggable 
-                                            key={order.id} 
-                                            draggableId={order.id} 
-                                            index={index}
-                                          >
-                                            {(provided, snapshot) => (
-                                              <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                className={cn(
-                                                  "relative",
-                                                  snapshot.isDragging && "z-50 rotate-1 scale-105 shadow-2xl"
-                                                )}
-                                              >
-                                                <div 
-                                                  {...provided.dragHandleProps}
-                                                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing z-10 p-1 bg-card rounded"
-                                                >
-                                                  <GripVertical className="h-4 w-4" />
-                                                </div>
-                                                <WeeklyOrderCard
-                                                  order={order}
-                                                  onClick={() => !snapshot.isDragging && onSelectOrder(order)}
-                                                  category={category}
-                                                />
-                                              </div>
-                                            )}
-                                          </Draggable>
-                                        ))}
-                                        
-                                        {hourOrders.length === 0 && isDragging && (
-                                          <div className="h-6 flex items-center justify-center text-xs text-muted-foreground border border-dashed border-muted-foreground/30 rounded">
-                                            Soltar aquí
-                                          </div>
-                                        )}
-                                      </div>
-                                      {provided.placeholder}
+                                      <WeeklyOrderCard
+                                        order={order}
+                                        onClick={() => !snapshot.isDragging && onSelectOrder(order)}
+                                        category={category}
+                                      />
                                     </div>
                                   )}
-                                </Droppable>
-                              );
-                            })}
+                                </Draggable>
+                              ))}
+                            </div>
+                            {provided.placeholder}
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                        )}
+                      </Droppable>
+                    )}
+                    
+                    <div className="divide-y divide-border/50">
+                      {weekDays.map(day => {
+                        const dayKey = format(day, 'yyyy-MM-dd');
+                        const dayOrders = groupedOrders[category][dayKey] || [];
+                        const dayIsToday = isToday(day);
+                        
+                        return (
+                          <div 
+                            key={dayKey}
+                            className={cn(
+                              "transition-colors",
+                              dayIsToday && "bg-primary/5 ring-2 ring-inset ring-primary/20"
+                            )}
+                          >
+                            {/* Day Header */}
+                            <div className="flex items-center justify-between p-3 pb-1">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "text-2xl font-bold",
+                                  dayIsToday ? "text-primary" : "text-foreground"
+                                )}>
+                                  {format(day, 'd')}
+                                </span>
+                                <div>
+                                  <span className={cn(
+                                    "text-sm font-medium capitalize",
+                                    dayIsToday ? "text-primary" : "text-muted-foreground"
+                                  )}>
+                                    {format(day, 'EEEE', { locale: es })}
+                                  </span>
+                                  {dayIsToday && (
+                                    <Badge className="ml-2 bg-primary text-primary-foreground text-xs">
+                                      HOY
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              {dayOrders.length > 0 && (
+                                <Badge variant="outline" className={cn(config.textColor, "font-semibold")}>
+                                  {dayOrders.length}
+                                </Badge>
+                              )}
+                            </div>
+
+                            {/* Hour Slots */}
+                            <div className="px-2 pb-2">
+                              {WORK_HOURS.map((hour, hourIndex) => {
+                                // For the first slot (8 AM), also include orders with no specific hour set
+                                // (midnight, or hours outside work hours)
+                                const hourOrders = dayOrders.filter(order => {
+                                  const deliveryDate = order.estimated_delivery_date || order.delivery_date;
+                                  if (!deliveryDate) return false;
+                                  try {
+                                    const orderDate = parseISO(deliveryDate);
+                                    const orderHour = orderDate.getHours();
+                                    
+                                    // Exact hour match
+                                    if (orderHour === hour) return true;
+                                    
+                                    // For first slot, include orders with hours outside work range
+                                    if (hourIndex === 0 && (orderHour < 8 || orderHour >= 16)) return true;
+                                    
+                                    return false;
+                                  } catch {
+                                    // If parsing fails but order is in this day, show in first slot
+                                    return hourIndex === 0;
+                                  }
+                                });
+                                
+                                const droppableId = `${category}-${dayKey}-${hour}`;
+                                
+                                return (
+                                  <Droppable key={droppableId} droppableId={droppableId}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                        className={cn(
+                                          "min-h-[40px] py-1 px-2 rounded-md mb-1 transition-all",
+                                          "border border-transparent",
+                                          snapshot.isDraggingOver 
+                                            ? "bg-primary/20 border-primary border-dashed scale-[1.02]" 
+                                            : "hover:bg-muted/50",
+                                          hourOrders.length === 0 && !isDragging && "opacity-60"
+                                        )}
+                                      >
+                                        {/* Hora centrada y más visible */}
+                                        <div className={cn(
+                                          "text-sm font-bold font-mono mb-2 text-center py-1 rounded-md",
+                                          snapshot.isDraggingOver 
+                                            ? "text-primary-foreground bg-primary" 
+                                            : "text-foreground bg-muted/80 dark:bg-muted/40"
+                                        )}>
+                                          {hour.toString().padStart(2, '0')}:00
+                                        </div>
+                                        
+                                        {/* Órdenes debajo */}
+                                        <div className="space-y-1">
+                                          {hourOrders.map((order, index) => (
+                                            <Draggable 
+                                              key={order.id} 
+                                              draggableId={order.id} 
+                                              index={index}
+                                            >
+                                              {(provided, snapshot) => (
+                                                <div
+                                                  ref={provided.innerRef}
+                                                  {...provided.draggableProps}
+                                                  className={cn(
+                                                    "relative",
+                                                    snapshot.isDragging && "z-50 rotate-1 scale-105 shadow-2xl"
+                                                  )}
+                                                >
+                                                  <div 
+                                                    {...provided.dragHandleProps}
+                                                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 opacity-40 hover:opacity-100 cursor-grab active:cursor-grabbing z-10 p-1 bg-card rounded"
+                                                  >
+                                                    <GripVertical className="h-4 w-4" />
+                                                  </div>
+                                                  <WeeklyOrderCard
+                                                    order={order}
+                                                    onClick={() => !snapshot.isDragging && onSelectOrder(order)}
+                                                    category={category}
+                                                  />
+                                                </div>
+                                              )}
+                                            </Draggable>
+                                          ))}
+                                          
+                                          {hourOrders.length === 0 && isDragging && (
+                                            <div className="h-6 flex items-center justify-center text-xs text-muted-foreground border border-dashed border-muted-foreground/30 rounded">
+                                              Soltar aquí
+                                            </div>
+                                          )}
+                                        </div>
+                                        {provided.placeholder}
+                                      </div>
+                                    )}
+                                  </Droppable>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </DragDropContext>
+      </DragDropContext>
+    </>
   );
 }
