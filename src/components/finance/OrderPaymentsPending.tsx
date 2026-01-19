@@ -451,6 +451,7 @@ export function OrderPaymentsPending() {
         <DeletePaymentDialog
           paymentId={paymentToDelete.id}
           paymentAmount={paymentToDelete.amount}
+          paymentType="order"
           orderNumber={paymentToDelete.order_number}
           isOpen={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
