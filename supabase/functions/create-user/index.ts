@@ -21,10 +21,10 @@ const createUserSchema = z.object({
   role: z.enum(['administrador', 'vendedor', 'tecnico', 'cliente', 'supervisor', 'visor_tecnico', 'jcf'], {
     errorMap: () => ({ message: 'Invalid role' })
   }),
-  phone: z.string().optional().transform(val => val === '' ? undefined : val)
+  phone: z.string().optional().transform((val: string | undefined) => (val === '' ? undefined : val))
 })
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -72,34 +72,37 @@ serve(async (req) => {
       throw new Error('User not authenticated')
     }
 
-    // Check if user is admin
-    const { data: profile, error: profileError } = await supabaseClient
-      .from('profiles')
+    // Check if user is admin via user_roles (avoid relying on profiles.role)
+    const { data: roles, error: rolesError } = await supabaseClient
+      .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .single()
 
-    if (profileError || !profile || profile.role !== 'administrador') {
-      throw new Error('User not authorized to create users')
+    if (rolesError) {
+      throw new Error(`Error verifying roles: ${rolesError.message}`)
     }
 
-  // Get and validate request body
+    const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === 'administrador')
+    if (!isAdmin) {
+      throw new Error('User not authorized to create users')
+    }
   const body = await req.json()
   
   let validatedData
   try {
     validatedData = createUserSchema.parse(body)
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
+      const zodError = error as z.ZodError
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: 'Validation failed',
-          details: error.errors.map(e => ({ field: e.path.join('.'), message: e.message }))
+          details: zodError.errors.map((e: z.ZodIssue) => ({ field: e.path.join('.'), message: e.message })),
         }),
-        { 
+        {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
+          status: 400,
         }
       )
     }
@@ -125,6 +128,40 @@ serve(async (req) => {
       throw createError
     }
 
+    const newUserId = newUser.user?.id
+    if (!newUserId) {
+      throw new Error('User created but missing id')
+    }
+
+    // Create/ensure profile row (used by the app UI)
+    const { error: profileUpsertError } = await supabaseAdmin
+      .from('profiles')
+      .upsert(
+        {
+          user_id: newUserId,
+          email,
+          username,
+          full_name,
+          phone: phone || null,
+          role,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' }
+      )
+
+    if (profileUpsertError) {
+      throw new Error(`Error creating profile: ${profileUpsertError.message}`)
+    }
+
+    // Create/ensure user_roles row (required for has_role() RLS policies)
+    const { error: roleUpsertError } = await supabaseAdmin
+      .from('user_roles')
+      .upsert({ user_id: newUserId, role }, { onConflict: 'user_id,role' })
+
+    if (roleUpsertError) {
+      throw new Error(`Error assigning role: ${roleUpsertError.message}`)
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -140,7 +177,7 @@ serve(async (req) => {
       }
     )
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error creating user:', error)
     return new Response(
       JSON.stringify({ 
