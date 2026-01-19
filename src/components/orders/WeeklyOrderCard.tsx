@@ -94,17 +94,17 @@ export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardPro
         categoryBorderColor[category]
       )}
     >
-      {/* Row 1: Order # + Icons + Status */}
-      <div className="flex items-center gap-1.5 mb-1">
+      {/* Row 1: Order # + Status + Icons */}
+      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
         <div className={cn("w-2 h-2 rounded-full shrink-0", priorityClass)} />
         <span className="font-mono text-xs font-semibold text-primary">
           #{order.order_number}
         </span>
-        {order.is_policy_order && <span className="text-xs">📋</span>}
-        {order.is_development_order && <span className="text-xs">🏘️</span>}
-        <Badge className={cn("text-[10px] px-1.5 py-0 h-4 ml-auto", statusConfig.className)}>
+        <Badge className={cn("text-[10px] px-1.5 py-0 h-4", statusConfig.className)}>
           {statusConfig.label}
         </Badge>
+        {order.is_policy_order && <span className="text-xs">📋</span>}
+        {order.is_development_order && <span className="text-xs">🏘️</span>}
       </div>
 
       {/* Row 2: Client name */}
