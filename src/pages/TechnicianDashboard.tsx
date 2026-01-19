@@ -30,7 +30,8 @@ import { OrderNoteForm } from '@/components/orders/OrderNoteForm';
 import { PersonalTimeClockPanel } from '@/components/timetracking/PersonalTimeClockPanel';
 import { PasswordChangeForm } from '@/components/auth/PasswordChangeForm';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, RefreshCw, CheckCircle, ArrowLeft, Clock, Settings } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle, ArrowLeft, Clock, Settings, ClipboardList, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 // Interfaz para órdenes del técnico con nuevos campos
 interface TechnicianOrder {
@@ -62,6 +63,7 @@ interface TechnicianOrder {
 
 export default function TechnicianDashboard() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [orders, setOrders] = useState<TechnicianOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -447,6 +449,54 @@ export default function TechnicianDashboard() {
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
+        </div>
+
+        {/* Quick Access Cards - Same as JCF */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card 
+            className="cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => navigate('/orders')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Órdenes</CardTitle>
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Ver, crear y gestionar órdenes de servicio
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer hover:bg-accent/50 transition-colors"
+            onClick={() => navigate('/quotes')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Cotizaciones</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Ver cotizaciones disponibles
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer hover:bg-accent/50 transition-colors border-primary"
+            onClick={() => navigate('/orders')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Nueva Orden</CardTitle>
+              <Plus className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Crear una nueva orden de servicio
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Control de Tiempo Personal */}
