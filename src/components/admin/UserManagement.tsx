@@ -185,29 +185,57 @@ export function UserManagement({
     if (!editingUser) return;
     try {
       setLoading(true);
-      const {
-        error
-      } = await supabase.from('profiles').update({
-        username: formData.username,
-        full_name: formData.full_name,
-        phone: formData.phone || null,
-        role: formData.role as any,
-        updated_at: new Date().toISOString()
-      }).eq('id', editingUser.id);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          username: formData.username,
+          full_name: formData.full_name,
+          phone: formData.phone || null,
+          role: formData.role as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', editingUser.id);
+
       if (error) throw error;
+
+      // Mantener user_roles sincronizado (RLS usa has_role())
+      if (formData.role === 'cliente') {
+        const { error: deleteAllRolesError } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', editingUser.user_id);
+        if (deleteAllRolesError) throw deleteAllRolesError;
+      } else {
+        const { error: upsertRoleError } = await supabase
+          .from('user_roles')
+          .upsert(
+            { user_id: editingUser.user_id, role: formData.role },
+            { onConflict: 'user_id,role' }
+          );
+        if (upsertRoleError) throw upsertRoleError;
+
+        const { error: deleteOtherRolesError } = await supabase
+          .from('user_roles')
+          .delete()
+          .eq('user_id', editingUser.user_id)
+          .neq('role', formData.role);
+        if (deleteOtherRolesError) throw deleteOtherRolesError;
+      }
+
       loadUsers();
       resetForm();
       setIsDialogOpen(false);
       toast({
         title: 'Usuario actualizado',
-        description: `Usuario ${formData.full_name} actualizado exitosamente`
+        description: `Usuario ${formData.full_name} actualizado exitosamente`,
       });
     } catch (error: any) {
       console.error('Error updating user:', error);
       toast({
         title: 'Error',
         description: error.message || 'No se pudo actualizar el usuario',
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
