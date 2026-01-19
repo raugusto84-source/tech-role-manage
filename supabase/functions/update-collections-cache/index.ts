@@ -24,7 +24,8 @@ serve(async (req) => {
     let totalProcessed = 0;
     let totalCached = 0;
 
-    // 1. Procesar órdenes APROBADAS con pagos pendientes (excluye pendiente y pendiente_aprobacion)
+    // 1. Procesar órdenes APROBADAS con pagos pendientes 
+    // Excluye: pendiente, pendiente_aprobacion, órdenes de pólizas y fraccionamientos
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(`
@@ -33,6 +34,9 @@ serve(async (req) => {
         estimated_cost,
         delivery_date,
         client_id,
+        is_policy_order,
+        order_category,
+        source_type,
         clients (name),
         order_payments (payment_amount)
       `)
@@ -42,6 +46,14 @@ serve(async (req) => {
     if (ordersError) throw ordersError;
 
     for (const order of orders || []) {
+      // Excluir órdenes de pólizas y fraccionamientos
+      if (order.is_policy_order || 
+          order.order_category === 'fraccionamientos' || 
+          order.source_type === 'development' || 
+          order.source_type === 'cliente_poliza') {
+        continue;
+      }
+
       totalProcessed++;
       const totalPaid = (order.order_payments || []).reduce((sum: number, p: any) => sum + (p.payment_amount || 0), 0);
       const pending = (order.estimated_cost || 0) - totalPaid;
