@@ -198,6 +198,14 @@ export function WeeklyOrdersView({ orders, onSelectOrder }: WeeklyOrdersViewProp
   }), [weekOrders]);
 
   const isCurrentWeek = isSameDay(currentWeekStart, startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const isPastWeek = currentWeekStart < startOfWeek(new Date(), { weekStartsOn: 1 });
+
+  // Contar órdenes activas (pendientes) en semanas pasadas
+  const activeOrdersCount = useMemo(() => {
+    return weekOrders.filter(o => 
+      o.status !== 'finalizada' && o.status !== 'cancelada' && o.status !== 'rechazada'
+    ).length;
+  }, [weekOrders]);
 
   return (
     <div className="space-y-4">
@@ -234,7 +242,17 @@ export function WeeklyOrdersView({ orders, onSelectOrder }: WeeklyOrdersViewProp
               </div>
               <p className="text-sm text-muted-foreground">
                 {weekOrders.length} órdenes esta semana
+                {isPastWeek && activeOrdersCount > 0 && (
+                  <span className="ml-2 text-amber-600 dark:text-amber-400 font-medium">
+                    ({activeOrdersCount} pendientes)
+                  </span>
+                )}
               </p>
+              {isPastWeek && (
+                <Badge variant="outline" className="mt-1 border-amber-500 text-amber-600 dark:text-amber-400">
+                  Semana Anterior
+                </Badge>
+              )}
             </div>
 
             <Button
