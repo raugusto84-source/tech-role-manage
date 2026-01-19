@@ -1,3 +1,5 @@
+import { toMexicoTime } from './dateUtils';
+
 interface WorkSchedule {
   work_days: number[];
   start_time: string;
@@ -162,7 +164,14 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
   }
 
   const workingDays = primaryTechnicianSchedule.work_days;
-  let currentDate = new Date(creationDate);
+  
+  // IMPORTANTE: Convertir la fecha de creación a hora de México para cálculos correctos
+  const mexicoCreationDate = toMexicoTime(creationDate);
+  console.log(`=== TIMEZONE CONVERSION ===`);
+  console.log(`Original creation date: ${creationDate.toISOString()}`);
+  console.log(`Mexico time: ${mexicoCreationDate.toLocaleString('es-MX')}`);
+  
+  let currentDate = new Date(mexicoCreationDate);
   // Crear una nueva fecha para no modificar la fecha original
   currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
   
@@ -174,8 +183,8 @@ export function calculateAdvancedDeliveryDate(params: DeliveryCalculationParams)
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
-  // Calcular tiempo de creación y horarios de trabajo en minutos
-  const creationTime = creationDate.getHours() * 60 + creationDate.getMinutes();
+  // Calcular tiempo de creación usando la hora de MÉXICO, no UTC
+  const creationTime = mexicoCreationDate.getHours() * 60 + mexicoCreationDate.getMinutes();
   const workStartTime = parseInt(primaryTechnicianSchedule.start_time.split(':')[0]) * 60 + 
                        parseInt(primaryTechnicianSchedule.start_time.split(':')[1]);
   const workEndTime = parseInt(primaryTechnicianSchedule.end_time.split(':')[0]) * 60 + 
