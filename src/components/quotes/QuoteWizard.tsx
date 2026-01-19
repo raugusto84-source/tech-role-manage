@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ArrowLeft, ArrowRight, Check, X, User, Package, CheckSquare, Search, Plus, CheckCircle } from 'lucide-react';
-import { ClientForm } from '@/components/ClientForm';
+import { ClientUserForm } from './ClientUserForm';
 import { formatCOPCeilToTen } from '@/utils/currency';
 interface Client {
   id: string;
@@ -894,24 +894,20 @@ export function QuoteWizard({
       {/* Bottom spacing for fixed navigation */}
       <div className="h-20"></div>
 
-      {/* New Client Dialog */}
+      {/* New Client Dialog - Uses full user creation with auth */}
       <Dialog open={showNewClientDialog} onOpenChange={setShowNewClientDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Nuevo Cliente</DialogTitle>
             <DialogDescription>
-              Crea un nuevo cliente para continuar con la cotización
+              Crea un nuevo cliente con su cuenta de acceso al sistema
             </DialogDescription>
           </DialogHeader>
-          <ClientForm
+          <ClientUserForm
             onSuccess={(newClient) => {
               setShowNewClientDialog(false);
               loadClients();
               setSelectedClient(newClient);
-              toast({
-                title: "Cliente creado",
-                description: "Cliente creado exitosamente y seleccionado",
-              });
             }}
             onCancel={() => setShowNewClientDialog(false)}
           />
