@@ -283,24 +283,25 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     return result;
   }, [overdueOrders]);
 
-  // Total orders summary (all active orders)
+  // Total orders summary (excluding pending approval, but including overdue)
   const totalOrdersSummary = useMemo(() => {
-    const activeOrders = orders.filter(o => 
-      o.status !== 'finalizada' && o.status !== 'cancelada' && o.status !== 'rechazada'
+    // For category counts: exclude pending approval orders
+    const activeOrdersWithoutPending = orders.filter(o => 
+      o.status !== 'finalizada' && o.status !== 'cancelada' && o.status !== 'rechazada' && o.status !== 'pendiente_aprobacion'
     );
     
-    const sistemas = activeOrders.filter(o => getOrderCategory(o) === 'sistemas').length;
-    const seguridad = activeOrders.filter(o => getOrderCategory(o) === 'seguridad').length;
-    const fraccionamientos = activeOrders.filter(o => getOrderCategory(o) === 'fraccionamientos').length;
+    const sistemas = activeOrdersWithoutPending.filter(o => getOrderCategory(o) === 'sistemas').length;
+    const seguridad = activeOrdersWithoutPending.filter(o => getOrderCategory(o) === 'seguridad').length;
+    const fraccionamientos = activeOrdersWithoutPending.filter(o => getOrderCategory(o) === 'fraccionamientos').length;
     
-    // Count overdue
+    // Count overdue (also excluding pending approval)
     const today = startOfDay(new Date());
-    const overdue = activeOrders.filter(order => {
+    const overdue = activeOrdersWithoutPending.filter(order => {
       const deliveryDate = order.estimated_delivery_date || order.delivery_date;
       if (!deliveryDate) return false;
       try {
         const orderDate = parseISO(deliveryDate);
-        return isBefore(orderDate, today) && order.status !== 'pendiente_aprobacion';
+        return isBefore(orderDate, today);
       } catch {
         return false;
       }
