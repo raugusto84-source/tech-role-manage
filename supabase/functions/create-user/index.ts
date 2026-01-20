@@ -72,7 +72,7 @@ serve(async (req: Request) => {
       throw new Error('User not authenticated')
     }
 
-    // Check if user is admin via user_roles (avoid relying on profiles.role)
+    // Check if user is admin or jcf via user_roles (avoid relying on profiles.role)
     const { data: roles, error: rolesError } = await supabaseClient
       .from('user_roles')
       .select('role')
@@ -82,8 +82,9 @@ serve(async (req: Request) => {
       throw new Error(`Error verifying roles: ${rolesError.message}`)
     }
 
-    const isAdmin = (roles ?? []).some((r: { role: string }) => r.role === 'administrador')
-    if (!isAdmin) {
+    const allowedRoles = ['administrador', 'jcf']
+    const canCreateUsers = (roles ?? []).some((r: { role: string }) => allowedRoles.includes(r.role))
+    if (!canCreateUsers) {
       throw new Error('User not authorized to create users')
     }
   const body = await req.json()
