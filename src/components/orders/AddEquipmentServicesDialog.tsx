@@ -17,6 +17,7 @@ interface AddEquipmentServicesDialogProps {
   onOpenChange: (open: boolean) => void;
   equipmentId: string;
   equipmentName: string;
+  orderId: string;
   onServicesAdded: () => void;
 }
 
@@ -50,6 +51,7 @@ export function AddEquipmentServicesDialog({
   onOpenChange,
   equipmentId,
   equipmentName,
+  orderId,
   onServicesAdded
 }: AddEquipmentServicesDialogProps) {
   const { toast } = useToast();
@@ -239,7 +241,8 @@ export function AddEquipmentServicesDialog({
 
     setLoading(true);
     try {
-      const servicesToInsert = selectedServices.flatMap(s =>
+      // Insert into order_equipment_services
+      const equipmentServicesToInsert = selectedServices.flatMap(s =>
         Array.from({ length: s.quantity }, () => ({
           order_equipment_id: equipmentId,
           service_name: s.service_name,
@@ -249,15 +252,45 @@ export function AddEquipmentServicesDialog({
         }))
       );
 
-      const { error } = await supabase
+      const { error: equipmentServicesError } = await supabase
         .from('order_equipment_services')
-        .insert(servicesToInsert);
+        .insert(equipmentServicesToInsert);
 
-      if (error) throw error;
+      if (equipmentServicesError) throw equipmentServicesError;
+
+      // Also insert into order_items so they are included in the order total
+      const orderItemsToInsert = selectedServices.flatMap(s => {
+        // Find the original service type for additional data
+        const serviceType = serviceTypes.find(st => st.id === s.service_type_id);
+        const unitPrice = s.price;
+        
+        return Array.from({ length: s.quantity }, () => ({
+          order_id: orderId,
+          service_name: `[${equipmentName}] ${s.service_name}`,
+          service_description: s.description || null,
+          quantity: 1,
+          unit_base_price: unitPrice,
+          unit_cost_price: serviceType?.cost_price || 0,
+          subtotal: unitPrice,
+          total_amount: unitPrice,
+          vat_rate: serviceType?.vat_rate || 16,
+          item_type: serviceType?.item_type || 'servicio',
+          profit_margin_rate: serviceType?.profit_margin_rate || 20,
+          pricing_locked: true,
+          status: 'pendiente' as const,
+          service_type_id: s.service_type_id || null
+        }));
+      });
+
+      const { error: orderItemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsToInsert);
+
+      if (orderItemsError) throw orderItemsError;
 
       toast({
         title: "Servicios agregados",
-        description: `${selectedServices.length} servicio(s) agregados al equipo`
+        description: `${selectedServices.length} servicio(s) agregados al equipo y a la lista de servicios de la orden`
       });
 
       onServicesAdded();

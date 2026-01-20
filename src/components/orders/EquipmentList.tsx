@@ -150,6 +150,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   const handleServicesAdded = () => {
     loadEquipmentServices();
     setAddServicesDialogEquipment(null);
+    onUpdate(); // Refresh order items list to include new services
   };
 
   // Alternar selección de servicio
@@ -572,6 +573,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
           onOpenChange={(open) => !open && setAddServicesDialogEquipment(null)}
           equipmentId={addServicesDialogEquipment.id}
           equipmentName={addServicesDialogEquipment.equipment_name}
+          orderId={orderId}
           onServicesAdded={handleServicesAdded}
         />
       )}
