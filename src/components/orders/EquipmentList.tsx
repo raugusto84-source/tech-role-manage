@@ -3,15 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Edit, Trash2, Plus, Monitor, Hash, Info, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit, Trash2, Plus, Monitor, Hash, Wrench, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { EquipmentForm } from './EquipmentForm';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AddEquipmentServicesDialog } from './AddEquipmentServicesDialog';
 
 interface EquipmentService {
   id: string;
@@ -70,64 +70,6 @@ const getConditionLabel = (condition?: string) => {
   }
 };
 
-// Componente inline para agregar servicio
-interface InlineAddServiceFormProps {
-  onAdd: (service: { service_name: string; description: string; price: number }) => void;
-  onCancel: () => void;
-}
-
-function InlineAddServiceForm({ onAdd, onCancel }: InlineAddServiceFormProps) {
-  const [serviceName, setServiceName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-
-  const handleSubmit = () => {
-    if (!serviceName.trim()) return;
-    onAdd({
-      service_name: serviceName.trim(),
-      description: description.trim(),
-      price: parseFloat(price) || 0
-    });
-  };
-
-  return (
-    <div className="p-3 bg-muted/50 rounded-lg space-y-2 border border-dashed">
-      <p className="text-xs font-medium text-muted-foreground">Nuevo servicio:</p>
-      <div className="flex gap-2">
-        <Input
-          value={serviceName}
-          onChange={(e) => setServiceName(e.target.value)}
-          placeholder="Nombre del servicio"
-          className="h-8 text-sm flex-1"
-          autoFocus
-        />
-        <Input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="$ Precio"
-          className="h-8 text-sm w-28 text-right"
-        />
-      </div>
-      <Input
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Descripción (opcional)"
-        className="h-8 text-sm"
-      />
-      <div className="flex gap-2 justify-end">
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="h-7 text-xs">
-          Cancelar
-        </Button>
-        <Button type="button" size="sm" onClick={handleSubmit} disabled={!serviceName.trim()} className="h-7 text-xs gap-1">
-          <Plus className="h-3 w-3" />
-          Agregar
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyOrder = false }: EquipmentListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -137,7 +79,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [equipmentServices, setEquipmentServices] = useState<Record<string, EquipmentService[]>>({});
   const [expandedEquipment, setExpandedEquipment] = useState<Set<string>>(new Set());
-  const [addingServiceToEquipment, setAddingServiceToEquipment] = useState<string | null>(null);
+  const [addServicesDialogEquipment, setAddServicesDialogEquipment] = useState<Equipment | null>(null);
 
   const isOrderPersisted = Boolean(orderId && orderId.trim());
   const canManage = canEdit && isOrderPersisted;
@@ -205,27 +147,9 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   };
 
   // Agregar servicio a un equipo
-  const handleAddService = async (equipmentId: string, serviceData: { service_name: string; description: string; price: number }) => {
-    try {
-      const { error } = await supabase
-        .from('order_equipment_services')
-        .insert({
-          order_equipment_id: equipmentId,
-          service_name: serviceData.service_name,
-          description: serviceData.description || null,
-          price: serviceData.price,
-          is_selected: true
-        });
-
-      if (error) throw error;
-
-      toast({ title: "Servicio agregado", description: `"${serviceData.service_name}" ha sido agregado al equipo.` });
-      setAddingServiceToEquipment(null);
-      loadEquipmentServices();
-    } catch (error) {
-      console.error('Error adding service:', error);
-      toast({ title: "Error", description: "No se pudo agregar el servicio", variant: "destructive" });
-    }
+  const handleServicesAdded = () => {
+    loadEquipmentServices();
+    setAddServicesDialogEquipment(null);
   };
 
   // Alternar selección de servicio
@@ -591,25 +515,18 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
                         </div>
                       )}
 
-                      {/* Formulario o botón para agregar servicio */}
+                      {/* Botón para abrir diálogo de agregar servicios */}
                       {canManage && (
-                        addingServiceToEquipment === item.id ? (
-                          <InlineAddServiceForm
-                            onAdd={(serviceData) => handleAddService(item.id, serviceData)}
-                            onCancel={() => setAddingServiceToEquipment(null)}
-                          />
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setAddingServiceToEquipment(item.id)}
-                            className="w-full h-9 gap-1.5 border-dashed border-2 text-sm"
-                          >
-                            <Plus className="h-4 w-4" />
-                            Agregar Servicio a este Equipo
-                          </Button>
-                        )
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAddServicesDialogEquipment(item)}
+                          className="w-full h-9 gap-1.5 border-dashed border-2 text-sm"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Agregar Servicio a este Equipo
+                        </Button>
                       )}
 
                       {/* Total de servicios del equipo */}
@@ -647,6 +564,17 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add Equipment Services Dialog */}
+      {addServicesDialogEquipment && (
+        <AddEquipmentServicesDialog
+          open={!!addServicesDialogEquipment}
+          onOpenChange={(open) => !open && setAddServicesDialogEquipment(null)}
+          equipmentId={addServicesDialogEquipment.id}
+          equipmentName={addServicesDialogEquipment.equipment_name}
+          onServicesAdded={handleServicesAdded}
+        />
+      )}
     </div>
   );
 }
