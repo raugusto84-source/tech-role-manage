@@ -1134,8 +1134,18 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       
       console.log('Pending equipment to save:', pendingEquipment);
 
-      // Calcular totales de todos los items
-      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
+      // Calcular totales de todos los items + servicios de equipos
+      const itemsTotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+      
+      // Calcular total de servicios de equipos seleccionados
+      const equipmentServicesTotal = pendingEquipment.reduce((sum, eq) => {
+        if (!eq.services) return sum;
+        return sum + eq.services
+          .filter(s => s.is_selected)
+          .reduce((sSum, s) => sSum + s.price, 0);
+      }, 0);
+      
+      const totalAmount = itemsTotal + equipmentServicesTotal;
       const totalHours = calculateTotalHours();
       
       // All orders start as pending authorization
@@ -1417,6 +1427,34 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           });
         } else {
           console.log('Equipment saved successfully:', insertedEquipment);
+          
+          // Guardar los servicios de cada equipo
+          if (insertedEquipment && insertedEquipment.length > 0) {
+            for (let i = 0; i < insertedEquipment.length; i++) {
+              const savedEquipment = insertedEquipment[i];
+              const originalEquipment = pendingEquipment[i];
+              
+              if (originalEquipment.services && originalEquipment.services.length > 0) {
+                const servicesData = originalEquipment.services.map(service => ({
+                  order_equipment_id: savedEquipment.id,
+                  service_name: service.service_name,
+                  description: service.description || null,
+                  price: service.price,
+                  is_selected: service.is_selected
+                }));
+                
+                const { error: servicesError } = await supabase
+                  .from('order_equipment_services')
+                  .insert(servicesData);
+                
+                if (servicesError) {
+                  console.error('Error saving equipment services:', servicesError);
+                } else {
+                  console.log('Equipment services saved for:', savedEquipment.equipment_name);
+                }
+              }
+            }
+          }
         }
       }
 
