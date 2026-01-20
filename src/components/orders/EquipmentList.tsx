@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,8 +7,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Edit, Trash2, Plus, Monitor, Hash, Info } from 'lucide-react';
+import { Edit, Trash2, Plus, Monitor, Hash, Info, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
 import { EquipmentForm } from './EquipmentForm';
+import { formatCOPCeilToTen } from '@/utils/currency';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+interface EquipmentService {
+  id: string;
+  service_name: string;
+  description?: string;
+  price: number;
+  is_selected: boolean;
+}
 
 interface Equipment {
   id: string;
@@ -26,6 +36,7 @@ interface Equipment {
     name: string;
     icon?: string;
   };
+  services?: EquipmentService[];
 }
 
 interface EquipmentListProps {
@@ -65,9 +76,73 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [equipmentServices, setEquipmentServices] = useState<Record<string, EquipmentService[]>>({});
+  const [expandedEquipment, setExpandedEquipment] = useState<Set<string>>(new Set());
 
   const isOrderPersisted = Boolean(orderId && orderId.trim());
   const canManage = canEdit && isOrderPersisted;
+
+  // Cargar servicios de todos los equipos
+  useEffect(() => {
+    if (equipment.length > 0) {
+      loadEquipmentServices();
+    }
+  }, [equipment]);
+
+  const loadEquipmentServices = async () => {
+    try {
+      const equipmentIds = equipment.map(eq => eq.id);
+      const { data, error } = await supabase
+        .from('order_equipment_services')
+        .select('*')
+        .in('order_equipment_id', equipmentIds);
+
+      if (error) throw error;
+
+      // Agrupar servicios por equipo
+      const servicesMap: Record<string, EquipmentService[]> = {};
+      (data || []).forEach(service => {
+        if (!servicesMap[service.order_equipment_id]) {
+          servicesMap[service.order_equipment_id] = [];
+        }
+        servicesMap[service.order_equipment_id].push({
+          id: service.id,
+          service_name: service.service_name,
+          description: service.description || undefined,
+          price: Number(service.price),
+          is_selected: service.is_selected
+        });
+      });
+      setEquipmentServices(servicesMap);
+    } catch (error) {
+      console.error('Error loading equipment services:', error);
+    }
+  };
+
+  const toggleEquipmentExpanded = (equipmentId: string) => {
+    setExpandedEquipment(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(equipmentId)) {
+        newSet.delete(equipmentId);
+      } else {
+        newSet.add(equipmentId);
+      }
+      return newSet;
+    });
+  };
+
+  const getEquipmentServicesTotal = (equipmentId: string): number => {
+    const services = equipmentServices[equipmentId] || [];
+    return services
+      .filter(s => s.is_selected)
+      .reduce((sum, s) => sum + s.price, 0);
+  };
+
+  const getTotalAllEquipmentServices = (): number => {
+    return Object.keys(equipmentServices).reduce((total, eqId) => {
+      return total + getEquipmentServicesTotal(eqId);
+    }, 0);
+  };
 
   const handleToggleServiced = async (equipmentId: string, currentlyServiced: boolean) => {
     setLoading(true);
@@ -154,10 +229,17 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Monitor className="h-5 w-5" />
-          Equipos ({equipment.length})
-        </h3>
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Monitor className="h-5 w-5" />
+            Equipos ({equipment.length})
+          </h3>
+          {getTotalAllEquipmentServices() > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Total servicios de equipos: <span className="font-medium text-primary">{formatCOPCeilToTen(getTotalAllEquipmentServices())}</span>
+            </p>
+          )}
+        </div>
         {canManage ? (
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
@@ -313,6 +395,54 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
                     <label className="text-sm font-medium text-muted-foreground">Notas Adicionales</label>
                     <p className="text-sm mt-1 p-2 bg-muted rounded">{item.additional_notes}</p>
                   </div>
+                )}
+
+                {/* Servicios del equipo */}
+                {equipmentServices[item.id] && equipmentServices[item.id].length > 0 && (
+                  <Collapsible 
+                    open={expandedEquipment.has(item.id)}
+                    onOpenChange={() => toggleEquipmentExpanded(item.id)}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" className="w-full justify-between p-2 h-auto">
+                        <span className="flex items-center gap-2 text-sm font-medium">
+                          <Wrench className="h-4 w-4" />
+                          Servicios ({equipmentServices[item.id].filter(s => s.is_selected).length} seleccionados)
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-primary">
+                            {formatCOPCeilToTen(getEquipmentServicesTotal(item.id))}
+                          </span>
+                          {expandedEquipment.has(item.id) ? (
+                            <ChevronUp className="h-4 w-4" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4" />
+                          )}
+                        </div>
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-2 space-y-1 p-2 bg-muted/50 rounded">
+                        {equipmentServices[item.id].map(service => (
+                          <div 
+                            key={service.id} 
+                            className={`flex justify-between items-start p-2 rounded ${service.is_selected ? 'bg-primary/10' : 'opacity-50'}`}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Checkbox checked={service.is_selected} disabled className="mt-0.5" />
+                              <div>
+                                <p className="text-sm font-medium">{service.service_name}</p>
+                                {service.description && (
+                                  <p className="text-xs text-muted-foreground">{service.description}</p>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-sm font-medium">{formatCOPCeilToTen(service.price)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
               </CardContent>
             </Card>

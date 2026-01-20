@@ -3075,6 +3075,47 @@ export type Database = {
           },
         ]
       }
+      order_equipment_services: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_selected: boolean | null
+          order_equipment_id: string
+          price: number
+          service_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_selected?: boolean | null
+          order_equipment_id: string
+          price?: number
+          service_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_selected?: boolean | null
+          order_equipment_id?: string
+          price?: number
+          service_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_equipment_services_order_equipment_id_fkey"
+            columns: ["order_equipment_id"]
+            isOneToOne: false
+            referencedRelation: "order_equipment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_evidence_photos: {
         Row: {
           created_at: string

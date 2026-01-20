@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Loader2 } from 'lucide-react';
+import { EquipmentServicesForm, EquipmentService } from './EquipmentServicesForm';
 
 export interface PendingEquipment {
   equipment_name: string;
@@ -21,6 +22,7 @@ export interface PendingEquipment {
   additional_notes?: string;
   is_new_brand?: boolean;
   is_new_model?: boolean;
+  services?: EquipmentService[];
 }
 
 interface EquipmentCategory {
@@ -68,8 +70,13 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
     serial_number: initialData?.serial_number || '',
     physical_condition: initialData?.physical_condition || '',
     problem_description: initialData?.problem_description || '',
-    additional_notes: initialData?.additional_notes || ''
+    additional_notes: initialData?.additional_notes || '',
+    services: initialData?.services || []
   });
+
+  const handleServicesChange = (services: EquipmentService[]) => {
+    setFormData(prev => ({ ...prev, services }));
+  };
 
   useEffect(() => {
     loadCategories();
@@ -329,6 +336,14 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
           value={formData.additional_notes}
           onChange={(e) => setFormData(prev => ({ ...prev, additional_notes: e.target.value }))}
           placeholder="Observaciones adicionales..."
+        />
+      </div>
+
+      {/* Servicios para este equipo */}
+      <div className="border-t pt-4 mt-4">
+        <EquipmentServicesForm
+          services={formData.services || []}
+          onServicesChange={handleServicesChange}
         />
       </div>
 
