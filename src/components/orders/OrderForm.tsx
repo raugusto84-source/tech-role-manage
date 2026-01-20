@@ -1118,6 +1118,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           description: "Debe agregar al menos un artículo a la orden",
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
 
@@ -1127,8 +1128,11 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
           description: "No se ha seleccionado un cliente",
           variant: "destructive"
         });
+        setLoading(false);
         return;
       }
+      
+      console.log('Pending equipment to save:', pendingEquipment);
 
       // Calcular totales de todos los items
       const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
@@ -1345,6 +1349,7 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
       }
 
       // Guardar equipos pendientes en la orden
+      console.log('Saving equipment - pendingEquipment:', pendingEquipment, 'orderId:', orderResult.id);
       if (pendingEquipment.length > 0) {
         const equipmentDataPromises = pendingEquipment.map(async (eq) => {
           let finalBrandId = eq.brand_id;
@@ -1352,26 +1357,30 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
 
           // Si es una marca nueva (temporal), crearla primero
           if (eq.is_new_brand && eq.brand_name && eq.brand_id?.startsWith('temp-brand-')) {
-            const { data: newBrand } = await supabase
+            const { data: newBrand, error: brandError } = await supabase
               .from('equipment_brands')
               .insert({ name: eq.brand_name })
               .select('id')
               .single();
             
-            if (newBrand) {
+            if (brandError) {
+              console.error('Error creating new brand:', brandError);
+            } else if (newBrand) {
               finalBrandId = newBrand.id;
             }
           }
 
           // Si es un modelo nuevo (temporal), crearlo primero
           if (eq.is_new_model && eq.model_name && eq.model_id?.startsWith('temp-model-') && finalBrandId) {
-            const { data: newModel } = await supabase
+            const { data: newModel, error: modelError } = await supabase
               .from('equipment_models')
               .insert({ name: eq.model_name, brand_id: finalBrandId })
               .select('id')
               .single();
             
-            if (newModel) {
+            if (modelError) {
+              console.error('Error creating new model:', modelError);
+            } else if (newModel) {
               finalModelId = newModel.id;
             }
           }
@@ -1392,13 +1401,22 @@ export function OrderForm({ onSuccess, onCancel }: OrderFormProps) {
         });
 
         const equipmentData = await Promise.all(equipmentDataPromises);
+        console.log('Equipment data to insert:', equipmentData);
 
-        const { error: equipmentError } = await supabase
+        const { data: insertedEquipment, error: equipmentError } = await supabase
           .from('order_equipment')
-          .insert(equipmentData);
+          .insert(equipmentData)
+          .select();
 
         if (equipmentError) {
           console.error('Error saving equipment:', equipmentError);
+          toast({
+            title: "Advertencia",
+            description: "La orden se creó pero hubo un error guardando los equipos: " + equipmentError.message,
+            variant: "destructive"
+          });
+        } else {
+          console.log('Equipment saved successfully:', insertedEquipment);
         }
       }
 
