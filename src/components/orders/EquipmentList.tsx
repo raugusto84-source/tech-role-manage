@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -69,6 +70,64 @@ const getConditionLabel = (condition?: string) => {
   }
 };
 
+// Componente inline para agregar servicio
+interface InlineAddServiceFormProps {
+  onAdd: (service: { service_name: string; description: string; price: number }) => void;
+  onCancel: () => void;
+}
+
+function InlineAddServiceForm({ onAdd, onCancel }: InlineAddServiceFormProps) {
+  const [serviceName, setServiceName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+
+  const handleSubmit = () => {
+    if (!serviceName.trim()) return;
+    onAdd({
+      service_name: serviceName.trim(),
+      description: description.trim(),
+      price: parseFloat(price) || 0
+    });
+  };
+
+  return (
+    <div className="p-3 bg-muted/50 rounded-lg space-y-2 border border-dashed">
+      <p className="text-xs font-medium text-muted-foreground">Nuevo servicio:</p>
+      <div className="flex gap-2">
+        <Input
+          value={serviceName}
+          onChange={(e) => setServiceName(e.target.value)}
+          placeholder="Nombre del servicio"
+          className="h-8 text-sm flex-1"
+          autoFocus
+        />
+        <Input
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="$ Precio"
+          className="h-8 text-sm w-28 text-right"
+        />
+      </div>
+      <Input
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Descripción (opcional)"
+        className="h-8 text-sm"
+      />
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="ghost" size="sm" onClick={onCancel} className="h-7 text-xs">
+          Cancelar
+        </Button>
+        <Button type="button" size="sm" onClick={handleSubmit} disabled={!serviceName.trim()} className="h-7 text-xs gap-1">
+          <Plus className="h-3 w-3" />
+          Agregar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyOrder = false }: EquipmentListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -78,6 +137,7 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [equipmentServices, setEquipmentServices] = useState<Record<string, EquipmentService[]>>({});
   const [expandedEquipment, setExpandedEquipment] = useState<Set<string>>(new Set());
+  const [addingServiceToEquipment, setAddingServiceToEquipment] = useState<string | null>(null);
 
   const isOrderPersisted = Boolean(orderId && orderId.trim());
   const canManage = canEdit && isOrderPersisted;
@@ -142,6 +202,63 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
     return Object.keys(equipmentServices).reduce((total, eqId) => {
       return total + getEquipmentServicesTotal(eqId);
     }, 0);
+  };
+
+  // Agregar servicio a un equipo
+  const handleAddService = async (equipmentId: string, serviceData: { service_name: string; description: string; price: number }) => {
+    try {
+      const { error } = await supabase
+        .from('order_equipment_services')
+        .insert({
+          order_equipment_id: equipmentId,
+          service_name: serviceData.service_name,
+          description: serviceData.description || null,
+          price: serviceData.price,
+          is_selected: true
+        });
+
+      if (error) throw error;
+
+      toast({ title: "Servicio agregado", description: `"${serviceData.service_name}" ha sido agregado al equipo.` });
+      setAddingServiceToEquipment(null);
+      loadEquipmentServices();
+    } catch (error) {
+      console.error('Error adding service:', error);
+      toast({ title: "Error", description: "No se pudo agregar el servicio", variant: "destructive" });
+    }
+  };
+
+  // Alternar selección de servicio
+  const handleToggleService = async (serviceId: string, currentSelected: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('order_equipment_services')
+        .update({ is_selected: !currentSelected })
+        .eq('id', serviceId);
+
+      if (error) throw error;
+      loadEquipmentServices();
+    } catch (error) {
+      console.error('Error toggling service:', error);
+      toast({ title: "Error", description: "No se pudo actualizar el servicio", variant: "destructive" });
+    }
+  };
+
+  // Eliminar servicio
+  const handleDeleteService = async (serviceId: string) => {
+    try {
+      const { error } = await supabase
+        .from('order_equipment_services')
+        .delete()
+        .eq('id', serviceId);
+
+      if (error) throw error;
+      toast({ title: "Servicio eliminado" });
+      loadEquipmentServices();
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast({ title: "Error", description: "No se pudo eliminar el servicio", variant: "destructive" });
+    }
   };
 
   const handleToggleServiced = async (equipmentId: string, currentlyServiced: boolean) => {
@@ -397,53 +514,114 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
                   </div>
                 )}
 
-                {/* Servicios del equipo */}
-                {equipmentServices[item.id] && equipmentServices[item.id].length > 0 && (
+                {/* Servicios del equipo - siempre visible */}
+                <div className="border-t pt-3 mt-3">
                   <Collapsible 
                     open={expandedEquipment.has(item.id)}
                     onOpenChange={() => toggleEquipmentExpanded(item.id)}
+                    defaultOpen={true}
                   >
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="w-full justify-between p-2 h-auto">
-                        <span className="flex items-center gap-2 text-sm font-medium">
+                    <div className="flex items-center justify-between mb-2">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-1.5 p-1 -ml-1 h-auto">
                           <Wrench className="h-4 w-4" />
-                          Servicios ({equipmentServices[item.id].filter(s => s.is_selected).length} seleccionados)
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-primary">
-                            {formatCOPCeilToTen(getEquipmentServicesTotal(item.id))}
-                          </span>
+                          <span className="text-sm font-medium">Servicios</span>
+                          {equipmentServices[item.id]?.length > 0 && (
+                            <Badge variant="secondary" className="h-5 text-xs px-1.5 ml-1">
+                              {equipmentServices[item.id].filter(s => s.is_selected).length}/{equipmentServices[item.id].length}
+                            </Badge>
+                          )}
+                          {getEquipmentServicesTotal(item.id) > 0 && (
+                            <span className="text-sm font-semibold text-primary ml-1">
+                              {formatCOPCeilToTen(getEquipmentServicesTotal(item.id))}
+                            </span>
+                          )}
                           {expandedEquipment.has(item.id) ? (
                             <ChevronUp className="h-4 w-4" />
                           ) : (
                             <ChevronDown className="h-4 w-4" />
                           )}
-                        </div>
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="mt-2 space-y-1 p-2 bg-muted/50 rounded">
-                        {equipmentServices[item.id].map(service => (
-                          <div 
-                            key={service.id} 
-                            className={`flex justify-between items-start p-2 rounded ${service.is_selected ? 'bg-primary/10' : 'opacity-50'}`}
-                          >
-                            <div className="flex items-start gap-2">
-                              <Checkbox checked={service.is_selected} disabled className="mt-0.5" />
-                              <div>
-                                <p className="text-sm font-medium">{service.service_name}</p>
+                        </Button>
+                      </CollapsibleTrigger>
+                    </div>
+
+                    <CollapsibleContent className="space-y-2">
+                      {/* Lista de servicios como checklist */}
+                      {equipmentServices[item.id]?.length > 0 && (
+                        <div className="space-y-1">
+                          {equipmentServices[item.id].map(service => (
+                            <div 
+                              key={service.id} 
+                              className={`flex items-center gap-2 p-2 rounded-md text-sm transition-colors ${
+                                service.is_selected 
+                                  ? 'bg-primary/10 border border-primary/20' 
+                                  : 'bg-muted/30 border border-transparent'
+                              }`}
+                            >
+                              <Checkbox 
+                                checked={service.is_selected} 
+                                onCheckedChange={() => canManage && handleToggleService(service.id, service.is_selected)}
+                                disabled={!canManage}
+                                className="h-4 w-4"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-medium truncate ${!service.is_selected ? 'text-muted-foreground line-through' : ''}`}>
+                                  {service.service_name}
+                                </p>
                                 {service.description && (
-                                  <p className="text-xs text-muted-foreground">{service.description}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{service.description}</p>
                                 )}
                               </div>
+                              <span className={`font-semibold whitespace-nowrap ${service.is_selected ? 'text-primary' : 'text-muted-foreground'}`}>
+                                {formatCOPCeilToTen(service.price)}
+                              </span>
+                              {canManage && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteService(service.id)}
+                                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
                             </div>
-                            <span className="text-sm font-medium">{formatCOPCeilToTen(service.price)}</span>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Formulario o botón para agregar servicio */}
+                      {canManage && (
+                        addingServiceToEquipment === item.id ? (
+                          <InlineAddServiceForm
+                            onAdd={(serviceData) => handleAddService(item.id, serviceData)}
+                            onCancel={() => setAddingServiceToEquipment(null)}
+                          />
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAddingServiceToEquipment(item.id)}
+                            className="w-full h-9 gap-1.5 border-dashed border-2 text-sm"
+                          >
+                            <Plus className="h-4 w-4" />
+                            Agregar Servicio a este Equipo
+                          </Button>
+                        )
+                      )}
+
+                      {/* Total de servicios del equipo */}
+                      {equipmentServices[item.id]?.filter(s => s.is_selected).length > 0 && (
+                        <div className="flex justify-between items-center pt-2 border-t text-sm">
+                          <span className="text-muted-foreground">Subtotal servicios:</span>
+                          <span className="font-bold text-primary">{formatCOPCeilToTen(getEquipmentServicesTotal(item.id))}</span>
+                        </div>
+                      )}
                     </CollapsibleContent>
                   </Collapsible>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}
