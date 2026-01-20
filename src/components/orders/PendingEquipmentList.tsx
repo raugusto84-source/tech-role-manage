@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Edit, Trash2, Plus, Monitor, Wrench } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Edit, Trash2, Plus, Monitor, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
 import { PendingEquipmentForm, PendingEquipment } from './PendingEquipmentForm';
+import { EquipmentService } from './EquipmentServicesForm';
 import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface PendingEquipmentListProps {
@@ -43,9 +47,150 @@ const calculateEquipmentServicesTotal = (equipment: PendingEquipment): number =>
     .reduce((sum, s) => sum + s.price, 0);
 };
 
+interface InlineServiceFormProps {
+  onAdd: (service: EquipmentService) => void;
+}
+
+function InlineServiceForm({ onAdd }: InlineServiceFormProps) {
+  const [serviceName, setServiceName] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleSubmit = () => {
+    if (!serviceName.trim()) return;
+    
+    onAdd({
+      id: `temp-${Date.now()}`,
+      service_name: serviceName.trim(),
+      description: description.trim() || undefined,
+      price: parseFloat(price) || 0,
+      is_selected: true
+    });
+    
+    setServiceName('');
+    setDescription('');
+    setPrice('');
+    setIsExpanded(false);
+  };
+
+  if (!isExpanded) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setIsExpanded(true)}
+        className="w-full h-8 gap-1.5 border-dashed text-xs"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Agregar Servicio
+      </Button>
+    );
+  }
+
+  return (
+    <div className="p-2 bg-muted/50 rounded-md space-y-2">
+      <div className="flex gap-2">
+        <Input
+          value={serviceName}
+          onChange={(e) => setServiceName(e.target.value)}
+          placeholder="Nombre del servicio"
+          className="h-8 text-xs flex-1"
+          autoFocus
+        />
+        <Input
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="$ Precio"
+          className="h-8 text-xs w-24 text-right"
+        />
+      </div>
+      <Input
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Descripción (opcional)"
+        className="h-8 text-xs"
+      />
+      <div className="flex gap-2 justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsExpanded(false)}
+          className="h-7 text-xs"
+        >
+          Cancelar
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSubmit}
+          disabled={!serviceName.trim()}
+          className="h-7 text-xs gap-1"
+        >
+          <Plus className="h-3 w-3" />
+          Agregar
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface ServiceChecklistProps {
+  services: EquipmentService[];
+  onToggle: (serviceId: string) => void;
+  onRemove: (serviceId: string) => void;
+}
+
+function ServiceChecklist({ services, onToggle, onRemove }: ServiceChecklistProps) {
+  if (services.length === 0) return null;
+
+  return (
+    <div className="space-y-1">
+      {services.map((service) => (
+        <div
+          key={service.id}
+          className={`flex items-center gap-2 p-2 rounded-md text-xs transition-colors ${
+            service.is_selected ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30 border border-transparent'
+          }`}
+        >
+          <Checkbox
+            checked={service.is_selected}
+            onCheckedChange={() => onToggle(service.id)}
+            className="h-4 w-4"
+          />
+          <div className="flex-1 min-w-0">
+            <p className={`font-medium truncate ${!service.is_selected ? 'text-muted-foreground line-through' : ''}`}>
+              {service.service_name}
+            </p>
+            {service.description && (
+              <p className="text-muted-foreground text-[10px] truncate">{service.description}</p>
+            )}
+          </div>
+          <span className={`font-semibold whitespace-nowrap ${service.is_selected ? 'text-primary' : 'text-muted-foreground'}`}>
+            {formatCOPCeilToTen(service.price)}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(service.id)}
+            className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: PendingEquipmentListProps) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [expandedServices, setExpandedServices] = useState<Record<number, boolean>>({});
 
   const handleAdd = (newEquipment: PendingEquipment) => {
     onAdd(newEquipment);
@@ -57,6 +202,30 @@ export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: P
       onUpdate(editingIndex, updated);
       setEditingIndex(null);
     }
+  };
+
+  const toggleServicesExpanded = (index: number) => {
+    setExpandedServices(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const handleAddService = (equipmentIndex: number, service: EquipmentService) => {
+    const item = equipment[equipmentIndex];
+    const updatedServices = [...(item.services || []), service];
+    onUpdate(equipmentIndex, { ...item, services: updatedServices });
+  };
+
+  const handleToggleService = (equipmentIndex: number, serviceId: string) => {
+    const item = equipment[equipmentIndex];
+    const updatedServices = (item.services || []).map(s =>
+      s.id === serviceId ? { ...s, is_selected: !s.is_selected } : s
+    );
+    onUpdate(equipmentIndex, { ...item, services: updatedServices });
+  };
+
+  const handleRemoveService = (equipmentIndex: number, serviceId: string) => {
+    const item = equipment[equipmentIndex];
+    const updatedServices = (item.services || []).filter(s => s.id !== serviceId);
+    onUpdate(equipmentIndex, { ...item, services: updatedServices });
   };
 
   // Calcular total de servicios de todos los equipos
@@ -74,7 +243,7 @@ export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: P
           </h4>
           {totalEquipmentServicesAmount > 0 && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              Servicios de equipos: {formatCOPCeilToTen(totalEquipmentServicesAmount)}
+              Total servicios equipos: <span className="font-semibold text-primary">{formatCOPCeilToTen(totalEquipmentServicesAmount)}</span>
             </p>
           )}
         </div>
@@ -102,90 +271,120 @@ export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: P
           No hay equipos registrados. Agrega equipos para documentar el trabajo.
         </div>
       ) : (
-        <div className="space-y-2">
-          {equipment.map((item, index) => (
-            <Card key={index} className="border-l-4 border-l-primary/30">
-              <CardContent className="py-2 px-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm truncate">{item.equipment_name}</span>
-                      {item.physical_condition && (
-                        <Badge variant="outline" className={`text-xs ${getConditionColor(item.physical_condition)}`}>
-                          {getConditionLabel(item.physical_condition)}
-                        </Badge>
+        <div className="space-y-3">
+          {equipment.map((item, index) => {
+            const servicesTotal = calculateEquipmentServicesTotal(item);
+            const hasServices = item.services && item.services.length > 0;
+            const selectedCount = item.services?.filter(s => s.is_selected).length || 0;
+            const isExpanded = expandedServices[index] ?? true;
+
+            return (
+              <Card key={index} className="border-l-4 border-l-primary/50">
+                <CardContent className="py-3 px-4 space-y-3">
+                  {/* Header del equipo */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm">{item.equipment_name}</span>
+                        {item.physical_condition && (
+                          <Badge variant="outline" className={`text-xs ${getConditionColor(item.physical_condition)}`}>
+                            {getConditionLabel(item.physical_condition)}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {[item.brand_name, item.model_name, item.serial_number].filter(Boolean).join(' • ') || 'Sin detalles'}
+                      </div>
+                      {item.problem_description && (
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          💬 {item.problem_description}
+                        </p>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {[item.brand_name, item.model_name, item.serial_number].filter(Boolean).join(' • ') || 'Sin detalles'}
+                    <div className="flex gap-1 shrink-0">
+                      <Dialog open={editingIndex === index} onOpenChange={(open) => !open && setEditingIndex(null)}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onClick={() => setEditingIndex(index)}
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Editar Equipo</DialogTitle>
+                          </DialogHeader>
+                          <PendingEquipmentForm
+                            initialData={item}
+                            onSubmit={handleUpdate}
+                            onCancel={() => setEditingIndex(null)}
+                          />
+                        </DialogContent>
+                      </Dialog>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => onRemove(index)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    {item.problem_description && (
-                      <p className="text-xs text-muted-foreground mt-1 truncate">
-                        {item.problem_description}
-                      </p>
-                    )}
-                    {/* Mostrar servicios del equipo */}
-                    {item.services && item.services.length > 0 && (
-                      <div className="mt-2 pt-2 border-t">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                          <Wrench className="h-3 w-3" />
-                          <span>Servicios ({item.services.filter(s => s.is_selected).length} seleccionados)</span>
-                        </div>
-                        <div className="space-y-0.5">
-                          {item.services.filter(s => s.is_selected).map((service) => (
-                            <div key={service.id} className="flex justify-between text-xs">
-                              <span className="truncate">{service.service_name}</span>
-                              <span className="font-medium text-primary ml-2">
-                                {formatCOPCeilToTen(service.price)}
+                  </div>
+
+                  {/* Sección de servicios */}
+                  <div className="border-t pt-3">
+                    <Collapsible open={isExpanded} onOpenChange={() => toggleServicesExpanded(index)}>
+                      <div className="flex items-center justify-between mb-2">
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 gap-1.5 p-1 -ml-1 text-xs">
+                            <Wrench className="h-3.5 w-3.5" />
+                            <span className="font-medium">Servicios</span>
+                            {hasServices && (
+                              <Badge variant="secondary" className="h-5 text-[10px] px-1.5">
+                                {selectedCount}/{item.services?.length}
+                              </Badge>
+                            )}
+                            {servicesTotal > 0 && (
+                              <span className="text-primary font-semibold ml-1">
+                                {formatCOPCeilToTen(servicesTotal)}
                               </span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-between text-xs font-medium mt-1 pt-1 border-t">
-                          <span>Total servicios:</span>
-                          <span className="text-primary">
-                            {formatCOPCeilToTen(calculateEquipmentServicesTotal(item))}
-                          </span>
-                        </div>
+                            )}
+                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          </Button>
+                        </CollapsibleTrigger>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Dialog open={editingIndex === index} onOpenChange={(open) => !open && setEditingIndex(null)}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
-                          onClick={() => setEditingIndex(index)}
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Editar Equipo</DialogTitle>
-                        </DialogHeader>
-                        <PendingEquipmentForm
-                          initialData={item}
-                          onSubmit={handleUpdate}
-                          onCancel={() => setEditingIndex(null)}
+
+                      <CollapsibleContent className="space-y-2">
+                        {/* Lista de servicios como checklist */}
+                        <ServiceChecklist
+                          services={item.services || []}
+                          onToggle={(serviceId) => handleToggleService(index, serviceId)}
+                          onRemove={(serviceId) => handleRemoveService(index, serviceId)}
                         />
-                      </DialogContent>
-                    </Dialog>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                      onClick={() => onRemove(index)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+
+                        {/* Formulario inline para agregar servicio */}
+                        <InlineServiceForm
+                          onAdd={(service) => handleAddService(index, service)}
+                        />
+
+                        {/* Total de servicios del equipo */}
+                        {hasServices && selectedCount > 0 && (
+                          <div className="flex justify-between items-center pt-2 border-t text-xs">
+                            <span className="text-muted-foreground">Subtotal servicios equipo:</span>
+                            <span className="font-bold text-primary">{formatCOPCeilToTen(servicesTotal)}</span>
+                          </div>
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
