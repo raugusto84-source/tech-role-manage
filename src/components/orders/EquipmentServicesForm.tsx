@@ -153,42 +153,43 @@ export function EquipmentServicesForm({
         </div>
       )}
 
-      {/* Formulario para agregar nuevo servicio */}
+      {/* Formulario para agregar nuevo servicio - siempre visible en modo edición */}
       {!readOnly && (
-        <Card className="border-dashed">
-          <CardContent className="py-3 px-3">
-            <div className="grid gap-2">
-              <div className="grid grid-cols-[1fr_100px] gap-2">
+        <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
+          <CardContent className="py-4 px-4">
+            <p className="text-xs text-muted-foreground mb-3 font-medium">➕ Agregar servicio a este equipo:</p>
+            <div className="grid gap-3">
+              <div className="grid grid-cols-[1fr_120px] gap-2">
                 <Input
                   value={newService.service_name}
                   onChange={(e) => setNewService(prev => ({ ...prev, service_name: e.target.value }))}
-                  placeholder="Nombre del servicio"
-                  className="h-8 text-sm"
+                  placeholder="Nombre del servicio (ej: Limpieza interna)"
+                  className="h-9 text-sm"
                 />
                 <Input
                   type="number"
                   value={newService.price}
                   onChange={(e) => setNewService(prev => ({ ...prev, price: e.target.value }))}
-                  placeholder="Precio"
-                  className="h-8 text-sm text-right"
+                  placeholder="$ Precio"
+                  className="h-9 text-sm text-right"
                 />
               </div>
               <div className="flex gap-2">
                 <Input
                   value={newService.description}
                   onChange={(e) => setNewService(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Descripción (opcional)"
-                  className="h-8 text-sm flex-1"
+                  placeholder="Descripción del servicio (opcional)"
+                  className="h-9 text-sm flex-1"
                 />
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleAddService}
                   disabled={!newService.service_name.trim()}
-                  className="h-8 gap-1"
+                  className="h-9 gap-1.5 px-4"
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Agregar
+                  <Plus className="h-4 w-4" />
+                  Agregar Servicio
                 </Button>
               </div>
             </div>
