@@ -72,6 +72,7 @@ interface Order {
   is_policy_order?: boolean;
   is_development_order?: boolean; // Flag para órdenes de fraccionamientos
   order_category?: string; // Categoría directa de la orden
+  service_category?: string; // Categoría del servicio
   special_price_enabled?: boolean;
   special_price?: number | null;
   service_types?: {

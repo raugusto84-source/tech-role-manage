@@ -60,6 +60,8 @@ interface OrderDetailsProps {
     is_policy_order?: boolean;
     special_price_enabled?: boolean;
     special_price?: number | null;
+    service_category?: string;
+    order_category?: string;
     service_types?: {
       name: string;
       description?: string;

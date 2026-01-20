@@ -6,15 +6,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { PenTool, CheckCircle2, ArrowLeft, Clock, FileCheck, FileEdit, AlertTriangle } from 'lucide-react';
 import SignatureCanvas from 'react-signature-canvas';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
-// Removed useRewardSettings import - cashback system eliminated
+import { getCategoryCurrentWorkload, calculateSharedTimeHours } from '@/utils/workScheduleCalculator';
+import { toMexicoTime } from '@/utils/dateUtils';
 import { formatCOPCeilToTen, formatMXNInt, ceilToTen } from '@/utils/currency';
+
 interface SimpleOrderApprovalProps {
   order: {
     id: string;
     order_number: string;
     assigned_technician?: string;
     status: string;
-    estimated_cost?: number; // total estimado de la orden
+    estimated_cost?: number;
+    service_category?: string;
+    order_category?: string;
     clients?: {
       name: string;
       email: string;
@@ -215,41 +219,306 @@ export function SimpleOrderApproval({
       console.error('Error loading modifications:', error);
     }
   };
-  const calculateDeliveryTime = () => {
+  // Calculate delivery time based on category workload (only en_proceso orders)
+  const calculateDeliveryTime = async () => {
     try {
-      // Calcular horas totales estimadas
-      const totalHours = orderItems.reduce((sum, item) => {
-        return sum + (item.estimated_hours || 2) * (item.quantity || 1);
-      }, 0);
-
-      // Calcular fecha de entrega simple
-      const startDate = new Date();
-      const workHoursPerDay = 8; // Horario estándar de trabajo
-      const daysNeeded = Math.ceil(totalHours / workHoursPerDay);
-      const deliveryDate = new Date(startDate);
-      deliveryDate.setDate(startDate.getDate() + daysNeeded);
-
-      // Formatear fecha y hora
-      const dateStr = deliveryDate.toLocaleDateString('es-ES', {
+      const category = order.service_category || order.order_category;
+      
+      // Calculate hours for this order using shared time logic
+      const orderItemsForCalc = orderItems.map(item => ({
+        id: item.id,
+        estimated_hours: item.estimated_hours || item.service_types?.estimated_hours || 2,
+        shared_time: item.shared_time || item.service_types?.shared_time || false,
+        service_type_id: item.service_type_id,
+        quantity: item.quantity || 1
+      }));
+      
+      const thisOrderHours = calculateSharedTimeHours(orderItemsForCalc);
+      
+      // Get current workload for the category (only en_proceso orders count)
+      let categoryWorkload = 0;
+      if (category) {
+        categoryWorkload = await getCategoryWorkloadEnProceso(category);
+      }
+      
+      const totalHoursToSchedule = categoryWorkload + thisOrderHours;
+      
+      // Calculate delivery date based on 8-hour work days (8 AM - 4 PM)
+      const now = toMexicoTime(new Date());
+      const workStartHour = 8;
+      const workEndHour = 16;
+      const workHoursPerDay = workEndHour - workStartHour; // 8 hours
+      
+      let remainingHours = totalHoursToSchedule;
+      let currentDate = new Date(now);
+      let deliveryHour = workStartHour;
+      
+      // Check if we're within working hours today
+      const currentHour = now.getHours();
+      const currentMinutes = now.getMinutes();
+      
+      // Determine if we can start today
+      let hoursAvailableToday = 0;
+      if (currentHour >= workStartHour && currentHour < workEndHour) {
+        hoursAvailableToday = workEndHour - currentHour - (currentMinutes / 60);
+      } else if (currentHour < workStartHour) {
+        hoursAvailableToday = workHoursPerDay;
+      }
+      
+      // If less than 2 hours available today or outside working hours, start tomorrow
+      if (hoursAvailableToday < 2 || currentHour >= workEndHour) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        hoursAvailableToday = workHoursPerDay;
+      }
+      
+      // Skip to next working day if weekend (0 = Sunday, 6 = Saturday)
+      while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Calculate the delivery slot
+      if (remainingHours <= hoursAvailableToday) {
+        // Work can be completed today/first available day
+        if (currentHour >= workStartHour && currentHour < workEndHour && hoursAvailableToday >= 2) {
+          // Start from current hour if within working hours
+          deliveryHour = Math.ceil(currentHour + (currentMinutes / 60) + remainingHours);
+        } else {
+          // Start from beginning of work day
+          deliveryHour = workStartHour + remainingHours;
+        }
+        
+        // Cap at end of work day
+        if (deliveryHour > workEndHour) {
+          deliveryHour = workEndHour;
+        }
+      } else {
+        // Work spans multiple days
+        remainingHours -= hoursAvailableToday;
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        // Skip weekends
+        while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Continue adding full work days
+        while (remainingHours > workHoursPerDay) {
+          remainingHours -= workHoursPerDay;
+          currentDate.setDate(currentDate.getDate() + 1);
+          
+          // Skip weekends
+          while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+        
+        // Final day - calculate delivery hour
+        deliveryHour = workStartHour + remainingHours;
+        if (deliveryHour > workEndHour) {
+          deliveryHour = workEndHour;
+        }
+      }
+      
+      // Format the delivery time
+      const deliveryMinutes = Math.round((deliveryHour % 1) * 60);
+      const deliveryHourInt = Math.floor(deliveryHour);
+      const timeStr = `${deliveryHourInt.toString().padStart(2, '0')}:${deliveryMinutes.toString().padStart(2, '0')}`;
+      
+      const dateStr = currentDate.toLocaleDateString('es-ES', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       });
-      const timeStr = '16:00'; // Hora estándar de finalización
+      
+      console.log(`=== DELIVERY CALCULATION ===`);
+      console.log(`Category: ${category}`);
+      console.log(`Category workload (en_proceso): ${categoryWorkload}h`);
+      console.log(`This order hours: ${thisOrderHours}h`);
+      console.log(`Total hours to schedule: ${totalHoursToSchedule}h`);
+      console.log(`Delivery date: ${dateStr}`);
+      console.log(`Delivery time: ${timeStr}`);
 
       setDeliveryInfo({
         date: dateStr,
         time: timeStr,
-        totalHours
+        totalHours: thisOrderHours
       });
     } catch (error) {
       console.error('Error calculating delivery time:', error);
     }
   };
+
+  // Helper function to get workload only from en_proceso orders
+  const getCategoryWorkloadEnProceso = async (category: string): Promise<number> => {
+    try {
+      const { data: orders, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_items!inner(
+            id,
+            service_type_id,
+            quantity,
+            service_types!inner(
+              estimated_hours,
+              shared_time
+            )
+          )
+        `)
+        .or(`order_category.eq.${category},service_category.eq.${category}`)
+        .eq('status', 'en_proceso'); // Only count orders that are actively in process
+
+      if (error) {
+        console.error('Error getting en_proceso workload:', error);
+        return 0;
+      }
+
+      if (!orders || orders.length === 0) {
+        return 0;
+      }
+
+      let totalWorkload = 0;
+      
+      orders.forEach(order => {
+        if (order.order_items && order.order_items.length > 0) {
+          const orderItems = order.order_items.map((item: any) => ({
+            id: item.id,
+            estimated_hours: item.service_types?.estimated_hours || 0,
+            shared_time: item.service_types?.shared_time || false,
+            service_type_id: item.service_type_id,
+            quantity: item.quantity || 1
+          }));
+          
+          totalWorkload += calculateSharedTimeHours(orderItems);
+        }
+      });
+
+      console.log(`Workload for category ${category} (en_proceso only): ${totalWorkload}h`);
+      return totalWorkload;
+    } catch (error) {
+      console.error('Failed to get category workload:', error);
+      return 0;
+    }
+  };
+  // Helper function to calculate delivery date based on category workload
+  const calculateDeliveryDateForApproval = async (): Promise<{ date: Date; time: string } | null> => {
+    try {
+      const category = order.service_category || order.order_category;
+      
+      // Calculate hours for this order using shared time logic
+      const orderItemsForCalc = orderItems.map(item => ({
+        id: item.id,
+        estimated_hours: item.estimated_hours || item.service_types?.estimated_hours || 2,
+        shared_time: item.shared_time || item.service_types?.shared_time || false,
+        service_type_id: item.service_type_id,
+        quantity: item.quantity || 1
+      }));
+      
+      const thisOrderHours = calculateSharedTimeHours(orderItemsForCalc);
+      
+      // Get current workload for the category (only en_proceso orders count)
+      let categoryWorkload = 0;
+      if (category) {
+        categoryWorkload = await getCategoryWorkloadEnProceso(category);
+      }
+      
+      const totalHoursToSchedule = categoryWorkload + thisOrderHours;
+      
+      // Calculate delivery date based on 8-hour work days (8 AM - 4 PM)
+      const now = toMexicoTime(new Date());
+      const workStartHour = 8;
+      const workEndHour = 16;
+      const workHoursPerDay = workEndHour - workStartHour; // 8 hours
+      
+      let remainingHours = totalHoursToSchedule;
+      let currentDate = new Date(now);
+      let deliveryHour = workStartHour;
+      
+      // Check if we're within working hours today
+      const currentHour = now.getHours();
+      const currentMinutes = now.getMinutes();
+      
+      // Determine if we can start today
+      let hoursAvailableToday = 0;
+      if (currentHour >= workStartHour && currentHour < workEndHour) {
+        hoursAvailableToday = workEndHour - currentHour - (currentMinutes / 60);
+      } else if (currentHour < workStartHour) {
+        hoursAvailableToday = workHoursPerDay;
+      }
+      
+      // If less than 2 hours available today or outside working hours, start tomorrow
+      if (hoursAvailableToday < 2 || currentHour >= workEndHour) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        hoursAvailableToday = workHoursPerDay;
+      }
+      
+      // Skip to next working day if weekend (0 = Sunday, 6 = Saturday)
+      while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+      
+      // Calculate the delivery slot
+      if (remainingHours <= hoursAvailableToday) {
+        // Work can be completed today/first available day
+        if (currentHour >= workStartHour && currentHour < workEndHour && hoursAvailableToday >= 2) {
+          deliveryHour = Math.ceil(currentHour + (currentMinutes / 60) + remainingHours);
+        } else {
+          deliveryHour = workStartHour + remainingHours;
+        }
+        
+        if (deliveryHour > workEndHour) {
+          deliveryHour = workEndHour;
+        }
+      } else {
+        remainingHours -= hoursAvailableToday;
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        while (remainingHours > workHoursPerDay) {
+          remainingHours -= workHoursPerDay;
+          currentDate.setDate(currentDate.getDate() + 1);
+          
+          while (currentDate.getDay() === 0 || currentDate.getDay() === 6) {
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+        
+        deliveryHour = workStartHour + remainingHours;
+        if (deliveryHour > workEndHour) {
+          deliveryHour = workEndHour;
+        }
+      }
+      
+      // Set the time on the delivery date
+      const deliveryMinutes = Math.round((deliveryHour % 1) * 60);
+      const deliveryHourInt = Math.floor(deliveryHour);
+      currentDate.setHours(deliveryHourInt, deliveryMinutes, 0, 0);
+      
+      const timeStr = `${deliveryHourInt.toString().padStart(2, '0')}:${deliveryMinutes.toString().padStart(2, '0')}`;
+      
+      console.log(`=== CALCULATED DELIVERY FOR APPROVAL ===`);
+      console.log(`Category: ${category}`);
+      console.log(`Category workload (en_proceso): ${categoryWorkload}h`);
+      console.log(`This order hours: ${thisOrderHours}h`);
+      console.log(`Total hours to schedule: ${totalHoursToSchedule}h`);
+      console.log(`Delivery date: ${currentDate.toISOString()}`);
+      console.log(`Delivery time: ${timeStr}`);
+      
+      return { date: currentDate, time: timeStr };
+    } catch (error) {
+      console.error('Error calculating delivery date:', error);
+      return null;
+    }
+  };
+
   const clearSignature = () => {
     signatureRef.current?.clear();
   };
+
   const handleApproval = async () => {
     if (!signatureRef.current || signatureRef.current.isEmpty()) {
       toast({
@@ -262,13 +531,15 @@ export function SimpleOrderApproval({
     setLoading(true);
     try {
       const signatureData = signatureRef.current.toDataURL();
+      
+      // Calculate delivery date based on category workload
+      const deliveryCalc = await calculateDeliveryDateForApproval();
+      
       if (isOrderUpdate) {
         // Aprobar modificaciones
         const latestModification = modifications[0];
         if (latestModification) {
-          const {
-            error: modError
-          } = await supabase.from('order_modifications').update({
+          const { error: modError } = await supabase.from('order_modifications').update({
             client_approved: true,
             approved_at: new Date().toISOString()
           }).eq('id', latestModification.id);
@@ -276,9 +547,7 @@ export function SimpleOrderApproval({
         }
 
         // Guardar nueva firma de autorización para la modificación
-        const {
-          error: signatureError
-        } = await supabase.from('order_authorization_signatures').insert({
+        const { error: signatureError } = await supabase.from('order_authorization_signatures').insert({
           order_id: order.id,
           client_signature_data: signatureData,
           client_name: order.clients?.name || '',
@@ -301,9 +570,13 @@ export function SimpleOrderApproval({
           const latestModification = modifications[0];
           updateData.estimated_cost = latestModification.new_total;
         }
-        const {
-          error: orderError
-        } = await supabase.from('orders').update(updateData).eq('id', order.id);
+        
+        // Update delivery date if calculated
+        if (deliveryCalc) {
+          updateData.estimated_delivery_date = deliveryCalc.date.toISOString();
+        }
+        
+        const { error: orderError } = await supabase.from('orders').update(updateData).eq('id', order.id);
         console.log(`Updated order status to: ${newStatus} for order ${order.id}`);
         if (orderError) throw orderError;
         toast({
@@ -313,9 +586,7 @@ export function SimpleOrderApproval({
         });
       } else {
         // Aprobación original
-        const {
-          error: signatureError
-        } = await supabase.from('order_authorization_signatures').insert({
+        const { error: signatureError } = await supabase.from('order_authorization_signatures').insert({
           order_id: order.id,
           client_signature_data: signatureData,
           client_name: order.clients?.name || '',
@@ -332,21 +603,27 @@ export function SimpleOrderApproval({
         // Si solo servicios -> en_proceso directo
         const newStatus = hasProducts ? 'asignando' : 'en_proceso';
 
-        // Actualizar el estado de la orden
-        const {
-          error: orderError
-        } = await supabase.from('orders').update({
+        // Build update data with delivery date
+        const updateData: any = {
           status: newStatus as any,
           client_approval: true,
           client_approved_at: new Date().toISOString()
-        }).eq('id', order.id);
+        };
+        
+        // Update delivery date if calculated
+        if (deliveryCalc) {
+          updateData.estimated_delivery_date = deliveryCalc.date.toISOString();
+        }
+
+        // Actualizar el estado de la orden
+        const { error: orderError } = await supabase.from('orders').update(updateData).eq('id', order.id);
         if (orderError) throw orderError;
         
         toast({
           title: hasProducts ? "Orden en asignación" : "Orden aprobada",
           description: hasProducts 
             ? "La orden está pendiente de compra de productos."
-            : "La orden ha sido aprobada exitosamente y está en proceso.",
+            : `La orden ha sido aprobada. Entrega estimada: ${deliveryCalc ? deliveryCalc.time : 'pendiente'}`,
           variant: "default"
         });
       }
