@@ -44,6 +44,7 @@ interface SelectedService {
   description: string;
   price: number;
   quantity: number;
+  item_type?: 'servicio' | 'articulo';
 }
 
 export function AddEquipmentServicesDialog({
@@ -203,7 +204,8 @@ export function AddEquipmentServicesDialog({
       service_name: freeItemName.trim(),
       description: freeItemDescription.trim(),
       price: price,
-      quantity: 1
+      quantity: 1,
+      item_type: freeItemType
     }]);
 
     resetFreeItemForm();
@@ -260,9 +262,11 @@ export function AddEquipmentServicesDialog({
 
       // Also insert into order_items so they are included in the order total
       const orderItemsToInsert = selectedServices.flatMap(s => {
-        // Find the original service type for additional data
-        const serviceType = serviceTypes.find(st => st.id === s.service_type_id);
+        // Find the original service type for additional data (null for free items)
+        const serviceType = s.service_type_id ? serviceTypes.find(st => st.id === s.service_type_id) : null;
         const unitPrice = s.price;
+        // For free items, use the stored item_type; for regular services, use serviceType data
+        const itemType = s.item_type || serviceType?.item_type || 'servicio';
         
         return Array.from({ length: s.quantity }, () => ({
           order_id: orderId,
@@ -274,7 +278,7 @@ export function AddEquipmentServicesDialog({
           subtotal: unitPrice,
           total_amount: unitPrice,
           vat_rate: serviceType?.vat_rate || 16,
-          item_type: serviceType?.item_type || 'servicio',
+          item_type: itemType,
           profit_margin_rate: serviceType?.profit_margin_rate || 20,
           pricing_locked: true,
           status: 'pendiente' as const,
