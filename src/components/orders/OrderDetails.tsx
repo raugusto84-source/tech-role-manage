@@ -802,7 +802,10 @@ export function OrderDetails({
                   <EquipmentList 
                     orderId={order.id} 
                     equipment={orderEquipment} 
-                    onUpdate={loadOrderEquipment} 
+                    onUpdate={() => {
+                      loadOrderEquipment();
+                      loadOrderItems(); // Refresh items to update total when equipment services are added
+                    }} 
                     canEdit={!isClient && (canModifyOrder || ['en_proceso', 'pendiente_aprobacion'].includes(orderStatus))} 
                     isPolicyOrder={order.is_policy_order || false}
                   />
