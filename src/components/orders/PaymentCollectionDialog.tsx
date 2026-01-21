@@ -240,6 +240,51 @@ export function PaymentCollectionDialog({
 
       console.log('Payment registered successfully!');
 
+      // Update pending_collections: calculate new balance and update status if fully paid
+      try {
+        // Get all payments for this order to calculate total paid
+        const { data: allPayments, error: fetchPaymentsError } = await supabase
+          .from('order_payments')
+          .select('payment_amount, isr_withholding_applied')
+          .eq('order_id', order.id);
+
+        if (fetchPaymentsError) {
+          console.error('Error fetching payments for balance update:', fetchPaymentsError);
+        } else {
+          const totalPaidNow = (allPayments || []).reduce((sum: number, p: any) => sum + (p.payment_amount || 0), 0);
+          const hasAnyISR = (allPayments || []).some((p: any) => p.isr_withholding_applied);
+          
+          // Calculate exact total considering ISR
+          const exactFinalTotal = hasAnyISR
+            ? totalAmount - (totalAmount / 1.16) * 0.0125
+            : totalAmount;
+          
+          const newBalance = Math.max(0, exactFinalTotal - totalPaidNow);
+          const isFullyPaid = newBalance <= 0.01; // Small tolerance for rounding
+          
+          console.log('Updating pending_collections balance:', { totalPaidNow, exactFinalTotal, newBalance, isFullyPaid });
+          
+          // Update pending_collections record
+          const { error: updateError } = await supabase
+            .from('pending_collections')
+            .update({
+              balance: newBalance,
+              status: isFullyPaid ? 'paid' : 'pending',
+              ...(isFullyPaid && { collected_at: new Date().toISOString() })
+            })
+            .eq('order_id', order.id)
+            .eq('collection_type', 'order_payment');
+          
+          if (updateError) {
+            console.error('Error updating pending_collections:', updateError);
+          } else {
+            console.log('pending_collections updated successfully');
+          }
+        }
+      } catch (updateError) {
+        console.error('Error in pending_collections update:', updateError);
+      }
+
       toast({
         title: "Pago registrado",
         description: `Se registró el cobro de ${formatMXNExact(paymentAmount)} para la orden ${order.order_number}${hasISRWithholding ? ' (con retención ISR aplicada)' : ''}`,
