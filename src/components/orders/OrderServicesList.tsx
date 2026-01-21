@@ -79,10 +79,23 @@ export function OrderServicesList({
   const [addedItems, setAddedItems] = useState<Set<string>>(new Set());
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set());
   const [itemModificationNumbers, setItemModificationNumbers] = useState<Map<string, number>>(new Map());
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set());
   const [itemToDelete, setItemToDelete] = useState<{
     id: string;
     name: string;
   } | null>(null);
+
+  const toggleDescription = (itemId: string) => {
+    setExpandedDescriptions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
   const {
     toast
   } = useToast();
@@ -612,12 +625,20 @@ export function OrderServicesList({
                     </div>
                   </div>
                   
-                  {/* Description - Mobile Friendly */}
-                  {item.service_description && <div className="overflow-hidden">
-                      <p className="text-xs text-muted-foreground line-clamp-2 break-words whitespace-pre-wrap">
+                  {/* Description - Mobile Friendly with Click to Expand */}
+                  {item.service_description && (
+                    <div 
+                      className="overflow-hidden cursor-pointer hover:bg-muted/50 rounded p-1 -mx-1 transition-colors"
+                      onClick={() => toggleDescription(item.id)}
+                      title={expandedDescriptions.has(item.id) ? "Clic para contraer" : "Clic para ver más"}
+                    >
+                      <p className={`text-xs text-muted-foreground break-words whitespace-pre-wrap ${
+                        expandedDescriptions.has(item.id) ? '' : 'line-clamp-2'
+                      }`}>
                         {item.service_description}
                       </p>
-                    </div>}
+                    </div>
+                  )}
                   
                   {/* Item Details - Mobile Stack Layout */}
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
