@@ -80,6 +80,19 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
   const [equipmentServices, setEquipmentServices] = useState<Record<string, EquipmentService[]>>({});
   const [expandedEquipment, setExpandedEquipment] = useState<Set<string>>(new Set());
   const [addServicesDialogEquipment, setAddServicesDialogEquipment] = useState<Equipment | null>(null);
+  const [expandedServiceDescriptions, setExpandedServiceDescriptions] = useState<Set<string>>(new Set());
+
+  const toggleServiceDescription = (serviceId: string) => {
+    setExpandedServiceDescriptions(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(serviceId)) {
+        newSet.delete(serviceId);
+      } else {
+        newSet.add(serviceId);
+      }
+      return newSet;
+    });
+  };
 
   const isOrderPersisted = Boolean(orderId && orderId.trim());
   const canManage = canEdit && isOrderPersisted;
@@ -489,12 +502,20 @@ export function EquipmentList({ orderId, equipment, onUpdate, canEdit, isPolicyO
                                 disabled={!canManage}
                                 className="h-4 w-4"
                               />
-                              <div className="flex-1 min-w-0 overflow-hidden">
+                              <div 
+                                className="flex-1 min-w-0 overflow-hidden cursor-pointer"
+                                onClick={() => service.description && toggleServiceDescription(service.id)}
+                                title={service.description ? (expandedServiceDescriptions.has(service.id) ? "Clic para contraer" : "Clic para ver más") : undefined}
+                              >
                                 <p className={`font-medium truncate ${!service.is_selected ? 'text-muted-foreground line-through' : ''}`}>
                                   {service.service_name}
                                 </p>
                                 {service.description && (
-                                  <p className="text-xs text-muted-foreground truncate max-w-full">{service.description}</p>
+                                  <p className={`text-xs text-muted-foreground break-words ${
+                                    expandedServiceDescriptions.has(service.id) ? '' : 'line-clamp-1'
+                                  }`}>
+                                    {service.description}
+                                  </p>
                                 )}
                               </div>
                               <span className={`font-semibold whitespace-nowrap ${service.is_selected ? 'text-primary' : 'text-muted-foreground'}`}>
