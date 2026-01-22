@@ -16,7 +16,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck, Home } from 'lucide-react';
+import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck, Home, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -30,6 +30,8 @@ interface TechnicianOrderCardProps {
     delivery_date: string;
     status: 'en_espera' | 'pendiente_aprobacion' | 'en_proceso' | 'pendiente_actualizacion' | 'pendiente_entrega' | 'cancelada' | 'rechazada';
     created_at: string;
+    created_by?: string;
+    created_by_name?: string;
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
@@ -205,6 +207,14 @@ export function TechnicianOrderCard({
             {truncateText(order.failure_description)}
           </p>
         </div>
+
+        {/* Creado por */}
+        {order.created_by_name && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
+            <UserPlus className="h-3 w-3" />
+            <span>Por: {order.created_by_name}</span>
+          </div>
+        )}
 
         {/* Fecha de entrega y botones de acción */}
         <div className="flex justify-between items-center mt-3 pt-2 border-t border-border">

@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera, Pencil } from 'lucide-react';
+import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera, Pencil, UserPlus } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -54,6 +54,8 @@ interface OrderDetailsProps {
     assignment_reason?: string;
     evidence_photos?: string[];
     created_at: string;
+    created_by?: string;
+    created_by_name?: string;
     is_home_service?: boolean;
     service_location?: any;
     travel_time_hours?: number;
@@ -558,11 +560,18 @@ export function OrderDetails({
                 </Badge>}
             </div>
             
-            <div className="text-sm text-muted-foreground">
-              {formatDate(order.created_at)}
+            <div className="flex items-center gap-2">
+              <div className="text-sm text-muted-foreground">
+                {formatDate(order.created_at)}
+              </div>
+              {order.created_by_name && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <UserPlus className="h-3 w-3" />
+                  <span>Por: {order.created_by_name}</span>
+                </div>
+              )}
             </div>
           </div>
-
           {/* Admin/Tech Approval Button */}
           {['administrador', 'tecnico'].includes(profile?.role || '') && orderStatus === 'pendiente_aprobacion' && (
             <div className="mt-3">
