@@ -17,6 +17,7 @@ interface Order {
   is_development_order?: boolean;
   special_price_enabled?: boolean;
   special_price?: number | null;
+  created_by_name?: string;
   clients?: {
     name: string;
     client_number: string;
@@ -116,6 +117,13 @@ export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardPro
       <p className="text-xs text-muted-foreground truncate">
         {order.failure_description || 'Sin descripción'}
       </p>
+
+      {/* Row 4: Creator */}
+      {order.created_by_name && (
+        <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">
+          Por: {order.created_by_name}
+        </p>
+      )}
     </div>
   );
 }

@@ -29,6 +29,7 @@ interface Quote {
   has_equipment?: boolean;
   equipment_ready?: boolean;
   department?: string;
+  created_by_name?: string;
 }
 
 /**
@@ -96,7 +97,28 @@ export default function Quotes() {
         return;
       }
 
-      setQuotes(data || []);
+      // Obtener nombres de creadores
+      const creatorIds = [...new Set((data || []).map(q => q.created_by).filter(Boolean))];
+      let creatorNames: Record<string, string> = {};
+      
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', creatorIds);
+        
+        creatorNames = (profiles || []).reduce((acc, p) => {
+          acc[p.user_id] = p.full_name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      const quotesWithCreator = (data || []).map(q => ({
+        ...q,
+        created_by_name: q.created_by ? creatorNames[q.created_by] : undefined
+      }));
+
+      setQuotes(quotesWithCreator);
     } catch (error) {
       console.error('Unexpected error loading quotes:', error);
       toast({

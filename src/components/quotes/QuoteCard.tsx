@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Trash2, Calendar, DollarSign, User } from 'lucide-react';
+import { Eye, Trash2, Calendar, DollarSign, User, UserPlus } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
 interface Quote {
   id: string;
@@ -17,6 +17,7 @@ interface Quote {
   has_equipment?: boolean;
   equipment_ready?: boolean;
   department?: string;
+  created_by_name?: string;
 }
 
 interface QuoteCardProps {
@@ -113,6 +114,15 @@ export function QuoteCard({ quote, getStatusColor, onViewDetails, onDelete, canM
             </div>
           </div>
         </div>
+
+        {quote.created_by_name && (
+          <div className="flex items-center gap-1 mt-2 pt-2 border-t">
+            <UserPlus className="h-3 w-3 text-muted-foreground" />
+            <p className="text-xs text-muted-foreground truncate">
+              Creado por: <span className="font-medium">{quote.created_by_name}</span>
+            </p>
+          </div>
+        )}
       </CardContent>
 
       <CardFooter className="pt-2 pb-2">

@@ -35,6 +35,8 @@ interface Order {
   assignment_reason?: string;
   evidence_photos?: string[];
   created_at: string;
+  created_by?: string;
+  created_by_name?: string;
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
   is_policy_order?: boolean;
@@ -217,6 +219,11 @@ export function OrderListItem({
         <div>
           <div className="font-medium">{order.clients?.name}</div>
           <div className="text-sm text-muted-foreground">{order.clients?.client_number}</div>
+          {order.created_by_name && (
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Creó: {order.created_by_name}
+            </div>
+          )}
         </div>
       </TableCell>
       <TableCell onClick={onClick}>

@@ -65,6 +65,8 @@ interface Order {
   assignment_reason?: string;
   evidence_photos?: string[];
   created_at: string;
+  created_by?: string;
+  created_by_name?: string;
   unread_messages_count?: number;
   estimated_delivery_date?: string | null;
   priority: 'baja' | 'media' | 'alta' | 'critica';
@@ -274,9 +276,30 @@ export default function Orders() {
         })
       );
 
+      // Obtener nombres de creadores
+      const creatorIds = [...new Set(ordersWithTechnician.map(o => o.created_by).filter(Boolean))];
+      let creatorNames: Record<string, string> = {};
+      
+      if (creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('user_id, full_name')
+          .in('user_id', creatorIds);
+        
+        creatorNames = (profiles || []).reduce((acc, p) => {
+          acc[p.user_id] = p.full_name;
+          return acc;
+        }, {} as Record<string, string>);
+      }
+
+      const ordersWithCreator = ordersWithTechnician.map(o => ({
+        ...o,
+        created_by_name: o.created_by ? creatorNames[o.created_by] : undefined
+      }));
+
       // Calculate payment status for finalized orders
       const paymentStatusMap: Record<string, boolean> = {};
-      const finalizedOrders = ordersWithTechnician.filter(o => o.status === 'finalizada');
+      const finalizedOrders = ordersWithCreator.filter(o => o.status === 'finalizada');
       
       for (const order of finalizedOrders) {
         const { data: payments } = await supabase
@@ -293,9 +316,9 @@ export default function Orders() {
       
       setOrderPaymentStatus(paymentStatusMap);
       
-      console.log('Orders after processing:', ordersWithTechnician);
-      console.log('Orders filtered:', ordersWithTechnician.filter(o => o.order_number === '0001' || o.order_number === '0002'));
-      setOrders(ordersWithTechnician);
+      console.log('Orders after processing:', ordersWithCreator);
+      console.log('Orders filtered:', ordersWithCreator.filter(o => o.order_number === '0001' || o.order_number === '0002'));
+      setOrders(ordersWithCreator);
     } catch (error) {
       console.error('Unexpected error loading orders:', error);
       toast({
