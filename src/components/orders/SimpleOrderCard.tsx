@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard } from 'lucide-react';
+import { Calendar, User, DollarSign, Clock, Trash2, Eye, MapPin, Home, CreditCard, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
@@ -30,6 +30,8 @@ interface SimpleOrderCardProps {
     status: string;
     assigned_technician?: string;
     created_at: string;
+    created_by?: string;
+    created_by_name?: string;
     estimated_delivery_date?: string | null;
     is_home_service?: boolean;
     is_policy_order?: boolean;
@@ -306,6 +308,14 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
             {order.failure_description}
           </p>
         </div>
+
+        {/* Creado por */}
+        {order.created_by_name && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <UserPlus className="h-3 w-3" />
+            <span>Por: {order.created_by_name}</span>
+          </div>
+        )}
 
         {/* Barra de progreso */}
         <div className="pt-2">
