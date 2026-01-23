@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Edit, Trash2, Plus, Monitor, Wrench, ChevronDown, ChevronUp } from 'lucide-react';
 import { PendingEquipmentForm, PendingEquipment } from './PendingEquipmentForm';
 import { EquipmentService } from './EquipmentServicesForm';
+import { AddPendingEquipmentServicesDialog } from './AddPendingEquipmentServicesDialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
 
 interface PendingEquipmentListProps {
@@ -46,97 +46,6 @@ const calculateEquipmentServicesTotal = (equipment: PendingEquipment): number =>
     .filter(s => s.is_selected)
     .reduce((sum, s) => sum + s.price, 0);
 };
-
-interface InlineServiceFormProps {
-  onAdd: (service: EquipmentService) => void;
-}
-
-function InlineServiceForm({ onAdd }: InlineServiceFormProps) {
-  const [serviceName, setServiceName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleSubmit = () => {
-    if (!serviceName.trim()) return;
-    
-    onAdd({
-      id: `temp-${Date.now()}`,
-      service_name: serviceName.trim(),
-      description: description.trim() || undefined,
-      price: parseFloat(price) || 0,
-      is_selected: true
-    });
-    
-    setServiceName('');
-    setDescription('');
-    setPrice('');
-    setIsExpanded(false);
-  };
-
-  if (!isExpanded) {
-    return (
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setIsExpanded(true)}
-        className="w-full h-8 gap-1.5 border-dashed text-xs"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Agregar Servicio
-      </Button>
-    );
-  }
-
-  return (
-    <div className="p-2 bg-muted/50 rounded-md space-y-2">
-      <div className="flex gap-2">
-        <Input
-          value={serviceName}
-          onChange={(e) => setServiceName(e.target.value)}
-          placeholder="Nombre del servicio"
-          className="h-8 text-xs flex-1"
-          autoFocus
-        />
-        <Input
-          type="number"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="$ Precio"
-          className="h-8 text-xs w-24 text-right"
-        />
-      </div>
-      <Input
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Descripción (opcional)"
-        className="h-8 text-xs"
-      />
-      <div className="flex gap-2 justify-end">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsExpanded(false)}
-          className="h-7 text-xs"
-        >
-          Cancelar
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleSubmit}
-          disabled={!serviceName.trim()}
-          className="h-7 text-xs gap-1"
-        >
-          <Plus className="h-3 w-3" />
-          Agregar
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 interface ServiceChecklistProps {
   services: EquipmentService[];
@@ -191,6 +100,7 @@ export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: P
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [expandedServices, setExpandedServices] = useState<Record<number, boolean>>({});
+  const [addServicesDialogIndex, setAddServicesDialogIndex] = useState<number | null>(null);
 
   const handleAdd = (newEquipment: PendingEquipment) => {
     onAdd(newEquipment);
@@ -208,10 +118,11 @@ export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: P
     setExpandedServices(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  const handleAddService = (equipmentIndex: number, service: EquipmentService) => {
+  const handleAddServicesFromCatalog = (equipmentIndex: number, services: EquipmentService[]) => {
     const item = equipment[equipmentIndex];
-    const updatedServices = [...(item.services || []), service];
+    const updatedServices = [...(item.services || []), ...services];
     onUpdate(equipmentIndex, { ...item, services: updatedServices });
+    setAddServicesDialogIndex(null);
   };
 
   const handleToggleService = (equipmentIndex: number, serviceId: string) => {
@@ -366,15 +277,30 @@ export function PendingEquipmentList({ equipment, onAdd, onUpdate, onRemove }: P
                           onRemove={(serviceId) => handleRemoveService(index, serviceId)}
                         />
 
-                        {/* Formulario inline para agregar servicio */}
-                        <InlineServiceForm
-                          onAdd={(service) => handleAddService(index, service)}
+                        {/* Botón para agregar servicio desde catálogo - igual que en edit */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAddServicesDialogIndex(index)}
+                          className="w-full h-9 gap-1.5 border-dashed"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Agregar Servicio a este Equipo
+                        </Button>
+
+                        {/* Dialog para agregar servicios desde catálogo */}
+                        <AddPendingEquipmentServicesDialog
+                          open={addServicesDialogIndex === index}
+                          onOpenChange={(open) => !open && setAddServicesDialogIndex(null)}
+                          equipmentName={item.equipment_name}
+                          onServicesAdded={(services) => handleAddServicesFromCatalog(index, services)}
                         />
 
                         {/* Total de servicios del equipo */}
                         {hasServices && selectedCount > 0 && (
                           <div className="flex justify-between items-center pt-2 border-t text-xs">
-                            <span className="text-muted-foreground">Subtotal servicios equipo:</span>
+                            <span className="text-muted-foreground">Subtotal servicios:</span>
                             <span className="font-bold text-primary">{formatCOPCeilToTen(servicesTotal)}</span>
                           </div>
                         )}
