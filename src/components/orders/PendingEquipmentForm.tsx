@@ -5,9 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Loader2 } from 'lucide-react';
-import { EquipmentServicesForm, EquipmentService } from './EquipmentServicesForm';
+import { Plus, Loader2, Wrench, Trash2 } from 'lucide-react';
+import { EquipmentService } from './EquipmentServicesForm';
+import { AddPendingEquipmentServicesDialog } from './AddPendingEquipmentServicesDialog';
+import { formatCOPCeilToTen } from '@/utils/currency';
 
 export interface PendingEquipment {
   equipment_name: string;
@@ -59,6 +62,7 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
   const [newBrandName, setNewBrandName] = useState('');
   const [newModelName, setNewModelName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showAddServicesDialog, setShowAddServicesDialog] = useState(false);
 
   const [formData, setFormData] = useState<PendingEquipment>({
     equipment_name: initialData?.equipment_name || '',
@@ -74,8 +78,31 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
     services: initialData?.services || []
   });
 
-  const handleServicesChange = (services: EquipmentService[]) => {
-    setFormData(prev => ({ ...prev, services }));
+  const handleAddServicesFromCatalog = (services: EquipmentService[]) => {
+    setFormData(prev => ({ ...prev, services: [...(prev.services || []), ...services] }));
+    setShowAddServicesDialog(false);
+  };
+
+  const handleToggleService = (serviceId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      services: (prev.services || []).map(s =>
+        s.id === serviceId ? { ...s, is_selected: !s.is_selected } : s
+      )
+    }));
+  };
+
+  const handleRemoveService = (serviceId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      services: (prev.services || []).filter(s => s.id !== serviceId)
+    }));
+  };
+
+  const getSelectedServicesTotal = () => {
+    return (formData.services || [])
+      .filter(s => s.is_selected)
+      .reduce((sum, s) => sum + s.price, 0);
   };
 
   useEffect(() => {
@@ -339,11 +366,78 @@ export function PendingEquipmentForm({ initialData, onSubmit, onCancel }: Pendin
         />
       </div>
 
-      {/* Servicios para este equipo */}
+      {/* Servicios para este equipo - estilo igual al de edición */}
       <div className="border-t pt-4 mt-4">
-        <EquipmentServicesForm
-          services={formData.services || []}
-          onServicesChange={handleServicesChange}
+        <div className="flex items-center justify-between mb-3">
+          <Label className="flex items-center gap-2 text-sm font-medium">
+            <Wrench className="h-4 w-4" />
+            Servicios para este equipo
+          </Label>
+          {formData.services && formData.services.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              Total: <span className="font-semibold text-primary">{formatCOPCeilToTen(getSelectedServicesTotal())}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Lista de servicios como checklist */}
+        {formData.services && formData.services.length > 0 && (
+          <div className="space-y-1 mb-3">
+            {formData.services.map((service) => (
+              <div
+                key={service.id}
+                className={`flex items-center gap-2 p-2 rounded-md text-xs transition-colors ${
+                  service.is_selected ? 'bg-primary/10 border border-primary/20' : 'bg-muted/30 border border-transparent'
+                }`}
+              >
+                <Checkbox
+                  checked={service.is_selected}
+                  onCheckedChange={() => handleToggleService(service.id)}
+                  className="h-4 w-4"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium truncate ${!service.is_selected ? 'text-muted-foreground line-through' : ''}`}>
+                    {service.service_name}
+                  </p>
+                  {service.description && (
+                    <p className="text-muted-foreground text-[10px] truncate">{service.description}</p>
+                  )}
+                </div>
+                <span className={`font-semibold whitespace-nowrap ${service.is_selected ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {formatCOPCeilToTen(service.price)}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveService(service.id)}
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Botón para agregar servicio desde catálogo */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAddServicesDialog(true)}
+          className="w-full h-9 gap-1.5 border-dashed"
+        >
+          <Plus className="h-4 w-4" />
+          Agregar Servicio a este Equipo
+        </Button>
+
+        {/* Dialog para agregar servicios desde catálogo */}
+        <AddPendingEquipmentServicesDialog
+          open={showAddServicesDialog}
+          onOpenChange={setShowAddServicesDialog}
+          equipmentName={formData.equipment_name || 'Nuevo equipo'}
+          onServicesAdded={handleAddServicesFromCatalog}
         />
       </div>
 
