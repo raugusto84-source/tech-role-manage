@@ -3,12 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Trash2, Clock, Bell, Calendar, User, DollarSign, AlertCircle } from 'lucide-react';
+import { Eye, Trash2, Clock, Bell, Calendar, User, DollarSign, AlertCircle, CalendarPlus } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { formatDateMexico } from '@/utils/dateUtils';
+import { getTimeCategory, getTimeLimitLabel } from '@/utils/quoteTimeCategories';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { toast } from '@/hooks/use-toast';
 
 interface Quote {
   id: string;
@@ -50,7 +54,7 @@ interface QuoteListViewProps {
 
 /**
  * Vista de lista de cotizaciones con tiempo transcurrido por estado
- * Muestra todas las cotizaciones en formato tabla con duración en cada estado
+ * Incluye categorías de tiempo con colores y selector de recordatorio
  */
 export function QuoteListView({ 
   quotes, 
@@ -61,6 +65,8 @@ export function QuoteListView({
 }: QuoteListViewProps) {
   const [quotesWithDurations, setQuotesWithDurations] = useState<QuoteWithDurations[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reminderPopoverOpen, setReminderPopoverOpen] = useState<string | null>(null);
+  const [savingReminder, setSavingReminder] = useState(false);
 
   useEffect(() => {
     loadStatusDurations();
@@ -90,7 +96,6 @@ export function QuoteListView({
         const quoteLogs = (logs || []).filter(l => l.quote_id === quote.id);
         
         if (quoteLogs.length === 0) {
-          // Si no hay logs, calcular desde created_at
           const createdAt = new Date(quote.created_at);
           const durationMs = now.getTime() - createdAt.getTime();
           const durationHours = durationMs / (1000 * 60 * 60);
@@ -106,7 +111,6 @@ export function QuoteListView({
           };
         }
 
-        // Calcular duraciones para cada estado
         const durations: StatusDuration[] = [];
         
         for (let i = 0; i < quoteLogs.length; i++) {
@@ -138,7 +142,6 @@ export function QuoteListView({
       setQuotesWithDurations(enrichedQuotes);
     } catch (error) {
       console.error('Error loading status durations:', error);
-      // En caso de error, mostrar cotizaciones sin duraciones
       setQuotesWithDurations(quotes.map(q => ({
         ...q,
         statusDurations: [],
@@ -172,6 +175,76 @@ export function QuoteListView({
     const today = new Date();
     const followUp = new Date(followUpDate);
     return followUp.toDateString() === today.toDateString();
+  };
+
+  const handleSetReminder = async (quoteId: string, date: Date | undefined) => {
+    if (!date) return;
+    
+    try {
+      setSavingReminder(true);
+      const { error } = await supabase
+        .from('quotes')
+        .update({ follow_up_date: date.toISOString().split('T')[0] })
+        .eq('id', quoteId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Recordatorio guardado",
+        description: `Recordatorio establecido para ${formatDateMexico(date, 'dd/MM/yyyy')}`,
+      });
+
+      setReminderPopoverOpen(null);
+      // Actualizar localmente
+      setQuotesWithDurations(prev => 
+        prev.map(q => q.id === quoteId 
+          ? { ...q, follow_up_date: date.toISOString().split('T')[0] } 
+          : q
+        )
+      );
+    } catch (error) {
+      console.error('Error saving reminder:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo guardar el recordatorio",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleClearReminder = async (quoteId: string) => {
+    try {
+      setSavingReminder(true);
+      const { error } = await supabase
+        .from('quotes')
+        .update({ follow_up_date: null })
+        .eq('id', quoteId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Recordatorio eliminado",
+      });
+
+      setReminderPopoverOpen(null);
+      setQuotesWithDurations(prev => 
+        prev.map(q => q.id === quoteId 
+          ? { ...q, follow_up_date: undefined } 
+          : q
+        )
+      );
+    } catch (error) {
+      console.error('Error clearing reminder:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo eliminar el recordatorio",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingReminder(false);
+    }
   };
 
   if (loading) {
@@ -221,6 +294,12 @@ export function QuoteListView({
               const followUpOverdue = isFollowUpOverdue(quote.follow_up_date);
               const followUpToday = isFollowUpToday(quote.follow_up_date);
               
+              // Categoría de tiempo basada en el estado actual
+              const timeCategory = currentStatusDuration 
+                ? getTimeCategory(currentStatusDuration.duration, quote.status)
+                : null;
+              const timeLimit = getTimeLimitLabel(quote.status);
+              
               return (
                 <TableRow 
                   key={quote.id} 
@@ -257,48 +336,108 @@ export function QuoteListView({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="space-y-1">
-                          {currentStatusDuration && (
-                            <div className="text-xs font-medium">
-                              {formatHoursAndMinutes(currentStatusDuration.duration)}
+                          {currentStatusDuration && timeCategory && (
+                            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${timeCategory.bgClass} ${timeCategory.colorClass} border ${timeCategory.borderClass}`}>
+                              {timeCategory.isDelayed && <AlertCircle className="h-3 w-3" />}
+                              {timeCategory.label}
                             </div>
                           )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium">
+                              {currentStatusDuration && formatHoursAndMinutes(currentStatusDuration.duration)}
+                            </span>
+                            {timeLimit && (
+                              <span className="text-xs text-muted-foreground">
+                                / {timeLimit}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">
                             Total: {formatHoursAndMinutes(quote.totalTime)}
                           </div>
                         </div>
                       </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-[250px]">
-                        <div className="space-y-1.5 text-xs">
+                      <TooltipContent side="left" className="max-w-[280px]">
+                        <div className="space-y-2 text-xs">
                           <p className="font-semibold">Tiempo por estado:</p>
-                          {quote.statusDurations.map((sd, idx) => (
-                            <div key={idx} className="flex justify-between gap-4">
-                              <span>{getStatusLabel(sd.status)}:</span>
-                      <span className="font-medium text-primary">
-                        {formatHoursAndMinutes(sd.duration)}
-                        {sd.isCurrent && ' (actual)'}
-                      </span>
-                            </div>
-                          ))}
+                          {quote.statusDurations.map((sd, idx) => {
+                            const cat = getTimeCategory(sd.duration, sd.status);
+                            return (
+                              <div key={idx} className="flex justify-between gap-4">
+                                <span>{getStatusLabel(sd.status)}:</span>
+                                <span className={`font-medium ${cat.colorClass}`}>
+                                  {formatHoursAndMinutes(sd.duration)}
+                                  {sd.isCurrent && ' (actual)'}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {quote.follow_up_date ? (
-                      <div className={`flex items-center gap-1 text-xs ${
-                        followUpOverdue 
-                          ? 'text-destructive font-medium' 
-                          : followUpToday 
-                            ? 'text-amber-600 font-medium'
-                            : 'text-muted-foreground'
-                      }`}>
-                        {followUpOverdue && <AlertCircle className="h-3 w-3" />}
-                        <Calendar className="h-3 w-3" />
-                        {formatDateMexico(quote.follow_up_date, 'dd/MM/yy')}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
+                  <TableCell className="hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
+                    <Popover 
+                      open={reminderPopoverOpen === quote.id} 
+                      onOpenChange={(open) => setReminderPopoverOpen(open ? quote.id : null)}
+                    >
+                      <PopoverTrigger asChild>
+                        {quote.follow_up_date ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-auto py-1 px-2 text-xs ${
+                              followUpOverdue 
+                                ? 'text-destructive bg-destructive/10 hover:bg-destructive/20' 
+                                : followUpToday 
+                                  ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                                  : 'text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {followUpOverdue && <AlertCircle className="h-3 w-3 mr-1" />}
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {formatDateMexico(quote.follow_up_date, 'dd/MM/yy')}
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <CalendarPlus className="h-3 w-3 mr-1" />
+                            Agregar
+                          </Button>
+                        )}
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <div className="p-2 border-b">
+                          <p className="text-sm font-medium">Fecha de recordatorio</p>
+                          <p className="text-xs text-muted-foreground">
+                            Selecciona cuándo dar seguimiento
+                          </p>
+                        </div>
+                        <CalendarComponent
+                          mode="single"
+                          selected={quote.follow_up_date ? new Date(quote.follow_up_date + 'T12:00:00') : undefined}
+                          onSelect={(date) => handleSetReminder(quote.id, date)}
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          initialFocus
+                        />
+                        {quote.follow_up_date && (
+                          <div className="p-2 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full text-destructive hover:text-destructive"
+                              onClick={() => handleClearReminder(quote.id)}
+                              disabled={savingReminder}
+                            >
+                              Eliminar recordatorio
+                            </Button>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {quote.created_by_name ? (
