@@ -4,13 +4,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { QuoteCard } from '@/components/quotes/QuoteCard';
+import { QuoteListView } from '@/components/quotes/QuoteListView';
 import { QuoteWizard } from '@/components/quotes/QuoteWizard';
 import { QuoteDetails } from '@/components/quotes/QuoteDetails';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Plus, Search, LogOut, Home } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, Plus, Search, LogOut } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Quote {
@@ -30,6 +30,7 @@ interface Quote {
   equipment_ready?: boolean;
   department?: string;
   created_by_name?: string;
+  follow_up_date?: string;
 }
 
 /**
@@ -417,62 +418,77 @@ export default function Quotes() {
           </div>
         </div>
 
-        {/* Content Area - Mobile First */}
-        <div className="space-y-4 sm:space-y-6">
-          {filteredQuotes.length === 0 ? (
-            <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25 mx-2 sm:mx-0">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+        {/* Content Area - Tabs por estado */}
+        <Tabs defaultValue="all" className="space-y-4">
+          <TabsList className="flex flex-wrap h-auto gap-1">
+            <TabsTrigger value="all" className="text-xs">
+              Todas ({filteredQuotes.length})
+            </TabsTrigger>
+            <TabsTrigger value="pendiente_aprobacion" className="text-xs">
+              ⏳ Pendientes ({quotesByStatus.pendiente_aprobacion.length})
+            </TabsTrigger>
+            <TabsTrigger value="solicitud" className="text-xs">
+              📝 Nuevas ({quotesByStatus.solicitud.length})
+            </TabsTrigger>
+            <TabsTrigger value="enviada" className="text-xs">
+              📤 Enviadas ({quotesByStatus.enviada.length})
+            </TabsTrigger>
+            <TabsTrigger value="aceptada" className="text-xs">
+              ✅ Aceptadas ({quotesByStatus.aceptada.length})
+            </TabsTrigger>
+            <TabsTrigger value="rechazada" className="text-xs">
+              ❌ No Aceptadas ({quotesByStatus.rechazada.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all" className="space-y-4">
+            {filteredQuotes.length === 0 ? (
+              <div className="text-center py-8 sm:py-12 bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/25">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                  <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-base sm:text-lg font-medium mb-2">No hay cotizaciones</h3>
+                <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
+                  {searchTerm 
+                    ? 'No se encontraron cotizaciones con los filtros aplicados'
+                    : 'Aún no tienes cotizaciones registradas'}
+                </p>
+                {canCreateQuotes && (
+                  <Button onClick={() => setShowWizard(true)} size="sm">
+                    <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Crear primera cotización
+                  </Button>
+                )}
               </div>
-              <h3 className="text-base sm:text-lg font-medium mb-2">No hay cotizaciones</h3>
-              <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4 px-4">
-                {searchTerm 
-                  ? 'No se encontraron cotizaciones con los filtros aplicados'
-                  : 'Aún no tienes cotizaciones registradas'}
-              </p>
-              {canCreateQuotes && (
-                <Button onClick={() => setShowWizard(true)} size="sm">
-                  <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                  Crear primera cotización
-                </Button>
+            ) : (
+              <QuoteListView
+                quotes={filteredQuotes}
+                getStatusInfo={getStatusInfo}
+                onViewDetails={(quote) => setSelectedQuote(quote)}
+                onDelete={(quoteId) => setDeleteQuoteId(quoteId)}
+                canManage={canManageQuotes}
+              />
+            )}
+          </TabsContent>
+
+          {Object.entries(quotesByStatus).map(([status, statusQuotes]) => (
+            <TabsContent key={status} value={status} className="space-y-4">
+              {statusQuotes.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No hay cotizaciones en este estado
+                </div>
+              ) : (
+                <QuoteListView
+                  quotes={statusQuotes}
+                  getStatusInfo={getStatusInfo}
+                  onViewDetails={(quote) => setSelectedQuote(quote)}
+                  onDelete={(quoteId) => setDeleteQuoteId(quoteId)}
+                  canManage={canManageQuotes}
+                />
               )}
-            </div>
-          ) : (
-            <div className="space-y-6 sm:space-y-8">
-              {Object.entries(quotesByStatus).map(([status, statusQuotes]) => {
-                const statusInfo = getStatusInfo(status);
-                
-                if (statusQuotes.length === 0) return null;
-                
-                return (
-                  <div key={status} className="space-y-3 sm:space-y-4">
-                    <div className="flex items-center gap-2 sm:gap-3 pb-2 border-b mx-2 sm:mx-0">
-                      <span className="text-xl sm:text-2xl">{statusInfo.icon}</span>
-                      <div>
-                        <h2 className="text-lg sm:text-xl font-semibold">{statusInfo.label}</h2>
-                        <p className="text-xs sm:text-sm text-muted-foreground">
-                          {statusQuotes.length} {statusQuotes.length === 1 ? 'cotización' : 'cotizaciones'}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 px-2 sm:px-0">
-                      {statusQuotes.map((quote) => (
-                        <QuoteCard
-                          key={quote.id}
-                          quote={quote}
-                          getStatusColor={() => statusInfo.color}
-                          onViewDetails={() => setSelectedQuote(quote)}
-                          onDelete={() => setDeleteQuoteId(quote.id)}
-                          canManage={canManageQuotes}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            </TabsContent>
+          ))}
+        </Tabs>
       </div>
 
       {/* Botón flotante + para nueva cotización (móvil) */}
