@@ -1,18 +1,30 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Eye, Trash2, Clock, Bell, Calendar, User, DollarSign, AlertCircle, CalendarPlus, Send, Loader2 } from 'lucide-react';
-import { formatCOPCeilToTen } from '@/utils/currency';
-import { formatHoursAndMinutes } from '@/utils/timeUtils';
-import { formatDateMexico } from '@/utils/dateUtils';
-import { getTimeCategory, getTimeLimitLabel } from '@/utils/quoteTimeCategories';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { toast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Eye,
+  Trash2,
+  Clock,
+  Bell,
+  Calendar,
+  User,
+  DollarSign,
+  AlertCircle,
+  CalendarPlus,
+  Send,
+  Loader2,
+} from "lucide-react";
+import { formatCOPCeilToTen } from "@/utils/currency";
+import { formatHoursAndMinutes } from "@/utils/timeUtils";
+import { formatDateMexico } from "@/utils/dateUtils";
+import { getTimeCategory, getTimeLimitLabel } from "@/utils/quoteTimeCategories";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { toast } from "@/hooks/use-toast";
 
 interface Quote {
   id: string;
@@ -21,7 +33,7 @@ interface Quote {
   client_email: string;
   service_description: string;
   estimated_amount: number;
-  status: 'solicitud' | 'enviada' | 'aceptada' | 'rechazada' | 'seguimiento' | 'pendiente_aprobacion' | 'asignando';
+  status: "solicitud" | "enviada" | "aceptada" | "rechazada" | "seguimiento" | "pendiente_aprobacion" | "asignando";
   request_date: string;
   created_at: string;
   created_by_name?: string;
@@ -41,11 +53,11 @@ interface QuoteWithDurations extends Quote {
 
 interface QuoteListViewProps {
   quotes: Quote[];
-  getStatusInfo: (status: string) => { 
-    label: string; 
-    color: string; 
-    bgColor: string; 
-    icon: string; 
+  getStatusInfo: (status: string) => {
+    label: string;
+    color: string;
+    bgColor: string;
+    icon: string;
   };
   onViewDetails: (quote: Quote) => void;
   onDelete: (quoteId: string) => void;
@@ -57,13 +69,13 @@ interface QuoteListViewProps {
  * Vista de lista de cotizaciones con tiempo transcurrido por estado
  * Incluye categorías de tiempo con colores y selector de recordatorio
  */
-export function QuoteListView({ 
-  quotes, 
-  getStatusInfo, 
-  onViewDetails, 
-  onDelete, 
+export function QuoteListView({
+  quotes,
+  getStatusInfo,
+  onViewDetails,
+  onDelete,
   onQuoteSent,
-  canManage 
+  canManage,
 }: QuoteListViewProps) {
   const [quotesWithDurations, setQuotesWithDurations] = useState<QuoteWithDurations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,38 +96,40 @@ export function QuoteListView({
 
     try {
       setLoading(true);
-      const quoteIds = quotes.map(q => q.id);
-      
+      const quoteIds = quotes.map((q) => q.id);
+
       const { data: logs, error } = await supabase
-        .from('quote_status_logs')
-        .select('quote_id, previous_status, new_status, changed_at')
-        .in('quote_id', quoteIds)
-        .order('changed_at', { ascending: true });
+        .from("quote_status_logs")
+        .select("quote_id, previous_status, new_status, changed_at")
+        .in("quote_id", quoteIds)
+        .order("changed_at", { ascending: true });
 
       if (error) throw error;
 
       const now = new Date();
-      const enrichedQuotes: QuoteWithDurations[] = quotes.map(quote => {
-        const quoteLogs = (logs || []).filter(l => l.quote_id === quote.id);
-        
+      const enrichedQuotes: QuoteWithDurations[] = quotes.map((quote) => {
+        const quoteLogs = (logs || []).filter((l) => l.quote_id === quote.id);
+
         if (quoteLogs.length === 0) {
           const createdAt = new Date(quote.created_at);
           const durationMs = now.getTime() - createdAt.getTime();
           const durationHours = durationMs / (1000 * 60 * 60);
-          
+
           return {
             ...quote,
-            statusDurations: [{
-              status: quote.status,
-              duration: durationHours,
-              isCurrent: true
-            }],
-            totalTime: durationHours
+            statusDurations: [
+              {
+                status: quote.status,
+                duration: durationHours,
+                isCurrent: true,
+              },
+            ],
+            totalTime: durationHours,
           };
         }
 
         const durations: StatusDuration[] = [];
-        
+
         for (let i = 0; i < quoteLogs.length; i++) {
           const log = quoteLogs[i];
           const startTime = new Date(log.changed_at);
@@ -129,7 +143,7 @@ export function QuoteListView({
           durations.push({
             status: log.new_status,
             duration: durationHours,
-            isCurrent
+            isCurrent,
           });
         }
 
@@ -138,18 +152,20 @@ export function QuoteListView({
         return {
           ...quote,
           statusDurations: durations,
-          totalTime
+          totalTime,
         };
       });
 
       setQuotesWithDurations(enrichedQuotes);
     } catch (error) {
-      console.error('Error loading status durations:', error);
-      setQuotesWithDurations(quotes.map(q => ({
-        ...q,
-        statusDurations: [],
-        totalTime: 0
-      })));
+      console.error("Error loading status durations:", error);
+      setQuotesWithDurations(
+        quotes.map((q) => ({
+          ...q,
+          statusDurations: [],
+          totalTime: 0,
+        })),
+      );
     } finally {
       setLoading(false);
     }
@@ -157,13 +173,13 @@ export function QuoteListView({
 
   const getStatusLabel = (status: string): string => {
     const labels: Record<string, string> = {
-      solicitud: 'Nueva',
-      enviada: 'Enviada',
-      aceptada: 'Aceptada',
-      rechazada: 'No Aceptada',
-      seguimiento: 'Seguimiento',
-      pendiente_aprobacion: 'Pendiente',
-      asignando: 'Asignando'
+      solicitud: "Nueva",
+      enviada: "Enviada",
+      aceptada: "Aceptada",
+      rechazada: "No Aceptada",
+      seguimiento: "Seguimiento",
+      pendiente_aprobacion: "Pendiente",
+      asignando: "Asignando",
     };
     return labels[status] || status;
   };
@@ -182,31 +198,28 @@ export function QuoteListView({
 
   const handleSetReminder = async (quoteId: string, date: Date | undefined) => {
     if (!date) return;
-    
+
     try {
       setSavingReminder(true);
       const { error } = await supabase
-        .from('quotes')
-        .update({ follow_up_date: date.toISOString().split('T')[0] })
-        .eq('id', quoteId);
+        .from("quotes")
+        .update({ follow_up_date: date.toISOString().split("T")[0] })
+        .eq("id", quoteId);
 
       if (error) throw error;
 
       toast({
         title: "Recordatorio guardado",
-        description: `Recordatorio establecido para ${formatDateMexico(date, 'dd/MM/yyyy')}`,
+        description: `Recordatorio establecido para ${formatDateMexico(date, "dd/MM/yyyy")}`,
       });
 
       setReminderPopoverOpen(null);
       // Actualizar localmente
-      setQuotesWithDurations(prev => 
-        prev.map(q => q.id === quoteId 
-          ? { ...q, follow_up_date: date.toISOString().split('T')[0] } 
-          : q
-        )
+      setQuotesWithDurations((prev) =>
+        prev.map((q) => (q.id === quoteId ? { ...q, follow_up_date: date.toISOString().split("T")[0] } : q)),
       );
     } catch (error) {
-      console.error('Error saving reminder:', error);
+      console.error("Error saving reminder:", error);
       toast({
         title: "Error",
         description: "No se pudo guardar el recordatorio",
@@ -220,10 +233,7 @@ export function QuoteListView({
   const handleClearReminder = async (quoteId: string) => {
     try {
       setSavingReminder(true);
-      const { error } = await supabase
-        .from('quotes')
-        .update({ follow_up_date: null })
-        .eq('id', quoteId);
+      const { error } = await supabase.from("quotes").update({ follow_up_date: null }).eq("id", quoteId);
 
       if (error) throw error;
 
@@ -232,14 +242,9 @@ export function QuoteListView({
       });
 
       setReminderPopoverOpen(null);
-      setQuotesWithDurations(prev => 
-        prev.map(q => q.id === quoteId 
-          ? { ...q, follow_up_date: undefined } 
-          : q
-        )
-      );
+      setQuotesWithDurations((prev) => prev.map((q) => (q.id === quoteId ? { ...q, follow_up_date: undefined } : q)));
     } catch (error) {
-      console.error('Error clearing reminder:', error);
+      console.error("Error clearing reminder:", error);
       toast({
         title: "Error",
         description: "No se pudo eliminar el recordatorio",
@@ -262,13 +267,20 @@ export function QuoteListView({
 
     try {
       setSendingQuote(quoteId);
-      
-      const { data, error } = await supabase.functions.invoke('send-quote-email', {
-        body: { quoteId }
+
+      // Enviamos todos los datos a la Edge Function
+      const { data, error } = await supabase.functions.invoke("send-quote-email", {
+        body: {
+          quoteId,
+          clientEmail,
+          quoteNumber,
+        },
       });
 
+      // Manejo de errores robusto
       if (error) throw error;
-      if (!data.success) throw new Error(data.error);
+      if (!data) throw new Error("El servidor no devolvió ninguna respuesta");
+      if (data.error || data.success === false) throw new Error(data.error || "Error interno al enviar el correo");
 
       toast({
         title: "¡Cotización enviada!",
@@ -276,17 +288,12 @@ export function QuoteListView({
       });
 
       // Update local state to reflect sent status
-      setQuotesWithDurations(prev => 
-        prev.map(q => q.id === quoteId 
-          ? { ...q, status: 'enviada' as const } 
-          : q
-        )
-      );
+      setQuotesWithDurations((prev) => prev.map((q) => (q.id === quoteId ? { ...q, status: "enviada" as const } : q)));
 
       // Notify parent to refresh
       onQuoteSent?.();
     } catch (error: any) {
-      console.error('Error sending quote:', error);
+      console.error("Error sending quote:", error);
       toast({
         title: "Error al enviar",
         description: error.message || "No se pudo enviar la cotización",
@@ -340,25 +347,23 @@ export function QuoteListView({
           <TableBody>
             {quotesWithDurations.map((quote) => {
               const statusInfo = getStatusInfo(quote.status);
-              const currentStatusDuration = quote.statusDurations.find(d => d.isCurrent);
+              const currentStatusDuration = quote.statusDurations.find((d) => d.isCurrent);
               const followUpOverdue = isFollowUpOverdue(quote.follow_up_date);
               const followUpToday = isFollowUpToday(quote.follow_up_date);
-              
+
               // Categoría de tiempo basada en el estado actual
-              const timeCategory = currentStatusDuration 
+              const timeCategory = currentStatusDuration
                 ? getTimeCategory(currentStatusDuration.duration, quote.status)
                 : null;
               const timeLimit = getTimeLimitLabel(quote.status);
-              
+
               return (
-                <TableRow 
-                  key={quote.id} 
+                <TableRow
+                  key={quote.id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => onViewDetails(quote)}
                 >
-                  <TableCell className="font-medium text-xs sm:text-sm">
-                    {quote.quote_number}
-                  </TableCell>
+                  <TableCell className="font-medium text-xs sm:text-sm">{quote.quote_number}</TableCell>
                   <TableCell>
                     <div className="space-y-0.5">
                       <div className="font-medium text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[200px]">
@@ -372,22 +377,20 @@ export function QuoteListView({
                   <TableCell className="hidden md:table-cell">
                     <div className="flex items-center gap-1 text-sm font-medium text-green-600">
                       <DollarSign className="h-3 w-3" />
-                      {quote.estimated_amount 
-                        ? formatCOPCeilToTen(quote.estimated_amount) 
-                        : 'Por definir'}
+                      {quote.estimated_amount ? formatCOPCeilToTen(quote.estimated_amount) : "Por definir"}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge className={`${statusInfo.color} border text-xs`}>
-                      {getStatusLabel(quote.status)}
-                    </Badge>
+                    <Badge className={`${statusInfo.color} border text-xs`}>{getStatusLabel(quote.status)}</Badge>
                   </TableCell>
                   <TableCell className="hidden sm:table-cell">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="space-y-1">
                           {currentStatusDuration && timeCategory && (
-                            <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${timeCategory.bgClass} ${timeCategory.colorClass} border ${timeCategory.borderClass}`}>
+                            <div
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${timeCategory.bgClass} ${timeCategory.colorClass} border ${timeCategory.borderClass}`}
+                            >
                               {timeCategory.isDelayed && <AlertCircle className="h-3 w-3" />}
                               {timeCategory.label}
                             </div>
@@ -396,11 +399,7 @@ export function QuoteListView({
                             <span className="text-xs font-medium">
                               {currentStatusDuration && formatHoursAndMinutes(currentStatusDuration.duration)}
                             </span>
-                            {timeLimit && (
-                              <span className="text-xs text-muted-foreground">
-                                / {timeLimit}
-                              </span>
-                            )}
+                            {timeLimit && <span className="text-xs text-muted-foreground">/ {timeLimit}</span>}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             Total: {formatHoursAndMinutes(quote.totalTime)}
@@ -417,7 +416,7 @@ export function QuoteListView({
                                 <span>{getStatusLabel(sd.status)}:</span>
                                 <span className={`font-medium ${cat.colorClass}`}>
                                   {formatHoursAndMinutes(sd.duration)}
-                                  {sd.isCurrent && ' (actual)'}
+                                  {sd.isCurrent && " (actual)"}
                                 </span>
                               </div>
                             );
@@ -427,8 +426,8 @@ export function QuoteListView({
                     </Tooltip>
                   </TableCell>
                   <TableCell className="hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
-                    <Popover 
-                      open={reminderPopoverOpen === quote.id} 
+                    <Popover
+                      open={reminderPopoverOpen === quote.id}
                       onOpenChange={(open) => setReminderPopoverOpen(open ? quote.id : null)}
                     >
                       <PopoverTrigger asChild>
@@ -437,16 +436,16 @@ export function QuoteListView({
                             variant="ghost"
                             size="sm"
                             className={`h-auto py-1 px-2 text-xs ${
-                              followUpOverdue 
-                                ? 'text-destructive bg-destructive/10 hover:bg-destructive/20' 
-                                : followUpToday 
-                                  ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
-                                  : 'text-muted-foreground hover:bg-muted'
+                              followUpOverdue
+                                ? "text-destructive bg-destructive/10 hover:bg-destructive/20"
+                                : followUpToday
+                                  ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
+                                  : "text-muted-foreground hover:bg-muted"
                             }`}
                           >
                             {followUpOverdue && <AlertCircle className="h-3 w-3 mr-1" />}
                             <Calendar className="h-3 w-3 mr-1" />
-                            {formatDateMexico(quote.follow_up_date, 'dd/MM/yy')}
+                            {formatDateMexico(quote.follow_up_date, "dd/MM/yy")}
                           </Button>
                         ) : (
                           <Button
@@ -462,13 +461,11 @@ export function QuoteListView({
                       <PopoverContent className="w-auto p-0" align="start">
                         <div className="p-2 border-b">
                           <p className="text-sm font-medium">Fecha de recordatorio</p>
-                          <p className="text-xs text-muted-foreground">
-                            Selecciona cuándo dar seguimiento
-                          </p>
+                          <p className="text-xs text-muted-foreground">Selecciona cuándo dar seguimiento</p>
                         </div>
                         <CalendarComponent
                           mode="single"
-                          selected={quote.follow_up_date ? new Date(quote.follow_up_date + 'T12:00:00') : undefined}
+                          selected={quote.follow_up_date ? new Date(quote.follow_up_date + "T12:00:00") : undefined}
                           onSelect={(date) => handleSetReminder(quote.id, date)}
                           disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                           initialFocus
@@ -502,11 +499,11 @@ export function QuoteListView({
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                       {/* Send button - only show for quotes that haven't been sent */}
-                      {canManage && (quote.status === 'solicitud' || quote.status === 'seguimiento') && (
+                      {canManage && (quote.status === "solicitud" || quote.status === "seguimiento") && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button 
-                              variant="ghost" 
+                            <Button
+                              variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
                               onClick={() => handleSendQuote(quote.id, quote.client_email, quote.quote_number)}
@@ -524,17 +521,12 @@ export function QuoteListView({
                           </TooltipContent>
                         </Tooltip>
                       )}
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => onViewDetails(quote)}
-                      >
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewDetails(quote)}>
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
                       {canManage && (
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="icon"
                           className="h-7 w-7 text-destructive hover:text-destructive"
                           onClick={() => onDelete(quote.id)}
