@@ -466,6 +466,7 @@ export default function Quotes() {
                 getStatusInfo={getStatusInfo}
                 onViewDetails={(quote) => setSelectedQuote(quote)}
                 onDelete={(quoteId) => setDeleteQuoteId(quoteId)}
+                onQuoteSent={loadQuotes}
                 canManage={canManageQuotes}
               />
             )}
@@ -483,6 +484,7 @@ export default function Quotes() {
                   getStatusInfo={getStatusInfo}
                   onViewDetails={(quote) => setSelectedQuote(quote)}
                   onDelete={(quoteId) => setDeleteQuoteId(quoteId)}
+                  onQuoteSent={loadQuotes}
                   canManage={canManageQuotes}
                 />
               )}

@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Trash2, Clock, Bell, Calendar, User, DollarSign, AlertCircle, CalendarPlus } from 'lucide-react';
+import { Eye, Trash2, Clock, Bell, Calendar, User, DollarSign, AlertCircle, CalendarPlus, Send, Loader2 } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { formatHoursAndMinutes } from '@/utils/timeUtils';
 import { formatDateMexico } from '@/utils/dateUtils';
@@ -49,6 +49,7 @@ interface QuoteListViewProps {
   };
   onViewDetails: (quote: Quote) => void;
   onDelete: (quoteId: string) => void;
+  onQuoteSent?: () => void;
   canManage: boolean;
 }
 
@@ -61,12 +62,14 @@ export function QuoteListView({
   getStatusInfo, 
   onViewDetails, 
   onDelete, 
+  onQuoteSent,
   canManage 
 }: QuoteListViewProps) {
   const [quotesWithDurations, setQuotesWithDurations] = useState<QuoteWithDurations[]>([]);
   const [loading, setLoading] = useState(true);
   const [reminderPopoverOpen, setReminderPopoverOpen] = useState<string | null>(null);
   const [savingReminder, setSavingReminder] = useState(false);
+  const [sendingQuote, setSendingQuote] = useState<string | null>(null);
 
   useEffect(() => {
     loadStatusDurations();
@@ -244,6 +247,53 @@ export function QuoteListView({
       });
     } finally {
       setSavingReminder(false);
+    }
+  };
+
+  const handleSendQuote = async (quoteId: string, clientEmail: string, quoteNumber: string) => {
+    if (!clientEmail) {
+      toast({
+        title: "Error",
+        description: "El cliente no tiene correo electrónico registrado",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSendingQuote(quoteId);
+      
+      const { data, error } = await supabase.functions.invoke('send-quote-email', {
+        body: { quoteId }
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error);
+
+      toast({
+        title: "¡Cotización enviada!",
+        description: `Se envió la cotización ${quoteNumber} a ${clientEmail}`,
+      });
+
+      // Update local state to reflect sent status
+      setQuotesWithDurations(prev => 
+        prev.map(q => q.id === quoteId 
+          ? { ...q, status: 'enviada' as const } 
+          : q
+        )
+      );
+
+      // Notify parent to refresh
+      onQuoteSent?.();
+    } catch (error: any) {
+      console.error('Error sending quote:', error);
+      toast({
+        title: "Error al enviar",
+        description: error.message || "No se pudo enviar la cotización",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingQuote(null);
     }
   };
 
@@ -451,6 +501,29 @@ export function QuoteListView({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                      {/* Send button - only show for quotes that haven't been sent */}
+                      {canManage && (quote.status === 'solicitud' || quote.status === 'seguimiento') && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                              onClick={() => handleSendQuote(quote.id, quote.client_email, quote.quote_number)}
+                              disabled={sendingQuote === quote.id}
+                            >
+                              {sendingQuote === quote.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Send className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Enviar cotización por correo</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
                       <Button 
                         variant="ghost" 
                         size="icon"
