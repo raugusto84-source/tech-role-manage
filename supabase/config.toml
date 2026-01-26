@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.create-policy-support-order]
 verify_jwt = false
+
+[functions.send-quote-email]
+verify_jwt = false
