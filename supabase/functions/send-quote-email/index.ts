@@ -217,7 +217,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const emailResponse = await resend.emails.send({
-      from: "Cotizaciones <onboarding@resend.dev>",
+      from: "Syslag Cotizaciones <onboarding@resend.dev>",
       to: [quote.client_email],
       subject: `Cotización ${quote.quote_number} - ${quote.client_name}`,
       html: emailHtml,
@@ -225,21 +225,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully:", emailResponse);
 
+    // Check if email was sent successfully
+    if (emailResponse.error) {
+      throw new Error(`Error al enviar el email: ${emailResponse.error.message}`);
+    }
+
     // Update quote status to 'enviada'
     const { error: updateError } = await supabase
       .from("quotes")
       .update({ 
-        status: "enviada",
-        sent_at: new Date().toISOString()
+        status: "enviada"
       })
       .eq("id", quoteId);
 
     if (updateError) {
       console.error("Error updating quote status:", updateError);
+      throw new Error(`Error al actualizar el estado: ${updateError.message}`);
     }
 
     // Log the email in quote_status_logs
-    await supabase
+    const { error: logError } = await supabase
       .from("quote_status_logs")
       .insert({
         quote_id: quoteId,
@@ -247,6 +252,10 @@ const handler = async (req: Request): Promise<Response> => {
         new_status: "enviada",
         notes: `Cotización enviada por correo a ${quote.client_email}`
       });
+
+    if (logError) {
+      console.error("Error logging status change:", logError);
+    }
 
     return new Response(
       JSON.stringify({ 
