@@ -62,9 +62,8 @@ export function OrdersSummary({
 
   // Count by status
   const statusCounts = {
-    pendiente_aprobacion: activeOrders.filter(o => o.status === 'pendiente_aprobacion').length,
+    en_espera: activeOrders.filter(o => o.status === 'en_espera').length,
     en_proceso: activeOrders.filter(o => o.status === 'en_proceso').length,
-    pendiente_actualizacion: activeOrders.filter(o => o.status === 'pendiente_actualizacion').length,
     pendiente_entrega: activeOrders.filter(o => o.status === 'pendiente_entrega').length
   };
 
@@ -116,9 +115,9 @@ export function OrdersSummary({
         <span className="text-muted-foreground text-sm">|</span>
         
         {/* Status */}
-        {statusCounts.pendiente_aprobacion > 0 && (
-          <Badge variant="outline" title="Pendientes de Aprobación" className="text-sm px-3 py-1 text-warning-foreground border-warning-border bg-[#f2e326]">
-            {statusCounts.pendiente_aprobacion} PA
+        {statusCounts.en_espera > 0 && (
+          <Badge variant="outline" title="Agendadas" className="text-sm px-3 py-1 text-slate-700 border-slate-300 bg-slate-100">
+            {statusCounts.en_espera} AG
           </Badge>
         )}
         {statusCounts.en_proceso > 0 && (
@@ -126,14 +125,9 @@ export function OrdersSummary({
             {statusCounts.en_proceso} EP
           </Badge>
         )}
-        {statusCounts.pendiente_actualizacion > 0 && (
-          <Badge variant="outline" className="text-sm px-3 py-1 bg-warning-light text-warning-foreground border-warning-border" title="Pendientes de Actualización">
-            {statusCounts.pendiente_actualizacion} PAc
-          </Badge>
-        )}
         {statusCounts.pendiente_entrega > 0 && (
-          <Badge variant="outline" title="Pendientes de Entrega" className="text-sm px-3 py-1 text-success-foreground border-success-border bg-[#a2f6d0]">
-            {statusCounts.pendiente_entrega} PE
+          <Badge variant="outline" title="Terminadas" className="text-sm px-3 py-1 text-success-foreground border-success-border bg-[#a2f6d0]">
+            {statusCounts.pendiente_entrega} TER
           </Badge>
         )}
         
