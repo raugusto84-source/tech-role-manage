@@ -205,6 +205,13 @@ const handler = async (req: Request): Promise<Response> => {
       </div>
     ` : ""}
 
+    <!-- Disclaimer -->
+    <div style="margin: 25px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
+      <p style="margin: 0; font-size: 13px; color: #6c757d; font-style: italic;">
+        Precios y disponibilidad sujetos a cambios sin previo aviso. Cotización válida por 7 días.
+      </p>
+    </div>
+
     <!-- Footer -->
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; text-align: center; color: #6c757d;">
       <p style="margin: 0;">¿Tiene alguna pregunta? No dude en contactarnos.</p>
