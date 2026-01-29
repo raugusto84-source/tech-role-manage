@@ -370,6 +370,9 @@ export function QuoteListView({
                         {quote.client_name}
                       </div>
                       <div className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
+                        {quote.client_email}
+                      </div>
+                      <div className="text-xs text-muted-foreground/70 truncate max-w-[120px] sm:max-w-[200px] italic">
                         {quote.service_description}
                       </div>
                     </div>
