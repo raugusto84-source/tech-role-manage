@@ -421,14 +421,14 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
     let totalVAT = 0;
     let totalWithholdings = 0;
 
-    // Use the stored values from quote_items which are already calculated correctly
+    // Use the stored values from quote_items - these already include quantity in their totals
     quoteItems.forEach(item => {
-      const quantity = item.quantity || 1;
-      // Use item.total which already includes VAT, or calculate from unit_price + vat_amount
-      const itemTotal = (item.total || (item.unit_price + (item.vat_amount || 0))) * quantity;
-      const itemSubtotal = (item.subtotal || item.unit_price || 0) * quantity;
-      const itemVat = (item.vat_amount || 0) * quantity;
-      const itemWithholding = (item.withholding_amount || 0) * quantity;
+      // IMPORTANT: item.total, item.subtotal, item.vat_amount already include quantity multiplication
+      // Do NOT multiply by quantity again - the DB stores the full amount for each line item
+      const itemTotal = item.total || 0;
+      const itemSubtotal = item.subtotal || 0;
+      const itemVat = item.vat_amount || 0;
+      const itemWithholding = item.withholding_amount || 0;
       
       totalAmount += itemTotal;
       totalSubtotal += itemSubtotal;
@@ -583,7 +583,8 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                            </TableCell>
                            <TableCell className="text-center">{item.quantity}</TableCell>
                            <TableCell className="text-right font-medium">
-                             {formatCurrency((item.total || (item.unit_price + (item.vat_amount || 0))) * item.quantity)}
+                             {/* item.total already includes quantity - don't multiply again */}
+                             {formatCurrency(item.total || 0)}
                            </TableCell>
                          </TableRow>
                          );
