@@ -618,6 +618,13 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Disclaimer */}
+                  <div className="mt-6 pt-4 border-t">
+                    <p className="text-sm text-muted-foreground text-center italic">
+                      Precios y disponibilidad sujetos a cambios sin previo aviso. Cotización válida por 7 días.
+                    </p>
+                  </div>
                 </div>
               ) : (
                   <div className="text-center py-8">
