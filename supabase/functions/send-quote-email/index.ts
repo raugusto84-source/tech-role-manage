@@ -217,7 +217,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const emailResponse = await resend.emails.send({
-      from: "Syslag Cotizaciones <onboarding@resend.dev>",
+      from: "Syslag Cotizaciones <sistema@syslag.com>",
       to: [quote.client_email],
       subject: `Cotización ${quote.quote_number} - ${quote.client_name}`,
       html: emailHtml,
