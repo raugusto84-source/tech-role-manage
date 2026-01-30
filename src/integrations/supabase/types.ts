@@ -5329,6 +5329,7 @@ export type Database = {
           quote_sent_at: string | null
           request_date: string
           response_deadline: string
+          response_token: string | null
           sale_type: Database["public"]["Enums"]["sale_type"]
           service_description: string
           status: Database["public"]["Enums"]["quote_status"]
@@ -5365,6 +5366,7 @@ export type Database = {
           quote_sent_at?: string | null
           request_date?: string
           response_deadline?: string
+          response_token?: string | null
           sale_type?: Database["public"]["Enums"]["sale_type"]
           service_description: string
           status?: Database["public"]["Enums"]["quote_status"]
@@ -5401,6 +5403,7 @@ export type Database = {
           quote_sent_at?: string | null
           request_date?: string
           response_deadline?: string
+          response_token?: string | null
           sale_type?: Database["public"]["Enums"]["sale_type"]
           service_description?: string
           status?: Database["public"]["Enums"]["quote_status"]

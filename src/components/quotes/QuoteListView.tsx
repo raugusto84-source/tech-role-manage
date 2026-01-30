@@ -7,23 +7,18 @@ import {
   Eye,
   Trash2,
   Clock,
-  Bell,
-  Calendar,
   User,
   DollarSign,
   AlertCircle,
-  CalendarPlus,
   Send,
   Loader2,
+  ClipboardList,
 } from "lucide-react";
 import { formatCOPCeilToTen } from "@/utils/currency";
 import { formatHoursAndMinutes } from "@/utils/timeUtils";
-import { formatDateMexico } from "@/utils/dateUtils";
-import { getTimeCategory, getTimeLimitLabel } from "@/utils/quoteTimeCategories";
+import { getTimeCategory, getTimeLimitLabel, getTaskInfo, shouldAutoExpire } from "@/utils/quoteTimeCategories";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { toast } from "@/hooks/use-toast";
 
 interface Quote {
@@ -79,8 +74,6 @@ export function QuoteListView({
 }: QuoteListViewProps) {
   const [quotesWithDurations, setQuotesWithDurations] = useState<QuoteWithDurations[]>([]);
   const [loading, setLoading] = useState(true);
-  const [reminderPopoverOpen, setReminderPopoverOpen] = useState<string | null>(null);
-  const [savingReminder, setSavingReminder] = useState(false);
   const [sendingQuote, setSendingQuote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -184,74 +177,40 @@ export function QuoteListView({
     return labels[status] || status;
   };
 
-  const isFollowUpOverdue = (followUpDate: string | undefined): boolean => {
-    if (!followUpDate) return false;
-    return new Date(followUpDate) < new Date();
-  };
-
-  const isFollowUpToday = (followUpDate: string | undefined): boolean => {
-    if (!followUpDate) return false;
-    const today = new Date();
-    const followUp = new Date(followUpDate);
-    return followUp.toDateString() === today.toDateString();
-  };
-
-  const handleSetReminder = async (quoteId: string, date: Date | undefined) => {
-    if (!date) return;
-
+  // Function to auto-expire quotes that are overdue
+  const handleAutoExpire = async (quoteId: string) => {
     try {
-      setSavingReminder(true);
       const { error } = await supabase
         .from("quotes")
-        .update({ follow_up_date: date.toISOString().split("T")[0] })
+        .update({ status: "rechazada" })
         .eq("id", quoteId);
 
       if (error) throw error;
 
-      toast({
-        title: "Recordatorio guardado",
-        description: `Recordatorio establecido para ${formatDateMexico(date, "dd/MM/yyyy")}`,
+      // Log the status change
+      await supabase.from("quote_status_logs").insert({
+        quote_id: quoteId,
+        previous_status: "enviada",
+        new_status: "rechazada",
+        notes: "Cotización marcada como No Aceptada automáticamente (vencida después de 7 días)"
       });
 
-      setReminderPopoverOpen(null);
-      // Actualizar localmente
+      toast({
+        title: "Cotización vencida",
+        description: "La cotización ha sido marcada como No Aceptada por vencimiento",
+      });
+
+      // Update local state
       setQuotesWithDurations((prev) =>
-        prev.map((q) => (q.id === quoteId ? { ...q, follow_up_date: date.toISOString().split("T")[0] } : q)),
+        prev.map((q) => (q.id === quoteId ? { ...q, status: "rechazada" as const } : q)),
       );
     } catch (error) {
-      console.error("Error saving reminder:", error);
+      console.error("Error expiring quote:", error);
       toast({
         title: "Error",
-        description: "No se pudo guardar el recordatorio",
+        description: "No se pudo actualizar el estado de la cotización",
         variant: "destructive",
       });
-    } finally {
-      setSavingReminder(false);
-    }
-  };
-
-  const handleClearReminder = async (quoteId: string) => {
-    try {
-      setSavingReminder(true);
-      const { error } = await supabase.from("quotes").update({ follow_up_date: null }).eq("id", quoteId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Recordatorio eliminado",
-      });
-
-      setReminderPopoverOpen(null);
-      setQuotesWithDurations((prev) => prev.map((q) => (q.id === quoteId ? { ...q, follow_up_date: undefined } : q)));
-    } catch (error) {
-      console.error("Error clearing reminder:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo eliminar el recordatorio",
-        variant: "destructive",
-      });
-    } finally {
-      setSavingReminder(false);
     }
   };
 
@@ -336,8 +295,8 @@ export function QuoteListView({
               </TableHead>
               <TableHead className="hidden lg:table-cell">
                 <div className="flex items-center gap-1">
-                  <Bell className="h-3 w-3" />
-                  Recordatorio
+                  <ClipboardList className="h-3 w-3" />
+                  Tarea
                 </div>
               </TableHead>
               <TableHead className="hidden md:table-cell">Creado por</TableHead>
@@ -348,14 +307,22 @@ export function QuoteListView({
             {quotesWithDurations.map((quote) => {
               const statusInfo = getStatusInfo(quote.status);
               const currentStatusDuration = quote.statusDurations.find((d) => d.isCurrent);
-              const followUpOverdue = isFollowUpOverdue(quote.follow_up_date);
-              const followUpToday = isFollowUpToday(quote.follow_up_date);
 
-              // Categoría de tiempo basada en el estado actual
+              // Categoría de tiempo y tarea basada en el estado actual
               const timeCategory = currentStatusDuration
                 ? getTimeCategory(currentStatusDuration.duration, quote.status)
                 : null;
               const timeLimit = getTimeLimitLabel(quote.status);
+              
+              // Get task info based on time in current status
+              const taskInfo = currentStatusDuration 
+                ? getTaskInfo(currentStatusDuration.duration, quote.status)
+                : null;
+              
+              // Check if quote should auto-expire
+              const shouldExpire = currentStatusDuration 
+                ? shouldAutoExpire(currentStatusDuration.duration, quote.status)
+                : false;
 
               return (
                 <TableRow
@@ -378,7 +345,7 @@ export function QuoteListView({
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-1 text-sm font-medium text-green-600">
+                    <div className="flex items-center gap-1 text-sm font-medium text-emerald-600">
                       <DollarSign className="h-3 w-3" />
                       {quote.estimated_amount ? formatCOPCeilToTen(quote.estimated_amount) : "Por definir"}
                     </div>
@@ -428,66 +395,45 @@ export function QuoteListView({
                       </TooltipContent>
                     </Tooltip>
                   </TableCell>
+                  {/* Task column - shows pending action based on time */}
                   <TableCell className="hidden lg:table-cell" onClick={(e) => e.stopPropagation()}>
-                    <Popover
-                      open={reminderPopoverOpen === quote.id}
-                      onOpenChange={(open) => setReminderPopoverOpen(open ? quote.id : null)}
-                    >
-                      <PopoverTrigger asChild>
-                        {quote.follow_up_date ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={`h-auto py-1 px-2 text-xs ${
-                              followUpOverdue
-                                ? "text-destructive bg-destructive/10 hover:bg-destructive/20"
-                                : followUpToday
-                                  ? "text-amber-600 bg-amber-50 hover:bg-amber-100"
-                                  : "text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            {followUpOverdue && <AlertCircle className="h-3 w-3 mr-1" />}
-                            <Calendar className="h-3 w-3 mr-1" />
-                            {formatDateMexico(quote.follow_up_date, "dd/MM/yy")}
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-auto py-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            <CalendarPlus className="h-3 w-3 mr-1" />
-                            Agregar
-                          </Button>
-                        )}
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <div className="p-2 border-b">
-                          <p className="text-sm font-medium">Fecha de recordatorio</p>
-                          <p className="text-xs text-muted-foreground">Selecciona cuándo dar seguimiento</p>
-                        </div>
-                        <CalendarComponent
-                          mode="single"
-                          selected={quote.follow_up_date ? new Date(quote.follow_up_date + "T12:00:00") : undefined}
-                          onSelect={(date) => handleSetReminder(quote.id, date)}
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                          initialFocus
-                        />
-                        {quote.follow_up_date && (
-                          <div className="p-2 border-t">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full text-destructive hover:text-destructive"
-                              onClick={() => handleClearReminder(quote.id)}
-                              disabled={savingReminder}
+                    {taskInfo && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="space-y-1">
+                            <div
+                              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${taskInfo.bgClass} ${taskInfo.colorClass} border ${taskInfo.borderClass}`}
                             >
-                              Eliminar recordatorio
-                            </Button>
+                              {taskInfo.isDelayed && <AlertCircle className="h-3 w-3" />}
+                              <ClipboardList className="h-3 w-3" />
+                              <span className="truncate max-w-[100px]">{taskInfo.task}</span>
+                            </div>
+                            {/* Show expire button for quotes that need manual expiration */}
+                            {shouldExpire && canManage && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-6 text-xs w-full"
+                                onClick={() => handleAutoExpire(quote.id)}
+                              >
+                                Marcar Vencida
+                              </Button>
+                            )}
                           </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <div className="space-y-1 text-xs">
+                            <p className="font-semibold">Tarea pendiente</p>
+                            <p>{taskInfo.task}</p>
+                            {taskInfo.isDelayed && (
+                              <p className="text-amber-600">
+                                ⚠ Atrasado: {formatHoursAndMinutes(taskInfo.hoursInStatus)} en este estado
+                              </p>
+                            )}
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     {quote.created_by_name ? (
