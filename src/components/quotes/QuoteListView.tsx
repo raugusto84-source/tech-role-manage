@@ -447,8 +447,8 @@ export function QuoteListView({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                      {/* Send/Resend button - allow for quotes pending, sent or in follow-up */}
-                      {canManage && (quote.status === "solicitud" || quote.status === "seguimiento" || quote.status === "enviada") && (
+                      {/* Send/Resend button - always available */}
+                      {canManage && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -466,7 +466,7 @@ export function QuoteListView({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{quote.status === "enviada" ? "Reenviar cotización" : "Enviar cotización por correo"}</p>
+                            <p>{quote.status === "solicitud" || quote.status === "seguimiento" ? "Enviar cotización por correo" : "Reenviar cotización"}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
