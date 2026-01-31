@@ -46,8 +46,21 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Se requiere el ID de la cotización");
     }
 
-    // Generate response token
+    // Generate response token FIRST
     const responseToken = generateToken();
+    console.log("Generated response token for quote:", quoteId, "token length:", responseToken.length);
+
+    // Save the token to the quote BEFORE sending email to ensure it's stored
+    const { error: tokenError } = await supabase
+      .from("quotes")
+      .update({ response_token: responseToken })
+      .eq("id", quoteId);
+
+    if (tokenError) {
+      console.error("Error saving response token:", tokenError);
+      throw new Error(`Error al guardar el token: ${tokenError.message}`);
+    }
+    console.log("Response token saved successfully for quote:", quoteId);
 
     // Get quote details
     const { data: quote, error: quoteError } = await supabase
@@ -265,19 +278,17 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Error al enviar el email: ${emailResponse.error.message}`);
     }
 
-    // Update quote status to 'enviada' and save response token
+    // Update quote status to 'enviada' (token was already saved earlier)
     const { error: updateError } = await supabase
       .from("quotes")
-      .update({ 
-        status: "enviada",
-        response_token: responseToken
-      })
+      .update({ status: "enviada" })
       .eq("id", quoteId);
 
     if (updateError) {
       console.error("Error updating quote status:", updateError);
       throw new Error(`Error al actualizar el estado: ${updateError.message}`);
     }
+    console.log("Quote status updated to 'enviada' for:", quoteId);
 
     // Log the email in quote_status_logs
     const { error: logError } = await supabase
