@@ -130,12 +130,13 @@ const handler = async (req: Request): Promise<Response> => {
 
 function generateResponsePage(title: string, message: string, type: "success" | "error" | "info"): string {
   const colors = {
-    success: { bg: "#d4edda", border: "#c3e6cb", text: "#155724", icon: "✓" },
-    error: { bg: "#f8d7da", border: "#f5c6cb", text: "#721c24", icon: "✕" },
-    info: { bg: "#d1ecf1", border: "#bee5eb", text: "#0c5460", icon: "ℹ" }
+    success: { bg: "#d4edda", border: "#28a745", text: "#155724", icon: "✓", gradient: "linear-gradient(135deg, #28a745 0%, #20c997 100%)" },
+    error: { bg: "#f8d7da", border: "#dc3545", text: "#721c24", icon: "✕", gradient: "linear-gradient(135deg, #dc3545 0%, #e83e8c 100%)" },
+    info: { bg: "#d1ecf1", border: "#17a2b8", text: "#0c5460", icon: "ℹ", gradient: "linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%)" }
   };
 
   const color = colors[type];
+  const autoCloseSeconds = type === "success" ? 5 : 10;
 
   return `
 <!DOCTYPE html>
@@ -147,8 +148,8 @@ function generateResponsePage(title: string, message: string, type: "success" | 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: ${color.gradient};
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -157,42 +158,54 @@ function generateResponsePage(title: string, message: string, type: "success" | 
     }
     .container {
       background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-      padding: 40px;
-      max-width: 500px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 50px 40px;
+      max-width: 420px;
       width: 100%;
       text-align: center;
+      animation: slideUp 0.5s ease-out;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .icon {
-      width: 80px;
-      height: 80px;
+      width: 90px;
+      height: 90px;
       border-radius: 50%;
-      background: ${color.bg};
-      border: 3px solid ${color.border};
-      color: ${color.text};
-      font-size: 40px;
+      background: ${color.gradient};
+      color: white;
+      font-size: 45px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 24px;
+      margin: 0 auto 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
     h1 {
-      color: ${color.text};
-      font-size: 24px;
-      margin-bottom: 16px;
+      color: #333;
+      font-size: 26px;
+      margin-bottom: 15px;
+      font-weight: 600;
     }
     p {
       color: #666;
       font-size: 16px;
       line-height: 1.6;
+      margin-bottom: 25px;
     }
-    .footer {
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #eee;
-      color: #999;
+    .countdown {
+      display: inline-block;
+      background: #f5f5f5;
+      padding: 8px 20px;
+      border-radius: 20px;
       font-size: 14px;
+      color: #888;
+    }
+    .countdown span {
+      font-weight: bold;
+      color: ${color.text};
     }
   </style>
 </head>
@@ -201,10 +214,26 @@ function generateResponsePage(title: string, message: string, type: "success" | 
     <div class="icon">${color.icon}</div>
     <h1>${title}</h1>
     <p>${message}</p>
-    <div class="footer">
-      Puede cerrar esta ventana.
+    <div class="countdown">
+      Esta ventana se cerrará en <span id="timer">${autoCloseSeconds}</span> segundos
     </div>
   </div>
+  <script>
+    let seconds = ${autoCloseSeconds};
+    const timer = document.getElementById('timer');
+    const interval = setInterval(() => {
+      seconds--;
+      timer.textContent = seconds;
+      if (seconds <= 0) {
+        clearInterval(interval);
+        window.close();
+        // If window.close() doesn't work (some browsers block it), show a message
+        setTimeout(() => {
+          document.querySelector('.countdown').innerHTML = 'Puede cerrar esta ventana manualmente';
+        }, 500);
+      }
+    }, 1000);
+  </script>
 </body>
 </html>
   `;
