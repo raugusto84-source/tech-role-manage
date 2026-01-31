@@ -454,19 +454,28 @@ export function QuoteListView({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                              className={`h-7 w-7 relative ${
+                                quote.status === "solicitud" || quote.status === "seguimiento" 
+                                  ? "text-primary hover:text-primary hover:bg-primary/10" 
+                                  : "text-muted-foreground hover:text-muted-foreground hover:bg-muted"
+                              }`}
                               onClick={() => handleSendQuote(quote.id, quote.client_email, quote.quote_number)}
                               disabled={sendingQuote === quote.id}
                             >
                               {sendingQuote === quote.id ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
-                                <Send className="h-3.5 w-3.5" />
+                                <>
+                                  <Send className="h-3.5 w-3.5" />
+                                  {quote.status !== "solicitud" && quote.status !== "seguimiento" && (
+                                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-green-500 rounded-full border border-background" />
+                                  )}
+                                </>
                               )}
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{quote.status === "solicitud" || quote.status === "seguimiento" ? "Enviar cotización por correo" : "Reenviar cotización"}</p>
+                            <p>{quote.status === "solicitud" || quote.status === "seguimiento" ? "Enviar cotización por correo" : "Reenviar cotización (ya enviada)"}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
