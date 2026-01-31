@@ -70,12 +70,12 @@ const handler = async (req: Request): Promise<Response> => {
       );
       return new Response(html, {
         status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders },
+        headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
 
-    // Update quote status based on action
-    const newStatus = action === "accept" ? "aceptada" : "rechazada";
+    // Update quote status based on action - use "no_aceptada" for reject
+    const newStatus = action === "accept" ? "aceptada" : "no_aceptada";
     const { error: updateError } = await supabase
       .from("quotes")
       .update({ 
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
       quote_id: quoteId,
       previous_status: "enviada",
       new_status: newStatus,
-      notes: `Cliente ${action === "accept" ? "aceptó" : "rechazó"} la cotización desde el correo electrónico`
+      notes: `Cliente ${action === "accept" ? "aceptó" : "no aceptó"} la cotización desde el correo electrónico`
     });
 
     // Generate success HTML page
@@ -109,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     return new Response(html, {
       status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders },
+      headers: { "Content-Type": "text/html; charset=utf-8" },
     });
 
   } catch (error: any) {
@@ -122,8 +122,8 @@ const handler = async (req: Request): Promise<Response> => {
     );
     
     return new Response(html, {
-      status: 400,
-      headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders },
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 };
