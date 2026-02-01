@@ -169,13 +169,10 @@ const handler = async (req: Request): Promise<Response> => {
       `
       : `<p style="color: #6c757d; font-style: italic;">Los detalles de los servicios se definirán próximamente.</p>`;
 
-    // App URL and response URLs
-    // NOTE: We link to the frontend route so the client sees a clean page (not raw Edge Function output)
-    const appUrl = "https://tech-role-manage.lovable.app";
-    const acceptUrl = `${appUrl}/quote-response?quoteId=${quoteId}&action=accept&token=${responseToken}`;
-    const rejectUrl = `${appUrl}/quote-response?quoteId=${quoteId}&action=reject&token=${responseToken}`;
+    // Login URL for clients
+    const loginUrl = "https://www.login.syslag.com";
 
-    // Build email HTML with accept/reject buttons
+    // Build email HTML as a reminder to log in
     const emailHtml = `
 <!DOCTYPE html>
 <html>
@@ -195,7 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     <!-- Greeting -->
     <p style="font-size: 16px;">Estimado/a <strong>${quote.client_name}</strong>,</p>
-    <p>Le hacemos llegar la cotización solicitada para su revisión y aprobación.</p>
+    <p>Le informamos que tiene una cotización pendiente de revisión y aprobación en nuestro sistema.</p>
 
     <!-- Service Description -->
     <div style="background-color: #f8f9fa; border-left: 4px solid #007bff; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0;">
@@ -207,35 +204,22 @@ const handler = async (req: Request): Promise<Response> => {
     <h3 style="color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;">Detalle de la Cotización</h3>
     ${itemsHtml}
 
-    <!-- Accept/Reject Buttons -->
-    <div style="background-color: #f0f7ff; border: 2px solid #007bff; border-radius: 10px; padding: 25px; margin: 30px 0; text-align: center;">
-      <h3 style="color: #004085; margin-top: 0; margin-bottom: 15px;">¿Desea aprobar esta cotización?</h3>
-      <p style="color: #6c757d; margin-bottom: 20px;">Haga clic en una de las opciones para responder:</p>
+    <!-- Login Instructions -->
+    <div style="background-color: #e7f3ff; border: 2px solid #007bff; border-radius: 10px; padding: 25px; margin: 30px 0; text-align: center;">
+      <h3 style="color: #004085; margin-top: 0; margin-bottom: 15px;">📱 Ingrese al Sistema para Responder</h3>
+      <p style="color: #6c757d; margin-bottom: 20px;">Para aceptar o rechazar esta cotización, ingrese a nuestro portal con sus credenciales:</p>
       
-      <div style="display: inline-block;">
-        <a href="${acceptUrl}" style="display: inline-block; background-color: #28a745; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 5px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-          ✓ Aceptar Cotización
-        </a>
-        <a href="${rejectUrl}" style="display: inline-block; background-color: #dc3545; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; margin: 5px 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-          ✕ No Aceptar
-        </a>
-      </div>
-    </div>
-
-    <!-- Access Info -->
-    <div style="background-color: #e7f3ff; border: 1px solid #b8daff; border-radius: 8px; padding: 20px; margin: 25px 0;">
-      <h3 style="color: #004085; margin-top: 0;">📱 Acceda a su Portal de Cliente</h3>
-      <p style="margin-bottom: 15px;">También puede revisar esta cotización en detalle desde nuestro sistema:</p>
-      
-      <div style="background-color: #ffffff; border-radius: 5px; padding: 15px; margin-bottom: 15px;">
-        <p style="margin: 5px 0;"><strong>🌐 Portal:</strong> <a href="${appUrl}" style="color: #007bff;">${appUrl}</a></p>
-        <p style="margin: 5px 0;"><strong>👤 Usuario:</strong> ${username}</p>
-        <p style="margin: 5px 0;"><strong>🔐 Contraseña:</strong> ${clientPassword}</p>
+      <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: left;">
+        <p style="margin: 8px 0; font-size: 15px;"><strong>🌐 Portal de Acceso:</strong></p>
+        <p style="margin: 5px 0 15px 0;"><a href="${loginUrl}" style="color: #007bff; font-size: 18px; font-weight: bold;">${loginUrl}</a></p>
+        <p style="margin: 8px 0;"><strong>👤 Usuario:</strong> <span style="color: #28a745; font-weight: bold;">${username}</span></p>
       </div>
       
-      <a href="${appUrl}" style="display: inline-block; background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px;">
-        Ver en el Portal →
+      <a href="${loginUrl}" style="display: inline-block; background-color: #007bff; color: white; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        Ingresar al Sistema →
       </a>
+      
+      <p style="color: #6c757d; font-size: 13px; margin-top: 15px;">Si no recuerda su contraseña, contacte a soporte.</p>
     </div>
 
     <!-- Notes -->
