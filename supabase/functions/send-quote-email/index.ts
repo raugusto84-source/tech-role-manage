@@ -26,7 +26,7 @@ interface QuoteItem {
 function generateToken(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -63,11 +63,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Response token saved successfully for quote:", quoteId);
 
     // Get quote details
-    const { data: quote, error: quoteError } = await supabase
-      .from("quotes")
-      .select("*")
-      .eq("id", quoteId)
-      .single();
+    const { data: quote, error: quoteError } = await supabase.from("quotes").select("*").eq("id", quoteId).single();
 
     if (quoteError || !quote) {
       throw new Error(`No se encontró la cotización: ${quoteError?.message}`);
@@ -112,9 +108,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Calculate totals
-    const subtotal = quoteItems.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
-    const totalVat = quoteItems.reduce((sum, item) => sum + (item.vat_amount * item.quantity), 0);
-    const total = quoteItems.reduce((sum, item) => sum + (item.total * item.quantity), 0);
+    const subtotal = quoteItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+    const totalVat = quoteItems.reduce((sum, item) => sum + item.vat_amount * item.quantity, 0);
+    const total = quoteItems.reduce((sum, item) => sum + item.total * item.quantity, 0);
 
     // Format currency
     const formatCurrency = (amount: number) => {
@@ -127,8 +123,9 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     // Build items HTML table
-    const itemsHtml = quoteItems.length > 0 
-      ? `
+    const itemsHtml =
+      quoteItems.length > 0
+        ? `
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <thead>
             <tr style="background-color: #f8f9fa;">
@@ -139,7 +136,9 @@ const handler = async (req: Request): Promise<Response> => {
             </tr>
           </thead>
           <tbody>
-            ${quoteItems.map(item => `
+            ${quoteItems
+              .map(
+                (item) => `
               <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #dee2e6;">
                   <strong>${item.name}</strong>
@@ -149,7 +148,9 @@ const handler = async (req: Request): Promise<Response> => {
                 <td style="padding: 10px; text-align: right; border-bottom: 1px solid #dee2e6;">${formatCurrency(item.unit_price)}</td>
                 <td style="padding: 10px; text-align: right; border-bottom: 1px solid #dee2e6;">${formatCurrency(item.total * item.quantity)}</td>
               </tr>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </tbody>
           <tfoot>
             <tr>
@@ -167,10 +168,10 @@ const handler = async (req: Request): Promise<Response> => {
           </tfoot>
         </table>
       `
-      : `<p style="color: #6c757d; font-style: italic;">Los detalles de los servicios se definirán próximamente.</p>`;
+        : `<p style="color: #6c757d; font-style: italic;">Los detalles de los servicios se definirán próximamente.</p>`;
 
     // Login URL for clients
-    const loginUrl = "https://www.login.syslag.com";
+    const loginUrl = "https://login.syslag.com";
 
     // Build email HTML as a reminder to log in
     const emailHtml = `
@@ -223,12 +224,16 @@ const handler = async (req: Request): Promise<Response> => {
     </div>
 
     <!-- Notes -->
-    ${quote.notes ? `
+    ${
+      quote.notes
+        ? `
       <div style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
         <strong>Notas:</strong>
         <p style="margin: 10px 0 0 0;">${quote.notes}</p>
       </div>
-    ` : ""}
+    `
+        : ""
+    }
 
     <!-- Disclaimer -->
     <div style="margin: 25px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px; text-align: center;">
@@ -263,10 +268,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Update quote status to 'enviada' (token was already saved earlier)
-    const { error: updateError } = await supabase
-      .from("quotes")
-      .update({ status: "enviada" })
-      .eq("id", quoteId);
+    const { error: updateError } = await supabase.from("quotes").update({ status: "enviada" }).eq("id", quoteId);
 
     if (updateError) {
       console.error("Error updating quote status:", updateError);
@@ -275,39 +277,34 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Quote status updated to 'enviada' for:", quoteId);
 
     // Log the email in quote_status_logs
-    const { error: logError } = await supabase
-      .from("quote_status_logs")
-      .insert({
-        quote_id: quoteId,
-        previous_status: quote.status,
-        new_status: "enviada",
-        notes: `Cotización enviada por correo a ${quote.client_email}`
-      });
+    const { error: logError } = await supabase.from("quote_status_logs").insert({
+      quote_id: quoteId,
+      previous_status: quote.status,
+      new_status: "enviada",
+      notes: `Cotización enviada por correo a ${quote.client_email}`,
+    });
 
     if (logError) {
       console.error("Error logging status change:", logError);
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Cotización enviada exitosamente",
-        emailId: emailResponse.data?.id 
+        emailId: emailResponse.data?.id,
       }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      },
     );
   } catch (error: any) {
     console.error("Error in send-quote-email:", error);
-    return new Response(
-      JSON.stringify({ success: false, error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
-    );
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders },
+    });
   }
 };
 
