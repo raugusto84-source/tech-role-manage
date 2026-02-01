@@ -27,6 +27,7 @@ import Warranties from "./pages/Warranties";
 import Fleets from "./pages/Fleets";
 import FollowUpPage from "./pages/FollowUp";
 import AccessDevelopments from "./pages/AccessDevelopments";
+import QuoteResponse from "./pages/QuoteResponse";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -39,6 +40,7 @@ const App = () => (
           <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/quote-response" element={<QuoteResponse />} />
             <Route 
               path="/dashboard" 
               element={

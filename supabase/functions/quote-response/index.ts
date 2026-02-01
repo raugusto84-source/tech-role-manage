@@ -3,8 +3,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+const APP_URL = "https://tech-role-manage.lovable.app";
 
 interface QuoteResponseRequest {
   quoteId: string;
@@ -15,7 +18,35 @@ interface QuoteResponseRequest {
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  // IMPORTANT: avoid mutating data on GET to prevent email scanners/prefetchers from auto-accepting/rejecting.
+  // For old emails that still point to this Edge Function, we redirect the user to a clean frontend page.
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    const quoteId = url.searchParams.get("quoteId") || "";
+    const action = url.searchParams.get("action") || "";
+    const token = url.searchParams.get("token") || "";
+
+    const redirectUrl = new URL("/quote-response", APP_URL);
+    if (quoteId) redirectUrl.searchParams.set("quoteId", quoteId);
+    if (action) redirectUrl.searchParams.set("action", action);
+    if (token) redirectUrl.searchParams.set("token", token);
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: redirectUrl.toString(),
+      },
+    });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(
+      { success: false, error: "Método no permitido" },
+      { status: 405 },
+    );
   }
 
   try {
@@ -23,22 +54,10 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Support both GET (from email link) and POST
-    let quoteId: string;
-    let action: "accept" | "reject";
-    let token: string;
-
-    if (req.method === "GET") {
-      const url = new URL(req.url);
-      quoteId = url.searchParams.get("quoteId") || "";
-      action = (url.searchParams.get("action") as "accept" | "reject") || "reject";
-      token = url.searchParams.get("token") || "";
-    } else {
-      const body: QuoteResponseRequest = await req.json();
-      quoteId = body.quoteId;
-      action = body.action;
-      token = body.token;
-    }
+    const body: QuoteResponseRequest = await req.json();
+    const quoteId = body.quoteId;
+    const action = body.action;
+    const token = body.token;
 
     if (!quoteId || !action || !token) {
       throw new Error("Faltan parámetros requeridos");
@@ -62,20 +81,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Check if quote is still in a valid state for response
     if (quote.status !== "enviada") {
-      // Return a friendly page instead of error
-      const html = generateResponsePage(
-        "Cotización ya procesada",
-        `La cotización ${quote.quote_number} ya fue ${quote.status === 'aceptada' ? 'aceptada' : 'procesada'} anteriormente.`,
-        "info"
-      );
-      return new Response(html, {
-        status: 200,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+      return jsonResponse({
+        success: true,
+        alreadyProcessed: true,
+        currentStatus: quote.status,
+        title: "Cotización ya procesada",
+        message: `La cotización ${quote.quote_number} ya fue procesada anteriormente.`,
       });
     }
 
-    // Update quote status based on action - use "no_aceptada" for reject
-    const newStatus = action === "accept" ? "aceptada" : "no_aceptada";
+    // Update quote status based on action
+    // Frontend expects "rechazada" (labeled as "No Aceptada")
+    const newStatus = action === "accept" ? "aceptada" : "rechazada";
     const { error: updateError } = await supabase
       .from("quotes")
       .update({ 
@@ -98,145 +115,39 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Generate success HTML page
     const successMessage = action === "accept" 
-      ? `¡Gracias por aceptar la cotización ${quote.quote_number}! Nos pondremos en contacto para coordinar el servicio.`
-      : `La cotización ${quote.quote_number} ha sido marcada como no aceptada. Si tiene alguna pregunta, no dude en contactarnos.`;
+      ? `¡Gracias por aceptar la cotización ${quote.quote_number}!`
+      : `La cotización ${quote.quote_number} ha sido marcada como No Aceptada.`;
 
-    const html = generateResponsePage(
-      action === "accept" ? "¡Cotización Aceptada!" : "Cotización No Aceptada",
-      successMessage,
-      action === "accept" ? "success" : "info"
-    );
-
-    return new Response(html, {
-      status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+    return jsonResponse({
+      success: true,
+      quoteId,
+      quoteNumber: quote.quote_number,
+      newStatus,
+      title: action === "accept" ? "Aceptada" : "No Aceptada",
+      message: successMessage,
     });
 
   } catch (error: any) {
     console.error("Error in quote-response:", error);
-    
-    const html = generateResponsePage(
-      "Error",
-      error.message || "Ocurrió un error al procesar su respuesta",
-      "error"
+
+    return jsonResponse(
+      { success: false, error: error?.message || "Ocurrió un error al procesar su respuesta" },
+      { status: 400 },
     );
-    
-    return new Response(html, {
-      status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
   }
 };
 
-function generateResponsePage(title: string, message: string, type: "success" | "error" | "info"): string {
-  const colors = {
-    success: { bg: "#d4edda", border: "#28a745", text: "#155724", icon: "✓", gradient: "linear-gradient(135deg, #28a745 0%, #20c997 100%)" },
-    error: { bg: "#f8d7da", border: "#dc3545", text: "#721c24", icon: "✕", gradient: "linear-gradient(135deg, #dc3545 0%, #e83e8c 100%)" },
-    info: { bg: "#d1ecf1", border: "#17a2b8", text: "#0c5460", icon: "ℹ", gradient: "linear-gradient(135deg, #17a2b8 0%, #6f42c1 100%)" }
-  };
-
-  const color = colors[type];
-  const autoCloseSeconds = type === "success" ? 5 : 10;
-
-  return `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: ${color.gradient};
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
-    .container {
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-      padding: 50px 40px;
-      max-width: 420px;
-      width: 100%;
-      text-align: center;
-      animation: slideUp 0.5s ease-out;
-    }
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .icon {
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
-      background: ${color.gradient};
-      color: white;
-      font-size: 45px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-    h1 {
-      color: #333;
-      font-size: 26px;
-      margin-bottom: 15px;
-      font-weight: 600;
-    }
-    p {
-      color: #666;
-      font-size: 16px;
-      line-height: 1.6;
-      margin-bottom: 25px;
-    }
-    .countdown {
-      display: inline-block;
-      background: #f5f5f5;
-      padding: 8px 20px;
-      border-radius: 20px;
-      font-size: 14px;
-      color: #888;
-    }
-    .countdown span {
-      font-weight: bold;
-      color: ${color.text};
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="icon">${color.icon}</div>
-    <h1>${title}</h1>
-    <p>${message}</p>
-    <div class="countdown">
-      Esta ventana se cerrará en <span id="timer">${autoCloseSeconds}</span> segundos
-    </div>
-  </div>
-  <script>
-    let seconds = ${autoCloseSeconds};
-    const timer = document.getElementById('timer');
-    const interval = setInterval(() => {
-      seconds--;
-      timer.textContent = seconds;
-      if (seconds <= 0) {
-        clearInterval(interval);
-        window.close();
-        // If window.close() doesn't work (some browsers block it), show a message
-        setTimeout(() => {
-          document.querySelector('.countdown').innerHTML = 'Puede cerrar esta ventana manualmente';
-        }, 500);
-      }
-    }, 1000);
-  </script>
-</body>
-</html>
-  `;
+function jsonResponse(
+  payload: Record<string, unknown>,
+  options: { status?: number } = {},
+): Response {
+  return new Response(JSON.stringify(payload), {
+    status: options.status ?? 200,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      ...corsHeaders,
+    },
+  });
 }
 
 serve(handler);

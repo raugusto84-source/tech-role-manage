@@ -170,10 +170,10 @@ const handler = async (req: Request): Promise<Response> => {
       : `<p style="color: #6c757d; font-style: italic;">Los detalles de los servicios se definirán próximamente.</p>`;
 
     // App URL and response URLs
+    // NOTE: We link to the frontend route so the client sees a clean page (not raw Edge Function output)
     const appUrl = "https://tech-role-manage.lovable.app";
-    const functionBaseUrl = `${supabaseUrl}/functions/v1/quote-response`;
-    const acceptUrl = `${functionBaseUrl}?quoteId=${quoteId}&action=accept&token=${responseToken}`;
-    const rejectUrl = `${functionBaseUrl}?quoteId=${quoteId}&action=reject&token=${responseToken}`;
+    const acceptUrl = `${appUrl}/quote-response?quoteId=${quoteId}&action=accept&token=${responseToken}`;
+    const rejectUrl = `${appUrl}/quote-response?quoteId=${quoteId}&action=reject&token=${responseToken}`;
 
     // Build email HTML with accept/reject buttons
     const emailHtml = `
