@@ -8,7 +8,8 @@ import { DevelopmentPayments } from './DevelopmentPayments';
 import { DevelopmentOrders } from './DevelopmentOrders';
 import { InvestorOverview } from './InvestorOverview';
 import { DevelopmentLeadsList } from './DevelopmentLeadsList';
-import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText } from 'lucide-react';
+import { DevelopmentReceipts } from './DevelopmentReceipts';
+import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -102,6 +103,10 @@ export function AccessDevelopmentsManager() {
             <Users className="h-4 w-4" />
             Inversionistas
           </TabsTrigger>
+          <TabsTrigger value="receipts" className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
+            Recibos
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="leads" className="space-y-4">
@@ -134,6 +139,10 @@ export function AccessDevelopmentsManager() {
 
         <TabsContent value="investors">
           <InvestorOverview developments={developments.filter(d => d.has_investor)} />
+        </TabsContent>
+
+        <TabsContent value="receipts">
+          <DevelopmentReceipts developments={developments} />
         </TabsContent>
       </Tabs>
 
