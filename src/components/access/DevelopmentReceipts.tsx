@@ -12,6 +12,7 @@ import { Receipt, Download, Mail, Eye, FileText, Send, Loader2 } from 'lucide-re
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { formatMXNExact } from '@/utils/currency';
+import logoAcceso from '@/assets/logo-acceso.png';
 
 interface PaidPayment {
   id: string;
@@ -97,6 +98,15 @@ export function DevelopmentReceipts({ developments }: Props) {
     const dev = getDevelopment(payment.development_id);
     const receiptNumber = generateReceiptNumber(payment);
     
+    // Convert logo to base64 for PDF
+    const logoBase64 = await fetch(logoAcceso)
+      .then(res => res.blob())
+      .then(blob => new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      }));
+    
     // Create a printable HTML document
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -117,7 +127,7 @@ export function DevelopmentReceipts({ developments }: Props) {
           body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; background: #fff; }
           .receipt { max-width: 600px; margin: 0 auto; border: 2px solid #333; padding: 30px; }
           .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
-          .logo { font-size: 24px; font-weight: bold; color: #2563eb; }
+          .logo-img { max-height: 60px; margin-bottom: 10px; }
           .receipt-title { font-size: 20px; margin-top: 10px; text-transform: uppercase; letter-spacing: 2px; }
           .receipt-number { font-size: 14px; color: #666; margin-top: 5px; }
           .section { margin-bottom: 20px; }
@@ -137,7 +147,7 @@ export function DevelopmentReceipts({ developments }: Props) {
       <body>
         <div class="receipt">
           <div class="header">
-            <div class="logo">SYSLAG</div>
+            <img src="${logoBase64}" alt="Acceso by Syslag" class="logo-img" />
             <div class="receipt-title">Recibo de Pago</div>
             <div class="receipt-number">${receiptNumber}</div>
           </div>
@@ -420,7 +430,7 @@ function ReceiptPreview({
     <div className="space-y-4">
       {/* Receipt Header */}
       <div className="text-center pb-4 border-b">
-        <h3 className="text-xl font-bold text-primary">SYSLAG</h3>
+        <img src={logoAcceso} alt="Acceso by Syslag" className="h-12 mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">Recibo de Pago</p>
         <p className="font-mono text-sm mt-1">{receiptNumber}</p>
       </div>
