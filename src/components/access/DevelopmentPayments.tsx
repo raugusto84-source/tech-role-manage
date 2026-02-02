@@ -218,7 +218,25 @@ export function DevelopmentPayments({ developments }: Props) {
         }
       }
 
-      toast.success('Pago registrado correctamente');
+      // Send receipt email automatically if development has email
+      if (dev?.contact_email) {
+        try {
+          await supabase.functions.invoke('send-development-receipt', {
+            body: {
+              paymentId: payingPayment.id,
+              developmentId: payingPayment.development_id,
+              email: dev.contact_email
+            }
+          });
+          toast.success('Pago registrado y recibo enviado por correo');
+        } catch (emailError) {
+          console.error('Error sending receipt email:', emailError);
+          toast.success('Pago registrado (no se pudo enviar recibo por correo)');
+        }
+      } else {
+        toast.success('Pago registrado correctamente');
+      }
+
       setPayingPayment(null);
       setPaymentMethod('');
       setPaymentReference('');
