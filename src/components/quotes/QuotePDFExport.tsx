@@ -4,7 +4,7 @@ import { Printer, Download, Loader2 } from 'lucide-react';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import logoSyslag from '@/assets/logo-acceso.png';
+import logoSyslag from '@/assets/logo-syslag.png';
 
 interface QuoteItem {
   id: string;

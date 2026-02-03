@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import logoSyslag from '@/assets/logo-acceso.png';
+import logoSyslag from '@/assets/logo-syslag.png';
 
 interface Quote {
   id: string;
