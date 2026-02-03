@@ -3921,6 +3921,7 @@ export type Database = {
           policy_id: string | null
           policy_name: string | null
           priority: string
+          quote_id: string | null
           requested_date: string | null
           service_category: string | null
           service_location: Json | null
@@ -3975,6 +3976,7 @@ export type Database = {
           policy_id?: string | null
           policy_name?: string | null
           priority?: string
+          quote_id?: string | null
           requested_date?: string | null
           service_category?: string | null
           service_location?: Json | null
@@ -4029,6 +4031,7 @@ export type Database = {
           policy_id?: string | null
           policy_name?: string | null
           priority?: string
+          quote_id?: string | null
           requested_date?: string | null
           service_category?: string | null
           service_location?: Json | null
@@ -4063,6 +4066,13 @@ export type Database = {
             columns: ["policy_id"]
             isOneToOne: false
             referencedRelation: "insurance_policies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
             referencedColumns: ["id"]
           },
           {
