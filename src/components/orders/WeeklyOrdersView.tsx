@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle, GripVertical, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle, GripVertical, Clock, ChevronDown, ChevronUp, CheckCircle, Loader2 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO, isToday, isBefore, startOfDay, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { supabase } from '@/integrations/supabase/client';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -128,11 +129,13 @@ const CATEGORY_CONFIG: Record<CategoryType, {
 
 export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: WeeklyOrdersViewProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [currentWeekStart, setCurrentWeekStart] = useState(() => 
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
   const [isDragging, setIsDragging] = useState(false);
   const [showPendingApproval, setShowPendingApproval] = useState(false);
+  const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
   
   // Estado para diálogo de confirmación de reprogramación
   const [rescheduleDialog, setRescheduleDialog] = useState<{
@@ -403,6 +406,50 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     setIsDragging(true);
   };
 
+  // Quick approve order function
+  const handleQuickApprove = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the order
+    setApprovingOrderId(order.id);
+    
+    try {
+      // Update order status to en_proceso
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ 
+          status: 'en_proceso',
+          delivery_date: order.delivery_date || new Date().toISOString()
+        })
+        .eq('id', order.id);
+
+      if (updateError) throw updateError;
+
+      // Log status change
+      await supabase.from('order_status_logs').insert({
+        order_id: order.id,
+        previous_status: 'pendiente_aprobacion',
+        new_status: 'en_proceso',
+        changed_by: user?.id,
+        notes: 'Aprobación rápida desde vista semanal'
+      });
+
+      toast({
+        title: "Orden Aprobada",
+        description: `Orden #${order.order_number} aprobada y en proceso`,
+      });
+
+      onOrdersChange?.();
+    } catch (error: any) {
+      console.error('Error approving order:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo aprobar la orden",
+        variant: "destructive",
+      });
+    } finally {
+      setApprovingOrderId(null);
+    }
+  };
+
   return (
     <>
       {/* Reschedule Confirmation Dialog */}
@@ -468,12 +515,27 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
                   <div className="px-4 pb-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {pendingApprovalOrders.map(order => (
-                        <WeeklyOrderCard
-                          key={order.id}
-                          order={order}
-                          onClick={() => onSelectOrder(order)}
-                          category={getOrderCategory(order)}
-                        />
+                        <div key={order.id} className="relative">
+                          <WeeklyOrderCard
+                            order={order}
+                            onClick={() => onSelectOrder(order)}
+                            category={getOrderCategory(order)}
+                          />
+                          {/* Quick approve button overlay */}
+                          <Button
+                            size="sm"
+                            className="absolute top-2 right-2 h-8 gap-1 bg-green-600 hover:bg-green-700 text-white shadow-lg z-10"
+                            onClick={(e) => handleQuickApprove(order, e)}
+                            disabled={approvingOrderId === order.id}
+                          >
+                            {approvingOrderId === order.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-3 w-3" />
+                            )}
+                            <span className="text-xs">Aprobar</span>
+                          </Button>
+                        </div>
                       ))}
                     </div>
                   </div>
