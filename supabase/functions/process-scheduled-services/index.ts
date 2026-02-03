@@ -492,8 +492,10 @@ async function processDueServices(supabaseClient: any) {
       const nextRunDateStr = nextRunDate.toISOString().split('T')[0];
       const isOverdue = nextRunDate < today;
       
+      // IMPORTANTE: Siempre usar la fecha programada exacta, NO moverla hacia adelante
+      // Esto asegura que las órdenes se creen en la fecha correcta aunque estemos atrasados
       if (isOverdue) {
-        console.log(`⚠️ Service for client ${client.name} is OVERDUE (scheduled: ${nextRunDateStr}). Will schedule for next valid date.`);
+        console.log(`⚠️ Service for client ${client.name} is OVERDUE (scheduled: ${nextRunDateStr}). Creating order for scheduled date.`);
       } else {
         console.log(`Processing scheduled service for client: ${client.name}, scheduled for: ${nextRunDateStr}, services: ${scheduledService.services.length}`);
       }
@@ -510,18 +512,9 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
       
-      // For overdue services, calculate the NEXT valid date based on frequency
-      // For on-time services, use the scheduled date
-      let targetDateStr: string;
-      
-      if (isOverdue) {
-        // Calculate next valid occurrence from today
-        const nextValidDate = calculateNextOccurrence(today, scheduledService);
-        targetDateStr = nextValidDate.toISOString().split('T')[0];
-        console.log(`Overdue service rescheduled to: ${targetDateStr}`);
-      } else {
-        targetDateStr = scheduledService.next_run.split('T')[0];
-      }
+      // SIEMPRE usar la fecha programada original - nunca saltarla
+      // Las órdenes de póliza deben crearse en la fecha exacta programada
+      const targetDateStr = scheduledService.next_run.split('T')[0];
       
       // Get policy info for unique identification
       const { data: policyInfo } = await supabaseClient
