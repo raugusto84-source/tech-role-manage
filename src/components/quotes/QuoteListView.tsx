@@ -13,6 +13,7 @@ import {
   Send,
   Loader2,
   ClipboardList,
+  FileText,
 } from "lucide-react";
 import { formatCOPCeilToTen } from "@/utils/currency";
 import { formatHoursAndMinutes } from "@/utils/timeUtils";
@@ -20,6 +21,7 @@ import { getTimeCategory, getTimeLimitLabel, getTaskInfo, shouldAutoExpire } fro
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/hooks/use-toast";
+import { QuoteListPDFButton } from "./QuoteListPDFButton";
 
 interface Quote {
   id: string;
@@ -479,6 +481,7 @@ export function QuoteListView({
                           </TooltipContent>
                         </Tooltip>
                       )}
+                      <QuoteListPDFButton quote={quote} />
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewDetails(quote)}>
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
