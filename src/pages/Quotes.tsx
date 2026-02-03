@@ -188,11 +188,9 @@ export default function Quotes() {
     return matchesSearch;
   });
 
-  // Separar cotizaciones por estado
+  // Separar cotizaciones por estado (4 estados principales)
   const quotesByStatus = {
-    pendiente_aprobacion: filteredQuotes.filter(q => q.status === 'pendiente_aprobacion'),
-    asignando: filteredQuotes.filter(q => q.status === 'asignando'),
-    solicitud: filteredQuotes.filter(q => q.status === 'solicitud'),
+    solicitud: filteredQuotes.filter(q => q.status === 'solicitud' || q.status === 'pendiente_aprobacion' || q.status === 'asignando'),
     enviada: filteredQuotes.filter(q => q.status === 'enviada'),
     aceptada: filteredQuotes.filter(q => q.status === 'aceptada'),
     rechazada: filteredQuotes.filter(q => q.status === 'rechazada')
@@ -423,9 +421,6 @@ export default function Quotes() {
           <TabsList className="flex flex-wrap h-auto gap-1">
             <TabsTrigger value="all" className="text-xs">
               Todas ({filteredQuotes.length})
-            </TabsTrigger>
-            <TabsTrigger value="pendiente_aprobacion" className="text-xs">
-              ⏳ Pendientes ({quotesByStatus.pendiente_aprobacion.length})
             </TabsTrigger>
             <TabsTrigger value="solicitud" className="text-xs">
               📝 Nuevas ({quotesByStatus.solicitud.length})
