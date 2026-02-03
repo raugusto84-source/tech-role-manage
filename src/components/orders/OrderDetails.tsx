@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera, Pencil, UserPlus } from 'lucide-react';
+import { OrderPDFButton } from './OrderPDFButton';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -547,6 +548,7 @@ export function OrderDetails({
             {canSignDelivery && <Button size="sm" onClick={() => setShowDeliverySignature(true)}>
                 <Signature className="h-3 w-3" />
               </Button>}
+            <OrderPDFButton order={order} />
           </div>
           
           <div className="flex items-center justify-between">
