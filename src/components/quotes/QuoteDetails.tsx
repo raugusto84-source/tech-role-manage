@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package, Plus, Printer } from 'lucide-react';
+import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package, Plus, Printer, Loader2 } from 'lucide-react';
 import { QuotePDFExport } from './QuotePDFExport';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
@@ -18,6 +18,7 @@ import { getItemTypeInfo } from '@/utils/itemTypeUtils';
 import { ClientQuoteItemsSummary } from './ClientQuoteItemsSummary';
 import { QuoteWorkflowActions } from './QuoteWorkflowActions';
 import { AddQuoteItemsDialog } from './AddQuoteItemsDialog';
+import { ClientQuoteApproval } from '@/components/client/ClientQuoteApproval';
 
 interface QuoteItem {
   id: string;
@@ -105,6 +106,10 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
   const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
   const [salesperson, setSalesperson] = useState<string>('');
   const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
+  const [showClientApprovalDialog, setShowClientApprovalDialog] = useState(false);
+  
+  const isClient = profile?.role === 'cliente';
+  const canClientApprove = isClient && ['enviada', 'solicitud', 'pendiente_aprobacion'].includes(quote.status);
   
   // Load quote items and salesperson information
   useEffect(() => {
@@ -715,12 +720,37 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
           </Card>
 
 
-          {/* Acciones - Nuevo componente de flujo de trabajo */}
-          <QuoteWorkflowActions 
-            quote={quote}
-            quoteItems={quoteItems}
-            onQuoteUpdated={onQuoteUpdated}
-          />
+          {/* Acciones para clientes - Aprobar/Rechazar */}
+          {canClientApprove && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-primary">¿Aceptas esta cotización?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Revisa los detalles y decide si deseas proceder con el servicio.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button 
+                    onClick={() => setShowClientApprovalDialog(true)}
+                    className="w-full"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Ver opciones de respuesta
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Acciones - Componente de flujo de trabajo (solo para staff) */}
+          {!isClient && (
+            <QuoteWorkflowActions 
+              quote={quote}
+              quoteItems={quoteItems}
+              onQuoteUpdated={onQuoteUpdated}
+            />
+          )}
         </div>
       </div>
 
@@ -749,6 +779,24 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
           loadItems();
         }}
       />
+
+      {/* Diálogo de aprobación para clientes */}
+      {showClientApprovalDialog && (
+        <ClientQuoteApproval
+          quote={{
+            id: quote.id,
+            quote_number: quote.quote_number,
+            status: quote.status,
+            service_description: quote.service_description,
+            estimated_amount: total > 0 ? total : quote.estimated_amount,
+            client_name: quote.client_name,
+            created_at: quote.request_date
+          }}
+          open={showClientApprovalDialog}
+          onOpenChange={setShowClientApprovalDialog}
+          onQuoteUpdated={onQuoteUpdated}
+        />
+      )}
     </div>
   );
 }

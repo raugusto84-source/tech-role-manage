@@ -16,6 +16,7 @@ interface QuoteItem {
   quantity: number;
   unit_price: number;
   subtotal: number;
+  total: number;
 }
 
 interface Quote {
@@ -51,7 +52,7 @@ export function ClientQuoteApproval({ quote, open, onOpenChange, onQuoteUpdated 
       try {
         const { data, error } = await supabase
           .from('quote_items')
-          .select('id, name, quantity, unit_price, subtotal')
+          .select('id, name, quantity, unit_price, subtotal, total')
           .eq('quote_id', quote.id);
 
         if (error) throw error;
@@ -159,7 +160,10 @@ export function ClientQuoteApproval({ quote, open, onOpenChange, onQuoteUpdated 
     }
   };
 
-  const total = quoteItems.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+  // Use total (includes VAT) to match list view - fallback to estimated_amount if no items
+  const total = quoteItems.length > 0 
+    ? quoteItems.reduce((sum, item) => sum + (item.total || 0), 0)
+    : (quote.estimated_amount || 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -194,15 +198,21 @@ export function ClientQuoteApproval({ quote, open, onOpenChange, onQuoteUpdated 
             <Card>
               <CardContent className="p-4 space-y-3">
                 <h4 className="text-sm font-medium text-muted-foreground">Detalle de Items</h4>
-                {quoteItems.map((item) => (
+                {quoteItems.map((item) => {
+                  // Calculate display price per unit from total (VAT included)
+                  const unitPriceDisplay = item.quantity > 0 
+                    ? (item.total || 0) / item.quantity 
+                    : item.unit_price || 0;
+                  return (
                   <div key={item.id} className="flex items-center justify-between text-sm">
                     <div className="flex-1">
                       <span className="font-medium">{item.name}</span>
                       <span className="text-muted-foreground ml-2">x{item.quantity}</span>
                     </div>
-                    <span className="text-right">{formatCOPCeilToTen(item.subtotal)}</span>
+                    <span className="text-right">{formatCOPCeilToTen(item.total || 0)}</span>
                   </div>
-                ))}
+                  );
+                })}
                 <Separator />
                 <div className="flex items-center justify-between font-bold">
                   <span className="flex items-center gap-1">
