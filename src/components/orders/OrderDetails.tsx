@@ -912,8 +912,9 @@ export function OrderDetails({
       {/* Botones de Finalizar y Firmar al final */}
       {(() => {
       const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
-      const canFinishOrder = !isClient && allItemsCompleted && ['en_proceso'].includes(orderStatus);
-      const canSignDelivery = !deliverySignature && (isClient && orderStatus === 'pendiente_entrega' && allItemsCompleted || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
+      // Allow finishing order even if not all services are completed
+      const canFinishOrder = !isClient && ['en_proceso'].includes(orderStatus);
+      const canSignDelivery = !deliverySignature && (isClient && orderStatus === 'pendiente_entrega' || profile?.role === 'administrador' && ['pendiente_entrega', 'finalizada'].includes(orderStatus));
       if (canFinishOrder || canSignDelivery) {
         return <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-4 z-20">
               <div className="max-w-md mx-auto space-y-3">
