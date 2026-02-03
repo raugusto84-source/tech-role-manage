@@ -231,6 +231,49 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     return result;
   }, [weekOrders, weekDays]);
 
+  // Calcular horas ocupadas por día y categoría
+  const hoursPerDay = useMemo(() => {
+    const result: Record<CategoryType, Record<string, number>> = {
+      sistemas: {},
+      seguridad: {},
+      fraccionamientos: {},
+    };
+
+    weekDays.forEach(day => {
+      const dayKey = format(day, 'yyyy-MM-dd');
+      result.sistemas[dayKey] = 0;
+      result.seguridad[dayKey] = 0;
+      result.fraccionamientos[dayKey] = 0;
+    });
+
+    weekOrders.forEach(order => {
+      // Solo contar órdenes activas (no finalizadas/canceladas)
+      if (['finalizada', 'cancelada', 'rechazada'].includes(order.status)) return;
+      
+      const category = getOrderCategory(order);
+      const deliveryDate = order.estimated_delivery_date || order.delivery_date;
+      if (!deliveryDate) return;
+
+      try {
+        const dayKey = format(parseISO(deliveryDate), 'yyyy-MM-dd');
+        if (result[category][dayKey] !== undefined) {
+          // Sumar horas estimadas de los items de la orden
+          const orderHours = order.order_items?.reduce((sum, item) => {
+            // Asumimos que cada item tiene un campo estimated_hours o usamos un default
+            const itemHours = (item as any).estimated_hours || 1; // Default 1 hora por item
+            return sum + (itemHours * (item.quantity || 1));
+          }, 0) || 1; // Si no hay items, asumir 1 hora
+          
+          result[category][dayKey] += orderHours;
+        }
+      } catch {
+        // Ignore invalid dates
+      }
+    });
+
+    return result;
+  }, [weekOrders, weekDays]);
+
   // Contar órdenes por categoría
   const categoryCounts = useMemo(() => ({
     sistemas: weekOrders.filter(o => getOrderCategory(o) === 'sistemas').length,
@@ -738,6 +781,11 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
                         const dayKey = format(day, 'yyyy-MM-dd');
                         const dayOrders = groupedOrders[category][dayKey] || [];
                         const dayIsToday = isToday(day);
+                        const dayHours = hoursPerDay[category][dayKey] || 0;
+                        const maxDailyHours = 8; // 8 hours workday
+                        const hoursRemaining = Math.max(0, maxDailyHours - dayHours);
+                        const isOverloaded = dayHours > maxDailyHours;
+                        const isFull = dayHours >= maxDailyHours;
                         
                         return (
                           <div 
@@ -770,11 +818,36 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
                                   )}
                                 </div>
                               </div>
-                              {dayOrders.length > 0 && (
-                                <Badge variant="outline" className={cn(config.textColor, "font-semibold")}>
-                                  {dayOrders.length}
+                              <div className="flex items-center gap-2">
+                                {/* Hours indicator */}
+                                <Badge 
+                                  variant="outline" 
+                                  className={cn(
+                                    "font-mono text-xs gap-1",
+                                    isOverloaded && "bg-red-100 dark:bg-red-950 border-red-500 text-red-700 dark:text-red-300",
+                                    isFull && !isOverloaded && "bg-amber-100 dark:bg-amber-950 border-amber-500 text-amber-700 dark:text-amber-300",
+                                    !isFull && "bg-green-100 dark:bg-green-950 border-green-500 text-green-700 dark:text-green-300"
+                                  )}
+                                >
+                                  <Clock className="h-3 w-3" />
+                                  {dayHours.toFixed(1)}h / {maxDailyHours}h
+                                  {!isFull && (
+                                    <span className="text-green-600 dark:text-green-400">
+                                      (+{hoursRemaining.toFixed(1)}h)
+                                    </span>
+                                  )}
+                                  {isOverloaded && (
+                                    <span className="text-red-600 dark:text-red-400">
+                                      ⚠️
+                                    </span>
+                                  )}
                                 </Badge>
-                              )}
+                                {dayOrders.length > 0 && (
+                                  <Badge variant="outline" className={cn(config.textColor, "font-semibold")}>
+                                    {dayOrders.length}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
 
                             {/* Hour Slots */}
