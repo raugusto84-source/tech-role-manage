@@ -7762,6 +7762,13 @@ export type Database = {
         Returns: undefined
       }
       convert_quote_to_order: { Args: { quote_id: string }; Returns: Json }
+      create_missing_orders_for_accepted_quotes: {
+        Args: never
+        Returns: {
+          order_number: string
+          quote_number: string
+        }[]
+      }
       create_order_for_scheduled_service: {
         Args: { p_scheduled_service_id: string }
         Returns: {
