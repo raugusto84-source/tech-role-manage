@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Trash2, CreditCard, Clock, Play } from "lucide-react";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
+import { OrderPDFButton } from "./OrderPDFButton";
 import { es } from "date-fns/locale";
 import { useOrderElapsedTime } from "@/hooks/useOrderElapsedTime";
 import { calculateOrderPriority, getPriorityBadgeClass, getPriorityLabel, orderPriorityNumberToString } from "@/utils/priorityCalculator";
@@ -305,6 +306,8 @@ export function OrderListItem({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
+          <OrderPDFButton order={order} />
+          
           {order.status === 'en_espera' && (
             <Button
               variant="ghost"
