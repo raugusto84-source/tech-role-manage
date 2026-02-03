@@ -31,6 +31,7 @@ import { formatDateMexico } from "@/utils/dateUtils";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 import { PolicySupportRequest } from "@/components/client/PolicySupportRequest";
+import { ClientQuoteApproval } from "@/components/client/ClientQuoteApproval";
 
 // Tipos locales
 interface Order {
@@ -88,6 +89,7 @@ export default function ClientDashboard() {
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [showSupportRequest, setShowSupportRequest] = useState(false);
+  const [quoteToApprove, setQuoteToApprove] = useState<Quote | null>(null);
 
   // Datos
   const [orders, setOrders] = useState<Order[]>([]);
@@ -545,9 +547,9 @@ export default function ClientDashboard() {
     navigate(`/orders?id=${orderId}`);
   };
 
-  const handleApproveQuote = (quoteId: string) => {
-    // Navegar a los detalles de la cotización para aprobar
-    navigate(`/quotes?id=${quoteId}`);
+  const handleApproveQuote = (quote: Quote) => {
+    // Open the approval dialog instead of navigating away
+    setQuoteToApprove(quote);
   };
 
   const handleViewOrderDetails = (orderId: string) => {
@@ -897,7 +899,7 @@ export default function ClientDashboard() {
                         </p>
                       </div>
                     </div>
-                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleApproveQuote(quote.id)}>
+                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => handleApproveQuote(quote)}>
                       Revisar
                     </Button>
                   </div>
@@ -1066,6 +1068,22 @@ export default function ClientDashboard() {
           loadOrders();
         }}
       />
+
+      {/* Diálogo de aprobación de cotización */}
+      {quoteToApprove && (
+        <ClientQuoteApproval
+          quote={quoteToApprove}
+          open={!!quoteToApprove}
+          onOpenChange={(open) => {
+            if (!open) setQuoteToApprove(null);
+          }}
+          onQuoteUpdated={() => {
+            loadQuotes();
+            loadPendingApprovalQuotes();
+            loadOrders();
+          }}
+        />
+      )}
 
     </AppLayout>
   );
