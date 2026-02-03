@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package, Plus } from 'lucide-react';
+import { ArrowLeft, User, Calendar, FileText, ShoppingCart, Send, CheckCircle, XCircle, Package, Plus, Printer } from 'lucide-react';
+import { QuotePDFExport } from './QuotePDFExport';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatCOPCeilToTen } from '@/utils/currency';
 import { getItemTypeInfo } from '@/utils/itemTypeUtils';
@@ -465,6 +466,11 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
         </div>
         
         <div className="flex items-center gap-3">
+          <QuotePDFExport 
+            quote={quote} 
+            quoteItems={quoteItems} 
+            salesperson={salesperson}
+          />
           <Badge className={`${getStatusColor(quote.status)} border text-base px-3 py-1`}>
             <StatusIcon className="h-4 w-4 mr-2" />
             {getStatusText(quote.status)}
