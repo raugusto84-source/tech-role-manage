@@ -12,6 +12,7 @@ import { TaskAssignmentManager } from './TaskAssignmentManager';
 import { DeletionHistoryPanel } from './DeletionHistoryPanel';
 import { ImprovedGeneralChat } from '@/components/chat/ImprovedGeneralChat';
 import { DatabaseAdminPanel } from './DatabaseAdminPanel';
+import { SystemEmailsManager } from './SystemEmailsManager';
 
 export function AdminDashboard() {
   return (
@@ -24,7 +25,7 @@ export function AdminDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-11 text-xs">
+        <TabsList className="grid w-full grid-cols-12 text-xs">
           <TabsTrigger value="overview">Resumen</TabsTrigger>
           <TabsTrigger value="chat">Chat</TabsTrigger>
           <TabsTrigger value="finances">Finanzas</TabsTrigger>
@@ -33,6 +34,7 @@ export function AdminDashboard() {
           <TabsTrigger value="tasks">Tareas</TabsTrigger>
           <TabsTrigger value="followup">Seguimientos</TabsTrigger>
           <TabsTrigger value="warranties">Garantías</TabsTrigger>
+          <TabsTrigger value="emails">Correos</TabsTrigger>
           <TabsTrigger value="history">Historial</TabsTrigger>
           <TabsTrigger value="backups">Respaldos</TabsTrigger>
           <TabsTrigger value="ai">IA</TabsTrigger>
@@ -73,6 +75,10 @@ export function AdminDashboard() {
 
         <TabsContent value="warranties">
           <WarrantiesAndAchievements />
+        </TabsContent>
+
+        <TabsContent value="emails">
+          <SystemEmailsManager />
         </TabsContent>
 
         <TabsContent value="history">

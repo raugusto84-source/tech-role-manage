@@ -94,6 +94,24 @@ export function ClientQuoteApproval({ quote, open, onOpenChange, onQuoteUpdated 
         notes: 'Cliente aceptó la cotización desde el portal'
       });
 
+      // Send notification email to sales team
+      try {
+        await supabase.functions.invoke('send-internal-notification', {
+          body: {
+            notification_type: 'quote_accepted',
+            data: {
+              quote_number: quote.quote_number,
+              client_name: quote.client_name,
+              total: total,
+              description: quote.service_description
+            }
+          }
+        });
+      } catch (emailError) {
+        console.error('Error sending notification email:', emailError);
+        // Don't fail the whole operation if email fails
+      }
+
       toast({
         title: "¡Cotización Aceptada!",
         description: result?.order_number 
