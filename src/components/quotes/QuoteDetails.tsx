@@ -542,12 +542,17 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                         <TableHead>Imagen</TableHead>
                         <TableHead>Artículo/Servicio</TableHead>
                         <TableHead className="text-center">Cantidad</TableHead>
+                        <TableHead className="text-right">Precio Unit.</TableHead>
                         <TableHead className="text-right">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                        {quoteItems.map((item) => {
                          const itemTypeInfo = getItemTypeInfo(item.item_type || 'servicio');
+                         // Calcular precio unitario correcto (precio final con IVA)
+                         const unitPriceDisplay = item.quantity > 0 
+                           ? (item.total || 0) / item.quantity 
+                           : item.unit_price || 0;
                          return (
                          <TableRow 
                            key={item.id}
@@ -588,8 +593,10 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                              </div>
                            </TableCell>
                            <TableCell className="text-center">{item.quantity}</TableCell>
+                           <TableCell className="text-right text-sm">
+                             {formatCurrency(unitPriceDisplay)}
+                           </TableCell>
                            <TableCell className="text-right font-medium">
-                             {/* item.total already includes quantity - don't multiply again */}
                              {formatCurrency(item.total || 0)}
                            </TableCell>
                          </TableRow>
@@ -598,29 +605,23 @@ export function QuoteDetails({ quote, onBack, onQuoteUpdated }: QuoteDetailsProp
                     </TableBody>
                   </Table>
                   
-                  {/* Totales */}
+                  {/* Totales - Solo mostrar precio final (IVA incluido) */}
                   <div className="border-t pt-4">
                     <div className="flex justify-end">
                       <div className="w-64 space-y-2">
-                        <div className="flex justify-between">
-                          <span>Subtotal:</span>
-                          <span>{formatCurrency(subtotal)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>IVA Total:</span>
-                          <span>{formatCurrency(totalVat)}</span>
-                        </div>
                         {totalWithholdings > 0 && (
                           <div className="flex justify-between text-red-600">
                             <span>Retenciones:</span>
                             <span>-{formatCurrency(totalWithholdings)}</span>
                           </div>
                         )}
-                        <Separator />
                         <div className="flex justify-between font-bold text-lg">
                           <span>Total:</span>
                           <span>{formatCurrency(total)}</span>
                         </div>
+                        <p className="text-xs text-muted-foreground text-right">
+                          Precio final (IVA incluido)
+                        </p>
                       </div>
                     </div>
                   </div>

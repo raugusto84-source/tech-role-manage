@@ -431,22 +431,26 @@ export function AddQuoteItemsDialog({
 
       // Insert new items
       if (newItems.length > 0) {
-        const itemsToInsert = newItems.map(item => ({
-          quote_id: quoteId,
-          service_type_id: item.service_type_id,
-          name: item.service_name,
-          description: '',
-          quantity: item.quantity,
-          unit_price: item.unit_base_price,
-          subtotal: item.subtotal,
-          vat_rate: item.vat_rate,
-          vat_amount: item.vat_amount,
-          withholding_rate: 0,
-          withholding_amount: 0,
-          withholding_type: 'none',
-          total: item.total_amount,
-          is_custom: false
-        }));
+        const itemsToInsert = newItems.map(item => {
+          // unit_price debe ser el precio final con IVA por unidad (igual que en Ventas)
+          const unitPriceWithVat = item.total_amount / item.quantity;
+          return {
+            quote_id: quoteId,
+            service_type_id: item.service_type_id,
+            name: item.service_name,
+            description: '',
+            quantity: item.quantity,
+            unit_price: unitPriceWithVat, // Precio final con IVA por unidad
+            subtotal: item.subtotal,
+            vat_rate: item.vat_rate,
+            vat_amount: item.vat_amount,
+            withholding_rate: 0,
+            withholding_amount: 0,
+            withholding_type: 'none',
+            total: item.total_amount,
+            is_custom: false
+          };
+        });
 
         const { error: itemsError } = await supabase
           .from('quote_items')

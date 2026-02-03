@@ -101,7 +101,10 @@ export function QuotePDFExport({ quote, quoteItems, salesperson }: QuotePDFExpor
       };
 
       const itemsHtml = quoteItems.length > 0 
-        ? quoteItems.map(item => `
+        ? quoteItems.map(item => {
+          // Precio unitario = total / cantidad (precio final con IVA por unidad)
+          const unitPriceDisplay = item.quantity > 0 ? item.total / item.quantity : item.unit_price;
+          return `
           <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
               <div style="font-weight: 500;">${item.name}</div>
@@ -109,10 +112,10 @@ export function QuotePDFExport({ quote, quoteItems, salesperson }: QuotePDFExpor
               <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">${getItemTypeLabel(item.item_type)}</div>
             </td>
             <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity}</td>
-            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCOPCeilToTen(item.unit_price)}</td>
+            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">${formatCOPCeilToTen(unitPriceDisplay)}</td>
             <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 500;">${formatCOPCeilToTen(item.total)}</td>
           </tr>
-        `).join('')
+        `}).join('')
         : `
           <tr>
             <td colspan="4" style="padding: 20px; text-align: center; color: #6b7280;">
@@ -368,25 +371,18 @@ export function QuotePDFExport({ quote, quoteItems, salesperson }: QuotePDFExpor
             
             <div class="totals-section">
               <div class="totals-box">
-                ${quoteItems.length > 0 ? `
-                <div class="totals-row">
-                  <span>Subtotal:</span>
-                  <span>${formatCOPCeilToTen(subtotal)}</span>
-                </div>
-                <div class="totals-row">
-                  <span>IVA:</span>
-                  <span>${formatCOPCeilToTen(totalVat)}</span>
-                </div>
                 ${totalWithholdings > 0 ? `
                 <div class="totals-row withholding">
                   <span>Retenciones:</span>
                   <span>-${formatCOPCeilToTen(totalWithholdings)}</span>
                 </div>
                 ` : ''}
-                ` : ''}
                 <div class="totals-row final">
                   <span>Total:</span>
                   <span>${formatCOPCeilToTen(displayTotal)}</span>
+                </div>
+                <div style="font-size: 11px; color: #6b7280; text-align: right; margin-top: 4px;">
+                  Precio final (IVA incluido)
                 </div>
               </div>
             </div>
