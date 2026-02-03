@@ -387,8 +387,43 @@ async function createInitialOrders(supabaseClient: any, body: any) {
   });
 }
 
+// Helper function to calculate the next valid occurrence of a scheduled service from a given date
+function calculateNextOccurrence(fromDate: Date, scheduledService: any): Date {
+  const result = new Date(fromDate);
+  result.setHours(0, 1, 0, 0);
+  
+  if (scheduledService.frequency_type === 'weekly_on_day') {
+    const targetDay = scheduledService.frequency_value; // 0=Sunday, 1=Monday, etc.
+    // Find next occurrence of target day
+    while (result.getDay() !== targetDay) {
+      result.setDate(result.getDate() + 1);
+    }
+    // If today is the target day, use today
+    if (result.toISOString().split('T')[0] === fromDate.toISOString().split('T')[0] && result.getDay() === targetDay) {
+      // Already on target day, keep it
+    }
+  } else if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(scheduledService.frequency_type)) {
+    const targetDay = scheduledService.day_of_week || 1; // Default to Monday
+    // Find next occurrence of target day
+    while (result.getDay() !== targetDay) {
+      result.setDate(result.getDate() + 1);
+    }
+  } else if (scheduledService.frequency_type === 'monthly_on_day') {
+    const targetDayOfMonth = scheduledService.frequency_value;
+    result.setDate(targetDayOfMonth);
+    if (result <= fromDate) {
+      result.setMonth(result.getMonth() + 1);
+    }
+  } else if (scheduledService.frequency_type === 'days') {
+    // For daily frequency, just use from date + 1
+    result.setDate(result.getDate() + 1);
+  }
+  
+  return result;
+}
+
 async function processDueServices(supabaseClient: any) {
-  console.log('Processing due scheduled services for the week...');
+  console.log('Processing due scheduled services (including overdue)...');
 
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
@@ -399,10 +434,10 @@ async function processDueServices(supabaseClient: any) {
   endOfWeek.setHours(23, 59, 59, 999);
   const endOfWeekStr = endOfWeek.toISOString();
   
-  console.log(`Processing services from ${todayStr} to ${endOfWeek.toISOString().split('T')[0]} (next 7 days)`);
+  console.log(`Processing services up to ${endOfWeek.toISOString().split('T')[0]} (including overdue)`);
 
-  // Get scheduled services due within the next 7 days
-  const nowStr = new Date().toISOString();
+  // IMPROVED: Get scheduled services due within the next 7 days OR that are overdue (next_run in the past)
+  // This ensures services that missed their scheduled run are still processed
   const { data: dueServices, error: servicesError } = await supabaseClient
     .from('scheduled_services')
     .select(`
@@ -426,8 +461,7 @@ async function processDueServices(supabaseClient: any) {
       )
     `)
     .eq('is_active', true)
-    .gte('next_run', nowStr)
-    .lte('next_run', endOfWeekStr);
+    .lte('next_run', endOfWeekStr); // Changed: now captures anything from the past up to 7 days ahead
 
   if (servicesError) {
     console.error('Error fetching due services:', servicesError);
@@ -454,8 +488,15 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
 
-      const nextRunDateStr = new Date(scheduledService.next_run).toISOString().split('T')[0];
-      console.log(`Processing scheduled service for client: ${client.name}, scheduled for: ${nextRunDateStr}, services: ${scheduledService.services.length}`);
+      const nextRunDate = new Date(scheduledService.next_run);
+      const nextRunDateStr = nextRunDate.toISOString().split('T')[0];
+      const isOverdue = nextRunDate < today;
+      
+      if (isOverdue) {
+        console.log(`⚠️ Service for client ${client.name} is OVERDUE (scheduled: ${nextRunDateStr}). Will schedule for next valid date.`);
+      } else {
+        console.log(`Processing scheduled service for client: ${client.name}, scheduled for: ${nextRunDateStr}, services: ${scheduledService.services.length}`);
+      }
 
       // Get service types information for all services
       const serviceTypeIds = scheduledService.services.map((s: any) => s.service_type_id);
@@ -469,8 +510,18 @@ async function processDueServices(supabaseClient: any) {
         continue;
       }
       
-      // Use the exact date from next_run (already in ISO format)
-      const targetDateStr = scheduledService.next_run.split('T')[0];
+      // For overdue services, calculate the NEXT valid date based on frequency
+      // For on-time services, use the scheduled date
+      let targetDateStr: string;
+      
+      if (isOverdue) {
+        // Calculate next valid occurrence from today
+        const nextValidDate = calculateNextOccurrence(today, scheduledService);
+        targetDateStr = nextValidDate.toISOString().split('T')[0];
+        console.log(`Overdue service rescheduled to: ${targetDateStr}`);
+      } else {
+        targetDateStr = scheduledService.next_run.split('T')[0];
+      }
       
       // Get policy info for unique identification
       const { data: policyInfo } = await supabaseClient
