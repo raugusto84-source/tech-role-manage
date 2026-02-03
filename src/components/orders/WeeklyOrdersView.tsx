@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle, GripVertical, Clock, ChevronDown, ChevronUp, CheckCircle, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Monitor, Shield, Building2, AlertTriangle, GripVertical, Clock, ChevronDown, ChevronUp, CheckCircle, Loader2, XCircle, Check, X } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO, isToday, isBefore, startOfDay, setHours, setMinutes } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -136,6 +136,7 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
   const [isDragging, setIsDragging] = useState(false);
   const [showPendingApproval, setShowPendingApproval] = useState(false);
   const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
+  const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null);
   
   // Estado para diálogo de confirmación de reprogramación
   const [rescheduleDialog, setRescheduleDialog] = useState<{
@@ -451,11 +452,10 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
 
   // Quick approve order function
   const handleQuickApprove = async (order: Order, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening the order
+    e.stopPropagation();
     setApprovingOrderId(order.id);
     
     try {
-      // Update order status to en_proceso
       const { error: updateError } = await supabase
         .from('orders')
         .update({ 
@@ -466,7 +466,6 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
 
       if (updateError) throw updateError;
 
-      // Log status change
       await supabase.from('order_status_logs').insert({
         order_id: order.id,
         previous_status: 'pendiente_aprobacion',
@@ -490,6 +489,45 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
       });
     } finally {
       setApprovingOrderId(null);
+    }
+  };
+
+  // Quick reject order function
+  const handleQuickReject = async (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRejectingOrderId(order.id);
+    
+    try {
+      const { error: updateError } = await supabase
+        .from('orders')
+        .update({ status: 'rechazada' })
+        .eq('id', order.id);
+
+      if (updateError) throw updateError;
+
+      await supabase.from('order_status_logs').insert({
+        order_id: order.id,
+        previous_status: 'pendiente_aprobacion',
+        new_status: 'rechazada',
+        changed_by: user?.id,
+        notes: 'Rechazada desde vista semanal'
+      });
+
+      toast({
+        title: "Orden Rechazada",
+        description: `Orden #${order.order_number} ha sido rechazada`,
+      });
+
+      onOrdersChange?.();
+    } catch (error: any) {
+      console.error('Error rejecting order:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo rechazar la orden",
+        variant: "destructive",
+      });
+    } finally {
+      setRejectingOrderId(null);
     }
   };
 
@@ -564,20 +602,37 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
                             onClick={() => onSelectOrder(order)}
                             category={getOrderCategory(order)}
                           />
-                          {/* Quick approve button overlay */}
-                          <Button
-                            size="sm"
-                            className="absolute top-2 right-2 h-8 gap-1 bg-green-600 hover:bg-green-700 text-white shadow-lg z-10"
-                            onClick={(e) => handleQuickApprove(order, e)}
-                            disabled={approvingOrderId === order.id}
-                          >
-                            {approvingOrderId === order.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <CheckCircle className="h-3 w-3" />
-                            )}
-                            <span className="text-xs">Aprobar</span>
-                          </Button>
+                          {/* Quick action buttons overlay */}
+                          <div className="absolute top-1.5 right-1.5 flex gap-1 z-10">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                              onClick={(e) => handleQuickApprove(order, e)}
+                              disabled={approvingOrderId === order.id || rejectingOrderId === order.id}
+                              title="Aprobar"
+                            >
+                              {approvingOrderId === order.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 bg-destructive hover:bg-destructive/90 text-white shadow-sm"
+                              onClick={(e) => handleQuickReject(order, e)}
+                              disabled={approvingOrderId === order.id || rejectingOrderId === order.id}
+                              title="No aprobar"
+                            >
+                              {rejectingOrderId === order.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <X className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
