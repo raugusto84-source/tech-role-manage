@@ -110,30 +110,31 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
       <head>
         <title>Aviso de Pago ${noticeNumber}</title>
         <style>
+          @page { size: letter; margin: 15mm; }
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; background: #fff; }
-          .notice { max-width: 600px; margin: 0 auto; border: 2px solid #333; padding: 30px; }
-          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
-          .logo-img { max-height: 60px; margin-bottom: 10px; }
-          .notice-title { font-size: 20px; margin-top: 10px; text-transform: uppercase; letter-spacing: 2px; }
-          .notice-number { font-size: 14px; color: #666; margin-top: 5px; }
-          .section { margin-bottom: 20px; }
-          .section-title { font-weight: bold; font-size: 14px; color: #666; margin-bottom: 8px; text-transform: uppercase; }
-          .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dotted #ccc; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 15px; background: #fff; font-size: 12px; }
+          .notice { max-width: 100%; margin: 0 auto; border: 1px solid #333; padding: 20px; }
+          .header { text-align: center; border-bottom: 1px solid #333; padding-bottom: 12px; margin-bottom: 12px; }
+          .logo-img { max-height: 40px; margin-bottom: 6px; }
+          .notice-title { font-size: 16px; margin-top: 6px; text-transform: uppercase; letter-spacing: 1px; }
+          .notice-number { font-size: 11px; color: #666; margin-top: 3px; }
+          .section { margin-bottom: 12px; }
+          .section-title { font-weight: bold; font-size: 11px; color: #666; margin-bottom: 5px; text-transform: uppercase; }
+          .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted #ccc; font-size: 11px; }
           .row:last-child { border-bottom: none; }
           .label { color: #666; }
           .value { font-weight: 600; }
-          .amount-section { background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #f59e0b; }
+          .amount-section { background: #fef3c7; padding: 12px; border-radius: 6px; margin: 12px 0; border: 1px solid #f59e0b; }
           .amount-section.overdue { background: #fee2e2; border-color: #ef4444; }
-          .total-amount { font-size: 28px; font-weight: bold; color: #d97706; text-align: center; }
+          .total-amount { font-size: 22px; font-weight: bold; color: #d97706; text-align: center; }
           .amount-section.overdue .total-amount { color: #dc2626; }
-          .total-label { text-align: center; font-size: 12px; color: #666; margin-bottom: 5px; }
-          .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ccc; text-align: center; font-size: 12px; color: #666; }
-          .stamp { margin-top: 20px; padding: 10px 20px; border: 2px solid #d97706; display: inline-block; color: #d97706; font-weight: bold; transform: rotate(-5deg); }
+          .total-label { text-align: center; font-size: 10px; color: #666; margin-bottom: 3px; }
+          .footer { margin-top: 15px; padding-top: 10px; border-top: 1px solid #ccc; text-align: center; font-size: 10px; color: #666; }
+          .stamp { margin-top: 10px; padding: 6px 12px; border: 2px solid #d97706; display: inline-block; color: #d97706; font-weight: bold; font-size: 12px; transform: rotate(-3deg); }
           .stamp.overdue { border-color: #dc2626; color: #dc2626; }
-          .payment-info { background: #f3f4f6; padding: 15px; border-radius: 8px; margin-top: 15px; }
-          .payment-info-title { font-weight: bold; margin-bottom: 8px; }
-          @media print { body { padding: 20px; } .notice { border: 1px solid #ccc; } }
+          .payment-info { background: #f3f4f6; padding: 10px; border-radius: 6px; margin-top: 10px; }
+          .payment-info-title { font-weight: bold; margin-bottom: 5px; font-size: 11px; }
+          @media print { body { padding: 0; } .notice { border: 1px solid #ccc; } }
         </style>
       </head>
       <body>
