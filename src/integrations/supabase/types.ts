@@ -3352,6 +3352,7 @@ export type Database = {
           notes: string | null
           order_id: string
           previous_total: number | null
+          skip_status_change: boolean | null
         }
         Insert: {
           approved_at?: string | null
@@ -3368,6 +3369,7 @@ export type Database = {
           notes?: string | null
           order_id: string
           previous_total?: number | null
+          skip_status_change?: boolean | null
         }
         Update: {
           approved_at?: string | null
@@ -3384,6 +3386,7 @@ export type Database = {
           notes?: string | null
           order_id?: string
           previous_total?: number | null
+          skip_status_change?: boolean | null
         }
         Relationships: []
       }
