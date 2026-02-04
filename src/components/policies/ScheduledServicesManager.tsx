@@ -39,6 +39,7 @@ interface ScheduledService {
   next_service_date: string;
   frequency_type: 'minutes' | 'days' | 'monthly_on_day' | 'weekly_on_day' | 'cada_1_semana' | 'cada_2_semanas' | 'cada_3_semanas' | 'cada_4_semanas';
   frequency_value: number;
+  week_interval: number;
   day_of_week: number | null;
   next_run: string;
   priority: number;
@@ -191,14 +192,11 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       // Set execution time to 00:01 (12:01 AM) Mexico time
       nextRun.setHours(0, 1, 0, 0);
 
-      // Map "cada_X_semanas" values to database-compatible format
-      let dbFrequencyType = formData.frequency_type;
+      // Keep original frequency_type values - don't convert cada_X_semanas
       let dbFrequencyValue = formData.frequency_value;
       let weekInterval = 1;
 
       if (['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type)) {
-        // Map to weekly_on_day
-        dbFrequencyType = 'weekly_on_day';
         dbFrequencyValue = formData.day_of_week; // The day of the week (0-6)
         
         // Extract week interval from frequency type
@@ -210,7 +208,7 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
       const serviceData = {
         policy_client_id: formData.policy_client_id,
         services: formData.selected_services,
-        frequency_type: dbFrequencyType,
+        frequency_type: formData.frequency_type, // Keep original value
         frequency_value: dbFrequencyValue,
         week_interval: weekInterval,
         day_of_week: ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas'].includes(formData.frequency_type) 
@@ -326,12 +324,22 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
 
   const handleEdit = (service: ScheduledService) => {
     setEditingService(service);
+    
+    // Convert weekly_on_day with week_interval back to cada_X_semanas for editing
+    let editFrequencyType = service.frequency_type;
+    if (service.frequency_type === 'weekly_on_day' && service.week_interval) {
+      if (service.week_interval === 1) editFrequencyType = 'cada_1_semana';
+      else if (service.week_interval === 2) editFrequencyType = 'cada_2_semanas';
+      else if (service.week_interval === 3) editFrequencyType = 'cada_3_semanas';
+      else if (service.week_interval >= 4) editFrequencyType = 'cada_4_semanas';
+    }
+    
     setFormData({
       policy_client_id: service.policy_client_id,
       selected_services: service.services || [],
-      frequency_type: service.frequency_type,
+      frequency_type: editFrequencyType,
       frequency_value: service.frequency_value,
-      day_of_week: service.day_of_week || 1,
+      day_of_week: service.day_of_week || service.frequency_value || 1,
       priority: service.priority,
       service_description: service.service_description || '',
       start_date: service.start_date || new Date().toISOString().split('T')[0],
@@ -821,7 +829,8 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                            service.frequency_type === 'cada_3_semanas' ? 'Cada 3 semanas' :
                            service.frequency_type === 'cada_4_semanas' ? 'Cada 4 semanas' :
                            service.frequency_type === 'days' ? `Cada ${service.frequency_value} días` :
-                           service.frequency_type === 'weekly_on_day' ? 'Cada semana' :
+                           service.frequency_type === 'weekly_on_day' ? 
+                             ((service as any).week_interval > 1 ? `Cada ${(service as any).week_interval} semanas` : 'Cada semana') :
                            'Cada mes'}
                         </Badge>
                         <div className="text-xs text-muted-foreground">
