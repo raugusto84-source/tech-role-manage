@@ -7,7 +7,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, User, Calendar, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera, Pencil, UserPlus } from 'lucide-react';
+import { ArrowLeft, User, DollarSign, Clock, Wrench, Shield, Plus, Signature, ChevronDown, ChevronUp, Home, MapPin, CheckCircle, PenTool, Monitor, Camera, Pencil, UserPlus } from 'lucide-react';
+import { DeliveryDateEditor } from './DeliveryDateEditor';
 import { OrderPDFButton } from './OrderPDFButton';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
@@ -561,16 +562,20 @@ export function OrderDetails({
                   Actualización rechazada
                 </Badge>}
             </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="text-sm text-muted-foreground">
-                {formatDate(order.created_at)}
-              </div>
+          </div>
+
+          {/* Delivery Date Editor */}
+          <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+            <DeliveryDateEditor
+              orderId={order.id}
+              currentDate={order.delivery_date}
+              canEdit={['administrador', 'supervisor', 'vendedor', 'jcf'].includes(profile?.role || '') && !['finalizada', 'cancelada', 'rechazada'].includes(orderStatus)}
+              onUpdate={onUpdate}
+            />
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Creado: {formatDate(order.created_at)}</span>
               {order.created_by_name && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <UserPlus className="h-3 w-3" />
-                  <span>Por: {order.created_by_name}</span>
-                </div>
+                <span>por {order.created_by_name}</span>
               )}
             </div>
           </div>
