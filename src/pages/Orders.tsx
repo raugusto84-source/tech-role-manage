@@ -163,48 +163,36 @@ export default function Orders() {
             service_types:service_type_id(name, description, service_category)
           )
         `)
-        .is('deleted_at', null) // Exclude soft-deleted orders
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
-      // Filter by role
+      // Filter by role - cliente
       if (profile?.role === 'cliente') {
-        // First try to find client by user_id
-        let { data: client, error } = await supabase
+        let { data: client } = await supabase
           .from('clients')
           .select('id')
           .eq('user_id', user?.id)
           .single();
         
-        console.log('Client found by user_id:', client, 'error:', error);
-        
-        // If not found by user_id, try by email
         if (!client && profile?.email) {
-          const { data: clientByEmail, error: emailError } = await supabase
+          const { data: clientByEmail } = await supabase
             .from('clients')
             .select('id')
             .eq('email', profile.email)
             .single();
-          
-          console.log('Client found by email:', clientByEmail, 'error:', emailError);
           client = clientByEmail;
         }
         
         if (client) {
-          console.log('Loading orders for client_id:', client.id);
           query = query.eq('client_id', client.id);
         } else {
-          console.log('No client found for user:', user?.id, 'email:', profile?.email);
           setOrders([]);
           setLoading(false);
           return;
         }
       }
-      // Técnicos pueden ver TODAS las órdenes, no solo las asignadas a ellos
 
       const { data, error } = await query;
-      
-      console.log('Orders query result:', { data, error, count: data?.length });
-      console.log('Raw orders data:', data);
 
       if (error) {
         console.error('Error loading orders:', error);
@@ -216,109 +204,132 @@ export default function Orders() {
         return;
       }
 
-      // Obtener IDs de órdenes que son de fraccionamientos
-      const orderIds = (data || []).map((o: any) => o.id);
-      const { data: developmentOrders } = await supabase
-        .from('access_development_orders')
-        .select('order_id')
-        .in('order_id', orderIds);
-      
-      const developmentOrderIds = new Set((developmentOrders || []).map(d => d.order_id));
+      const ordersData = data || [];
+      if (ordersData.length === 0) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
 
-      const ordersWithTechnician = await Promise.all(
-        (data || []).map(async (order: any) => {
-          let technicianProfile = null;
-          if (order.assigned_technician) {
-            const { data: techProfile } = await supabase
+      // === BATCH QUERIES en paralelo ===
+      const orderIds = ordersData.map((o: any) => o.id);
+      const technicianIds = [...new Set(ordersData.map((o: any) => o.assigned_technician).filter(Boolean))];
+      const creatorIds = [...new Set(ordersData.map((o: any) => o.created_by).filter(Boolean))];
+
+      // Ejecutar todas las consultas en paralelo
+      const [
+        developmentOrdersResult,
+        technicianProfilesResult,
+        fleetAssignmentsResult,
+        supportTechniciansResult,
+        creatorProfilesResult,
+        paymentsResult
+      ] = await Promise.all([
+        // 1. Development orders
+        supabase
+          .from('access_development_orders')
+          .select('order_id')
+          .in('order_id', orderIds),
+        
+        // 2. Technician profiles
+        technicianIds.length > 0 
+          ? supabase
               .from('profiles')
-              .select('full_name')
-              .eq('user_id', order.assigned_technician)
-              .single();
-            
-            // Obtener la flotilla del técnico
-            let fleetName = null;
-            if (techProfile) {
-              const { data: fleetAssignment } = await supabase
-                .from('fleet_assignments')
-                .select(`
-                  fleet_groups!inner(name)
-                `)
-                .eq('technician_id', order.assigned_technician)
-                .eq('is_active', true)
-                .maybeSingle();
-              
-              if (fleetAssignment?.fleet_groups) {
-                fleetName = fleetAssignment.fleet_groups.name;
-              }
-            }
-            
-            technicianProfile = {
-              ...techProfile,
-              fleet_name: fleetName
-            };
-          }
-
-          const { data: supportTechnicians } = await supabase
-            .from('order_support_technicians')
-            .select(`
-              technician_id,
-              reduction_percentage,
-              profiles:technician_id(full_name)
-            `)
-            .eq('order_id', order.id);
-
-          return {
-            ...order,
-            technician_profile: technicianProfile,
-            support_technicians: supportTechnicians || [],
-            is_development_order: developmentOrderIds.has(order.id)
-          };
-        })
-      );
-
-      // Obtener nombres de creadores
-      const creatorIds = [...new Set(ordersWithTechnician.map(o => o.created_by).filter(Boolean))];
-      let creatorNames: Record<string, string> = {};
-      
-      if (creatorIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
-          .select('user_id, full_name')
-          .in('user_id', creatorIds);
+              .select('user_id, full_name')
+              .in('user_id', technicianIds)
+          : Promise.resolve({ data: [] }),
         
-        creatorNames = (profiles || []).reduce((acc, p) => {
-          acc[p.user_id] = p.full_name;
-          return acc;
-        }, {} as Record<string, string>);
-      }
-
-      const ordersWithCreator = ordersWithTechnician.map(o => ({
-        ...o,
-        created_by_name: o.created_by ? creatorNames[o.created_by] : undefined
-      }));
-
-      // Calculate payment status for finalized orders
-      const paymentStatusMap: Record<string, boolean> = {};
-      const finalizedOrders = ordersWithCreator.filter(o => o.status === 'finalizada');
-      
-      for (const order of finalizedOrders) {
-        const { data: payments } = await supabase
+        // 3. Fleet assignments
+        technicianIds.length > 0
+          ? supabase
+              .from('fleet_assignments')
+              .select('technician_id, fleet_groups!inner(name)')
+              .in('technician_id', technicianIds)
+              .eq('is_active', true)
+          : Promise.resolve({ data: [] }),
+        
+        // 4. Support technicians - una sola consulta
+        supabase
+          .from('order_support_technicians')
+          .select('order_id, technician_id, reduction_percentage, profiles:technician_id(full_name)')
+          .in('order_id', orderIds),
+        
+        // 5. Creator profiles
+        creatorIds.length > 0
+          ? supabase
+              .from('profiles')
+              .select('user_id, full_name')
+              .in('user_id', creatorIds)
+          : Promise.resolve({ data: [] }),
+        
+        // 6. Payments for finalized orders
+        supabase
           .from('order_payments')
-          .select('payment_amount')
-          .eq('order_id', order.id);
-        
-        const totalPaid = payments?.reduce((sum, p) => sum + (p.payment_amount || 0), 0) || 0;
-        const orderTotal = order.estimated_cost || 0;
-        
-        // Has balance if not fully paid
-        paymentStatusMap[order.id] = totalPaid < orderTotal;
-      }
+          .select('order_id, payment_amount')
+          .in('order_id', orderIds)
+      ]);
+
+      // Crear maps para acceso O(1)
+      const developmentOrderIds = new Set((developmentOrdersResult.data || []).map(d => d.order_id));
       
+      const technicianMap = (technicianProfilesResult.data || []).reduce((acc, p) => {
+        acc[p.user_id] = p.full_name;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      const fleetMap = (fleetAssignmentsResult.data || []).reduce((acc, f: any) => {
+        acc[f.technician_id] = f.fleet_groups?.name;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      const supportTechMap = (supportTechniciansResult.data || []).reduce((acc, st: any) => {
+        if (!acc[st.order_id]) acc[st.order_id] = [];
+        acc[st.order_id].push({
+          technician_id: st.technician_id,
+          reduction_percentage: st.reduction_percentage,
+          profiles: st.profiles
+        });
+        return acc;
+      }, {} as Record<string, any[]>);
+      
+      const creatorMap = (creatorProfilesResult.data || []).reduce((acc, p) => {
+        acc[p.user_id] = p.full_name;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      // Calcular payment status
+      const paymentsByOrder = (paymentsResult.data || []).reduce((acc, p: any) => {
+        if (!acc[p.order_id]) acc[p.order_id] = 0;
+        acc[p.order_id] += p.payment_amount || 0;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const paymentStatusMap: Record<string, boolean> = {};
+
+      // Mapear órdenes con datos enriquecidos
+      const enrichedOrders = ordersData.map((order: any) => {
+        // Payment status for finalized orders
+        if (order.status === 'finalizada') {
+          const totalPaid = paymentsByOrder[order.id] || 0;
+          const orderTotal = order.estimated_cost || 0;
+          paymentStatusMap[order.id] = totalPaid < orderTotal;
+        }
+
+        return {
+          ...order,
+          technician_profile: order.assigned_technician ? {
+            full_name: technicianMap[order.assigned_technician] || null,
+            fleet_name: fleetMap[order.assigned_technician] || null
+          } : null,
+          support_technicians: supportTechMap[order.id] || [],
+          is_development_order: developmentOrderIds.has(order.id),
+          created_by_name: order.created_by ? creatorMap[order.created_by] : undefined
+        };
+      });
+
       setOrderPaymentStatus(paymentStatusMap);
-      
-      console.log('Orders after processing:', ordersWithCreator);
-      console.log('Orders filtered:', ordersWithCreator.filter(o => o.order_number === '0001' || o.order_number === '0002'));
-      setOrders(ordersWithCreator);
+      setOrders(enrichedOrders);
+      console.log('Orders loaded:', enrichedOrders.length);
     } catch (error) {
       console.error('Unexpected error loading orders:', error);
       toast({
