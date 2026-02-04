@@ -277,7 +277,7 @@ Deno.serve(async (req) => {
             <!-- Footer -->
             <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
               <p style="margin: 0 0 5px; color: #666; font-size: 12px;">Este recibo es un comprobante de pago válido.</p>
-              <p style="margin: 0; color: #999; font-size: 11px;">Syslag - Sistema de Gestión de Accesos</p>
+              <p style="margin: 0; color: #999; font-size: 11px;">Syslag - Sistemas y Seguridad de la Laguna</p>
             </div>
 
           </div>
