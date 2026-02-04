@@ -393,7 +393,7 @@ export function AddOrderItemsDialog({
   const calculateTotalChange = () => {
     return newItems.reduce((sum, item) => sum + calculateItemCorrectPrice(item), 0);
   };
-  const handleSubmit = async () => {
+  const handleSubmit = async (sendForApproval: boolean = false) => {
     if (newItems.length === 0) {
       toast({
         title: "Error",
@@ -450,7 +450,8 @@ export function AddOrderItemsDialog({
         modification_reason: reason.trim(),
         created_by: userResult.user?.id,
         created_by_name: createdByName,
-        notes: `Servicios/productos agregados: ${newItems.map(item => `${item.service_name} (x${item.quantity})`).join(', ')}`
+        notes: `Servicios/productos agregados: ${newItems.map(item => `${item.service_name} (x${item.quantity})`).join(', ')}`,
+        skip_status_change: !sendForApproval // Skip if NOT sending for approval
       };
       const {
         error: modificationError
@@ -722,13 +723,26 @@ export function AddOrderItemsDialog({
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button onClick={handleSubmit} disabled={loading || newItems.length === 0 || !reason.trim()}>
+            <Button 
+              variant="secondary"
+              onClick={() => handleSubmit(false)} 
+              disabled={loading || newItems.length === 0 || !reason.trim()}
+            >
+              {loading ? <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Procesando...
+                </> : <>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Solo Agregar
+                </>}
+            </Button>
+            <Button onClick={() => handleSubmit(true)} disabled={loading || newItems.length === 0 || !reason.trim()}>
               {loading ? <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                   Procesando...
                 </> : <>
                   <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Agregar y Enviar para Aprobación
+                  Agregar y Enviar
                 </>}
             </Button>
           </div>
