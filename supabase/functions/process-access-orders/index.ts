@@ -17,11 +17,8 @@ Deno.serve(async (req) => {
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const isFirstDayOfMonth = today.getDate() === 1;
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    
-    console.log(`Processing access development orders for date: ${todayStr}, isFirstDayOfMonth: ${isFirstDayOfMonth}`);
+
+    console.log(`Processing access development orders for date: ${todayStr}`);
 
     const results = {
       orders_generated: 0,
@@ -32,157 +29,172 @@ Deno.serve(async (req) => {
       details: [] as string[]
     };
 
-    // If it's the first day of the month, generate orders for ALL active developments
-    if (isFirstDayOfMonth) {
-      console.log('First day of month - generating orders for all developments');
-      
-      const { data: developments, error: devError } = await supabase
-        .from('access_developments')
-        .select('*')
-        .eq('status', 'active')
-        .eq('auto_generate_orders', true);
+    // Get a default service type for creating orders
+    const { data: serviceTypes } = await supabase
+      .from('service_types')
+      .select('id')
+      .eq('is_active', true)
+      .limit(1);
 
-      if (devError) {
-        console.error('Error fetching developments:', devError);
-        throw devError;
+    const serviceTypeId = serviceTypes?.[0]?.id;
+    if (!serviceTypeId) {
+      throw new Error('No active service types found');
+    }
+
+    // Find all pending development orders that should be executed (scheduled_date <= today)
+    const { data: pendingOrders, error: fetchError } = await supabase
+      .from('access_development_orders')
+      .select(`
+        id,
+        development_id,
+        scheduled_date,
+        status,
+        order_id,
+        access_developments (
+          id,
+          name,
+          address,
+          contact_phone,
+          contact_email,
+          service_day,
+          status,
+          auto_generate_orders
+        )
+      `)
+      .is('order_id', null)
+      .eq('status', 'pending')
+      .lte('scheduled_date', todayStr);
+
+    if (fetchError) {
+      console.error('Error fetching pending orders:', fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${pendingOrders?.length || 0} pending development orders to process`);
+
+    for (const devOrder of pendingOrders || []) {
+      const dev = devOrder.access_developments;
+      
+      if (!dev || dev.status !== 'active' || !dev.auto_generate_orders) {
+        results.orders_skipped++;
+        results.details.push(`Skipped ${dev?.name || 'unknown'} - development inactive or auto_generate disabled`);
+        continue;
       }
 
-      console.log(`Found ${developments?.length || 0} active developments to generate orders for`);
+      try {
+        // Find or create client
+        let clientId: string | null = null;
+        const { data: existingClient } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('name', dev.name)
+          .limit(1)
+          .single();
 
-      for (const dev of developments || []) {
-        try {
-          // Calculate the scheduled date for this month based on service_day
-          const scheduledDate = new Date(currentYear, currentMonth, dev.service_day);
-          const scheduledDateStr = scheduledDate.toISOString().split('T')[0];
-
-          // Check if order already exists for this development and month
-          const { data: existingOrder } = await supabase
-            .from('access_development_orders')
-            .select('id')
-            .eq('development_id', dev.id)
-            .gte('scheduled_date', `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-01`)
-            .lt('scheduled_date', currentMonth === 11 
-              ? `${currentYear + 1}-01-01` 
-              : `${currentYear}-${String(currentMonth + 2).padStart(2, '0')}-01`)
-            .single();
-
-          if (existingOrder) {
-            results.orders_skipped++;
-            results.details.push(`Order already exists for ${dev.name} this month`);
-            continue;
-          }
-
-          // Get a default service type
-          const { data: serviceTypes } = await supabase
-            .from('service_types')
-            .select('id')
-            .eq('is_active', true)
-            .limit(1);
-
-          const serviceTypeId = serviceTypes?.[0]?.id;
-          if (!serviceTypeId) {
-            results.errors++;
-            results.details.push(`Error: No active service types found for ${dev.name}`);
-            continue;
-          }
-
-          // Find or create client
-          let clientId: string | null = null;
-          const { data: existingClient } = await supabase
+        if (existingClient) {
+          clientId = existingClient.id;
+        } else {
+          const { data: newClient, error: clientError } = await supabase
             .from('clients')
-            .select('id')
-            .eq('name', dev.name)
-            .limit(1)
-            .single();
-
-          if (existingClient) {
-            clientId = existingClient.id;
-          } else {
-            const { data: newClient, error: clientError } = await supabase
-              .from('clients')
-              .insert({
-                name: dev.name,
-                address: dev.address || 'Sin dirección',
-                phone: dev.contact_phone,
-                email: dev.contact_email
-              })
-              .select()
-              .single();
-
-            if (clientError) {
-              console.error('Error creating client:', clientError);
-              results.errors++;
-              results.details.push(`Error creating client for ${dev.name}: ${clientError.message}`);
-              continue;
-            }
-            clientId = newClient.id;
-          }
-
-          // Generate order number
-          const orderNumber = `ORD-${currentYear}-${Date.now().toString().slice(-6)}`;
-
-          // Create order with status 'en_espera' (waiting for scheduled date)
-          const { data: newOrder, error: orderError } = await supabase
-            .from('orders')
             .insert({
-              order_number: orderNumber,
-              client_id: clientId,
-              service_type: serviceTypeId,
-              failure_description: `Servicio mensual de acceso - ${dev.name}`,
-              estimated_cost: 0,
-              delivery_date: scheduledDateStr,
-              status: 'en_espera',
-              order_category: 'fraccionamientos',
-              skip_payment: true,
-              source_type: 'development'
+              name: dev.name,
+              address: dev.address || 'Sin dirección',
+              phone: dev.contact_phone,
+              email: dev.contact_email
             })
             .select()
             .single();
 
-          if (orderError) {
-            console.error('Error creating order:', orderError);
+          if (clientError) {
+            console.error('Error creating client:', clientError);
             results.errors++;
-            results.details.push(`Error creating order for ${dev.name}: ${orderError.message}`);
+            results.details.push(`Error creating client for ${dev.name}: ${clientError.message}`);
             continue;
           }
-
-          // Create order item with $0 cost
-          await supabase.from('order_items').insert({
-            order_id: newOrder.id,
-            service_type_id: serviceTypeId,
-            service_name: 'Servicio de Acceso Mensual',
-            service_description: `Servicio mensual de acceso para ${dev.name}`,
-            quantity: 1,
-            unit_cost_price: 0,
-            unit_base_price: 0,
-            profit_margin_rate: 0,
-            subtotal: 0,
-            vat_rate: 0,
-            vat_amount: 0,
-            total_amount: 0,
-            item_type: 'servicio',
-            status: 'pendiente',
-            pricing_locked: true
-          });
-
-          // Create scheduled order record
-          await supabase.from('access_development_orders').insert({
-            development_id: dev.id,
-            scheduled_date: scheduledDateStr,
-            status: 'generated',
-            order_id: newOrder.id,
-            generated_at: new Date().toISOString()
-          });
-
-          results.orders_generated++;
-          results.details.push(`Generated order ${orderNumber} for ${dev.name} - scheduled for ${scheduledDateStr}`);
-          console.log(`Generated order ${orderNumber} for ${dev.name}`);
-
-        } catch (err) {
-          console.error('Error generating order:', err);
-          results.errors++;
-          results.details.push(`Error generating order for ${dev.name}: ${err.message}`);
+          clientId = newClient.id;
         }
+
+        // Generate order number
+        const orderNumber = `ORD-${today.getFullYear()}-${Date.now().toString().slice(-6)}`;
+
+        // Create order with status 'en_proceso' (ready to work) for past dates or 'en_espera' for future
+        const isPastOrToday = devOrder.scheduled_date <= todayStr;
+        const orderStatus = isPastOrToday ? 'en_proceso' : 'en_espera';
+
+        const { data: newOrder, error: orderError } = await supabase
+          .from('orders')
+          .insert({
+            order_number: orderNumber,
+            client_id: clientId,
+            service_type: serviceTypeId,
+            failure_description: `Servicio mensual de acceso - ${dev.name}`,
+            estimated_cost: 0,
+            delivery_date: devOrder.scheduled_date,
+            status: orderStatus,
+            order_category: 'fraccionamientos',
+            skip_payment: true,
+            source_type: 'development'
+          })
+          .select()
+          .single();
+
+        if (orderError) {
+          console.error('Error creating order:', orderError);
+          results.errors++;
+          results.details.push(`Error creating order for ${dev.name}: ${orderError.message}`);
+          continue;
+        }
+
+        // Create order item with $0 cost
+        await supabase.from('order_items').insert({
+          order_id: newOrder.id,
+          service_type_id: serviceTypeId,
+          service_name: 'Servicio de Acceso Mensual',
+          service_description: `Servicio mensual de acceso para ${dev.name}`,
+          quantity: 1,
+          unit_cost_price: 0,
+          unit_base_price: 0,
+          profit_margin_rate: 0,
+          subtotal: 0,
+          vat_rate: 0,
+          vat_amount: 0,
+          total_amount: 0,
+          item_type: 'servicio',
+          status: 'pendiente',
+          pricing_locked: true
+        });
+
+        // Update the development order record with the created order_id
+        const { error: updateError } = await supabase
+          .from('access_development_orders')
+          .update({
+            order_id: newOrder.id,
+            status: 'generated',
+            generated_at: new Date().toISOString()
+          })
+          .eq('id', devOrder.id);
+
+        if (updateError) {
+          console.error('Error updating development order:', updateError);
+        }
+
+        // Log the status change
+        await supabase.from('order_status_logs').insert({
+          order_id: newOrder.id,
+          previous_status: null,
+          new_status: orderStatus,
+          changed_by: null,
+          notes: `Orden generada automáticamente para ${dev.name} - fecha programada: ${devOrder.scheduled_date}`
+        });
+
+        results.orders_generated++;
+        results.details.push(`Generated order ${orderNumber} for ${dev.name} (${devOrder.scheduled_date}) - status: ${orderStatus}`);
+        console.log(`Generated order ${orderNumber} for ${dev.name}`);
+
+      } catch (err) {
+        console.error('Error generating order:', err);
+        results.errors++;
+        results.details.push(`Error generating order for ${dev.name}: ${err.message}`);
       }
     }
 
