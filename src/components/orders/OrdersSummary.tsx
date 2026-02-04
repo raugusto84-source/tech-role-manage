@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield, DollarSign, Building2 } from "lucide-react";
+import { AlertCircle, Clock, Zap, TrendingUp, Monitor, Shield, DollarSign, Building2, AlertTriangle } from "lucide-react";
 import { calculateOrderPriority, orderPriorityNumberToString, OrderPriority } from "@/utils/priorityCalculator";
+import { isBefore, startOfDay } from "date-fns";
 
 interface Order {
   id: string;
@@ -60,6 +61,15 @@ export function OrdersSummary({
     fraccionamientos: activeOrders.filter(o => getOrderCategory(o) === 'fraccionamientos').length
   };
 
+  // Count overdue orders (delivery date before today and not completed)
+  const today = startOfDay(new Date());
+  const overdueCount = activeOrders.filter(o => {
+    const deliveryDateStr = o.estimated_delivery_date || o.delivery_date;
+    if (!deliveryDateStr) return false;
+    const deliveryDate = new Date(deliveryDateStr + 'T12:00:00Z');
+    return isBefore(deliveryDate, today);
+  }).length;
+
   // Count by status
   const statusCounts = {
     en_espera: activeOrders.filter(o => o.status === 'en_espera').length,
@@ -111,6 +121,16 @@ export function OrdersSummary({
           <Building2 className="h-4 w-4" />
           {categoryCounts.fraccionamientos}
         </Badge>
+        
+        {overdueCount > 0 && (
+          <>
+            <span className="text-muted-foreground text-sm">|</span>
+            <Badge className="gap-1.5 text-sm px-3 py-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 animate-pulse" title="Órdenes Atrasadas">
+              <AlertTriangle className="h-4 w-4" />
+              {overdueCount} Atrasadas
+            </Badge>
+          </>
+        )}
         
         <span className="text-muted-foreground text-sm">|</span>
         
