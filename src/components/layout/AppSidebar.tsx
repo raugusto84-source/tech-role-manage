@@ -1,4 +1,4 @@
-import { Home, Users, ShoppingCart, ClipboardList, UserCheck, FileText, Calendar, Wrench, Banknote, BarChart3, Shield, Gift, ShieldCheck, MessageSquare, ClipboardCheck, Truck, Bell, CheckCircle, Clock, AlertCircle, Activity, Building2 } from 'lucide-react';
+import { Home, Users, ShoppingCart, ClipboardList, UserCheck, FileText, Calendar, Wrench, Banknote, BarChart3, Shield, Gift, ShieldCheck, MessageSquare, ClipboardCheck, Truck, Bell, CheckCircle, Clock, AlertCircle, Activity, Building2, BookOpen } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -82,6 +82,10 @@ export function AppSidebar() {
             title: 'Seguimiento',
             url: '/seguimiento',
             icon: Bell
+          }, {
+            title: 'Manual',
+            url: '/manual',
+            icon: BookOpen
           }]
         };
       case 'supervisor':

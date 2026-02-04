@@ -22,6 +22,7 @@ import Surveys from "./pages/Surveys";
 import Clients from "./pages/Clients";
 import ServiceContracts from "./pages/ServiceContracts";
 import JCFDashboard from "./pages/JCFDashboard";
+import Manual from "./pages/Manual";
 
 import Warranties from "./pages/Warranties";
 import Fleets from "./pages/Fleets";
@@ -174,6 +175,14 @@ const App = () => (
                element={
                  <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor']}>
                    <AccessDevelopments />
+                 </ProtectedRoute>
+               }
+             />
+             <Route 
+               path="/manual"
+               element={
+                 <ProtectedRoute allowedRoles={['administrador', 'supervisor', 'vendedor', 'tecnico', 'cliente', 'jcf']}>
+                   <Manual />
                  </ProtectedRoute>
                }
              />
