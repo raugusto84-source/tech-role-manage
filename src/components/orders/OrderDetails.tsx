@@ -38,6 +38,7 @@ import { useSalesPricingCalculation } from '@/hooks/useSalesPricingCalculation';
 import { ServiceChecklist } from './ServiceChecklist';
 import { SpecialPriceEditor } from './SpecialPriceEditor';
 import { OrderEvidencePhotos } from './OrderEvidencePhotos';
+import { OrderCategoryEditor } from './OrderCategoryEditor';
 
 interface OrderDetailsProps {
   order: {
@@ -552,8 +553,8 @@ export function OrderDetails({
             <OrderPDFButton order={order} />
           </div>
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge className={getStatusColor(orderStatus)} variant="outline">
                 {orderStatus === 'pendiente_actualizacion' ? 'PENDIENTE APROBACIÓN' : orderStatus === 'pendiente_entrega' ? 'LISTO' : orderStatus === 'pendiente_aprobacion' ? 'PENDIENTE AUTORIZACIÓN' : ['en_proceso'].includes(orderStatus) ? 'EN PROCESO' : orderStatus.replace('_', ' ').toUpperCase()}
               </Badge>
@@ -562,6 +563,14 @@ export function OrderDetails({
                   Actualización rechazada
                 </Badge>}
             </div>
+            
+            {/* Category Editor */}
+            <OrderCategoryEditor
+              orderId={order.id}
+              currentCategory={(order.order_category || order.service_category || 'sistemas') as 'sistemas' | 'seguridad' | 'fraccionamientos'}
+              canEdit={['administrador', 'supervisor', 'vendedor', 'jcf'].includes(profile?.role || '') && !['finalizada', 'cancelada', 'rechazada'].includes(orderStatus)}
+              onUpdate={onUpdate}
+            />
           </div>
 
           {/* Delivery Date Editor */}
