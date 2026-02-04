@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { AccessDevelopment } from './AccessDevelopmentsManager';
-import { FileText, Download, Mail, Eye, Send, Loader2, AlertCircle } from 'lucide-react';
-import { format, isBefore, startOfDay } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { formatMXNExact } from '@/utils/currency';
-import logoAcceso from '@/assets/logo-acceso.png';
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AccessDevelopment } from "./AccessDevelopmentsManager";
+import { FileText, Download, Mail, Eye, Send, Loader2, AlertCircle } from "lucide-react";
+import { format, isBefore, startOfDay } from "date-fns";
+import { es } from "date-fns/locale";
+import { formatMXNExact } from "@/utils/currency";
+import logoAcceso from "@/assets/logo-acceso.png";
 
 interface PendingPayment {
   id: string;
@@ -33,7 +33,7 @@ interface Props {
 export function DevelopmentPaymentNotices({ developments }: Props) {
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDevelopment, setSelectedDevelopment] = useState<string>('all');
+  const [selectedDevelopment, setSelectedDevelopment] = useState<string>("all");
   const [viewingNotice, setViewingNotice] = useState<PendingPayment | null>(null);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
@@ -45,37 +45,37 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('access_development_payments')
-        .select('*')
-        .eq('status', 'pending')
-        .order('due_date', { ascending: true });
+        .from("access_development_payments")
+        .select("*")
+        .eq("status", "pending")
+        .order("due_date", { ascending: true });
 
       if (error) throw error;
       setPendingPayments(data || []);
     } catch (error) {
-      console.error('Error loading pending payments:', error);
-      toast.error('Error al cargar avisos de pago');
+      console.error("Error loading pending payments:", error);
+      toast.error("Error al cargar avisos de pago");
     } finally {
       setLoading(false);
     }
   };
 
   const getDevelopment = (id: string) => {
-    return developments.find(d => d.id === id);
+    return developments.find((d) => d.id === id);
   };
 
   const getDevelopmentName = (id: string) => {
-    return getDevelopment(id)?.name || 'Desconocido';
+    return getDevelopment(id)?.name || "Desconocido";
   };
 
-  const filteredPayments = pendingPayments.filter(p => {
-    if (selectedDevelopment !== 'all' && p.development_id !== selectedDevelopment) return false;
+  const filteredPayments = pendingPayments.filter((p) => {
+    if (selectedDevelopment !== "all" && p.development_id !== selectedDevelopment) return false;
     return true;
   });
 
   const generateNoticeNumber = (payment: PendingPayment) => {
     const date = new Date(payment.due_date);
-    return `AVI-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}-${payment.id.slice(0, 6).toUpperCase()}`;
+    return `AVI-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}-${payment.id.slice(0, 6).toUpperCase()}`;
   };
 
   const isOverdue = (dueDate: string) => {
@@ -85,19 +85,22 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
   const handleExportPDF = async (payment: PendingPayment) => {
     const dev = getDevelopment(payment.development_id);
     const noticeNumber = generateNoticeNumber(payment);
-    
+
     // Convert logo to base64 for PDF
     const logoBase64 = await fetch(logoAcceso)
-      .then(res => res.blob())
-      .then(blob => new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      }));
-    
-    const printWindow = window.open('', '_blank');
+      .then((res) => res.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          }),
+      );
+
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      toast.error('Por favor permite las ventanas emergentes');
+      toast.error("Por favor permite las ventanas emergentes");
       return;
     }
 
@@ -149,23 +152,23 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
             <div class="section-title">Datos del Fraccionamiento</div>
             <div class="row">
               <span class="label">Nombre:</span>
-              <span class="value">${dev?.name || 'N/A'}</span>
+              <span class="value">${dev?.name || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Dirección:</span>
-              <span class="value">${dev?.address || 'N/A'}</span>
+              <span class="value">${dev?.address || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Contacto:</span>
-              <span class="value">${dev?.contact_name || 'N/A'}</span>
+              <span class="value">${dev?.contact_name || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Teléfono:</span>
-              <span class="value">${dev?.contact_phone || 'N/A'}</span>
+              <span class="value">${dev?.contact_phone || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Email:</span>
-              <span class="value">${dev?.contact_email || 'N/A'}</span>
+              <span class="value">${dev?.contact_email || "N/A"}</span>
             </div>
           </div>
           
@@ -173,21 +176,21 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
             <div class="section-title">Detalles del Pago</div>
             <div class="row">
               <span class="label">Período:</span>
-              <span class="value">${format(periodDate, 'MMMM yyyy', { locale: es })}</span>
+              <span class="value">${format(periodDate, "MMMM yyyy", { locale: es })}</span>
             </div>
             <div class="row">
               <span class="label">Fecha de Vencimiento:</span>
-              <span class="value" style="${overdue ? 'color: #dc2626;' : ''}">${format(periodDate, 'dd/MM/yyyy', { locale: es })}${overdue ? ' (VENCIDO)' : ''}</span>
+              <span class="value" style="${overdue ? "color: #dc2626;" : ""}">${format(periodDate, "dd/MM/yyyy", { locale: es })}${overdue ? " (VENCIDO)" : ""}</span>
             </div>
           </div>
           
-          <div class="amount-section ${overdue ? 'overdue' : ''}">
+          <div class="amount-section ${overdue ? "overdue" : ""}">
             <div class="total-label">MONTO A PAGAR</div>
-            <div class="total-amount">$${payment.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
+            <div class="total-amount">$${payment.amount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</div>
           </div>
           
           <div style="text-align: center;">
-            <div class="stamp ${overdue ? 'overdue' : ''}">${overdue ? '⚠ VENCIDO' : '⏳ PENDIENTE'}</div>
+            <div class="stamp ${overdue ? "overdue" : ""}">${overdue ? "⚠ VENCIDO" : "⏳ PENDIENTE"}</div>
           </div>
 
           <div class="payment-info">
@@ -201,8 +204,8 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
           
           <div class="footer">
             <p>Este documento es un aviso de pago, no es un recibo.</p>
-            <p>Syslag - Sistema de Gestión de Accesos</p>
-            <p>Generado el ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}</p>
+            <p>Syslag - Sistemas y Seguridad de la Laguna</p>
+            <p>Generado el ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}</p>
           </div>
         </div>
         <script>window.onload = function() { window.print(); }</script>
@@ -214,28 +217,28 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
 
   const handleSendEmail = async (payment: PendingPayment) => {
     const dev = getDevelopment(payment.development_id);
-    
+
     if (!dev?.contact_email) {
-      toast.error('El fraccionamiento no tiene email de contacto');
+      toast.error("El fraccionamiento no tiene email de contacto");
       return;
     }
 
     setSendingEmail(payment.id);
     try {
-      const { error } = await supabase.functions.invoke('send-development-receipt', {
+      const { error } = await supabase.functions.invoke("send-development-receipt", {
         body: {
           paymentId: payment.id,
           developmentId: payment.development_id,
           email: dev.contact_email,
-          isNotice: true // Flag to indicate this is a payment notice, not a receipt
-        }
+          isNotice: true, // Flag to indicate this is a payment notice, not a receipt
+        },
       });
 
       if (error) throw error;
       toast.success(`Aviso de pago enviado a ${dev.contact_email}`);
     } catch (error) {
-      console.error('Error sending notice:', error);
-      toast.error('Error al enviar el aviso por correo');
+      console.error("Error sending notice:", error);
+      toast.error("Error al enviar el aviso por correo");
     } finally {
       setSendingEmail(null);
     }
@@ -268,8 +271,10 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los fraccionamientos</SelectItem>
-            {developments.map(d => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            {developments.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -299,23 +304,17 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPayments.map(payment => {
+                filteredPayments.map((payment) => {
                   const dev = getDevelopment(payment.development_id);
                   const overdue = isOverdue(payment.due_date);
                   return (
-                    <TableRow key={payment.id} className={overdue ? 'bg-red-50 dark:bg-red-950/20' : ''}>
-                      <TableCell className="font-mono text-sm">
-                        {generateNoticeNumber(payment)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {getDevelopmentName(payment.development_id)}
-                      </TableCell>
+                    <TableRow key={payment.id} className={overdue ? "bg-red-50 dark:bg-red-950/20" : ""}>
+                      <TableCell className="font-mono text-sm">{generateNoticeNumber(payment)}</TableCell>
+                      <TableCell className="font-medium">{getDevelopmentName(payment.development_id)}</TableCell>
+                      <TableCell>{format(new Date(payment.payment_period), "MMMM yyyy", { locale: es })}</TableCell>
                       <TableCell>
-                        {format(new Date(payment.payment_period), 'MMMM yyyy', { locale: es })}
-                      </TableCell>
-                      <TableCell>
-                        <span className={overdue ? 'text-red-600 font-medium' : ''}>
-                          {format(new Date(payment.due_date), 'dd/MM/yyyy', { locale: es })}
+                        <span className={overdue ? "text-red-600 font-medium" : ""}>
+                          {format(new Date(payment.due_date), "dd/MM/yyyy", { locale: es })}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -335,12 +334,7 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setViewingNotice(payment)}
-                            title="Ver aviso"
-                          >
+                          <Button size="sm" variant="ghost" onClick={() => setViewingNotice(payment)} title="Ver aviso">
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
@@ -356,7 +350,7 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
                             variant="ghost"
                             onClick={() => handleSendEmail(payment)}
                             disabled={!dev?.contact_email || sendingEmail === payment.id}
-                            title={dev?.contact_email ? 'Enviar por correo' : 'Sin email de contacto'}
+                            title={dev?.contact_email ? "Enviar por correo" : "Sin email de contacto"}
                           >
                             {sendingEmail === payment.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -385,8 +379,8 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
             </DialogTitle>
           </DialogHeader>
           {viewingNotice && (
-            <NoticePreview 
-              payment={viewingNotice} 
+            <NoticePreview
+              payment={viewingNotice}
               development={getDevelopment(viewingNotice.development_id)}
               noticeNumber={generateNoticeNumber(viewingNotice)}
               isOverdue={isOverdue(viewingNotice.due_date)}
@@ -400,9 +394,9 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
               <Download className="h-4 w-4 mr-2" />
               Exportar PDF
             </Button>
-            <Button 
+            <Button
               onClick={() => viewingNotice && handleSendEmail(viewingNotice)}
-              disabled={!getDevelopment(viewingNotice?.development_id || '')?.contact_email}
+              disabled={!getDevelopment(viewingNotice?.development_id || "")?.contact_email}
             >
               <Send className="h-4 w-4 mr-2" />
               Enviar por Correo
@@ -415,13 +409,13 @@ export function DevelopmentPaymentNotices({ developments }: Props) {
 }
 
 // Notice Preview Component
-function NoticePreview({ 
-  payment, 
-  development, 
+function NoticePreview({
+  payment,
+  development,
   noticeNumber,
-  isOverdue
-}: { 
-  payment: PendingPayment; 
+  isOverdue,
+}: {
+  payment: PendingPayment;
   development: AccessDevelopment | undefined;
   noticeNumber: string;
   isOverdue: boolean;
@@ -442,9 +436,11 @@ function NoticePreview({
       <div className="space-y-2">
         <h4 className="font-semibold text-sm text-muted-foreground">FRACCIONAMIENTO</h4>
         <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-          <p className="font-medium">{development?.name || 'N/A'}</p>
-          <p className="text-sm text-muted-foreground">{development?.address || 'Sin dirección'}</p>
-          <p className="text-sm text-muted-foreground">{development?.contact_name} - {development?.contact_phone}</p>
+          <p className="font-medium">{development?.name || "N/A"}</p>
+          <p className="text-sm text-muted-foreground">{development?.address || "Sin dirección"}</p>
+          <p className="text-sm text-muted-foreground">
+            {development?.contact_name} - {development?.contact_phone}
+          </p>
         </div>
       </div>
 
@@ -454,21 +450,23 @@ function NoticePreview({
         <div className="space-y-1.5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Período:</span>
-            <span className="font-medium capitalize">{format(periodDate, 'MMMM yyyy', { locale: es })}</span>
+            <span className="font-medium capitalize">{format(periodDate, "MMMM yyyy", { locale: es })}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Fecha de Vencimiento:</span>
-            <span className={`font-medium ${isOverdue ? 'text-red-600' : ''}`}>
-              {format(dueDate, 'dd/MM/yyyy', { locale: es })}
+            <span className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
+              {format(dueDate, "dd/MM/yyyy", { locale: es })}
             </span>
           </div>
         </div>
       </div>
 
       {/* Amount */}
-      <div className={`rounded-lg p-4 text-center ${isOverdue ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+      <div
+        className={`rounded-lg p-4 text-center ${isOverdue ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"}`}
+      >
         <p className="text-xs text-muted-foreground mb-1">MONTO A PAGAR</p>
-        <p className={`text-2xl font-bold ${isOverdue ? 'text-red-600' : 'text-amber-600'}`}>
+        <p className={`text-2xl font-bold ${isOverdue ? "text-red-600" : "text-amber-600"}`}>
           {formatMXNExact(payment.amount)}
         </p>
       </div>
@@ -490,7 +488,7 @@ function NoticePreview({
       {/* Footer */}
       <div className="text-center pt-4 border-t text-xs text-muted-foreground">
         <p>Este documento es un aviso de pago, no es un recibo.</p>
-        <p>Generado el {format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}</p>
+        <p>Generado el {format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}</p>
       </div>
     </div>
   );
