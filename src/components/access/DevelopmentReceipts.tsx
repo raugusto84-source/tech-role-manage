@@ -1,18 +1,18 @@
-import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { AccessDevelopment } from './AccessDevelopmentsManager';
-import { Receipt, Download, Mail, Eye, FileText, Send, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
-import { formatMXNExact } from '@/utils/currency';
-import logoAcceso from '@/assets/logo-acceso.png';
+import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AccessDevelopment } from "./AccessDevelopmentsManager";
+import { Receipt, Download, Mail, Eye, FileText, Send, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { formatMXNExact } from "@/utils/currency";
+import logoAcceso from "@/assets/logo-acceso.png";
 
 interface PaidPayment {
   id: string;
@@ -36,7 +36,7 @@ interface Props {
 export function DevelopmentReceipts({ developments }: Props) {
   const [paidPayments, setPaidPayments] = useState<PaidPayment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDevelopment, setSelectedDevelopment] = useState<string>('all');
+  const [selectedDevelopment, setSelectedDevelopment] = useState<string>("all");
   const [viewingReceipt, setViewingReceipt] = useState<PaidPayment | null>(null);
   const [sendingEmail, setSendingEmail] = useState<string | null>(null);
   const receiptRef = useRef<HTMLDivElement>(null);
@@ -49,68 +49,71 @@ export function DevelopmentReceipts({ developments }: Props) {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('access_development_payments')
-        .select('*')
-        .eq('status', 'paid')
-        .order('paid_at', { ascending: false });
+        .from("access_development_payments")
+        .select("*")
+        .eq("status", "paid")
+        .order("paid_at", { ascending: false });
 
       if (error) throw error;
       setPaidPayments(data || []);
     } catch (error) {
-      console.error('Error loading paid payments:', error);
-      toast.error('Error al cargar recibos');
+      console.error("Error loading paid payments:", error);
+      toast.error("Error al cargar recibos");
     } finally {
       setLoading(false);
     }
   };
 
   const getDevelopment = (id: string) => {
-    return developments.find(d => d.id === id);
+    return developments.find((d) => d.id === id);
   };
 
   const getDevelopmentName = (id: string) => {
-    return getDevelopment(id)?.name || 'Desconocido';
+    return getDevelopment(id)?.name || "Desconocido";
   };
 
   const getPaymentMethodLabel = (method: string | null) => {
     const methods: Record<string, string> = {
-      'efectivo': 'Efectivo',
-      'transferencia': 'Transferencia',
-      'tarjeta': 'Tarjeta',
-      'tarjeta_debito': 'Tarjeta de Débito',
-      'tarjeta_credito': 'Tarjeta de Crédito',
-      'cheque': 'Cheque'
+      efectivo: "Efectivo",
+      transferencia: "Transferencia",
+      tarjeta: "Tarjeta",
+      tarjeta_debito: "Tarjeta de Débito",
+      tarjeta_credito: "Tarjeta de Crédito",
+      cheque: "Cheque",
     };
-    return methods[method || ''] || method || 'No especificado';
+    return methods[method || ""] || method || "No especificado";
   };
 
-  const filteredPayments = paidPayments.filter(p => {
-    if (selectedDevelopment !== 'all' && p.development_id !== selectedDevelopment) return false;
+  const filteredPayments = paidPayments.filter((p) => {
+    if (selectedDevelopment !== "all" && p.development_id !== selectedDevelopment) return false;
     return true;
   });
 
   const generateReceiptNumber = (payment: PaidPayment) => {
     const date = new Date(payment.paid_at);
-    return `REC-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}-${payment.id.slice(0, 6).toUpperCase()}`;
+    return `REC-${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}-${payment.id.slice(0, 6).toUpperCase()}`;
   };
 
   const handleExportPDF = async (payment: PaidPayment) => {
     const dev = getDevelopment(payment.development_id);
     const receiptNumber = generateReceiptNumber(payment);
-    
+
     // Convert logo to base64 for PDF
     const logoBase64 = await fetch(logoAcceso)
-      .then(res => res.blob())
-      .then(blob => new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      }));
-    
+      .then((res) => res.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          }),
+      );
+
     // Create a printable HTML document
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      toast.error('Por favor permite las ventanas emergentes');
+      toast.error("Por favor permite las ventanas emergentes");
       return;
     }
 
@@ -157,23 +160,23 @@ export function DevelopmentReceipts({ developments }: Props) {
             <div class="section-title">Datos del Fraccionamiento</div>
             <div class="row">
               <span class="label">Nombre:</span>
-              <span class="value">${dev?.name || 'N/A'}</span>
+              <span class="value">${dev?.name || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Dirección:</span>
-              <span class="value">${dev?.address || 'N/A'}</span>
+              <span class="value">${dev?.address || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Contacto:</span>
-              <span class="value">${dev?.contact_name || 'N/A'}</span>
+              <span class="value">${dev?.contact_name || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Teléfono:</span>
-              <span class="value">${dev?.contact_phone || 'N/A'}</span>
+              <span class="value">${dev?.contact_phone || "N/A"}</span>
             </div>
             <div class="row">
               <span class="label">Email:</span>
-              <span class="value">${dev?.contact_email || 'N/A'}</span>
+              <span class="value">${dev?.contact_email || "N/A"}</span>
             </div>
           </div>
           
@@ -181,27 +184,31 @@ export function DevelopmentReceipts({ developments }: Props) {
             <div class="section-title">Detalles del Pago</div>
             <div class="row">
               <span class="label">Período:</span>
-              <span class="value">${format(periodDate, 'MMMM yyyy', { locale: es })}</span>
+              <span class="value">${format(periodDate, "MMMM yyyy", { locale: es })}</span>
             </div>
             <div class="row">
               <span class="label">Fecha de Pago:</span>
-              <span class="value">${format(paidDate, 'dd/MM/yyyy HH:mm', { locale: es })}</span>
+              <span class="value">${format(paidDate, "dd/MM/yyyy HH:mm", { locale: es })}</span>
             </div>
             <div class="row">
               <span class="label">Método de Pago:</span>
               <span class="value">${getPaymentMethodLabel(payment.payment_method)}</span>
             </div>
-            ${payment.payment_reference ? `
+            ${
+              payment.payment_reference
+                ? `
             <div class="row">
               <span class="label">Referencia:</span>
               <span class="value">${payment.payment_reference}</span>
             </div>
-            ` : ''}
+            `
+                : ""
+            }
           </div>
           
           <div class="amount-section">
             <div class="total-label">MONTO TOTAL PAGADO</div>
-            <div class="total-amount">$${payment.amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</div>
+            <div class="total-amount">$${payment.amount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</div>
           </div>
           
           <div style="text-align: center;">
@@ -210,8 +217,8 @@ export function DevelopmentReceipts({ developments }: Props) {
           
           <div class="footer">
             <p>Este recibo es un comprobante de pago válido.</p>
-            <p>Syslag - Sistema de Gestión de Accesos</p>
-            <p>Generado el ${format(new Date(), 'dd/MM/yyyy HH:mm', { locale: es })}</p>
+            <p>Syslag - Sistemas y Seguridad de la Laguna</p>
+            <p>Generado el ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}</p>
           </div>
         </div>
         <script>window.onload = function() { window.print(); }</script>
@@ -223,27 +230,27 @@ export function DevelopmentReceipts({ developments }: Props) {
 
   const handleSendEmail = async (payment: PaidPayment) => {
     const dev = getDevelopment(payment.development_id);
-    
+
     if (!dev?.contact_email) {
-      toast.error('El fraccionamiento no tiene email de contacto');
+      toast.error("El fraccionamiento no tiene email de contacto");
       return;
     }
 
     setSendingEmail(payment.id);
     try {
-      const { error } = await supabase.functions.invoke('send-development-receipt', {
+      const { error } = await supabase.functions.invoke("send-development-receipt", {
         body: {
           paymentId: payment.id,
           developmentId: payment.development_id,
-          email: dev.contact_email
-        }
+          email: dev.contact_email,
+        },
       });
 
       if (error) throw error;
       toast.success(`Recibo enviado a ${dev.contact_email}`);
     } catch (error) {
-      console.error('Error sending receipt:', error);
-      toast.error('Error al enviar el recibo por correo');
+      console.error("Error sending receipt:", error);
+      toast.error("Error al enviar el recibo por correo");
     } finally {
       setSendingEmail(null);
     }
@@ -276,8 +283,10 @@ export function DevelopmentReceipts({ developments }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los fraccionamientos</SelectItem>
-            {developments.map(d => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            {developments.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {d.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -307,26 +316,16 @@ export function DevelopmentReceipts({ developments }: Props) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPayments.map(payment => {
+                filteredPayments.map((payment) => {
                   const dev = getDevelopment(payment.development_id);
                   return (
                     <TableRow key={payment.id}>
-                      <TableCell className="font-mono text-sm">
-                        {generateReceiptNumber(payment)}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {getDevelopmentName(payment.development_id)}
-                      </TableCell>
+                      <TableCell className="font-mono text-sm">{generateReceiptNumber(payment)}</TableCell>
+                      <TableCell className="font-medium">{getDevelopmentName(payment.development_id)}</TableCell>
+                      <TableCell>{format(new Date(payment.payment_period), "MMMM yyyy", { locale: es })}</TableCell>
+                      <TableCell>{format(new Date(payment.paid_at), "dd/MM/yyyy HH:mm", { locale: es })}</TableCell>
                       <TableCell>
-                        {format(new Date(payment.payment_period), 'MMMM yyyy', { locale: es })}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(payment.paid_at), 'dd/MM/yyyy HH:mm', { locale: es })}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {getPaymentMethodLabel(payment.payment_method)}
-                        </Badge>
+                        <Badge variant="outline">{getPaymentMethodLabel(payment.payment_method)}</Badge>
                       </TableCell>
                       <TableCell className="text-right font-semibold text-green-600">
                         {formatMXNExact(payment.amount)}
@@ -354,7 +353,7 @@ export function DevelopmentReceipts({ developments }: Props) {
                             variant="ghost"
                             onClick={() => handleSendEmail(payment)}
                             disabled={!dev?.contact_email || sendingEmail === payment.id}
-                            title={dev?.contact_email ? 'Enviar por correo' : 'Sin email de contacto'}
+                            title={dev?.contact_email ? "Enviar por correo" : "Sin email de contacto"}
                           >
                             {sendingEmail === payment.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
@@ -383,8 +382,8 @@ export function DevelopmentReceipts({ developments }: Props) {
             </DialogTitle>
           </DialogHeader>
           {viewingReceipt && (
-            <ReceiptPreview 
-              payment={viewingReceipt} 
+            <ReceiptPreview
+              payment={viewingReceipt}
               development={getDevelopment(viewingReceipt.development_id)}
               receiptNumber={generateReceiptNumber(viewingReceipt)}
               getPaymentMethodLabel={getPaymentMethodLabel}
@@ -398,9 +397,9 @@ export function DevelopmentReceipts({ developments }: Props) {
               <Download className="h-4 w-4 mr-2" />
               Exportar PDF
             </Button>
-            <Button 
+            <Button
               onClick={() => viewingReceipt && handleSendEmail(viewingReceipt)}
-              disabled={!getDevelopment(viewingReceipt?.development_id || '')?.contact_email}
+              disabled={!getDevelopment(viewingReceipt?.development_id || "")?.contact_email}
             >
               <Send className="h-4 w-4 mr-2" />
               Enviar por Correo
@@ -413,13 +412,13 @@ export function DevelopmentReceipts({ developments }: Props) {
 }
 
 // Receipt Preview Component
-function ReceiptPreview({ 
-  payment, 
-  development, 
+function ReceiptPreview({
+  payment,
+  development,
   receiptNumber,
-  getPaymentMethodLabel
-}: { 
-  payment: PaidPayment; 
+  getPaymentMethodLabel,
+}: {
+  payment: PaidPayment;
   development: AccessDevelopment | undefined;
   receiptNumber: string;
   getPaymentMethodLabel: (method: string | null) => string;
@@ -440,9 +439,11 @@ function ReceiptPreview({
       <div className="space-y-2">
         <h4 className="font-semibold text-sm text-muted-foreground">FRACCIONAMIENTO</h4>
         <div className="bg-muted/50 rounded-lg p-3 space-y-1">
-          <p className="font-medium">{development?.name || 'N/A'}</p>
-          <p className="text-sm text-muted-foreground">{development?.address || 'Sin dirección'}</p>
-          <p className="text-sm">{development?.contact_name} • {development?.contact_phone}</p>
+          <p className="font-medium">{development?.name || "N/A"}</p>
+          <p className="text-sm text-muted-foreground">{development?.address || "Sin dirección"}</p>
+          <p className="text-sm">
+            {development?.contact_name} • {development?.contact_phone}
+          </p>
           <p className="text-sm text-muted-foreground">{development?.contact_email}</p>
         </div>
       </div>
@@ -453,11 +454,11 @@ function ReceiptPreview({
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <span className="text-muted-foreground">Período:</span>
-            <p className="font-medium">{format(periodDate, 'MMMM yyyy', { locale: es })}</p>
+            <p className="font-medium">{format(periodDate, "MMMM yyyy", { locale: es })}</p>
           </div>
           <div>
             <span className="text-muted-foreground">Fecha de Pago:</span>
-            <p className="font-medium">{format(paidDate, 'dd/MM/yyyy HH:mm', { locale: es })}</p>
+            <p className="font-medium">{format(paidDate, "dd/MM/yyyy HH:mm", { locale: es })}</p>
           </div>
           <div>
             <span className="text-muted-foreground">Método:</span>
