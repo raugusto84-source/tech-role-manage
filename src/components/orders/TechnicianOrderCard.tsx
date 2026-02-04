@@ -16,7 +16,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck, Home, UserPlus } from 'lucide-react';
+import { MapPin, User, Wrench, ChevronRight, CheckCircle, RotateCcw, CheckCheck, Home, UserPlus, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -154,9 +154,10 @@ export function TechnicianOrderCard({
             <h3 className="font-semibold text-sm truncate">
               {order.order_number}
             </h3>
-            <p className="text-xs text-muted-foreground">
-              {formatDate(order.created_at)}
-            </p>
+            <div className="flex items-center gap-1 text-xs text-primary font-medium mt-0.5">
+              <Calendar className="h-3 w-3" />
+              <span>📅 {formatDate(order.delivery_date)}</span>
+            </div>
           </div>
           <div className="flex items-center gap-1 ml-2">
             <Badge 

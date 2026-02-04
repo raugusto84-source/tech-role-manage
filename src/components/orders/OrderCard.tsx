@@ -4,7 +4,7 @@ import { es } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink, Trash2 } from 'lucide-react';
+import { Clock, MapPin, User, Wrench, FileText, ChevronDown, ChevronUp, DollarSign, ExternalLink, Trash2, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 // Removed cashback-related imports - cashback system eliminated
 import { formatCOPCeilToTen, formatMXNInt, formatMXNExact, ceilToTen } from '@/utils/currency';
@@ -242,6 +242,10 @@ export function OrderCard({
             <CardTitle className="text-base font-semibold">
               {order.order_number}
             </CardTitle>
+            <div className="flex items-center gap-1 text-xs text-primary font-medium">
+              <Calendar className="h-3 w-3" />
+              <span>📅 {formatDate(order.delivery_date || order.created_at)}</span>
+            </div>
             <div className="flex items-center gap-2">
               <Badge className={`text-xs ${getStatusColor(order.status)}`}>
                 {order.status.replace('_', ' ').toUpperCase()}
