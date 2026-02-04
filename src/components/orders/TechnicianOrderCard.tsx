@@ -154,17 +154,16 @@ export function TechnicianOrderCard({
             <h3 className="font-semibold text-sm truncate">
               {order.order_number}
             </h3>
-            <div className="flex items-center gap-1 text-xs text-primary font-medium mt-0.5">
-              <Calendar className="h-3 w-3" />
-              <span>📅 {formatDate(order.delivery_date)}</span>
-            </div>
           </div>
-          <div className="flex items-center gap-1 ml-2">
+          <div className="flex items-center gap-1 ml-2 flex-wrap">
             <Badge 
               className={`text-xs px-1.5 py-0.5 ${getStatusColor(order.status)}`}
               variant="outline"
             >
               {getStatusLabel(order.status)}
+            </Badge>
+            <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary border-primary/30 font-semibold">
+              📅 {formatDate(order.delivery_date)}
             </Badge>
             <ChevronRight className="h-3 w-3 text-muted-foreground" />
           </div>
