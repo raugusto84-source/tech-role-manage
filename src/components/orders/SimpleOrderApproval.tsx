@@ -349,13 +349,18 @@ export function SimpleOrderApproval({
     }
   };
 
-  // Helper function to get workload only from en_proceso orders
+  // Helper function to get workload only from en_proceso orders with future delivery dates
   const getCategoryWorkloadEnProceso = async (category: string): Promise<number> => {
     try {
+      // Get today's date in YYYY-MM-DD format for comparison
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      
       const { data: orders, error } = await supabase
         .from('orders')
         .select(`
           id,
+          delivery_date,
           order_items!inner(
             id,
             service_type_id,
@@ -367,7 +372,8 @@ export function SimpleOrderApproval({
           )
         `)
         .or(`order_category.eq.${category},service_category.eq.${category}`)
-        .eq('status', 'en_proceso'); // Only count orders that are actively in process
+        .eq('status', 'en_proceso')
+        .gte('delivery_date', todayStr); // Only count orders with delivery date >= today
 
       if (error) {
         console.error('Error getting en_proceso workload:', error);
@@ -375,6 +381,7 @@ export function SimpleOrderApproval({
       }
 
       if (!orders || orders.length === 0) {
+        console.log(`No pending en_proceso orders for category ${category} with delivery_date >= ${todayStr}`);
         return 0;
       }
 
@@ -394,7 +401,7 @@ export function SimpleOrderApproval({
         }
       });
 
-      console.log(`Workload for category ${category} (en_proceso only): ${totalWorkload}h`);
+      console.log(`Workload for category ${category} (en_proceso, delivery >= ${todayStr}): ${totalWorkload}h`);
       return totalWorkload;
     } catch (error) {
       console.error('Failed to get category workload:', error);
