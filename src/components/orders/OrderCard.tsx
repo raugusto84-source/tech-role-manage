@@ -242,13 +242,12 @@ export function OrderCard({
             <CardTitle className="text-base font-semibold">
               {order.order_number}
             </CardTitle>
-            <div className="flex items-center gap-1 text-xs text-primary font-medium">
-              <Calendar className="h-3 w-3" />
-              <span>📅 {formatDate(order.delivery_date || order.created_at)}</span>
-            </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge className={`text-xs ${getStatusColor(order.status)}`}>
                 {order.status.replace('_', ' ').toUpperCase()}
+              </Badge>
+              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 font-semibold">
+                📅 {formatDate(order.delivery_date || order.created_at)}
               </Badge>
               <OrderModificationsBadge orderId={order.id} />
               {paymentSummary.hasISRApplied && (

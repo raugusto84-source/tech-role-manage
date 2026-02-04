@@ -221,10 +221,6 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
             <CardTitle className="text-lg font-bold text-primary">
               {order.order_number}
             </CardTitle>
-            <div className="flex items-center gap-1 text-sm text-primary font-medium mt-0.5">
-              <Calendar className="h-3.5 w-3.5" />
-              <span>📅 {formatDate(order.delivery_date)}</span>
-            </div>
             <div className="flex items-center gap-2 mt-1">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground break-words leading-tight">
@@ -241,9 +237,14 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <Badge className={`${getStatusColor(order.status)} text-xs`}>
-              {getStatusText(order.status)}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge className={`${getStatusColor(order.status)} text-xs`}>
+                {getStatusText(order.status)}
+              </Badge>
+              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 font-semibold">
+                📅 {formatDate(order.delivery_date)}
+              </Badge>
+            </div>
             {!timeLoading && (
               <div className="flex flex-col items-end gap-0.5">
                 {elapsedTime && (
