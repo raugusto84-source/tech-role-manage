@@ -574,8 +574,8 @@ export function OrderDetails({
               )}
             </div>
           </div>
-          {/* Admin/Tech Approval Button */}
-          {['administrador', 'tecnico'].includes(profile?.role || '') && orderStatus === 'pendiente_aprobacion' && (
+          {/* Admin/Supervisor/Vendedor Approval Button */}
+          {['administrador', 'supervisor', 'vendedor'].includes(profile?.role || '') && (orderStatus === 'pendiente_aprobacion' || orderStatus === 'pendiente_actualizacion') && (
             <div className="mt-3">
               <Button 
                 onClick={() => setShowAdminApprovalDialog(true)}
