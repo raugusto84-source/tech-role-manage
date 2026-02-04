@@ -291,12 +291,11 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
     ).length;
   }, [weekOrders]);
 
-  // Órdenes atrasadas (excluye pendientes de aprobación)
+  // Órdenes atrasadas (excluye pendientes de aprobación) - incluye de la misma semana
   const overdueOrders = useMemo(() => {
     if (!isCurrentWeek) return [];
     
     const today = startOfDay(new Date());
-    const thisWeekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
     
     return calendarOrders.filter(order => {
       if (order.status === 'finalizada' || order.status === 'cancelada' || order.status === 'rechazada') {
@@ -307,13 +306,14 @@ export function WeeklyOrdersView({ orders, onSelectOrder, onOrdersChange }: Week
       if (!deliveryDate) return false;
       
       try {
-        const orderDate = parseISO(deliveryDate);
-        return isBefore(orderDate, thisWeekStart);
+        const orderDate = startOfDay(parseISO(deliveryDate));
+        // Incluir órdenes de cualquier fecha anterior al día de hoy (incluyendo días de esta semana)
+        return isBefore(orderDate, today);
       } catch {
         return false;
       }
     });
-  }, [orders, isCurrentWeek]);
+  }, [calendarOrders, isCurrentWeek]);
 
   const overdueByCategory = useMemo(() => {
     const result: Record<CategoryType, Order[]> = {
