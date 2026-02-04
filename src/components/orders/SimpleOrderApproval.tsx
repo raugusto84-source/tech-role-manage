@@ -571,9 +571,12 @@ export function SimpleOrderApproval({
           updateData.estimated_cost = latestModification.new_total;
         }
         
-        // Update delivery date if calculated
+        // Update delivery_date if calculated (use YYYY-MM-DD format)
         if (deliveryCalc) {
-          updateData.estimated_delivery_date = deliveryCalc.date.toISOString();
+          const year = deliveryCalc.date.getFullYear();
+          const month = String(deliveryCalc.date.getMonth() + 1).padStart(2, '0');
+          const day = String(deliveryCalc.date.getDate()).padStart(2, '0');
+          updateData.delivery_date = `${year}-${month}-${day}`;
         }
         
         const { error: orderError } = await supabase.from('orders').update(updateData).eq('id', order.id);
@@ -610,9 +613,12 @@ export function SimpleOrderApproval({
           client_approved_at: new Date().toISOString()
         };
         
-        // Update delivery date if calculated
+        // Update delivery_date if calculated (use YYYY-MM-DD format)
         if (deliveryCalc) {
-          updateData.estimated_delivery_date = deliveryCalc.date.toISOString();
+          const year = deliveryCalc.date.getFullYear();
+          const month = String(deliveryCalc.date.getMonth() + 1).padStart(2, '0');
+          const day = String(deliveryCalc.date.getDate()).padStart(2, '0');
+          updateData.delivery_date = `${year}-${month}-${day}`;
         }
 
         // Actualizar el estado de la orden
