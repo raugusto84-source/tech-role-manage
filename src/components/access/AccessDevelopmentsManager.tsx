@@ -9,7 +9,8 @@ import { DevelopmentOrders } from './DevelopmentOrders';
 import { InvestorOverview } from './InvestorOverview';
 import { DevelopmentLeadsList } from './DevelopmentLeadsList';
 import { DevelopmentReceipts } from './DevelopmentReceipts';
-import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText, Receipt } from 'lucide-react';
+import { DevelopmentPaymentNotices } from './DevelopmentPaymentNotices';
+import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText, Receipt, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -107,6 +108,10 @@ export function AccessDevelopmentsManager() {
             <Receipt className="h-4 w-4" />
             Recibos
           </TabsTrigger>
+          <TabsTrigger value="notices" className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            Avisos de Pago
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="leads" className="space-y-4">
@@ -143,6 +148,10 @@ export function AccessDevelopmentsManager() {
 
         <TabsContent value="receipts">
           <DevelopmentReceipts developments={developments} />
+        </TabsContent>
+
+        <TabsContent value="notices">
+          <DevelopmentPaymentNotices developments={developments} />
         </TabsContent>
       </Tabs>
 
