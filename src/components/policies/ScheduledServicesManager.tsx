@@ -812,18 +812,26 @@ export function ScheduledServicesManager({ onStatsUpdate }: ScheduledServicesMan
                       </div>
                     </TableCell>
                     <TableCell>
-                       <Badge variant="outline">
+                      <div className="space-y-1">
+                        <Badge variant="outline" className="whitespace-nowrap">
                           <Calendar className="h-3 w-3 mr-1" />
-                          {service.frequency_type === 'minutes' ? `${service.frequency_value} min` :
-                           service.frequency_type === 'cada_1_semana' ? `Cada semana (${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][service.day_of_week || 1]})` :
-                           service.frequency_type === 'cada_2_semanas' ? `Cada 2 semanas (${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][service.day_of_week || 1]})` :
-                           service.frequency_type === 'cada_3_semanas' ? `Cada 3 semanas (${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][service.day_of_week || 1]})` :
-                           service.frequency_type === 'cada_4_semanas' ? `Cada 4 semanas (${['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][service.day_of_week || 1]})` :
-                           service.frequency_type === 'days' ? `${service.frequency_value} días` :
-                           service.frequency_type === 'weekly_on_day' ? 
-                             ['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'][service.frequency_value] :
-                           `Día ${service.frequency_value} del mes`}
+                          {service.frequency_type === 'minutes' ? `Cada ${service.frequency_value} minutos` :
+                           service.frequency_type === 'cada_1_semana' ? 'Cada 1 semana' :
+                           service.frequency_type === 'cada_2_semanas' ? 'Cada 2 semanas' :
+                           service.frequency_type === 'cada_3_semanas' ? 'Cada 3 semanas' :
+                           service.frequency_type === 'cada_4_semanas' ? 'Cada 4 semanas' :
+                           service.frequency_type === 'days' ? `Cada ${service.frequency_value} días` :
+                           service.frequency_type === 'weekly_on_day' ? 'Cada semana' :
+                           'Cada mes'}
                         </Badge>
+                        <div className="text-xs text-muted-foreground">
+                          {service.frequency_type === 'minutes' ? '' :
+                           ['cada_1_semana', 'cada_2_semanas', 'cada_3_semanas', 'cada_4_semanas', 'weekly_on_day'].includes(service.frequency_type) ? 
+                             `Los ${['Domingos', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábados'][service.frequency_type === 'weekly_on_day' ? service.frequency_value : (service.day_of_week || 1)]}` :
+                           service.frequency_type === 'monthly_on_day' ? `Día ${service.frequency_value} del mes` :
+                           ''}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
