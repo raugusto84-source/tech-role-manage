@@ -221,6 +221,10 @@ const { paymentSummary, loading: paymentsLoading, refreshPayments } = useOrderPa
             <CardTitle className="text-lg font-bold text-primary">
               {order.order_number}
             </CardTitle>
+            <div className="flex items-center gap-1 text-sm text-primary font-medium mt-0.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>📅 {formatDate(order.delivery_date)}</span>
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <User className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground break-words leading-tight">
