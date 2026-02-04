@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { calculateOrderPriority, orderPriorityNumberToString, OrderPriority } from '@/utils/priorityCalculator';
+import { formatDateMexico } from '@/utils/dateUtils';
 
 interface Order {
   id: string;
@@ -103,6 +104,9 @@ export function WeeklyOrderCard({ order, onClick, category }: WeeklyOrderCardPro
         </span>
         <Badge className={cn("text-[10px] px-1.5 py-0 h-4", statusConfig.className)}>
           {statusConfig.label}
+        </Badge>
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary border-primary/30 font-semibold">
+          📅 {formatDateMexico(order.delivery_date)}
         </Badge>
         {order.is_policy_order && <span className="text-xs">📋</span>}
         {order.is_development_order && <span className="text-xs">🏘️</span>}
