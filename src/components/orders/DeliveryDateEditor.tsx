@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Calendar, Pencil, Check, X } from 'lucide-react';
+import { Calendar, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -29,7 +28,10 @@ export function DeliveryDateEditor({
 
   const formatDisplayDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy', { locale: es });
+      // Parse date string safely without timezone conversion
+      const [year, month, day] = dateString.split('T')[0].split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return format(date, 'dd/MM/yyyy', { locale: es });
     } catch {
       return dateString;
     }
@@ -41,8 +43,11 @@ export function DeliveryDateEditor({
     try {
       setSaving(true);
       
-      // Format date as YYYY-MM-DD for database
-      const formattedDate = format(date, 'yyyy-MM-dd');
+      // Format date as YYYY-MM-DD using local date components to avoid timezone shift
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
       
       const { error } = await supabase
         .from('orders')
@@ -56,7 +61,7 @@ export function DeliveryDateEditor({
 
       toast({
         title: "Fecha actualizada",
-        description: `La fecha de entrega ha sido cambiada al ${format(date, 'dd/MM/yyyy', { locale: es })}`,
+        description: `La fecha de entrega ha sido cambiada al ${day}/${month}/${year}`,
       });
 
       setIsOpen(false);
@@ -73,8 +78,17 @@ export function DeliveryDateEditor({
     }
   };
 
-  // Parse current date for calendar
-  const selectedDate = currentDate ? new Date(currentDate) : undefined;
+  // Parse current date for calendar - avoid timezone issues
+  const getSelectedDate = () => {
+    if (!currentDate) return undefined;
+    try {
+      const [year, month, day] = currentDate.split('T')[0].split('-').map(Number);
+      return new Date(year, month - 1, day);
+    } catch {
+      return undefined;
+    }
+  };
+  const selectedDate = getSelectedDate();
 
   if (!canEdit) {
     return (
