@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_development_lead_comments: {
+        Row: {
+          comment_text: string
+          created_at: string
+          created_by: string | null
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          comment_text: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          comment_text?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_development_lead_comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "access_development_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       access_development_leads: {
         Row: {
           address: string | null

@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Edit2, CheckCircle, MessageSquare, Calendar, Clock, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit2, CheckCircle, MessageSquare, Calendar, Clock, Trash2, History } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface DevelopmentLead {
   id: string;
@@ -29,6 +30,13 @@ interface DevelopmentLead {
   has_investor: boolean;
   investor_name: string | null;
   investor_amount: number;
+  created_at: string;
+}
+
+interface LeadComment {
+  id: string;
+  lead_id: string;
+  comment_text: string;
   created_at: string;
 }
 
@@ -61,6 +69,10 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
   const [loading, setLoading] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [editingLead, setEditingLead] = useState<DevelopmentLead | null>(null);
+  const [showCommentsDialog, setShowCommentsDialog] = useState(false);
+  const [selectedLeadForComments, setSelectedLeadForComments] = useState<DevelopmentLead | null>(null);
+  const [leadComments, setLeadComments] = useState<LeadComment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -76,9 +88,17 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
     investor_amount: 0,
   });
 
+  const [latestComments, setLatestComments] = useState<Record<string, LeadComment | null>>({});
+
   useEffect(() => {
     loadLeads();
   }, []);
+
+  useEffect(() => {
+    if (leads.length > 0) {
+      loadLatestComments();
+    }
+  }, [leads]);
 
   const loadLeads = async () => {
     try {
@@ -95,6 +115,51 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
       toast.error('Error al cargar cotizaciones');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLatestComments = async () => {
+    try {
+      const leadIds = leads.map(l => l.id);
+      const { data, error } = await supabase
+        .from('access_development_lead_comments')
+        .select('*')
+        .in('lead_id', leadIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Group by lead_id and get the latest comment for each
+      const commentsByLead: Record<string, LeadComment | null> = {};
+      leadIds.forEach(id => {
+        const leadCommentsList = (data || []).filter(c => c.lead_id === id);
+        commentsByLead[id] = leadCommentsList.length > 0 ? leadCommentsList[0] : null;
+      });
+      setLatestComments(commentsByLead);
+    } catch (error) {
+      console.error('Error loading latest comments:', error);
+    }
+  };
+
+  const loadCommentsForLead = async (lead: DevelopmentLead) => {
+    try {
+      setLoadingComments(true);
+      setSelectedLeadForComments(lead);
+      setShowCommentsDialog(true);
+
+      const { data, error } = await supabase
+        .from('access_development_lead_comments')
+        .select('*')
+        .eq('lead_id', lead.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setLeadComments(data || []);
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      toast.error('Error al cargar comentarios');
+    } finally {
+      setLoadingComments(false);
     }
   };
 
@@ -170,12 +235,36 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
           .update(leadData)
           .eq('id', editingLead.id);
         if (error) throw error;
+
+        // Save comment to history if it changed
+        if (formData.comments && formData.comments !== editingLead.comments) {
+          await supabase
+            .from('access_development_lead_comments')
+            .insert([{
+              lead_id: editingLead.id,
+              comment_text: formData.comments,
+            }]);
+        }
+
         toast.success('Cotización actualizada');
       } else {
-        const { error } = await supabase
+        const { data: newLead, error } = await supabase
           .from('access_development_leads')
-          .insert([leadData]);
+          .insert([leadData])
+          .select()
+          .single();
         if (error) throw error;
+
+        // Save initial comment if provided
+        if (formData.comments && newLead) {
+          await supabase
+            .from('access_development_lead_comments')
+            .insert([{
+              lead_id: newLead.id,
+              comment_text: formData.comments,
+            }]);
+        }
+
         toast.success('Cotización creada');
       }
 
@@ -252,6 +341,7 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
                   <TableHead>Propuesta Mensual</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Última Actividad</TableHead>
+                  <TableHead>Último Comentario</TableHead>
                   <TableHead>Recordatorio</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -282,6 +372,24 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
                         <p className="text-sm">{new Date(lead.last_activity_at).toLocaleDateString('es-MX')}</p>
                         <p className="text-xs text-muted-foreground">{lead.last_activity_description}</p>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {latestComments[lead.id] ? (
+                        <div 
+                          className="cursor-pointer hover:bg-muted/50 rounded p-1 -m-1 transition-colors"
+                          onClick={() => loadCommentsForLead(lead)}
+                        >
+                          <p className="text-sm line-clamp-2 max-w-[200px]">
+                            {latestComments[lead.id]?.comment_text}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                            <History className="h-3 w-3" />
+                            {new Date(latestComments[lead.id]!.created_at).toLocaleDateString('es-MX')}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {lead.reminder_date ? (
@@ -455,6 +563,54 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowNewDialog(false)}>Cancelar</Button>
               <Button onClick={handleSave}>Guardar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Comments History Dialog */}
+        <Dialog open={showCommentsDialog} onOpenChange={setShowCommentsDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                Historial de Comentarios - {selectedLeadForComments?.name}
+              </DialogTitle>
+            </DialogHeader>
+            {loadingComments ? (
+              <div className="flex justify-center py-8">Cargando...</div>
+            ) : leadComments.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No hay comentarios registrados
+              </div>
+            ) : (
+              <ScrollArea className="max-h-[400px]">
+                <div className="space-y-4 pr-4">
+                  {leadComments.map((comment, index) => (
+                    <div 
+                      key={comment.id} 
+                      className={`p-3 rounded-lg border ${index === 0 ? 'bg-primary/5 border-primary/20' : 'bg-muted/30'}`}
+                    >
+                      <p className="text-sm whitespace-pre-wrap">{comment.comment_text}</p>
+                      <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(comment.created_at).toLocaleDateString('es-MX', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                        {index === 0 && (
+                          <Badge variant="secondary" className="ml-2 text-xs">Más reciente</Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCommentsDialog(false)}>Cerrar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
