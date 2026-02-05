@@ -73,6 +73,8 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
   const [selectedLeadForComments, setSelectedLeadForComments] = useState<DevelopmentLead | null>(null);
   const [leadComments, setLeadComments] = useState<LeadComment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [savingComment, setSavingComment] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -160,6 +162,42 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
       toast.error('Error al cargar comentarios');
     } finally {
       setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedLeadForComments || !newComment.trim()) return;
+
+    try {
+      setSavingComment(true);
+      const { error } = await supabase
+        .from('access_development_lead_comments')
+        .insert([{
+          lead_id: selectedLeadForComments.id,
+          comment_text: newComment.trim(),
+        }]);
+
+      if (error) throw error;
+
+      // Update the lead's comments field and last activity
+      await supabase
+        .from('access_development_leads')
+        .update({
+          comments: newComment.trim(),
+          last_activity_at: new Date().toISOString(),
+          last_activity_description: 'Comentario agregado',
+        })
+        .eq('id', selectedLeadForComments.id);
+
+      toast.success('Comentario agregado');
+      setNewComment('');
+      loadCommentsForLead(selectedLeadForComments);
+      loadLeads();
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      toast.error('Error al agregar comentario');
+    } finally {
+      setSavingComment(false);
     }
   };
 
@@ -609,6 +647,26 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
                 </div>
               </ScrollArea>
             )}
+            
+            {/* Add new comment section */}
+            <div className="border-t pt-4 space-y-2">
+              <Label>Agregar nuevo comentario</Label>
+              <Textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escribe un comentario..."
+                rows={3}
+              />
+              <Button 
+                onClick={handleAddComment} 
+                disabled={!newComment.trim() || savingComment}
+                className="w-full gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                {savingComment ? 'Guardando...' : 'Agregar Comentario'}
+              </Button>
+            </div>
+
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowCommentsDialog(false)}>Cerrar</Button>
             </DialogFooter>
