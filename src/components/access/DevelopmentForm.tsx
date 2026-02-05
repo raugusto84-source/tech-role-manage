@@ -78,13 +78,57 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
   const loadClients = async () => {
     try {
       setLoadingClients(true);
-      const { data, error } = await supabase
+      
+      // Fetch from clients table
+      const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('id, name, phone, email, address')
         .order('name');
       
-      if (error) throw error;
-      setClients(data || []);
+      if (clientsError) throw clientsError;
+      
+      // Fetch from profiles table (users with role 'cliente')
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone')
+        .eq('role', 'cliente');
+      
+      if (profilesError) throw profilesError;
+      
+      // Combine both sources, avoiding duplicates by email
+      const allClients: Client[] = [];
+      const emailsAdded = new Set<string>();
+      
+      // Add clients from clients table first
+      for (const client of clientsData || []) {
+        allClients.push({
+          id: client.id,
+          name: client.name,
+          phone: client.phone,
+          email: client.email,
+          address: client.address
+        });
+        if (client.email) emailsAdded.add(client.email.toLowerCase());
+      }
+      
+      // Add profiles that aren't already in clients table
+      for (const profile of profilesData || []) {
+        if (profile.email && !emailsAdded.has(profile.email.toLowerCase())) {
+          allClients.push({
+            id: profile.user_id, // Use user_id as id for profiles
+            name: profile.full_name,
+            phone: profile.phone,
+            email: profile.email,
+            address: '' // Profiles don't have address
+          });
+          emailsAdded.add(profile.email.toLowerCase());
+        }
+      }
+      
+      // Sort by name
+      allClients.sort((a, b) => a.name.localeCompare(b.name));
+      
+      setClients(allClients);
     } catch (error) {
       console.error('Error loading clients:', error);
     } finally {
