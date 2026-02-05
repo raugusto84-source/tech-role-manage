@@ -551,9 +551,15 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
                 </>
               )}
             </div>
-            {!selectedClientId && clientSearch && filteredClients.length > 0 && (
+            {!selectedClientId && (
               <div className="mt-2 border rounded-md max-h-48 overflow-y-auto">
-                {filteredClients.slice(0, 10).map((client) => (
+                {loadingClients ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto mb-2" />
+                    Cargando clientes...
+                  </div>
+                ) : filteredClients.length > 0 ? (
+                  filteredClients.map((client) => (
                   <button
                     key={client.id}
                     type="button"
@@ -565,13 +571,13 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
                       {client.phone || 'Sin teléfono'} • {client.email || 'Sin email'}
                     </p>
                   </button>
-                ))}
+                  ))
+                ) : (
+                  <p className="p-4 text-center text-muted-foreground text-sm">
+                    No se encontraron clientes
+                  </p>
+                )}
               </div>
-            )}
-            {!selectedClientId && clientSearch && filteredClients.length === 0 && !loadingClients && (
-              <p className="text-xs text-muted-foreground mt-1">
-                No se encontraron clientes. Use el botón + para crear uno nuevo.
-              </p>
             )}
             {selectedClientId && (
               <p className="text-xs text-muted-foreground mt-1">
