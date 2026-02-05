@@ -40,10 +40,12 @@
        throw new Error(`Development not found: ${devError?.message || 'Unknown'}`);
      }
  
-     // Verify the development is active
-     if (dev.status !== 'activo') {
-       throw new Error('El contrato de fraccionamiento no está activo');
-     }
+      // Verify the development is active
+      // NOTE: En el módulo de Acceso el estatus se maneja como "active".
+      // Mantenemos compatibilidad con "activo" por registros legacy.
+      if (!['active', 'activo'].includes(dev.status)) {
+        throw new Error('El contrato de fraccionamiento no está activo');
+      }
  
      // Get a default service type for support
      const { data: serviceTypes } = await supabase
