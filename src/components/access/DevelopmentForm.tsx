@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AccessDevelopment } from './AccessDevelopmentsManager';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -531,6 +531,16 @@ export function DevelopmentForm({ development, leadData, onSuccess, onCancel }: 
                       onChange={(e) => setClientSearch(e.target.value)}
                     />
                   </div>
+                  <Button 
+                    type="button" 
+                    variant="outline"
+                    size="icon"
+                    onClick={() => loadClients()}
+                    disabled={loadingClients}
+                    title="Refrescar lista de clientes"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${loadingClients ? 'animate-spin' : ''}`} />
+                  </Button>
                   <Button 
                     type="button" 
                     variant="outline"
