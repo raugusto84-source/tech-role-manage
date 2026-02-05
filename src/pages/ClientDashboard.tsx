@@ -351,40 +351,13 @@ export default function ClientDashboard() {
 
   // Load client developments (fraccionamientos)
   const loadClientDevelopments = async () => {
-    if (!profile?.user_id) return;
+   if (!profile?.user_id || !profile?.email) return;
     
-    // First get the client ID
-    let clientId: string | null = null;
-    let clientName: string = '';
-    const { data: client } = await supabase
-      .from("clients")
-      .select("id, name")
-      .eq("user_id", profile.user_id)
-      .maybeSingle();
-    
-    if (client) {
-      clientId = client.id;
-      clientName = client.name;
-    } else {
-      // Try by email
-      const { data: clientByEmail } = await supabase
-        .from("clients")
-        .select("id, name")
-        .eq("email", profile.email)
-        .maybeSingle();
-      
-      if (clientByEmail) {
-        clientId = clientByEmail.id;
-        clientName = clientByEmail.name;
-      }
-    }
-    
-    if (!clientId) return;
-
-    // Find developments where the client name matches the development name or contact email
+   // Find developments where the contact_email matches the user's email
+   // This is the primary way to link a client to a development
     const { data: developments, error } = await supabase
       .from('access_developments')
-      .select('id, name, status, contact_email')
+     .select('id, name, status, contact_email, contact_name')
       .eq('status', 'activo');
     
     if (error || !developments) {
@@ -392,16 +365,40 @@ export default function ClientDashboard() {
       return;
     }
 
-    // Match by name or by contact email
-    const matchedDevelopments = developments.filter(dev => 
-      dev.name === clientName || dev.contact_email === profile.email
+   // Match by contact email (primary) or contact name matching profile full_name
+   const matchedDevelopments = developments.filter(dev => {
+     const emailMatch = dev.contact_email && 
+       dev.contact_email.toLowerCase() === profile.email?.toLowerCase();
+     const nameMatch = dev.contact_name && 
+       dev.contact_name.toLowerCase() === profile.full_name?.toLowerCase();
+     return emailMatch || nameMatch;
+   }
     );
 
     if (matchedDevelopments.length > 0) {
+     // Get client_id if available
+     let clientId: string | null = null;
+     const { data: client } = await supabase
+       .from("clients")
+       .select("id")
+       .eq("user_id", profile.user_id)
+       .maybeSingle();
+     
+     if (client) {
+       clientId = client.id;
+     } else {
+       const { data: clientByEmail } = await supabase
+         .from("clients")
+         .select("id")
+         .eq("email", profile.email)
+         .maybeSingle();
+       if (clientByEmail) clientId = clientByEmail.id;
+     }
+     
       const formattedDevelopments: DevelopmentInfo[] = matchedDevelopments.map(dev => ({
         development_id: dev.id,
         development_name: dev.name,
-        client_id: clientId!
+       client_id: clientId || profile.user_id // Use user_id if no client record
       }));
       setClientDevelopments(formattedDevelopments);
     }
