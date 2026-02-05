@@ -358,7 +358,8 @@ export default function ClientDashboard() {
     const { data: developments, error } = await supabase
       .from('access_developments')
      .select('id, name, status, contact_email, contact_name')
-      .eq('status', 'activo');
+      // En Acceso el estatus real usado es "active" (pero soportamos "activo" por compatibilidad)
+      .in('status', ['active', 'activo']);
     
     if (error || !developments) {
       console.log('No developments found:', error);
