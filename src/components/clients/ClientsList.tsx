@@ -417,9 +417,6 @@ export function ClientsList() {
                 value={editForm.email}
                 onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
               />
-              <p className="text-xs text-muted-foreground">
-                Al cambiar el correo, el usuario deberá usar el nuevo correo para iniciar sesión.
-              </p>
             </div>
             <div className="space-y-2">
               <Label>Teléfono</Label>
