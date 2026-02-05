@@ -188,7 +188,17 @@ export function ClientsList() {
     if (!selectedClient) return;
     
     try {
-      // Actualizar profile
+      // If email changed, call edge function to update auth
+      if (editForm.email !== selectedClient.email) {
+        const { data, error: emailError } = await supabase.functions.invoke('update-user-email', {
+          body: { userId: selectedClient.user_id, newEmail: editForm.email }
+        });
+
+        if (emailError) throw emailError;
+        if (!data.success) throw new Error(data.error || 'Error al actualizar correo');
+      }
+
+      // Actualizar profile (email ya se actualizó en la edge function)
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -405,9 +415,11 @@ export function ClientsList() {
               <Label>Email</Label>
               <Input
                 value={editForm.email}
-                disabled
-                className="bg-muted"
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground">
+                Al cambiar el correo, el usuario deberá usar el nuevo correo para iniciar sesión.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Teléfono</Label>
