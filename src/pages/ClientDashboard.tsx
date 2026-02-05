@@ -25,12 +25,14 @@ import {
   LogOut,
   Shield,
   Headphones,
-  Calendar
+  Calendar,
+  Building2
 } from "lucide-react";
 import { formatDateMexico } from "@/utils/dateUtils";
 import { DeliverySignature } from "@/components/orders/DeliverySignature";
 import { NewRequestDialog } from "@/components/client/NewRequestDialog";
 import { PolicySupportRequest } from "@/components/client/PolicySupportRequest";
+import { DevelopmentSupportRequest } from "@/components/client/DevelopmentSupportRequest";
 import { ClientQuoteApproval } from "@/components/client/ClientQuoteApproval";
 
 // Tipos locales
@@ -68,6 +70,13 @@ interface PolicyInfo {
   client_id: string;
 }
 
+// Development info interface
+interface DevelopmentInfo {
+  development_id: string;
+  development_name: string;
+  client_id: string;
+}
+
 // Scheduled service interface
 interface ScheduledServiceDisplay {
   id: string;
@@ -89,6 +98,7 @@ export default function ClientDashboard() {
   const [orderToSign, setOrderToSign] = useState<Order | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [showSupportRequest, setShowSupportRequest] = useState(false);
+  const [showDevelopmentSupportRequest, setShowDevelopmentSupportRequest] = useState(false);
   const [quoteToApprove, setQuoteToApprove] = useState<Quote | null>(null);
 
   // Datos
@@ -99,6 +109,7 @@ export default function ClientDashboard() {
   const [readyForSignatureOrders, setReadyForSignatureOrders] = useState<Order[]>([]);
   const [pendingApprovalQuotes, setPendingApprovalQuotes] = useState<Quote[]>([]);
   const [clientPolicies, setClientPolicies] = useState<PolicyInfo[]>([]);
+  const [clientDevelopments, setClientDevelopments] = useState<DevelopmentInfo[]>([]);
   const [scheduledServices, setScheduledServices] = useState<ScheduledServiceDisplay[]>([]);
 
   // SEO y metadatos
@@ -338,6 +349,64 @@ export default function ClientDashboard() {
     setClientPolicies(formattedPolicies);
   };
 
+  // Load client developments (fraccionamientos)
+  const loadClientDevelopments = async () => {
+    if (!profile?.user_id) return;
+    
+    // First get the client ID
+    let clientId: string | null = null;
+    let clientName: string = '';
+    const { data: client } = await supabase
+      .from("clients")
+      .select("id, name")
+      .eq("user_id", profile.user_id)
+      .maybeSingle();
+    
+    if (client) {
+      clientId = client.id;
+      clientName = client.name;
+    } else {
+      // Try by email
+      const { data: clientByEmail } = await supabase
+        .from("clients")
+        .select("id, name")
+        .eq("email", profile.email)
+        .maybeSingle();
+      
+      if (clientByEmail) {
+        clientId = clientByEmail.id;
+        clientName = clientByEmail.name;
+      }
+    }
+    
+    if (!clientId) return;
+
+    // Find developments where the client name matches the development name or contact email
+    const { data: developments, error } = await supabase
+      .from('access_developments')
+      .select('id, name, status, contact_email')
+      .eq('status', 'activo');
+    
+    if (error || !developments) {
+      console.log('No developments found:', error);
+      return;
+    }
+
+    // Match by name or by contact email
+    const matchedDevelopments = developments.filter(dev => 
+      dev.name === clientName || dev.contact_email === profile.email
+    );
+
+    if (matchedDevelopments.length > 0) {
+      const formattedDevelopments: DevelopmentInfo[] = matchedDevelopments.map(dev => ({
+        development_id: dev.id,
+        development_name: dev.name,
+        client_id: clientId!
+      }));
+      setClientDevelopments(formattedDevelopments);
+    }
+  };
+
   // Load scheduled services for the current month
   const loadScheduledServices = async () => {
     if (!profile?.user_id) return;
@@ -438,6 +507,7 @@ export default function ClientDashboard() {
         loadQuotes(), 
         loadPendingApprovalQuotes(),
         loadClientPolicies(),
+        loadClientDevelopments(),
         loadScheduledServices()
       ]);
       if (mounted) setLoading(false);
@@ -720,6 +790,26 @@ export default function ClientDashboard() {
                 <div className="text-xs text-white/80 flex items-center gap-1 justify-center md:text-sm">
                   <Shield className="h-3 w-3" />
                   Atención prioritaria de póliza
+                </div>
+              </div>
+            </Button>
+          )}
+
+          {/* Botón de soporte para clientes con fraccionamiento - DESTACADO */}
+          {clientDevelopments.length > 0 && (
+            <Button 
+              onClick={() => setShowDevelopmentSupportRequest(true)}
+              className="h-28 flex-col gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg md:h-32"
+              size="lg"
+            >
+              <div className="h-10 w-10 bg-white/20 rounded-full flex items-center justify-center md:h-12 md:w-12">
+                <Building2 className="h-5 w-5 text-white md:h-6 md:w-6" />
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-lg md:text-xl">Solicitar Soporte</div>
+                <div className="text-xs text-white/80 flex items-center gap-1 justify-center md:text-sm">
+                  <Building2 className="h-3 w-3" />
+                  Atención de Fraccionamiento
                 </div>
               </div>
             </Button>
@@ -1064,6 +1154,16 @@ export default function ClientDashboard() {
         open={showSupportRequest}
         onOpenChange={setShowSupportRequest}
         policies={clientPolicies}
+        onSuccess={() => {
+          loadOrders();
+        }}
+      />
+
+      {/* Diálogo de solicitud de soporte de fraccionamiento */}
+      <DevelopmentSupportRequest
+        open={showDevelopmentSupportRequest}
+        onOpenChange={setShowDevelopmentSupportRequest}
+        developments={clientDevelopments}
         onSuccess={() => {
           loadOrders();
         }}
