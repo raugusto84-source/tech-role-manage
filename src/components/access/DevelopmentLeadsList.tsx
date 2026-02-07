@@ -377,6 +377,7 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
                   <TableHead>Fraccionamiento</TableHead>
                   <TableHead>Contacto</TableHead>
                   <TableHead>Propuesta Mensual</TableHead>
+                  <TableHead>Inversión</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Última Actividad</TableHead>
                   <TableHead>Último Comentario</TableHead>
@@ -400,6 +401,11 @@ export function DevelopmentLeadsList({ onConvertToContract }: DevelopmentLeadsLi
                       </div>
                     </TableCell>
                     <TableCell>{formatCurrency(lead.monthly_payment_proposed)}</TableCell>
+                    <TableCell>
+                      {lead.has_investor && lead.investor_amount > 0
+                        ? formatCurrency(lead.investor_amount)
+                        : <span className="text-muted-foreground text-sm">-</span>}
+                    </TableCell>
                     <TableCell>
                       <Badge className={statusColors[lead.status] || 'bg-gray-500'}>
                         {statusLabels[lead.status] || lead.status}
