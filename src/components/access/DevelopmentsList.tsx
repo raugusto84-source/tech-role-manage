@@ -110,9 +110,17 @@ export function DevelopmentsList({ developments, loading, onSelect, onEdit }: Pr
               </div>
 
               {dev.has_investor && (
-                <div className="flex items-center gap-2 text-sm text-blue-600">
-                  <Users className="h-4 w-4" />
-                  <span>Inversionista: {dev.investor_name}</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                    <Users className="h-4 w-4" />
+                    <span>Inversionista: {dev.investor_name}</span>
+                  </div>
+                  {dev.investor_amount != null && dev.investor_amount > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-blue-600 pl-6">
+                      <DollarSign className="h-3 w-3" />
+                      <span>Inversión: ${dev.investor_amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                 </div>
               )}
 
