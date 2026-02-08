@@ -733,7 +733,11 @@ export function AddOrderItemsDialog({
             </Button>
             <Button 
               variant="secondary"
-              onClick={() => handleSubmit(false)} 
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleSubmit(false);
+              }} 
               disabled={loading || newItems.length === 0 || !reason.trim()}
             >
               {loading ? <>
@@ -744,7 +748,15 @@ export function AddOrderItemsDialog({
                   Solo Agregar
                 </>}
             </Button>
-            <Button onClick={() => handleSubmit(true)} disabled={loading || newItems.length === 0 || !reason.trim()}>
+            <Button 
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                handleSubmit(true);
+              }} 
+              disabled={loading || newItems.length === 0 || !reason.trim()}
+            >
               {loading ? <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
                   Procesando...
