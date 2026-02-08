@@ -1,19 +1,18 @@
 // Utility functions for MXN currency formatting with business rounding rules
 export const ceilToTen = (amount: number): number => {
   if (!isFinite(amount)) return 0;
-  // Always round up to the next multiple of 10
-  const factor = 10;
-  return Math.ceil(amount / factor) * factor;
+  // No rounding - return exact amount
+  return amount;
 };
 
 export const formatCOPCeilToTen = (amount: number): string => {
-  const rounded = ceilToTen(amount);
+  if (!isFinite(amount)) return '$0.00';
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(rounded);
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
 // Format 0-decimal amount without business rounding (standard rounding)
