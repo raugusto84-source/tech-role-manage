@@ -168,65 +168,69 @@ export function OrderPDFButton({ order, variant = 'icon' }: OrderPDFButtonProps)
           <meta charset="UTF-8">
           <title>Orden ${order.order_number}</title>
           <style>
+            @page { size: letter; margin: 10mm 12mm; }
             @media print {
-              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              html, body { width: 100%; height: auto; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 0; }
               .no-print { display: none; }
             }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { 
               font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-              padding: 40px; 
+              padding: 20px; 
               background: #fff;
               color: #1f2937;
-              line-height: 1.5;
+              line-height: 1.4;
+              font-size: 12px;
             }
             .order-container { max-width: 800px; margin: 0 auto; }
             .header { 
               display: flex; 
               justify-content: space-between; 
               align-items: flex-start;
-              padding-bottom: 24px; 
+              padding-bottom: 12px; 
               border-bottom: 2px solid #2563eb;
-              margin-bottom: 24px;
+              margin-bottom: 12px;
             }
-            .logo-img { max-height: 60px; }
-            .company-info { font-size: 12px; color: #6b7280; margin-top: 8px; }
+            .logo-img { max-height: 45px; }
+            .company-info { font-size: 10px; color: #6b7280; margin-top: 4px; }
             .order-info { text-align: right; }
-            .order-title { font-size: 28px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; }
-            .order-number { font-size: 16px; font-weight: 600; margin-top: 4px; color: #374151; }
-            .order-date { font-size: 13px; color: #6b7280; margin-top: 4px; }
+            .order-title { font-size: 20px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1px; }
+            .order-number { font-size: 13px; font-weight: 600; margin-top: 2px; color: #374151; }
+            .order-date { font-size: 11px; color: #6b7280; margin-top: 2px; }
             .order-status { 
               display: inline-block;
-              padding: 4px 12px;
+              padding: 2px 8px;
               border-radius: 4px;
-              font-size: 12px;
+              font-size: 10px;
               font-weight: 600;
-              margin-top: 8px;
+              margin-top: 4px;
               background: #dbeafe;
               color: #1e40af;
             }
-            .client-section { background: #f9fafb; border-radius: 8px; padding: 20px; margin-bottom: 24px; }
-            .section-title { font-size: 14px; font-weight: 600; color: #2563eb; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-            .client-label { font-size: 12px; color: #6b7280; }
-            .client-value { font-size: 14px; font-weight: 500; color: #1f2937; }
-            .description-section { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
-            .description-title { font-size: 13px; font-weight: 600; color: #92400e; margin-bottom: 8px; }
-            .description-text { font-size: 13px; color: #78350f; }
-            .items-section { margin-bottom: 24px; }
-            .items-table { width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
-            .items-table th { background: #2563eb; color: white; padding: 12px; text-align: left; font-size: 13px; font-weight: 600; }
+            .client-section { background: #f9fafb; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+            .section-title { font-size: 11px; font-weight: 600; color: #2563eb; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+            .client-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .client-label { font-size: 10px; color: #6b7280; }
+            .client-value { font-size: 12px; font-weight: 500; color: #1f2937; }
+            .description-section { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; padding: 10px; margin-bottom: 12px; }
+            .description-title { font-size: 11px; font-weight: 600; color: #92400e; margin-bottom: 4px; }
+            .description-text { font-size: 11px; color: #78350f; }
+            .items-section { margin-bottom: 12px; }
+            .items-table { width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+            .items-table th { background: #2563eb; color: white; padding: 6px 8px; text-align: left; font-size: 11px; font-weight: 600; }
             .items-table th:nth-child(2), .items-table th:nth-child(3), .items-table th:nth-child(4) { text-align: center; }
             .items-table th:last-child { text-align: right; }
-            .totals-section { display: flex; justify-content: flex-end; margin-bottom: 24px; }
-            .totals-box { width: 280px; background: #f9fafb; border-radius: 8px; padding: 16px; }
-            .totals-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-            .totals-row.final { border-top: 2px solid #2563eb; margin-top: 8px; padding-top: 12px; font-size: 18px; font-weight: 700; color: #2563eb; }
-            .footer { text-align: center; padding-top: 24px; border-top: 1px solid #e5e7eb; }
-            .delivery-info { font-size: 14px; color: #6b7280; margin-bottom: 8px; }
+            .items-table td { padding: 6px 8px; font-size: 11px; }
+            .totals-section { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+            .totals-box { width: 240px; background: #f9fafb; border-radius: 6px; padding: 10px; }
+            .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+            .totals-row.final { border-top: 2px solid #2563eb; margin-top: 4px; padding-top: 8px; font-size: 15px; font-weight: 700; color: #2563eb; }
+            .footer { text-align: center; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+            .delivery-info { font-size: 12px; color: #6b7280; margin-bottom: 4px; }
             .delivery-info strong { color: #1f2937; }
-            .disclaimer { font-size: 12px; color: #9ca3af; font-style: italic; }
-            .print-buttons { text-align: center; margin-bottom: 24px; padding: 16px; background: #f3f4f6; border-radius: 8px; }
+            .disclaimer { font-size: 10px; color: #9ca3af; font-style: italic; }
+            .print-buttons { text-align: center; margin-bottom: 16px; padding: 12px; background: #f3f4f6; border-radius: 8px; }
             .print-btn { padding: 10px 24px; margin: 0 8px; font-size: 14px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; }
             .print-btn.primary { background: #2563eb; color: white; }
             .print-btn.secondary { background: white; color: #374151; border: 1px solid #d1d5db; }
