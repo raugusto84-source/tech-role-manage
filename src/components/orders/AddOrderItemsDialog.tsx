@@ -28,6 +28,7 @@ interface ServiceType {
   vat_rate?: number;
   item_type: string;
   category?: string;
+  service_category?: string;
   profit_margin_rate?: number;
   profit_margin_tiers?: Array<{
     margin: number;
@@ -101,6 +102,7 @@ export function AddOrderItemsDialog({
         vat_rate: service.vat_rate,
         item_type: service.item_type,
         category: service.category,
+        service_category: service.service_category,
         profit_margin_rate: service.profit_margin_rate,
         profit_margin_tiers: Array.isArray(service.profit_margin_tiers) ? service.profit_margin_tiers : []
       }));
@@ -145,22 +147,28 @@ export function AddOrderItemsDialog({
     return ceilToTen(withVat); // Usar ceilToTen consistentemente
   };
 
-  // Group categories into main categories
-  const securityCategories = ['Alarmas', 'Cámaras', 'Cercas Eléctricas', 'Control de Acceso'];
-  const systemsCategories = ['Computadoras', 'Fraccionamientos'];
+  // Group by service_category field instead of hardcoded category lists
   const getMainCategoryIcon = (mainCategory: string) => {
     switch (mainCategory) {
       case 'Seguridad':
         return Shield;
       case 'Sistemas':
         return Monitor;
+      case 'Todos':
+        return Package;
       default:
         return Package;
     }
   };
   const getFilteredServices = (mainCategory: string, itemType: string) => {
-    const categoryNames = mainCategory === 'Seguridad' ? securityCategories : systemsCategories;
-    return serviceTypes.filter(service => categoryNames.includes(service.category || '') && service.item_type === itemType && (searchTerm === '' || service.name.toLowerCase().includes(searchTerm.toLowerCase()) || service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase())));
+    if (mainCategory === 'Todos') {
+      return serviceTypes.filter(service => service.item_type === itemType && (searchTerm === '' || service.name.toLowerCase().includes(searchTerm.toLowerCase()) || (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase()))));
+    }
+    const serviceCategoryValue = mainCategory.toLowerCase(); // 'seguridad' or 'sistemas'
+    return serviceTypes.filter(service => {
+      const serviceCategory = (service as any).service_category?.toLowerCase() || '';
+      return serviceCategory === serviceCategoryValue && service.item_type === itemType && (searchTerm === '' || service.name.toLowerCase().includes(searchTerm.toLowerCase()) || (service.description && service.description.toLowerCase().includes(searchTerm.toLowerCase())));
+    });
   };
   const addServiceToItems = (service: ServiceType) => {
     // Verificar si el servicio ya existe en la lista
