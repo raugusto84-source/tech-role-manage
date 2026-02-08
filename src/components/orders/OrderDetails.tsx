@@ -521,7 +521,9 @@ export function OrderDetails({
     }
   };
   const isClient = profile?.role === 'cliente';
-  const canModifyOrder = (profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico' || profile?.role === 'jcf') && ['pendiente_aprobacion', 'en_proceso'].includes(orderStatus);
+  const isStaffRole = profile?.role === 'administrador' || profile?.role === 'vendedor' || profile?.role === 'tecnico' || profile?.role === 'jcf';
+  const canModifyOrder = isStaffRole && ['pendiente_aprobacion', 'en_proceso'].includes(orderStatus);
+  const canAddItems = isStaffRole && !['finalizada', 'cancelada'].includes(orderStatus);
 
   // Only allow signing delivery when order is completely finished (all items completed and status is pendiente_entrega)
   const allItemsCompleted = orderItems.length > 0 && orderItems.every(item => item.status === 'finalizada');
@@ -746,7 +748,7 @@ export function OrderDetails({
                   <Wrench className="h-5 w-5 text-primary" />
                   <span className="font-medium">Servicios</span>
                 </div>
-                {canModifyOrder && <Button onClick={() => setShowAddItemsDialog(true)} variant="outline" size="sm">
+                {canAddItems && <Button onClick={() => setShowAddItemsDialog(true)} variant="outline" size="sm">
                     <Plus className="h-4 w-4" />
                   </Button>}
               </div>
