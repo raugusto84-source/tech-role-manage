@@ -72,7 +72,7 @@ export function OrderPaymentsPending() {
         // Get order details including completion date and description
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
-          .select('client_approved_at, updated_at, failure_description')
+          .select('client_approved_at, updated_at, failure_description, status')
           .eq('id', pc.order_id)
           .single();
 
@@ -129,13 +129,15 @@ export function OrderPaymentsPending() {
           order_number: pc.order_number,
           client_name: pc.client_name,
           client_email: pc.client_email,
-          amount: actualTotal, // Use the actual order total
-          balance: remainingBalance, // Use calculated remaining balance
+          amount: actualTotal,
+          balance: remainingBalance,
           created_at: pc.created_at,
           updated_at: pc.updated_at,
           due_date: pc.due_date,
           completion_date: completionDate,
-          order_description: orderDescription
+          order_description: orderDescription,
+          order_status: orderData?.status || '',
+          totalPaid
         };
       });
 
@@ -144,12 +146,18 @@ export function OrderPaymentsPending() {
       // Filter out payments that are fully paid (balance <= 0)
       const withBalance = formattedPayments.filter(p => p.balance > 0);
       
+      // Solo mostrar órdenes terminadas/entregadas O que ya tengan un anticipo cobrado
+      const completedStatuses = ['pendiente_entrega', 'finalizada'];
+      const relevantPayments = withBalance.filter(p => 
+        completedStatuses.includes(p.order_status) || p.totalPaid > 0
+      );
+
       // Filtrar solo pagos del mes actual y vencidos (no futuros)
       const today = new Date();
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth(); // 0-indexed
       
-      const pendingPayments = withBalance.filter(p => {
+      const pendingPayments = relevantPayments.filter(p => {
         if (!p.due_date) return true; // Si no hay fecha, mostrar
         const dueDate = new Date(p.due_date + 'T00:00:00');
         const dueYear = dueDate.getFullYear();

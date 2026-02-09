@@ -803,7 +803,7 @@ export function OrderDetails({
           </Card>
 
           {/* Special Price Editor - Admin Only */}
-          {profile?.role === 'administrador' && !['finalizada', 'cancelada', 'rechazada'].includes(orderStatus) && (
+          {profile?.role === 'administrador' && !['cancelada', 'rechazada'].includes(orderStatus) && (
             <SpecialPriceEditor
               orderId={order.id}
               currentTotal={calculatedTotal}
