@@ -72,7 +72,7 @@ export function OrderPaymentsPending() {
         // Get order details including completion date and description
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
-          .select('client_approved_at, updated_at, failure_description, status')
+          .select('client_approved_at, updated_at, failure_description, status, special_price_enabled, special_price')
           .eq('id', pc.order_id)
           .single();
 
@@ -91,9 +91,14 @@ export function OrderPaymentsPending() {
         }
 
         // Calculate the actual order total from items
-        const actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
+        let actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
           return sum + (item.total_amount || 0);
         }, 0);
+
+        // Si tiene precio especial habilitado, usar ese como total
+        if (orderData?.special_price_enabled && orderData?.special_price != null) {
+          actualTotal = Number(orderData.special_price);
+        }
 
         // Get payments made for this order
         const { data: payments, error: paymentsError } = await supabase
