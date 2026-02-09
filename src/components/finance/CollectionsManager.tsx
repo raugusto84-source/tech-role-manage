@@ -145,15 +145,27 @@ export function CollectionsManager() {
         (orderData || [])
           .filter((p: any) => isCurrentOrOverdue(p.due_date))
           .map(async (p: any) => {
+            // Get order details including special price and status
+            const { data: orderDetail } = await supabase
+              .from('orders')
+              .select('special_price_enabled, special_price, status')
+              .eq('id', p.order_id)
+              .single();
+
             // Get order items to calculate real total
             const { data: orderItems } = await supabase
               .from('order_items')
               .select('total_amount')
               .eq('order_id', p.order_id);
 
-            const actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
+            let actualTotal = (orderItems || []).reduce((sum: number, item: any) => {
               return sum + (item.total_amount || 0);
             }, 0);
+
+            // Si tiene precio especial habilitado, usar ese como total
+            if (orderDetail?.special_price_enabled && orderDetail?.special_price != null) {
+              actualTotal = Number(orderDetail.special_price);
+            }
 
             // Get payments made for this order
             const { data: payments } = await supabase
@@ -181,12 +193,17 @@ export function CollectionsManager() {
               balance: remainingBalance,
               total_amount: actualTotal,
               due_date: p.due_date,
+              order_status: orderDetail?.status || '',
+              totalPaid,
             };
           })
       );
 
-      // Filter out fully paid orders
-      const filteredOrderPayments = orderPaymentsWithBalance.filter(p => p.balance > 0);
+      // Filter out fully paid orders and only show completed orders or those with advances
+      const completedStatuses = ['pendiente_entrega', 'finalizada'];
+      const filteredOrderPayments = orderPaymentsWithBalance.filter(p => 
+        p.balance > 0 && (completedStatuses.includes(p.order_status) || p.totalPaid > 0)
+      );
       setOrderPayments(filteredOrderPayments);
 
       // ========== FRACCIONAMIENTOS: Development Payments ==========
