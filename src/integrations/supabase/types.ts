@@ -53,6 +53,8 @@ export type Database = {
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
+          contract_months: number | null
+          controlled_exit: boolean | null
           created_at: string
           created_by: string | null
           has_investor: boolean | null
@@ -63,9 +65,14 @@ export type Database = {
           last_activity_description: string | null
           monthly_payment_proposed: number | null
           name: string
+          num_houses: number | null
+          pedestrian_doors: number | null
+          quote_breakdown: Json | null
           reminder_date: string | null
           status: string
           updated_at: string
+          vehicular_gates_double: number | null
+          vehicular_gates_single: number | null
         }
         Insert: {
           address?: string | null
@@ -73,6 +80,8 @@ export type Database = {
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          contract_months?: number | null
+          controlled_exit?: boolean | null
           created_at?: string
           created_by?: string | null
           has_investor?: boolean | null
@@ -83,9 +92,14 @@ export type Database = {
           last_activity_description?: string | null
           monthly_payment_proposed?: number | null
           name: string
+          num_houses?: number | null
+          pedestrian_doors?: number | null
+          quote_breakdown?: Json | null
           reminder_date?: string | null
           status?: string
           updated_at?: string
+          vehicular_gates_double?: number | null
+          vehicular_gates_single?: number | null
         }
         Update: {
           address?: string | null
@@ -93,6 +107,8 @@ export type Database = {
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          contract_months?: number | null
+          controlled_exit?: boolean | null
           created_at?: string
           created_by?: string | null
           has_investor?: boolean | null
@@ -103,9 +119,14 @@ export type Database = {
           last_activity_description?: string | null
           monthly_payment_proposed?: number | null
           name?: string
+          num_houses?: number | null
+          pedestrian_doors?: number | null
+          quote_breakdown?: Json | null
           reminder_date?: string | null
           status?: string
           updated_at?: string
+          vehicular_gates_double?: number | null
+          vehicular_gates_single?: number | null
         }
         Relationships: []
       }
@@ -362,6 +383,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      access_quote_config: {
+        Row: {
+          config_key: string
+          config_value: number
+          description: string | null
+          display_order: number
+          id: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          config_key: string
+          config_value?: number
+          description?: string | null
+          display_order?: number
+          id?: string
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          config_key?: string
+          config_value?: number
+          description?: string | null
+          display_order?: number
+          id?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       achievement_rewards: {
         Row: {
