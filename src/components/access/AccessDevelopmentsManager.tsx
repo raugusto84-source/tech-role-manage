@@ -10,7 +10,9 @@ import { InvestorOverview } from './InvestorOverview';
 import { DevelopmentLeadsList } from './DevelopmentLeadsList';
 import { DevelopmentReceipts } from './DevelopmentReceipts';
 import { DevelopmentPaymentNotices } from './DevelopmentPaymentNotices';
-import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText, Receipt, Bell } from 'lucide-react';
+import { AccessQuoteConfig } from './AccessQuoteConfig';
+import { AccessQuoteCalculator } from './AccessQuoteCalculator';
+import { Building2, PlusCircle, CreditCard, ClipboardList, Users, FileText, Receipt, Bell, Settings, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
@@ -88,6 +90,10 @@ export function AccessDevelopmentsManager() {
             <FileText className="h-4 w-4" />
             Cotizaciones
           </TabsTrigger>
+          <TabsTrigger value="calculator" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            Nueva Cotización
+          </TabsTrigger>
           <TabsTrigger value="developments" className="flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             Fraccionamientos
@@ -112,10 +118,18 @@ export function AccessDevelopmentsManager() {
             <Bell className="h-4 w-4" />
             Avisos de Pago
           </TabsTrigger>
+          <TabsTrigger value="config" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Configuración
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="leads" className="space-y-4">
           <DevelopmentLeadsList onConvertToContract={handleConvertLead} />
+        </TabsContent>
+
+        <TabsContent value="calculator" className="space-y-4">
+          <AccessQuoteCalculator onSaved={() => {}} />
         </TabsContent>
 
         <TabsContent value="developments" className="space-y-4">
@@ -152,6 +166,10 @@ export function AccessDevelopmentsManager() {
 
         <TabsContent value="notices">
           <DevelopmentPaymentNotices developments={developments} />
+        </TabsContent>
+
+        <TabsContent value="config">
+          <AccessQuoteConfig />
         </TabsContent>
       </Tabs>
 
