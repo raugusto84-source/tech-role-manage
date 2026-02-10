@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
+
 import { Calculator, FileDown, Save } from 'lucide-react';
 import { generateAccessQuotePDF } from './AccessQuotePDF';
 
@@ -18,12 +18,13 @@ export interface QuoteInputs {
   vehicularGatesSingle: number;
   vehicularGatesDouble: number;
   pedestrianDoors: number;
-  controlledExit: boolean;
+  controlledExits: number;
   numHouses: number;
   notes: string;
 }
 
 export interface QuoteBreakdown {
+  systemBaseCost: number;
   vehicularSingleTotal: number;
   vehicularDoubleTotal: number;
   pedestrianTotal: number;
@@ -38,6 +39,7 @@ export interface QuoteBreakdown {
     perHouse: number;
   }[];
   implementationFee: number;
+  recoveryPayments: number;
 }
 
 interface Props {
@@ -60,7 +62,7 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
     vehicularGatesSingle: initialData?.vehicularGatesSingle || 0,
     vehicularGatesDouble: initialData?.vehicularGatesDouble || 0,
     pedestrianDoors: initialData?.pedestrianDoors || 0,
-    controlledExit: initialData?.controlledExit || false,
+    controlledExits: initialData?.controlledExits || 0,
     numHouses: initialData?.numHouses || 0,
     notes: initialData?.notes || '',
   });
@@ -89,13 +91,14 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
   const breakdown = useMemo<QuoteBreakdown | null>(() => {
     if (Object.keys(configs).length === 0 || inputs.numHouses === 0) return null;
 
+    const systemBaseCost = configs.system_base_cost || 0;
     const vehicularSingleTotal = inputs.vehicularGatesSingle * (configs.vehicular_gate_single_cost || 0);
     const vehicularDoubleTotal = inputs.vehicularGatesDouble * (configs.vehicular_gate_double_cost || 0);
     const pedestrianTotal = inputs.pedestrianDoors * (configs.pedestrian_door_cost || 0);
-    const controlledExitTotal = inputs.controlledExit ? (configs.controlled_exit_surcharge || 0) : 0;
+    const controlledExitTotal = inputs.controlledExits * (configs.controlled_exit_surcharge || 0);
     const housesBaseTotal = inputs.numHouses * (configs.per_house_base_cost || 0);
 
-    const monthlyBase = vehicularSingleTotal + vehicularDoubleTotal + pedestrianTotal + controlledExitTotal + housesBaseTotal;
+    const monthlyBase = systemBaseCost + vehicularSingleTotal + vehicularDoubleTotal + pedestrianTotal + controlledExitTotal + housesBaseTotal;
 
     const plans = [
       { months: 18, label: '18 meses', discountKey: 'discount_18_months' },
@@ -114,10 +117,14 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
     });
 
     const implementationMonths = configs.implementation_fee_months || 1;
-    // Use the 24-month plan as default for implementation fee
     const implementationFee = plans.length >= 2 ? plans[1].monthly * implementationMonths : monthlyBase * implementationMonths;
 
+    // Calculate recovery payments: implementation fee / monthly payment (24-month plan)
+    const monthlyFor24 = plans.length >= 2 ? plans[1].monthly : monthlyBase;
+    const recoveryPayments = monthlyFor24 > 0 ? Math.ceil(implementationFee / monthlyFor24) : 0;
+
     return {
+      systemBaseCost,
       vehicularSingleTotal,
       vehicularDoubleTotal,
       pedestrianTotal,
@@ -126,6 +133,7 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
       monthlyBase,
       plans,
       implementationFee,
+      recoveryPayments,
     };
   }, [configs, inputs]);
 
@@ -147,7 +155,7 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
         vehicular_gates_single: inputs.vehicularGatesSingle,
         vehicular_gates_double: inputs.vehicularGatesDouble,
         pedestrian_doors: inputs.pedestrianDoors,
-        controlled_exit: inputs.controlledExit,
+        controlled_exits: inputs.controlledExits,
         num_houses: inputs.numHouses,
         contract_months: 24,
         quote_breakdown: breakdown as any,
@@ -239,9 +247,9 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
                 <Input type="number" min="0" value={inputs.numHouses} onChange={e => setInputs({ ...inputs, numHouses: Number(e.target.value) })} />
               </div>
             </div>
-            <div className="flex items-center gap-3 mt-4">
-              <Switch checked={inputs.controlledExit} onCheckedChange={v => setInputs({ ...inputs, controlledExit: v })} />
-              <Label>Salida Controlada</Label>
+            <div>
+              <Label>Salidas Controladas</Label>
+              <Input type="number" min="0" value={inputs.controlledExits} onChange={e => setInputs({ ...inputs, controlledExits: Number(e.target.value) })} />
             </div>
           </div>
         </CardContent>
@@ -273,10 +281,16 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
                   <p className="font-semibold">{fmt(breakdown.pedestrianTotal)}</p>
                 </div>
               )}
-              {inputs.controlledExit && (
+              {inputs.controlledExits > 0 && (
                 <div className="bg-muted/50 p-3 rounded-lg">
-                  <p className="text-muted-foreground">Salida Controlada</p>
+                  <p className="text-muted-foreground">Salidas Controladas × {inputs.controlledExits}</p>
                   <p className="font-semibold">{fmt(breakdown.controlledExitTotal)}</p>
+                </div>
+              )}
+              {breakdown.systemBaseCost > 0 && (
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <p className="text-muted-foreground">Costo Base del Sistema</p>
+                  <p className="font-semibold">{fmt(breakdown.systemBaseCost)}</p>
                 </div>
               )}
               <div className="bg-muted/50 p-3 rounded-lg">
@@ -317,6 +331,14 @@ export function AccessQuoteCalculator({ leadId, initialData, onSaved, onCancel }
               Se requiere un primer pago de implementación equivalente a {configs.implementation_fee_months || 1} mensualidad(es) 
               para iniciar con la preparación de los equipos y el sistema.
             </p>
+
+            {/* Internal only - recovery info */}
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 rounded-lg text-sm">
+              <p className="font-semibold text-amber-800 dark:text-amber-300">🔒 Información Interna (no se muestra al cliente)</p>
+              <p className="text-amber-700 dark:text-amber-400">
+                Pagos para recuperar inversión inicial: <strong>{breakdown.recoveryPayments} mensualidad(es)</strong>
+              </p>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">

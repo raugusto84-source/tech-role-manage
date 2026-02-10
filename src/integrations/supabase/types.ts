@@ -54,7 +54,7 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           contract_months: number | null
-          controlled_exit: boolean | null
+          controlled_exits: number | null
           created_at: string
           created_by: string | null
           has_investor: boolean | null
@@ -68,6 +68,7 @@ export type Database = {
           num_houses: number | null
           pedestrian_doors: number | null
           quote_breakdown: Json | null
+          recovery_payments: number | null
           reminder_date: string | null
           status: string
           updated_at: string
@@ -81,7 +82,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           contract_months?: number | null
-          controlled_exit?: boolean | null
+          controlled_exits?: number | null
           created_at?: string
           created_by?: string | null
           has_investor?: boolean | null
@@ -95,6 +96,7 @@ export type Database = {
           num_houses?: number | null
           pedestrian_doors?: number | null
           quote_breakdown?: Json | null
+          recovery_payments?: number | null
           reminder_date?: string | null
           status?: string
           updated_at?: string
@@ -108,7 +110,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           contract_months?: number | null
-          controlled_exit?: boolean | null
+          controlled_exits?: number | null
           created_at?: string
           created_by?: string | null
           has_investor?: boolean | null
@@ -122,6 +124,7 @@ export type Database = {
           num_houses?: number | null
           pedestrian_doors?: number | null
           quote_breakdown?: Json | null
+          recovery_payments?: number | null
           reminder_date?: string | null
           status?: string
           updated_at?: string

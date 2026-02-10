@@ -29,7 +29,7 @@ export async function generateAccessQuotePDF(inputs: QuoteInputs, breakdown: Quo
   if (inputs.vehicularGatesDouble > 0) gateDescription.push(`${inputs.vehicularGatesDouble} de dos hojas`);
   const gateText = gateDescription.join(' y ');
 
-  const exitType = inputs.controlledExit ? 'Controlada' : 'Libre';
+  const exitType = inputs.controlledExits > 0 ? `Controlada (${inputs.controlledExits})` : 'Libre';
 
   const html = `
 <!DOCTYPE html>
