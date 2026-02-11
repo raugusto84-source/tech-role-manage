@@ -60,26 +60,37 @@
      }
  
      // Determine priority based on urgency
-     let priorityLevel = 'normal';
-     if (urgency === 'urgente') priorityLevel = 'alta';
-     if (urgency === 'critico') priorityLevel = 'critica';
+      let priorityLevel = 'baja';
+      if (urgency === 'urgente') priorityLevel = 'alta';
+      if (urgency === 'critico') priorityLevel = 'critica';
  
      // Generate order number
      const orderNumber = `ORD-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
  
      // Create order - set as high priority if urgent
-     const orderData: any = {
-       order_number: orderNumber,
-       client_id: client_id,
-       service_type: serviceTypeId,
-       failure_description: `[SOPORTE FRACCIONAMIENTO - ${development_name}] ${failure_description}`,
-       estimated_cost: 0,
-       status: urgency === 'critico' ? 'en_proceso' : 'en_espera',
-       order_category: 'fraccionamientos',
-       skip_payment: true,
-       source_type: 'development_support',
-       priority: priorityLevel
-     };
+      // Set delivery_date to 3 days from now for normal, 1 day for urgent, today for critical
+      const deliveryDate = new Date();
+      if (urgency === 'critico') {
+        // same day
+      } else if (urgency === 'urgente') {
+        deliveryDate.setDate(deliveryDate.getDate() + 1);
+      } else {
+        deliveryDate.setDate(deliveryDate.getDate() + 3);
+      }
+
+      const orderData: any = {
+        order_number: orderNumber,
+        client_id: client_id,
+        service_type: serviceTypeId,
+        failure_description: `[SOPORTE FRACCIONAMIENTO - ${development_name}] ${failure_description}`,
+        estimated_cost: 0,
+        status: urgency === 'critico' ? 'en_proceso' : 'en_espera',
+        order_category: 'fraccionamientos',
+        skip_payment: true,
+        source_type: 'development_support',
+        priority: priorityLevel,
+        delivery_date: deliveryDate.toISOString().split('T')[0]
+      };
  
      const { data: newOrder, error: orderError } = await supabase
        .from('orders')
