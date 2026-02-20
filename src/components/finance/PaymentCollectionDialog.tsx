@@ -129,7 +129,7 @@ export function PaymentCollectionDialog({ open, onOpenChange, payment, onSuccess
           account_type: accountType,
           category: 'fraccionamiento',
           description: `Pago mensual fraccionamiento: ${payment.development_name}${payment.payment_period ? ` - ${payment.payment_period}` : ''}${hasISRWithholding ? ' (con retención ISR)' : ''}`,
-          income_type: 'fraccionamiento',
+          
           status: 'recibido',
           payment_method: paymentMethod,
           vat_rate: vatRate,
