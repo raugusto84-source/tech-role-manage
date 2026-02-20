@@ -615,8 +615,7 @@ export function LoansManager() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Número</TableHead>
-                <TableHead>Descripción</TableHead>
+                <TableHead>Préstamo</TableHead>
                 <TableHead>Monto Original</TableHead>
                 <TableHead>Restante</TableHead>
                 <TableHead>Mensualidad</TableHead>
@@ -630,8 +629,10 @@ export function LoansManager() {
             <TableBody>
               {loansQuery.data?.map((loan) => (
                 <TableRow key={loan.id}>
-                  <TableCell className="font-medium">{loan.loan_number}</TableCell>
-                  <TableCell>{loan.description || '-'}</TableCell>
+                  <TableCell className="font-medium">
+                    {loan.description || loan.loan_number}
+                    <span className="block text-xs text-muted-foreground">{loan.loan_number}</span>
+                  </TableCell>
                   <TableCell>{formatMXNExact(loan.amount)}</TableCell>
                   <TableCell className="font-semibold text-orange-600">
                     {formatMXNExact(loan.remaining_amount || loan.amount)}
@@ -700,7 +701,10 @@ export function LoansManager() {
                   const isOverdue = payment.status === 'vencido';
                   return (
                     <TableRow key={payment.id} className={isOverdue ? 'bg-red-50' : ''}>
-                      <TableCell className="font-medium">{payment.loans?.loan_number}</TableCell>
+                      <TableCell className="font-medium">
+                        {payment.loans?.description || payment.loans?.loan_number}
+                        <span className="block text-xs text-muted-foreground">{payment.loans?.loan_number}</span>
+                      </TableCell>
                       <TableCell>
                         {payment.payment_number} / {payment.loans?.total_months}
                       </TableCell>
